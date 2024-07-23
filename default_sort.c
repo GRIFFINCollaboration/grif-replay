@@ -208,7 +208,6 @@ int pre_sort(int frag_idx, int end_idx)
       // Ensure its the same DSSD and that the two events are front and back
       // The charged particles enter the P side and this has superior energy resolution
       // Ensure the energy collected in the front and back is similar
-    //  fprintf(stdout,"presort1 %s, %s, %d, %d\n",chan_name[ptr->chan], chan_name[alt->chan], ptr->ecal, alt->ecal);
       ptr->esum = -1; // Need to exclude any noise and random coincidences.
       if( dt < rcmp_fb_window && alt->subsys == SUBSYS_RCMP && (ptr->ecal>0 && ptr->ecal<32768)){
         if((crystal_table[ptr->chan] == crystal_table[alt->chan]) && (polarity_table[ptr->chan] != polarity_table[alt->chan]) && (alt->ecal > 0  && ptr->ecal<32768)){
@@ -216,23 +215,11 @@ int pre_sort(int frag_idx, int end_idx)
             // Ensure esum comes from P side, but use this timestamp
             ptr->esum = polarity_table[ptr->chan]==0 ? ptr->ecal : (polarity_table[ptr->chan]==1 ? alt->ecal : -1);
             presort_rcmp_fb_events_built++;
-
-            //fprintf(stdout,"presort2 %s, %s, %d, %d",chan_name[ptr->chan], chan_name[alt->chan], ptr->chan, alt->chan);
-            //fprintf(stdout,", %d, %d, %f, %f, %d, %d\n", ptr->ecal, alt->ecal, ptr->esum, alt->esum, polarity_table[ptr->chan], polarity_table[alt->chan]);
-/*
-            if(polarity_table[ptr->chan]==0 && polarity_table[alt->chan]==1){ // P side
-              ptr->esum = ptr->ecal; alt->esum = -1;
-            }else if(polarity_table[ptr->chan]==1 && polarity_table[alt->chan]==0){ // N side
-              ptr->esum = alt->ecal; alt->esum = -1;
-            }else{
-              ptr->esum = alt->esum = -1;
-            }
-*/
           }
         }
       }
       break;
-      default: // Unrecognized or unprocessed dtype
+      default: // Unrecognized or unprocessed subsys type
       break;
     }// end of switch
 
@@ -358,8 +345,9 @@ TH1I  *ge_ab_e[NUM_CLOVER];
 TH1I  *ge_sum, *ge_ab_sum;  // ge_sum is sum of crystal energies
 TH1I  *paces_sum;  // paces_sum is sum of crystal energies
 TH1I  *labr_sum;  // labr_sum is sum of crystal energies
+TH1I  *aries_sum;  // aries_sum is sum of tile energies
 TH1I  *rcmp_sum, *rcmp_fb_sum;  // rcmp_sum is sum of strip energies, fb is with front-back coincidence
-TH2I  *ge_xtal, *bgo_xtal, *bgof_xtal, *bgos_xtal, *bgob_xtal, *bgoa_xtal, *labr_xtal, *paces_xtal;
+TH2I  *ge_xtal, *bgo_xtal, *bgof_xtal, *bgos_xtal, *bgob_xtal, *bgoa_xtal, *labr_xtal, *paces_xtal, *aries_xtal;
 
 #define N_RCMP_POS 6
 #define N_RCMP_STRIPS 32
@@ -380,6 +368,8 @@ int init_singles_histos(Config *cfg)
   paces_sum = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
   sprintf(title,  "LaBr3_Sum_Energy"); sprintf(handle, "Labr_Sum_E");
   labr_sum = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
+  sprintf(title,  "ARIES_Sum_Energy"); sprintf(handle, "Aries_Sum_E");
+  aries_sum = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
   sprintf(title,  "RCMP_Sum_Energy"); sprintf(handle, "RCMP_Sum_E");
   rcmp_sum = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
   sprintf(title,  "RCMP_Sum_FB_Energy"); sprintf(handle, "RCMP_Sum_FB_E");
@@ -415,6 +405,9 @@ int init_singles_histos(Config *cfg)
   sprintf(title, "PACESEnergy_CrystalNum"); sprintf(handle, "PacesEnergy_Xtal");
   paces_xtal     = H2_BOOK(cfg, handle, title, 16, 0, 16,
                                             E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
+  sprintf(title, "ARIESEnergy_CrystalNum"); sprintf(handle, "AriesEnergy_Xtal");
+  aries_xtal     = H2_BOOK(cfg, handle, title, 80, 0, 80,
+                                            E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
     for(i=0; i<N_RCMP_POS; i++){ // Create RCMP DSSD strip spectra
       rcmp_strips[i] = H2_BOOK(cfg, rcmp_strips_handles[i], rcmp_strips_handles[i], 2*N_RCMP_STRIPS, 0, 2*N_RCMP_STRIPS,
                                             E_2D_RCMP_SPEC_LENGTH, 0, E_2D_RCMP_SPEC_LENGTH);
@@ -425,12 +418,15 @@ int init_singles_histos(Config *cfg)
 }
 
 #define DT_SPEC_LENGTH 4096
-#define N_DT 10
-char dt_handles[N_DT][32]={ "dt_ge_ge", "dt_ge_bgo", "dt_ge_sep", "dt_ge_zds", "dt_ge_pac", "dt_ge_labr", "dt_ge_rcmp", "dt_pac_zds", "dt_pac_labr", "dt_rcmp_rcmp" };
+#define N_DT 14
+char dt_handles[N_DT][32]={ "dt_ge_ge", "dt_ge_bgo", "dt_ge_sep", "dt_ge_zds",
+                            "dt_ge_pac", "dt_ge_labr", "dt_ge_rcmp", "dt_pac_zds",
+                            "dt_pac_labr", "dt_rcmp_rcmp", "dt_ge_art", "dt_labr_art",
+                            "dt_paces_art", "dt_art_art" };
 
 TH1I  *dt_hist[N_DT];
 TH1I  *ge_sum_b; // beta-gated gamma sum spectrum
-TH2I *gg, *gg_ab, *gg_opp, *gg_hit, *bgobgo_hit, *ge_paces, *ge_labr, *ge_rcmp, *labr_labr, *labr_rcmp;
+TH2I *gg, *gg_ab, *gg_opp, *gg_hit, *bgobgo_hit, *aa_hit, *gea_hit, *ge_paces, *ge_labr, *ge_rcmp, *labr_labr, *labr_rcmp, *ge_art, *paces_art, *labr_art, *art_art;
 
 char rcmp_hit_handles[N_RCMP_POS][32]={ "RCS01_PN_hits","RCS02_PN_hits","RCS03_PN_hits","RCS04_PN_hits","RCS05_PN_hits","RCS06_PN_hits" };
 char rcmp_fb_handles[N_RCMP_POS][32]={ "RCS01_Front_Back","RCS02_Front_Back","RCS03_Front_Back","RCS04_Front_Back","RCS05_Front_Back","RCS06_Front_Back" }; // front-back
@@ -463,6 +459,15 @@ int init_coinc_histos(Config *cfg)
   sprintf(title, "GeLabr"); sprintf(handle, "GeLabr");
    ge_labr   = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
 		                                       E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
+   sprintf(title, "GeAries"); sprintf(handle, "GeAries");
+    ge_art   = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
+ 		                                         E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
+   sprintf(title, "LaBrAries"); sprintf(handle, "LaBrAries");
+    labr_art   = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
+   		                                         E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
+   sprintf(title, "AriesAries"); sprintf(handle, "AriesAries");
+    art_art   = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
+     		                                        E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
    sprintf(title, "LaBrLabr"); sprintf(handle, "LaBrLabr");
    labr_labr   = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
  		                                         E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
@@ -485,6 +490,12 @@ int init_coinc_histos(Config *cfg)
    sprintf(title, "BgoBgoHit"); sprintf(handle, "BgoBgoHit");
    bgobgo_hit  = H2_BOOK(cfg, handle, title, 512, 0, 512,
 		                     	                   512, 0, 512);
+   sprintf(title, "GeAriesHit"); sprintf(handle, "GAHit");
+   gea_hit    = H2_BOOK(cfg, handle, title, 64, 0, 64,
+                                            80, 0, 80);
+   sprintf(title, "AriesAriesHit"); sprintf(handle, "AAHit");
+   aa_hit    = H2_BOOK(cfg, handle, title, 80, 0, 80,
+                                           80, 0, 80);
      for(i=0; i<N_RCMP_POS; i++){ // Create RCMP DSSD hitpatterns
        rcmp_hit[i] = H2_BOOK(cfg, rcmp_hit_handles[i], rcmp_hit_handles[i], N_RCMP_STRIPS, 0, N_RCMP_STRIPS,
                                                                             N_RCMP_STRIPS, 0, N_RCMP_STRIPS);
@@ -595,7 +606,14 @@ int fill_singles_histos(Grif_event *ptr)
    break;
    case SUBSYS_DESCANT:
    break;
-   case SUBSYS_ARIES:
+   case SUBSYS_ARIES: // ARIES
+    aries_sum->Fill(aries_sum, (int)ptr->ecal, 1);
+    pos  = crystal_table[ptr->chan];
+    if( pos < 1 || pos > 76 ){
+      fprintf(stderr,"bad aries crystal[%d] for chan %d\n", pos, ptr->chan);
+    } else {
+      aries_xtal->Fill(aries_xtal, pos, (int)ptr->ecal, 1);
+    }
    break;
    case SUBSYS_ZDS:
    break;
@@ -649,6 +667,7 @@ int fill_coinc_histos(int win_idx, int frag_idx)
    Grif_event *alt, *ptr = &grif_event[win_idx];
    int dt, abs_dt, i, gg_gate=25;
    //int g_rcmp_lower_gate=22, g_rcmp_upper_gate=68;
+   int g_aries_upper_gate=25;
    int g_rcmp_upper_gate=75;
    int pos, c1, c2;
    int global_window_size = 100; // size in grif-replay should be double this
@@ -705,7 +724,7 @@ int fill_coinc_histos(int win_idx, int frag_idx)
                 if( abs_dt < gg_gate ){
                   ge_paces  ->Fill(ge_paces, (int)ptr->ecal, (int)alt->ecal, 1);
                 } break;
-                case SUBSYS_LABR_T:  // ge-labr
+                case SUBSYS_LABR_L:  // ge-labr
                 dt_hist[5]->Fill(dt_hist[5], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
                 if( abs_dt < gg_gate ){
                   ge_labr->Fill(ge_labr, (int)ptr->ecal, (int)alt->ecal, 1);
@@ -714,6 +733,11 @@ int fill_coinc_histos(int win_idx, int frag_idx)
                 dt_hist[2]->Fill(dt_hist[2], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
                 break;
                 case SUBSYS_ARIES: // ge-aries
+                dt_hist[10]->Fill(dt_hist[10], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+                if( abs_dt < gg_gate ){
+                  ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1); // beta-gated Ge sum energy spectrum
+                  ge_art->Fill(ge_art, (int)ptr->ecal, (int)alt->esum, 1);
+                }
                 break;
                 case SUBSYS_ZDS: // ge-zds
                 dt_hist[3]->Fill(dt_hist[3], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
@@ -721,7 +745,6 @@ int fill_coinc_histos(int win_idx, int frag_idx)
                   ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1); // beta-gated Ge sum energy spectrum
                 }
                 break;
-
                 case SUBSYS_RCMP: // ge-rcmp
                 coinc_ge_rcmp_events++;
                 dt_hist[6]->Fill(dt_hist[6], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
@@ -732,24 +755,64 @@ int fill_coinc_histos(int win_idx, int frag_idx)
               break;
 
               default: break; // unprocessed coincidence combinations
-            } // end of inner switch(ALT)
+            } // end of inner switch(ALT) for ptr=HPGe
           }
          break; // outer-switch-case-GE
+
       case SUBSYS_PACES: // paces matrices
-         if( alt->subsys == SUBSYS_ZDS ){
-            dt_hist[7]->Fill(dt_hist[7], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // pac-zds
-         } else if( alt->subsys == SUBSYS_LABR_T ){
-            dt_hist[8]->Fill(dt_hist[8], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // pac-labr
-         } break;
+         switch(alt->subsys){
+           case SUBSYS_ZDS:
+           dt_hist[7]->Fill(dt_hist[7], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // pac-zds
+           break;
+             case SUBSYS_HPGE:
+             // Only use GRGa
+             if(output_table[alt->chan] == 1){
+               dt_hist[4]->Fill(dt_hist[4], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // pac-ge
+             }
+             break;
+           case SUBSYS_LABR_L:
+           dt_hist[8]->Fill(dt_hist[8], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // pac-labr
+           break;
+         case SUBSYS_ARIES:
+        dt_hist[13]->Fill(dt_hist[13], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // pac-aries
+        if( ( abs_dt < g_aries_upper_gate) && ptr->ecal>0){
+          paces_art->Fill(paces_art, (int)ptr->ecal, (int)alt->ecal, 1);
+        }
+         break;
+           default: break; // unprocessed coincidence combinations
+         } // end of inner switch(ALT)
+
+               case SUBSYS_LABR_L: // Labr matrices
+                  switch(alt->subsys){
+                      case SUBSYS_HPGE:
+                      // Only use GRGa
+                      if(output_table[alt->chan] == 1){
+                        dt_hist[5]->Fill(dt_hist[5], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // labr-ge
+                      }
+                      break;
+                    case SUBSYS_LABR_L:
+                    dt_hist[8]->Fill(dt_hist[8], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // labr-labr
+                    break;
+                  case SUBSYS_ARIES:
+                 dt_hist[12]->Fill(dt_hist[12], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // laBr-aries
+                 if( ( abs_dt < g_aries_upper_gate) && ptr->ecal>0){
+                   labr_art->Fill(labr_art, (int)ptr->ecal, (int)alt->ecal, 1);
+                 }
+                  break;
+                    default: break; // unprocessed coincidence combinations
+                  } // end of inner switch(ALT)
+
       case SUBSYS_BGO: // bgo matrices
          if(alt->subsys == SUBSYS_BGO && abs_dt < gg_gate ){ // bgo-bgo
             c1 = crystal_table[ptr->chan];
             c2 = crystal_table[alt->chan];
             bgobgo_hit->Fill(bgobgo_hit, c1, c2, 1);
          } break;
+
       case SUBSYS_RCMP: // rcmp matrices
          //fprintf(stdout,"RCMP coinc. with %d, with dt=%d\n",alt->subsys,abs_dt);
-         if( alt->subsys == SUBSYS_HPGE ){
+            switch(alt->subsys){
+              case SUBSYS_HPGE: // rcmp-ge
            // Only use GRGa
            if(output_table[alt->chan] == 1){
 
@@ -761,7 +824,8 @@ int fill_coinc_histos(int win_idx, int frag_idx)
                ge_rcmp->Fill(ge_rcmp, (int)alt->ecal, (int)ptr->ecal, 1);
              }
            }
-         } else if( alt->subsys == SUBSYS_RCMP ){
+           break;
+         case SUBSYS_RCMP: // rcmp-rcmp
         // fprintf(stdout,"RCMP coinc. with %d, with dt=%d\n",alt->subsys,abs_dt);
            dt_hist[9]->Fill(dt_hist[9], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // rcmp-rcmp - This might need an extra condition for Polarity difference
            pos = crystal_table[ptr->chan];
@@ -781,9 +845,53 @@ int fill_coinc_histos(int win_idx, int frag_idx)
              rcmp_hit[(pos-1)]->Fill(rcmp_hit[(pos-1)], c1, c2, 1);
              rcmp_fb[(pos-1)]->Fill(rcmp_fb[(pos-1)], (int)ptr->ecal, (int)alt->ecal, 1);
            }
-         } break;
+       break;
       default: break;
-      // more stuff to follow
+      break; // end of inner switch(ALT) for ptr=rcmp
+      } // end of inner switch(ALT)
+
+            case SUBSYS_ARIES: // aries matrices
+                  switch(alt->subsys){
+                    case SUBSYS_HPGE: // aries-ge
+                 // Only use GRGa
+                 if(output_table[alt->chan] == 1){
+
+                   dt_hist[10]->Fill(dt_hist[10], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+                   if( ( abs_dt < g_aries_upper_gate) && ptr->ecal>0){
+                     coinc_rcmp_ge_fb_events++;
+                     ge_art->Fill(ge_art, (int)alt->ecal, (int)ptr->ecal, 1);
+                   }
+                 }
+                 break;
+                   case SUBSYS_LABR_L: // aries-labr
+                  dt_hist[11]->Fill(dt_hist[11], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+                  if( ( abs_dt < g_aries_upper_gate) && ptr->ecal>0){
+                    labr_art->Fill(labr_art, (int)alt->ecal, (int)ptr->ecal, 1);
+                  }
+                break;
+                  case SUBSYS_PACES: // aries-paces
+                 dt_hist[12]->Fill(dt_hist[12], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+                 if( ( abs_dt < g_aries_upper_gate) && ptr->ecal>0){
+                   paces_art->Fill(paces_art, (int)alt->ecal, (int)ptr->ecal, 1);
+                 }
+               break;
+               case SUBSYS_ARIES: // aries-aries
+                 dt_hist[13]->Fill(dt_hist[13], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+                 c1 = crystal_table[ptr->chan];
+                 if(c1 >= 1 && c1 <=76 ){
+                   c2 = crystal_table[alt->chan];
+                   if(c2 >= 1 && c2 <=76 ){
+
+                   aa_hit->Fill(aa_hit, c1, c2, 1);
+                   art_art->Fill(art_art, (int)ptr->ecal, (int)alt->ecal, 1);
+                 }
+               }
+             break;
+            default: break;
+            break; // end of inner switch(ALT) for ptr=rcmp
+            } // end of inner switch(ALT)
+
+      default: break; // Unrecognized or unprocessed subsys type
       }// end of switch(ptr)
       if( i == frag_idx ){ break; }
       if( ++i == MAX_COINC_EVENTS ){ i = 0; } // wrap
@@ -1021,10 +1129,11 @@ int gen_derived_odb_tables()
     }
 
     // Determine Polarity
-    // 1 is N, 0 is P or T, -1 is anything else
+    // 1 is N, 0 is P or T or S, -1 is anything else
     if(        polarity == 'N' ){ polarity_table[i] = 1;
     } else if( polarity == 'P' ){ polarity_table[i] = 0;
     } else if( polarity == 'T' ){ polarity_table[i] = 0; // TAC signal
+    } else if( polarity == 'S' ){ polarity_table[i] = 1; // ARIES Standard signal
     } else if( polarity == 'X' ){ polarity_table[i] = 0; // XXX type
     } else { fprintf(stderr,"unknown polarity[=%c] in %s\n", polarity, chan_name[i]); }
     polarity_table[i] = polarity=='N' ? 1 : (polarity=='P' ? 0 : -1); // Looks like we are doing this twice each time, this is a repeat of the above
