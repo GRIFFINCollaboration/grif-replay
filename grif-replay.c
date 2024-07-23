@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
 {
    Sort_status *sort = &sort_status;
    int web_arg=1;  Config *cfg;
-   
+
    sort->reorder = 1;  sort->single_thread = 0;  sort->sort_thread = 1;
    pthread_create(&web_thread, NULL,(void* (*)(void*))web_main, &web_arg);
    while( !shutdown_server ){ // monitor file queue and sort any added files
@@ -34,13 +34,25 @@ int main(int argc, char *argv[])
       cfg = configs[1];
       if( sort->online_mode ){
          online_loop(cfg, sort);
-      } else 
+      } else
       if( open_next_sortfiles(sort) == 0 ){
          sort_next_file(cfg, sort);
          fprintf(stdout,"DONE\n");
+                     // Global counters for finding the Ge-RCMP coincidences
+                     fprintf(stdout,"Ge-RCMP Coincidence stats:\n");
+                     fprintf(stdout,"presort_ge_events_passed %d\n",presort_ge_events_passed);
+                     fprintf(stdout,"presort_rcmp_events_passed %d\n",presort_rcmp_events_passed);
+                     fprintf(stdout,"presort_rcmp_fb_events_built %d\n",presort_rcmp_fb_events_built);
+                     fprintf(stdout,"singles_ge_events %d\n",singles_ge_events);
+                     fprintf(stdout,"singles_rcmp_events %d\n",singles_rcmp_events);
+                     fprintf(stdout,"singles_rcmp_fb_events %d\n",singles_rcmp_fb_events);
+                     fprintf(stdout,"coinc_ge_rcmp_events %d\n",coinc_ge_rcmp_events);
+                     fprintf(stdout,"coinc_rcmp_ge_events %d\n",coinc_rcmp_ge_events);
+                     fprintf(stdout,"coinc_ge_rcmp_fb_events %d\n",coinc_ge_rcmp_fb_events);
+                     fprintf(stdout,"coinc_rcmp_ge_fb_events %d\n",coinc_rcmp_ge_fb_events);
          close_sortfiles(sort);
       }
-      if( ++sort->current_filenum == FILE_QLEN ){ sort->current_filenum = 0; } 
+      if( ++sort->current_filenum == FILE_QLEN ){ sort->current_filenum = 0; }
    }
    pthread_join(web_thread, NULL);
    exit(0);
@@ -167,14 +179,14 @@ static void online_loop(Config *cfg, Sort_status *sort)
       reorder_save = sort->reorder;
       singlethread_save = sort->single_thread;
       sortthread_save = sort->sort_thread;
-      
+
       if( reorder_save ){
         printf("creating reorder threads\n");
         if( reorder_save == 1 ){
-           pthread_create(&ordthrd,NULL,(void* (*)(void*))reorder_a_main,sort);   
+           pthread_create(&ordthrd,NULL,(void* (*)(void*))reorder_a_main,sort);
            pthread_create(&ordthr2,NULL,(void* (*)(void*))reorder_a_out, sort);
         } else {
-           pthread_create(&ordthrd,NULL,(void* (*)(void*))reorder_b_main,sort);   
+           pthread_create(&ordthrd,NULL,(void* (*)(void*))reorder_b_main,sort);
            pthread_create(&ordthr2,NULL,(void* (*)(void*))reorder_b_out, sort);
         }
       }
@@ -232,7 +244,7 @@ extern volatile long grifevent_wrpos;
 volatile long grifevent_rdpos;
 extern Grif_event grif_event[MAX_COINC_EVENTS];
 
-extern volatile unsigned long bankbuf_wrpos; 
+extern volatile unsigned long bankbuf_wrpos;
 extern volatile unsigned long bankbuf_rdpos;
 extern volatile long tsevents_in;
 extern long tsevents_out;
@@ -268,7 +280,7 @@ void sort_main(Sort_status *arg)
 
    printf("starting sort_main ...\n");
    grifevent_rdpos = grifevent_nxtpos = nxtpos = 0;
-   while(1){ 
+   while(1){
       // if( arg->shutdown_midas != 0 ){  break; }
       rd_avail = grifevent_wrpos - grifevent_nxtpos;
       if( arg->grif_sort_done && rd_avail == 0 ){ break; }
@@ -290,7 +302,7 @@ int process_event(Grif_event *ptr, int slot)
    int dt = cur_time - prv_time, de = calls - prv_call;
    if( prv_time == 0 ){ prv_time = cur_time; }
    prv_call = ++calls;
-   
+
    if( cur_time-prv_time >= 10 ){
       printf("----------------------------------------------------------------\n");
       midas_status(cur_time); reorder_status(cur_time);  grif_status(cur_time);
@@ -361,12 +373,12 @@ int insert_presort_win(Grif_event *ptr, int slot)
              ptr->energy, ptr->esum, ptr->master_id );
    }
    */
-   
+
    ///////////////// Presort window (used for suppression/addback)
    while( window_start != slot ){ alt = &grif_event[window_start];
       win_count = (slot - window_start+2*MAX_COINC_EVENTS) % MAX_COINC_EVENTS;
       dt = ptr->ts - alt->ts; if( dt < 0 ){ dt *= -1; }
-      
+
       // should exit while-loop when no more events outside window
       //    *BUT* add error recovery - if window too full, dump events
       if( dt < window_width ){
@@ -374,7 +386,7 @@ int insert_presort_win(Grif_event *ptr, int slot)
          if( win_count < coinc_events_cutoff ){ break; } // LIMIT to ?? events
          else { ++prefull; }
       }
-      
+
       // event[win_start] is leaving window
       //    ( either because dt > coincwidth OR due to error recovery)
       // NOTE event[slot] is out of window - use slot-1 as window-end
@@ -398,7 +410,7 @@ int insert_sort_win(Grif_event *ptr, int slot)
    /* i = (slot-1-window_start+2*MAX_COINC_EVENTS) % MAX_COINC_EVENTS;
    printf("MAIN:Chan[%4s:    :     ][%s] [win:%5d[%05d-%05d:%s]\n",
           debug_show_chan(ptr),
-          
+
           debug_show_ts(ptr->ts),
           i, window_start, slot-1,
           debug_show_ts(grif_event[window_start].ts) );
@@ -406,7 +418,7 @@ int insert_sort_win(Grif_event *ptr, int slot)
    while( window_start != slot ){ alt = &grif_event[window_start];
       win_count = (slot - window_start+2*MAX_COINC_EVENTS) % MAX_COINC_EVENTS;
       dt = ptr->ts - alt->ts; if( dt < 0 ){ dt *= -1; }
-      
+
       // should exit while-loop when no more events outside window
       //    *BUT* add error recovery - if window too full, dump events
       if( dt < window_width ){
@@ -418,7 +430,7 @@ int insert_sort_win(Grif_event *ptr, int slot)
             break;
          }
       }
-      
+
       // event[win_start] is leaving window
       //    ( either because dt > coincwidth OR due to error recovery)
       // NOTE event[slot] is out of window - use slot-1 as window-end
@@ -461,7 +473,7 @@ int build_event(Grif_event *ptr, int slot)
 
    if( (win_end = slot-1) < 0 ){ win_end = MAX_COINC_EVENTS-1; } // WRAP
    sort_built_event(window_start, win_end);
-   
+
    window_start = slot;
    return(0);
 }

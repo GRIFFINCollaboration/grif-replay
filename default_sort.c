@@ -38,6 +38,7 @@ static char subsys_name[MAX_SUBSYS][STRING_LEN] = {
    "",         "",       "",        "Unknown"
 }; // final entry will be used if not found - make sure it is not empty
 
+
 int          odb_daqsize;// number of daq channels currently defined in the odb
 int     subsys_dtype_mat[MAX_SUBSYS][MAX_SUBSYS]; // map using names and dtypes
 int         subsys_dtype[MAX_SUBSYS];             // subsys->dtype
@@ -81,6 +82,12 @@ int init_default_histos(Config *cfg, Sort_status *arg)
    init_chan_histos(cfg);
    init_singles_histos(cfg);
    init_coinc_histos(cfg);
+
+   // zero Global counters for finding the Ge-RCMP coincidences
+   presort_ge_events_passed=presort_rcmp_events_passed=presort_rcmp_fb_events_built=0;
+   singles_ge_events=singles_rcmp_events=singles_rcmp_fb_events=0;
+   coinc_ge_rcmp_events=coinc_rcmp_ge_events=coinc_ge_rcmp_fb_events=coinc_rcmp_ge_fb_events=0;
+
    return(0);
 }
 
@@ -180,6 +187,7 @@ int pre_sort(int frag_idx, int end_idx)
     // SubSystem-specific pre-processing
     switch(ptr->subsys){
       case SUBSYS_HPGE:
+      presort_ge_events_passed++;
       if( dt < bgo_window && alt->subsys == SUBSYS_BGO && !ptr->suppress ){
         // could alternatively use crystal numbers rather than clover#
         //    (don't currently have this for BGO)
@@ -195,6 +203,7 @@ int pre_sort(int frag_idx, int end_idx)
       }
       break;
       case SUBSYS_RCMP:
+      presort_rcmp_events_passed++;
       // RCMP Front-Back coincidence
       // Ensure its the same DSSD and that the two events are front and back
       // The charged particles enter the P side and this has superior energy resolution
@@ -203,9 +212,10 @@ int pre_sort(int frag_idx, int end_idx)
       ptr->esum = -1; // Need to exclude any noise and random coincidences.
       if( dt < rcmp_fb_window && alt->subsys == SUBSYS_RCMP && (ptr->ecal>0 && ptr->ecal<32768)){
         if((crystal_table[ptr->chan] == crystal_table[alt->chan]) && (polarity_table[ptr->chan] != polarity_table[alt->chan]) && (alt->ecal > 0  && ptr->ecal<32768)){
-          if( ((ptr->ecal / alt->ecal)<=1.02 && (ptr->ecal / alt->ecal)>=0.98)){
+          if( ((ptr->ecal / alt->ecal)<=1.1 && (ptr->ecal / alt->ecal)>=0.9)){
             // Ensure esum comes from P side, but use this timestamp
             ptr->esum = polarity_table[ptr->chan]==0 ? ptr->ecal : (polarity_table[ptr->chan]==1 ? alt->ecal : -1);
+            presort_rcmp_fb_events_built++;
 
             //fprintf(stdout,"presort2 %s, %s, %d, %d",chan_name[ptr->chan], chan_name[alt->chan], ptr->chan, alt->chan);
             //fprintf(stdout,", %d, %d, %f, %f, %d, %d\n", ptr->ecal, alt->ecal, ptr->esum, alt->esum, polarity_table[ptr->chan], polarity_table[alt->chan]);
@@ -508,6 +518,7 @@ int fill_singles_histos(Grif_event *ptr)
    case SUBSYS_HPGE: // GRGa
        // Only use GRGa
        if(output_table[ptr->chan] == 1){
+       singles_ge_events++;
 
          // Ge-Addback and ge-crystal-sum
          ge_sum->Fill(ge_sum, (int)ptr->ecal, 1);
@@ -589,8 +600,10 @@ int fill_singles_histos(Grif_event *ptr)
    case SUBSYS_ZDS:
    break;
    case SUBSYS_RCMP:
+   singles_rcmp_events++;
        rcmp_sum->Fill(rcmp_sum, (int)ptr->ecal, 1);
        if(ptr->esum>0){
+       singles_rcmp_fb_events++;
          rcmp_fb_sum->Fill(rcmp_fb_sum, (int)ptr->esum, 1);
        }
        pos  = crystal_table[ptr->chan];
@@ -634,7 +647,10 @@ int frag_hist[MAX_COINC_EVENTS];
 int fill_coinc_histos(int win_idx, int frag_idx)
 {
    Grif_event *alt, *ptr = &grif_event[win_idx];
-   int dt, abs_dt, i, gg_gate=25, g_rcmp_lower_gate=22, g_rcmp_upper_gate=68, pos, c1, c2;
+   int dt, abs_dt, i, gg_gate=25;
+   //int g_rcmp_lower_gate=22, g_rcmp_upper_gate=68;
+   int g_rcmp_upper_gate=75;
+   int pos, c1, c2;
    int global_window_size = 100; // size in grif-replay should be double this
 
    // histogram of coincwin-size
@@ -670,11 +686,11 @@ int fill_coinc_histos(int win_idx, int frag_idx)
                     c1 = crystal_table[ptr->chan];
                     if( c1 >= 0 && c1 < 64 ){
                       c2 = crystal_table[alt->chan];
-                      if( c1 >= 0 && c1 < 64 ){
+                      if( c2 >= 0 && c2 < 64 ){
                         gg_hit->Fill(gg_hit, c1, c2, 1);
 
                         // Ge-Ge with 180 degrees between Ge1 and Ge2
-                        if( c2 = grif_opposite[c1] ){
+                        if( c2 == grif_opposite[c1] ){
                           gg_opp->Fill(gg_opp, (int)ptr->ecal, (int)alt->ecal, 1);
                         }
                       }
@@ -705,14 +721,16 @@ int fill_coinc_histos(int win_idx, int frag_idx)
                   ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1); // beta-gated Ge sum energy spectrum
                 }
                 break;
-/*
+
                 case SUBSYS_RCMP: // ge-rcmp
+                coinc_ge_rcmp_events++;
                 dt_hist[6]->Fill(dt_hist[6], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
-                if( abs_dt < gg_gate && alt->esum>0){
+                if( abs_dt < g_rcmp_upper_gate && alt->esum>0){
+                coinc_ge_rcmp_fb_events++;
                 ge_rcmp->Fill(ge_rcmp, (int)ptr->ecal, (int)alt->esum, 1);
               }
               break;
-*/
+
               default: break; // unprocessed coincidence combinations
             } // end of inner switch(ALT)
           }
@@ -734,8 +752,12 @@ int fill_coinc_histos(int win_idx, int frag_idx)
          if( alt->subsys == SUBSYS_HPGE ){
            // Only use GRGa
            if(output_table[alt->chan] == 1){
+
+             coinc_rcmp_ge_events++;
              dt_hist[6]->Fill(dt_hist[6], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
-             if( (abs_dt > g_rcmp_lower_gate && abs_dt < g_rcmp_upper_gate) && ptr->ecal>0){
+            // if( (abs_dt > g_rcmp_lower_gate && abs_dt < g_rcmp_upper_gate) && ptr->ecal>0){
+             if( ( abs_dt < g_rcmp_upper_gate) && ptr->ecal>0){
+               coinc_rcmp_ge_fb_events++;
                ge_rcmp->Fill(ge_rcmp, (int)alt->ecal, (int)ptr->ecal, 1);
              }
            }

@@ -6,7 +6,7 @@
 
 // **************************************************************************
 // MANY VALUES IN THIS STRUCTURE HAVE TO BE ACCESSED USING A HARDCODED OFFSET
-// FROM THE START OF THE STRUCTURE - DO NOT CHANGE THE ORDERING OR 
+// FROM THE START OF THE STRUCTURE - DO NOT CHANGE THE ORDERING OR
 // INSERT NEW VALUES, WITHOUT ALSO ADJUSTING THE OFFSETS IN USER_SORT.C
 // **************************************************************************
 typedef struct griffin_fragment_struct { // was 74 bytes, now ?
@@ -23,7 +23,7 @@ typedef struct griffin_fragment_struct { // was 74 bytes, now ?
    int     crystal;  int fold;          int     subsys;   int    dummy4;  //40
    int      angle1;  int angle2;        int     angle3;   int    angle4;  //44
  //int      dummy1;  int dummy2;        int     dummy3;   int    dummy4;  //##
-   int      net_id;  int trigger_num;   long timestamp;  long ts; 
+   int      net_id;  int trigger_num;   long timestamp;  long ts;
    int  wf_present;  int waveform_length; int file_id;
    int scl_present;  int scalar_length;  float    esum;
 } Grif_event;
@@ -36,3 +36,15 @@ typedef struct griffin_fragment_struct { // was 74 bytes, now ?
 
 // midas-timestamp should be redundant and equal to BOR time+timestamp
 //   can just check this in midas part
+
+// Global counters for finding the Ge-RCMP coincidences
+int presort_ge_events_passed;
+int presort_rcmp_events_passed;
+int presort_rcmp_fb_events_built;
+int singles_ge_events;
+int singles_rcmp_events;
+int singles_rcmp_fb_events;
+int coinc_ge_rcmp_events;
+int coinc_rcmp_ge_events;
+int coinc_ge_rcmp_fb_events;
+int coinc_rcmp_ge_fb_events;
