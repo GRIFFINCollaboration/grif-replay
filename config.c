@@ -5,7 +5,7 @@
 //     so handle subruns differently
 //     status - subrun is x/y or 1/1 ****
 //
-// DONE 2) strings replaced with %20 - globals etc 
+// DONE 2) strings replaced with %20 - globals etc
 //
 // 3) getHistofileList - Histogram files need run title info [+date/time]
 //                     [Already have odbstuff in config file]
@@ -25,7 +25,7 @@
 // DONE 7) check root script with config file entry
 //
 // DONE 8) Reorder histo list - Energy Time Waveform Pulsehight
-// 
+//
 // DONE 9) Fix Gains from config not midas
 //
 // odb-error
@@ -74,8 +74,8 @@ wget 'http://panther:9093/?cmd=callspechandler&spectum0=Hitpattern_Energy&spectr
 //     /?cmd=getSortStatus
 //     /?cmd=getSpectrumList
 //     /?cmd=callSpectrumHandler
-//     /?cmd=addDatafile&filename=XXXX 
-// 
+//     /?cmd=addDatafile&filename=XXXX
+//
 // ALSO FIXED URLs ...
 //     /filter-status.html
 //     /report
@@ -112,16 +112,16 @@ int handle_command(int fd, int narg, char url_args[][STRING_LEN])
    extern volatile int shutdown_server;
    Sort_status *sort_stat;
    static FILE *web_fp;
-   FILE *tmp_fp; 
+   FILE *tmp_fp;
    Config *cfg;
-   
+
    if( strcmp(ptr, "getSpectrumList") == 0 ){ /* --- list spectra -- */
       if( strncmp(url_args[2],"filename",8) == 0 ){
          send_spectrum_list(url_args[3], fd);
       } else {
          send_spectrum_list("", fd);
       }
-   } else 
+   } else
    if( strcmp(ptr, "getDatafileList") == 0 ){/* -- list datafiles -- */
       if( strcmp(url_args[2], "dir") == 0 ){
          send_datafile_list(url_args[3], fd, 0);
@@ -145,10 +145,10 @@ int handle_command(int fd, int narg, char url_args[][STRING_LEN])
    } else
    if( strcmp(ptr, "getSortStatus") == 0 ){ /* -----------------------*/
       send_sort_status(fd);
-   } else 
+   } else
    if( strcmp(ptr, "terminateServer") == 0 ){ /* -----------------------*/
       shutdown_server = 1; return(0);
-   } else 
+   } else
    if( strcmp(ptr, "setSortStatus") == 0 ){ /* -----------------------*/
       if( strcmp(url_args[2], "status") != 0 ){
          fprintf(stderr,"bad arg:%s in setSortStatus\n", url_args[2]);
@@ -162,7 +162,7 @@ int handle_command(int fd, int narg, char url_args[][STRING_LEN])
       sort_stat->single_thread = (value>>2) & 1;
       sort_stat->sort_thread   = (value>>3) & 1;
       return(0);
-   } else 
+   } else
    if( strcmp(ptr, "setCoincLimit") == 0 ){ /* -----------------------*/
       if( strcmp(url_args[2], "limit") != 0 ){
          fprintf(stderr,"bad arg:%s in setCoincLimit\n", url_args[2]);
@@ -173,10 +173,10 @@ int handle_command(int fd, int narg, char url_args[][STRING_LEN])
       }
       coinc_events_cutoff = value;
       return(0);
-   } else 
+   } else
    if( strcmp(ptr, "endCurrentFile") == 0 ){ /* -----------------------*/
       end_current_sortile(fd);
-   } else 
+   } else
    if( strcmp(ptr, "openHistofile") == 0 ){ /* ---------------------- */
       if( strncmp(url_args[2],"filename",8) == 0 ){
          read_histofile(url_args[3], 0);
@@ -222,7 +222,7 @@ int handle_command(int fd, int narg, char url_args[][STRING_LEN])
             } else {
                fprintf(stderr,"bad arg:%s in addDataFile\n", url_args[8]);
             }
-         }    
+         }
          add_sortfile(url_args[3], histodir, host, expt);
       } else {
          if( narg > 4 ){
@@ -562,7 +562,7 @@ int write_config(Config *cfg, FILE *fp)
    Sortvar *var;      Cond *cond;        Gate *gate;
    int i, j, first;
    char tmp[64];
-   
+
    fprintf(fp,"{\n   \"Analyzer\" : [\n");
    fprintf(fp,"      {\"Variables\" : [\n");
    for(i=0; i<cfg->nsortvar; i++){ var = &cfg->varlist[i];
@@ -671,7 +671,7 @@ int load_config(Config *cfg, char *filename, char *buffer)
       }
       fprintf(stderr,"load_config: reading %s\n", filename);
       instring = len = 0;// read line by line, copy to conf_data, skip space
-      while( fgets(tmp, 80, fp) != NULL ){ // tmp always null-terminated 
+      while( fgets(tmp, 80, fp) != NULL ){ // tmp always null-terminated
          for(i=0; i<strlen(tmp); i++){ // DO NOT SKIP SPACE WITHIN STRINGS
             if( tmp[i] == '"' ){ instring = 1-instring; }
             if( !isspace(tmp[i]) || instring ){ config_data[len++] = tmp[i]; }
@@ -744,7 +744,7 @@ int load_config(Config *cfg, char *filename, char *buffer)
          if( strncmp(ptr,",\"Logic\":\"", 10) != 0 ){
             fprintf(stderr,"load_config: err8c byte %d\n", ptr-config_data);
             return(-1);
-         } ptr += 10; 
+         } ptr += 10;
          if(       strncmp(ptr,"GE",2) == 0 ){ sprintf(op,">=");
          } else if(strncmp(ptr,"GT",2) == 0 ){ sprintf(op,">");
          } else if(strncmp(ptr,"LE",2) == 0 ){ sprintf(op,"<=");
@@ -776,7 +776,7 @@ int load_config(Config *cfg, char *filename, char *buffer)
    if( strncmp(ptr,"{\"Histograms\":[", 15) != 0 ){
       fprintf(stderr,"load_config: errB byte %d\n", ptr-config_data);
       return(-1);
-   } ptr += 15;     
+   } ptr += 15;
    while( 1 ){ // Histograms
       if( strncmp(ptr,"]},", 3) == 0 ){ ptr+=3; break; }// empty section
       if( strncmp(ptr,"{\"name\":\"",9) != 0 ){
@@ -1112,7 +1112,7 @@ int copy_config(Config *src, Config *dst)
          add_cond_to_gate(dst,gate->name , cond->name);
       }
    }
-   
+
    // apply_gates below takes care of var->histo_list_x
    for(i=0; i<MAX_SORT_VARS; i++){dst->varlist[i].use_count_x = 0; }
    dst->nusedvar = dst->nuser = 0; // add_histos takes care of these
@@ -1174,7 +1174,7 @@ Config *add_config(char *name)
 {
    Config *cfg;
    int i, len;
-   
+
    for(i=0; i<MAX_CONFIGS; i++){
       if( configs[i] == NULL ){ break; }
    }
@@ -1235,7 +1235,7 @@ int save_config(Config *cfg, char *filename, int overwrite)
 
 /////////////////////////////   Variable   /////////////////////////////////
 
-// THERE IS CURRENTLY NO WAY TO CALCULATE THE VALUE OF A VARIABLE 
+// THERE IS CURRENTLY NO WAY TO CALCULATE THE VALUE OF A VARIABLE
 //   GIVEN ONLY ITS TEXT DESCRIPTION
 //      SO THIS FUNCTION WOULD BE POINTLESS AT THE MOMENT
 
@@ -1415,7 +1415,7 @@ int apply_gate(Config *cfg, char *histoname, char *gatename)
       fprintf(stderr,"Apply gate too many gates on histogram\n");
       return(-1);
    }
-   histo-> gate_names[i] =  gate->name; 
+   histo-> gate_names[i] =  gate->name;
    histo->gate_passed[i] = &gate->passed;
    ++histo->num_gates;
    ++gate->use_count;
@@ -1475,7 +1475,7 @@ int next_condname(Config *cfg)
 {
    char tmp[16];
    int i, j;
-   
+
    for(j=0; j<MAX_CONDS; j++){ sprintf(tmp,"Cond%d", j);
       for(i=0; i<cfg->nconds; i++){
          if( strcmp(cfg->condlist[i]->name, tmp) == 0 &&
@@ -1581,7 +1581,7 @@ int add_cond_to_gate(Config *cfg, char *gatename, char *condname)
    Gate *gate;
    Cond *cond;
    int i;
-   
+
    for(i=0; i<cfg->ngates; i++){
       if( strncmp(gatename,cfg->gatelist[i]->name,strlen(gatename)) == 0 &&
               strlen(cfg->gatelist[i]->name) == strlen(gatename) ){
@@ -1620,20 +1620,20 @@ int add_cond_to_gate(Config *cfg, char *gatename, char *condname)
 // "user" histograms added by viewer are not currently filled during sort
 // either loop over all user histos and fill
 //     -> for each histo check var non-zero
-// or     loop over non-zero variables, and fill dependant histos 
+// or     loop over non-zero variables, and fill dependant histos
 //     -> for each non-zero var[at time it is calculated] fill its histos
 // second does not waste any time, but requires cfgting up histo lists
 //
 // don't bother storing pointers to whole sortvar within histograms...
 // when removing histo can loop over all vars to remove histo dependance
-// 
+//
 // add any gates one by one after this, using above functions
 int add_histo(Config *cfg, char *name, char *title, char *path, int xbins, char *xvarname, int xmin, int xmax, int ybins, char *yvarname, int ymin, int ymax){
    time_t current_time = time(NULL);
    Sortvar *xvar, *yvar;
    Histogram *tmp;
    int i;
-   
+
    for(i=0; i<cfg->nhistos; i++){ tmp = cfg->histo_list[i];
       if( strcmp(tmp->handle, name) == 0 &&
           strlen(tmp->handle) == strlen(name) ){
@@ -1681,15 +1681,15 @@ int add_histo(Config *cfg, char *name, char *title, char *path, int xbins, char 
 }
 
 // histo->next - un-needed now have flat list?
-// 
-// 
+//
+//
 int remove_histo(Config *cfg, char *name)
 {
    time_t current_time = time(NULL);
    Histogram *histo, *tmp;
    Sortvar *var;
    int i, j, k;
-   
+
    for(i=0; i<cfg->nhistos; i++){ tmp = cfg->histo_list[i];
       if( strcmp(tmp->handle, name) == 0 &&
           strlen(tmp->handle) == strlen(name) ){ histo = tmp; break; }
@@ -1740,7 +1740,7 @@ int remove_histo(Config *cfg, char *name)
             --cfg->nusedvar;
             break;
          }
-      }   
+      }
    }
    // finally remove histo from main histogram list
    cfg->histo_list[i] = cfg->histo_list[cfg->nhistos-1];//nop if i last
@@ -1871,7 +1871,7 @@ int set_directory(Config *cfg, char *name, char *path)
 {
    time_t current_time = time(NULL);
    int len;
-   
+
    if( (len=strlen(path)) >= FOLDER_PATH_LENGTH ){
       fprintf(stderr,"set_directory: path too long[%s]\n", path);
       return(-1);
@@ -1894,7 +1894,7 @@ int set_midas_param(Config *cfg, char *name, char *value)
 {
    time_t current_time = time(NULL);
    int len;
-   
+
    if( (len=strlen(value)) >= FOLDER_PATH_LENGTH ){
       fprintf(stderr,"set_midas_param: value too long[%s]\n", value);
       return(-1);
@@ -1925,8 +1925,8 @@ int sum_histos(Config *cfg, int num, char url_args[][STRING_LEN], int fd)
    float offset, gain, quad;
    int i, j, arg;
    FILE *fp;
-   
-                   
+
+
    if( strncmp(url_args[2], "outputfilename", 14) != 0 ){
       fprintf(stderr,"expected \"outputfilename\" at %s\n", url_args[2]);
       return(-1);
@@ -1987,7 +1987,7 @@ int load_midas_module(char *host, char *expt)
    char *symbol = "midas_module_main";
    char *file = "./midas_module.so";
    void *symbol_handle;
-   
+
    // FnPtr: FnType *(*name)(arglist); // eg Char *(*func)(int);
    // cast:  (FnType *(*)(arglist))    //    ptr = (char *(*)(int))sym;
 
@@ -2027,7 +2027,7 @@ int send_sort_status(int fd)
    if( arg->online_mode ){
       sprintf(tmpstr,"ONLINE %s %d", arg->run_in_progress ? "Running" : "Stopped", configs[0]->mtime );
       put_line(fd, tmpstr, strlen(tmpstr) );
-      return(0);      
+      return(0);
    }
    if( arg->final_filenum == arg->current_filenum ){
       sprintf(tmpstr,"IDLE %d", configs[0]->mtime);
@@ -2035,10 +2035,10 @@ int send_sort_status(int fd)
       return(0);
    }
    i = arg->current_filenum;
-   while(i !=  arg->final_filenum){ 
+   while(i !=  arg->final_filenum){
       tmp = &filelist[i];
       done  = (i == arg->current_filenum) ? arg->midas_bytes  : 0;
-      mtime = (i == arg->current_filenum) ? configs[0]->mtime : 0;  
+      mtime = (i == arg->current_filenum) ? configs[0]->mtime : 0;
       sprintf(tmpstr,"%s %s %d %d %ld %ld %d,\n", tmp->data_dir, tmp->data_name, tmp->run, tmp->subrun, tmp->data_size, done, mtime );
       put_line(fd, tmpstr, strlen(tmpstr) );
       //printf("STATUS:%s", tmpstr);
@@ -2067,24 +2067,24 @@ int read_datafile_info(Sortfile *sort, char *path)
       //if( strncmp(ptr,"<dir name=\"Experiment\">",23)     == 0 ){ expt = 1; }
       //if( strncmp(ptr,"<dir name=\"Edit on start\">", 26) == 0 ){ expt = 3; }
       if( expt && strncmp(ptr,"<key name=\"Run Title\"",21) == 0 ){
-         ptr+=21; while(*ptr != '>'){ ++ptr; } ++ptr; i=0; 
+         ptr+=21; while(*ptr != '>'){ ++ptr; } ++ptr; i=0;
          while(*ptr != '<'){ sort->file_info[0][i++] = *ptr++; }
          sort->file_info[0][i]=0; done |= 1;
       }
       if( expt && strncmp(ptr,"<key name=\"Comment\"",19) == 0 ){
-         ptr+=19; while(*ptr != '>'){ ++ptr; } ++ptr; i=0; 
+         ptr+=19; while(*ptr != '>'){ ++ptr; } ++ptr; i=0;
          while(*ptr != '<'){ sort->file_info[1][i++] = *ptr++; }
          sort->file_info[1][i]=0; done |= 2;
       }
       if( strncmp(ptr,"<dir name=\"PPG\">",16)            == 0 ){ ppg = 1; }
       if( ppg && strncmp(ptr,"<key name=\"Current\"", 19) == 0 ){
-         ptr+=19; while(*ptr != '>'){ ++ptr; } ++ptr; i=0; 
+         ptr+=19; while(*ptr != '>'){ ++ptr; } ++ptr; i=0;
          while(*ptr != '<'){ sort->file_info[2][i++] = *ptr++; }
          sort->file_info[2][i]=0; ppg = 0; done |= 4;
       }
       if( strncmp(ptr,"<dir name=\"Filter\">",19)         == 0 ){ flt = 1; }
       if( flt && strncmp(ptr,"<key name=\"Current\"", 19) == 0 ){
-         ptr+=19; while(*ptr != '>'){ ++ptr; } ++ptr; i=0; 
+         ptr+=19; while(*ptr != '>'){ ++ptr; } ++ptr; i=0;
          while(*ptr != '<'){ sort->file_info[3][i++] = *ptr++; }
          sort->file_info[3][i]=0; flt = 0; done |= 8;
       }
@@ -2183,7 +2183,7 @@ int add_sortfile(char *path, char *histodir, char *confdir, char *calsrc)
    sprintf(sort->histo_name+plen-dlen-ext_len,".tar");
    memcpy((char *)sort->conf_name, path+dlen, plen-dlen-ext_len);
    sprintf(sort->conf_name+plen-dlen-ext_len,".json");
-   
+
    if( histodir == NULL ){
       sort->histo_dir = NULL;
    } else {
@@ -2303,19 +2303,19 @@ char *subrun_filename(Sortfile *sort, int subrun)
    char tmp[64];
 
    sprintf(name, "%s/run", sort->data_dir);
-   
+
    sprintf(tmp,"%d", sort->run); digits = strlen(tmp);
    len = strlen(name);
    while( digits++ < sort->run_digits ){ name[len] = '0'; name[++len+1] = 0; }
    sprintf(name+strlen(name),"%d_", sort->run);
-      
+
    sprintf(tmp,"%d", subrun);  digits = strlen(tmp);
    len = strlen(name);
    while( digits++ < sort->subrun_digits ){
       name[len++]='0'; name[len] = 0;
    }
    sprintf(name+strlen(name),"%d.mid", subrun);
-   
+
    return(name);
 }
 
@@ -2403,7 +2403,7 @@ int end_current_sortile(int fd)
 {
    Sort_status *arg;
    Sortfile *sort;
-   
+
    arg = get_sort_status();
    arg->end_of_data = 1; //arg-> shutdown_midas = 1;
    return(0);
@@ -2420,7 +2420,7 @@ int send_datafile_list(char *path, int fd, int type)
    int nlen, run, subrun, entry=0;
    struct dirent *d_ent;
    DIR *d;
-   
+
    if( (d=opendir(path)) == NULL ){
       fprintf(stderr,"can't open directory %s\n", path);
       return(-1);
@@ -2459,7 +2459,7 @@ int send_datafile_list(char *path, int fd, int type)
       put_line(fd, tmp, strlen(tmp) );
       if( (entry % 1000) == 0 ){ printf("Entry: %d\n", entry); }
       if( type == 0 ){ continue; }
-      if( tmp_srt == NULL ){ put_line(fd," ,  ",4); continue; } 
+      if( tmp_srt == NULL ){ put_line(fd," ,  ",4); continue; }
 
       if( subrun == 0 ){
          sprintf(tmp,"%s/%s", path, d_ent->d_name);
@@ -2515,11 +2515,11 @@ int send_histofile_list(char *path, int fd)
 /////////////////      spectrum list and contents      ////////////////////
 ///////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------
-// json format ... 
+// json format ...
 //
 // {} = object start/end, comma-sep list of zero or more "string":value
 // [] = array start/end,  comma-sep list of zero or more          value
-// 
+//
 //     value: null, string, number[int/float], bool, array or object
 //
 // *NOTE* spec says NO-TRAILING-COMMAS (although they are usually accepted)
@@ -2551,7 +2551,7 @@ int send_spectrum_list(char *cfgname, int fd)
    put_line(fd, "{\n", 2 );
    while( (name = next_histotree_item(cfg, 0, &type, &ascend )) != NULL ){
       if( ascend < 0 ){
-         put_line(fd, " ], [ \n", 7 ); ascend = 0; first_elem=1; 
+         put_line(fd, " ], [ \n", 7 ); ascend = 0; first_elem=1;
       }
       while( ascend-- > 0 ){
 	 first_elem=1; sprintf(tmp, " ]%s \n", ascend>0 ? " " : ", ");
@@ -2591,125 +2591,303 @@ int send_spectrum_list(char *cfgname, int fd)
 static int submatrix_type[512*512];
 int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
 {
-   int i, j, k, l, m, pos, count, val, xbins, ybins;
-   Config *cfg = configs[1];
-   char tmp[256];
-   TH1I *hist;
+  int i, j, k, l, m, pos, count, val, max, xbins, ybins, lastType=1, emptyCount=0;
+  int list_max[4], list_valueSize[4], val1, val2, val3, val4, valCount, listIndex, matrixMaximum=16;
+  Config *cfg = configs[1];
+  char tmp[4096];  // 70 bit values is 12 characters. 12*256=3072
+  char coordString[512]; // 1 byte coordinates. 1*64
+  char valueString[4096]; // List: 70 bit values is 12 characters. 12*64=768. Array: 70 bit values is 12 characters. 12*256=3072
+  TH1I *hist;
 
-   if( name != NULL ){
-      for(i=0; i<MAX_CONFIGS; i++){
-         if( configs[i] == NULL ){ continue; }
-         if( strcmp(name, configs[i]->name) == 0 ){ cfg = configs[i]; break; }
+  int bitMask[12]={         0x3F, //  6 bits
+                           0xFC0, // 12 bits
+                         0x3F000, // 18 bits
+                        0xFC0000, // 24 bits
+                      0x3F000000, // 30 bits
+                     0xFC0000000, // 36 bits
+                   0x3F000000000, // 42 bits
+                  0xFC0000000000, // 48 bits
+                0x3F000000000000, // 54 bits
+               0xFC0000000000000, // 60 bits
+             0x3F000000000000000, // 66 bits
+            0xFC0000000000000000};// 70 bits
+
+  int bitShift[12]={ 0, 6, 12, 18, 24, 30, 36, 42, 48, 54, 60, 66};// 6 to 70 bits
+
+
+  if( name != NULL ){
+    for(i=0; i<MAX_CONFIGS; i++){
+      if( configs[i] == NULL ){ continue; }
+      if( strcmp(name, configs[i]->name) == 0 ){ cfg = configs[i]; break; }
+    }
+    if( i == MAX_CONFIGS ){
+      if( (cfg=read_histofile(name,0)) == NULL ){
+        fprintf(stderr,"send_spec_list: can't find/read:%s\n", name);
+        return(-1);
       }
-      if( i == MAX_CONFIGS ){
-         if( (cfg=read_histofile(name,0)) == NULL ){
-            fprintf(stderr,"send_spec_list: can't find/read:%s\n", name);
-            return(-1);
-         }
+    }
+  }
+  if( cfg == NULL || cfg->nhistos == 0 ){
+    sprintf(tmp,"%s %s", HIST_HDR, HIST_TRL );
+    put_line(fd, tmp, strlen(tmp) ); return(-1);
+  }
+  put_line(fd, HIST_HDR, strlen(HIST_HDR) );
+  j = (name == NULL) ? 0 : 1;
+  for(; j<num; j++){
+    if( j > ((name == NULL) ? 0 : 1) ){
+      put_line(fd, HIST_SEP, strlen(HIST_SEP) );
+    }
+    if( (hist = hist_querytitle(cfg, url_args[2*(j+1)+1])) == NULL ){ // don't have it
+    sprintf(tmp,"\'%s\':NULL", name );
+    put_line(fd, tmp, strlen(tmp) );
+  } else {                                // do have this - send contents
+    if( hist->type == INT_1D ){
+      sprintf(tmp,"\'%s\':[", hist->title );
+      put_line(fd, tmp, strlen(tmp) );
+      for(i=0; i<hist->xbins; i++){
+        if( i > 0){ put_line(fd, ",", 1 ); }
+        sprintf(tmp,"%d", (int)hist->data[i] );
+        put_line(fd, tmp, strlen(tmp) );
       }
-   }
-   if( cfg == NULL || cfg->nhistos == 0 ){
-      sprintf(tmp,"%s %s", HIST_HDR, HIST_TRL );
-      put_line(fd, tmp, strlen(tmp) ); return(-1);
-   }
-   put_line(fd, HIST_HDR, strlen(HIST_HDR) );
-   j = (name == NULL) ? 0 : 1;
-   for(; j<num; j++){
-      if( j > ((name == NULL) ? 0 : 1) ){
-         put_line(fd, HIST_SEP, strlen(HIST_SEP) );
-      }
-      if( (hist = hist_querytitle(cfg, url_args[2*(j+1)+1])) == NULL ){ // don't have it
-         sprintf(tmp,"\'%s\':NULL", name );
-	 put_line(fd, tmp, strlen(tmp) );
-      } else {                                // do have this - send contents
-         if( hist->type == INT_1D ){
-            sprintf(tmp,"\'%s\':[", hist->title );
-	    put_line(fd, tmp, strlen(tmp) );
-            for(i=0; i<hist->xbins; i++){
-	       if( i > 0){ put_line(fd, ",", 1 ); }
-	       sprintf(tmp,"%d", (int)hist->data[i] );
-	       put_line(fd, tmp, strlen(tmp) );
+      put_line(fd, "]", 1 );
+    } else if( hist->type == INT_2D ){
+      xbins = hist->xbins; if( xbins > 8192 ){ xbins = 8192; }
+      ybins = hist->ybins; if( ybins > 8192 ){ ybins = 8192; }
+      sprintf(tmp,"\"name\" : \"%s\",", hist->title );
+      put_line(fd, tmp, strlen(tmp) );
+      sprintf(tmp,"\"XaxisLength\" : %d,", xbins );
+      put_line(fd, tmp, strlen(tmp) );
+      sprintf(tmp,"\"XaxisMin\" : %d,", hist->xmin );
+      put_line(fd, tmp, strlen(tmp) );
+      sprintf(tmp,"\"XaxisMax\" : %d,", hist->xmax );
+      put_line(fd, tmp, strlen(tmp) );
+      sprintf(tmp,"\"YaxisLength\" : %d,", ybins  );
+      put_line(fd, tmp, strlen(tmp) );
+      sprintf(tmp,"\"YaxisMin\" : %d,", hist->ymin );
+      put_line(fd, tmp, strlen(tmp) );
+      sprintf(tmp,"\"YaxisMax\" : %d,", hist->ymax );
+      put_line(fd, tmp, strlen(tmp) );
+      sprintf(tmp,"\"symmetrized\" : %s,", 0 ? "false" : "true" );
+      put_line(fd, tmp, strlen(tmp) );
+      pos = 0;
+      for(k=0; k<ybins; k+=16){
+        for(i=0; i<xbins; i+=16){
+          count = 0; max=0;
+          for(m=0; m<16; m++){
+            for(l=0; l<16; l++){
+              if( hist->data[i+l + (k+m)*xbins]!=0){
+                ++count;
+                if( hist->data[i+l + (k+m)*xbins]>max){max = hist->data[i+l + (k+m)*xbins];}
+              }
             }
-	    put_line(fd, "]", 1 );
-	 } else if( hist->type == INT_2D ){
-            xbins = hist->xbins; if( xbins > 8192 ){ xbins = 8192; }
-            ybins = hist->ybins; if( ybins > 8192 ){ ybins = 8192; }
-            sprintf(tmp,"\"name\" : \"%s\",", hist->title );
-   	    put_line(fd, tmp, strlen(tmp) );
-            sprintf(tmp,"\"XaxisLength\" : %d,", xbins );
-	    put_line(fd, tmp, strlen(tmp) );
-            sprintf(tmp,"\"XaxisMin\" : %d,", hist->xmin );
-	    put_line(fd, tmp, strlen(tmp) );
-            sprintf(tmp,"\"XaxisMax\" : %d,", hist->xmax );
-	    put_line(fd, tmp, strlen(tmp) );
-            sprintf(tmp,"\"YaxisLength\" : %d,", ybins  );
-	    put_line(fd, tmp, strlen(tmp) );
-            sprintf(tmp,"\"YaxisMin\" : %d,", hist->ymin );
-	    put_line(fd, tmp, strlen(tmp) );
-            sprintf(tmp,"\"YaxisMax\" : %d,", hist->ymax );
-	    put_line(fd, tmp, strlen(tmp) );
-            sprintf(tmp,"\"symmetrized\" : %s,", 0 ? "false" : "true" );
-	    put_line(fd, tmp, strlen(tmp) );
-            pos = 0;
-            for(k=0; k<ybins; k+=16){
-               for(i=0; i<xbins; i+=16){
-                  count = 0;
-                  for(m=0; m<16; m++){
-                     for(l=0; l<16; l++){
-                        if( hist->data[i+l + (k+m)*xbins]!=0){++count;}
-                     }
-                  }
-                  if( count == 0 ){ submatrix_type[pos] = 0; }
-                  else if( count < 200 ){ submatrix_type[pos] = 1; }
-                  else { submatrix_type[pos] = 2; }
-                  ++pos;
-               }
-            }
-//          sprintf(tmp,"\"submatrix_types\":[");
-//	    put_line(fd, tmp, strlen(tmp) );
-//            for(k=0; k<pos; k++){
-//               if( i == 0 ){ sprintf(tmp,"%d", submatrix_type[k] );
-//               } else { sprintf(tmp,",%d", submatrix_type[k] ); }
-//               put_line(fd, tmp, strlen(tmp) );
-//            }
-//            put_line(fd, "],", 2 );
-            put_line(fd,"\"data2\":[", 9);
-            pos = 0;
-            for(k=0; k<ybins; k+=16){
-               for(i=0; i<xbins; i+=16){ count = 0;
-                  if( i+k != 0 ){ put_line(fd, ",", 1); }
-                  if( submatrix_type[pos] == 0 ){
-                     put_line(fd, "\n[\"empty\"]", 10 ); ++pos; continue;
-                  } else if( submatrix_type[pos] == 1 ){
-                     put_line(fd, "\n[\"list\",", 9);
-                  } else {
-                     put_line(fd, "\n[\"array\",", 10 );
-                  }
-                  for(m=0; m<16; m++){
-                     for(l=0; l<16; l++){val=hist->data[i+l+(k+m)*xbins];
-                        if( submatrix_type[pos] == 1 ){
-                           if( val == 0 ){ continue; }
-                           if( count != 0 ){ put_line(fd, ",", 1 ); }
-                           sprintf(tmp,"%d,%d", 16*m+l, val);
-                           put_line(fd, tmp, strlen(tmp) );
-                           ++count;
-                        } else {
-                           if( count != 0 ){ put_line(fd, ",", 1 ); }
-                           sprintf(tmp,"%d", val );
-                           put_line(fd, tmp, strlen(tmp) );
-                           ++count;
-                        }
-                     }
-                  }
-                  put_line(fd, "]", 1);
-                  ++pos;
-               }
-            }
-            put_line(fd, "]", 1);
-         }
+          }
+          // the Type will be communicated as an integer value between 0 and 8 (1 byte)
+          // the Type is always element zero of each submatrix array
+          // 0 = empty
+          // 1 = list type using 6-bit values
+          // 2 = list type using 12-bit values
+          // 3 = list type using 18-bit values
+          // 4 = list type using between 18 and 70-bit values
+          // 5 = array type using 6-bit values
+          // 6 = array type using 12-bit values
+          // 7 = array type using 18-bit values
+          // 8 = array type using between 18 and 70-bit values
+          if( count == 0 ){ submatrix_type[pos] = 0; } // empty
+          else if( count < 200 ){ // list
+            submatrix_type[pos] = 1;
+          }
+          else { // array
+            submatrix_type[pos] = 5;
+          }
+
+          // Set the submatrix type based on the maximum value
+          // Set the list_valueSize[0] which will be used by Array to determine the value size.
+          // The List mode calculates the list_valueSize for each string separately later.
+          if(max>0){ list_valueSize[0] = 0; } // 6 bits
+          if(max>0x3F){ list_valueSize[0]=1; ++submatrix_type[pos]; } // 12 bits
+          if(max>0xFFF){ list_valueSize[0]=2; ++submatrix_type[pos]; } // 18 bits
+          if(max>0x3FFFF){ list_valueSize[0]=3; ++submatrix_type[pos]; } // 24 bits
+          if(max>0xFFFFFF){ list_valueSize[0]=4; ++submatrix_type[pos]; } // 30 bits
+          if(max>0x3FFFFFFF){ list_valueSize[0]=5; } // 36 bits
+          if(max>0xFFFFFFFFF){ list_valueSize[0]=6; } // 42 bits
+          if(max>0x3FFFFFFFFFF){ list_valueSize[0]=7; } // 48 bits
+          if(max>0xFFFFFFFFFFFF){ list_valueSize[0]=8; } // 54 bits
+          if(max>0x3FFFFFFFFFFFFF){ list_valueSize[0]=9; } // 60 bits
+          if(max>0xFFFFFFFFFFFFFFF){ list_valueSize[0]=10; } // 66 bits
+          if(max>0x3FFFFFFFFFFFFFFFF){ list_valueSize[0]=11; } // 70 bits
+          if(max>0xFFFFFFFFFFFFFFFFFF){ fprintf(stdout,"Maximum value requires more than 70 bits to transmit!, %d\n",max); } // Too big!
+
+          ++pos;
+          if(max>matrixMaximum){ matrixMaximum = max; }
+        }
       }
-   }
-   put_line(fd, HIST_TRL, strlen(HIST_TRL) );
-   return(0);
+
+      sprintf(tmp,"\"ZaxisMin\" : %d,", 0 );
+      put_line(fd, tmp, strlen(tmp) );
+      sprintf(tmp,"\"ZaxisMax\" : %d,", matrixMaximum );
+      put_line(fd, tmp, strlen(tmp) );
+      put_line(fd,"\"data2\":[", 9);
+      pos = 0;
+      for(k=0; k<ybins; k+=16){
+        for(i=0; i<xbins; i+=16){ count = 0;
+          if( i+k != 0 && emptyCount==0){ put_line(fd, ",", 1); }
+          if( submatrix_type[pos] == 0 ){
+            ++pos; lastType=0; ++emptyCount; continue; // empty
+          } else {
+            if(lastType==0){
+              // This is the first non-empty case so read out the empty list
+              sprintf(tmp,"[0,%d],", emptyCount );
+              put_line(fd, tmp, strlen(tmp) ); // empty
+              emptyCount=0;
+            }
+            lastType=submatrix_type[pos]; // remember this submatrix_type
+            if( submatrix_type[pos] < 5 ){ // list
+              sprintf(tmp,"[%d,", submatrix_type[pos] );
+              put_line(fd, tmp, strlen(tmp) ); // list
+
+              // Determine the maximum values for each of the four sets of strings
+              // Only make the value string as big as it needs to be for the maximum value in that subsubmatrix
+              list_max[0] = list_max[1] = list_max[2] = list_max[3] = 0;
+              list_valueSize[0] = list_valueSize[1] = list_valueSize[2] = list_valueSize[3] = 0;
+              list_valueSize[0];
+              for(m=0; m<16; m++){
+                for(l=0; l<16; l++){
+                  listIndex = floor((16*m+l)/64);
+                  if( hist->data[i+l + (k+m)*xbins]>list_max[listIndex]){
+                    list_max[listIndex] = hist->data[i+l + (k+m)*xbins];
+
+                    // Set the value size required for the largest number in each value string
+                    if(list_max[listIndex]>0){ list_valueSize[listIndex] = 0; } // 6 bits
+                    if(list_max[listIndex]>0x3F){ list_valueSize[listIndex]=1; } // 12 bits
+                    if(list_max[listIndex]>0xFFF){ list_valueSize[listIndex]=2; } // 18 bits
+                    if(list_max[listIndex]>0x3FFFF){ list_valueSize[listIndex]=3; } // 24 bits
+                    if(list_max[listIndex]>0xFFFFFF){ list_valueSize[listIndex]=4; } // 30 bits
+                    if(list_max[listIndex]>0x3FFFFFFF){ list_valueSize[listIndex]=5; } // 36 bits
+                    if(list_max[listIndex]>0xFFFFFFFFF){ list_valueSize[listIndex]=6; } // 42 bits
+                    if(list_max[listIndex]>0x3FFFFFFFFFF){ list_valueSize[listIndex]=7; } // 48 bits
+                    if(list_max[listIndex]>0xFFFFFFFFFFFF){ list_valueSize[listIndex]=8; } // 54 bits
+                    if(list_max[listIndex]>0x3FFFFFFFFFFFFF){ list_valueSize[listIndex]=9; } // 60 bits
+                    if(list_max[listIndex]>0xFFFFFFFFFFFFFFF){ list_valueSize[listIndex]=10; } // 66 bits
+                    if(list_max[listIndex]>0x3FFFFFFFFFFFFFFFF){ list_valueSize[listIndex]=11; } // 70 bits
+                  }
+                }
+              }
+
+              // Loop through this submatrix and build the strings
+              for(m=0; m<16; m++){
+                for(l=0; l<16; l++){val=hist->data[i+l+(k+m)*xbins];
+                  // List type (8 comma-separated strings which requires 16 quotes and 7 commas).
+                  // All strings must be present (the quotes) but can have zero length.
+                  // String of single-character coordinates for 0-63.
+                  // String of values. All values within the string have the same size. (divide length by length of first string to give number of characters per value).
+                  // These two strings are repeated four times for the four groups of 64 elements in the 256 element submatrix.
+                  if((16*m+l)%64 == 0 && emptyCount==0){
+                    // This is the start of a new string within the list type.
+                    // Print the string of coordinates first. Then the values.
+                    if((16*m+l)>0){
+                      // Write out the strings from the previous quarter of this submatrix
+                      strncat(coordString,"\",", 2);
+                      strncat(valueString,"\",", 2);
+                      put_line(fd, coordString, strlen(coordString) );
+                      put_line(fd, valueString, strlen(valueString) );
+                    }
+                    // Start the new strings
+                    sprintf(coordString,"\"");
+                    sprintf(valueString,"\"");
+                  }
+
+                  // Skip over zero values, but check if this is the last coordinate of this submatrix
+                  if( val == 0 ){
+                    if((16*m+l)>254){
+                      // End of this submatrix so write out the final strings
+                      strncat(coordString,"\",", 2);
+                      strncat(valueString,"\"", 1);
+                      put_line(fd, coordString, strlen(coordString) );
+                      put_line(fd, valueString, strlen(valueString) );
+                    }
+                    continue;
+                  }
+
+                  // Add this coordinate to the string
+                  val1 = (16*m+l)%64 + 64;
+                  if(val1 < 64 || val1 > 127){ fprintf(stdout,"List type %d: Illegal coordinate character ASCII code, %d\n",submatrix_type[pos], val1); }
+                  if(val1==92){ val1=60; }
+                  sprintf(tmp,"%c", val1 );
+                  strncat(coordString, tmp , strlen(tmp) );
+
+                  // Add this value to the string
+                  valCount = list_valueSize[listIndex];
+                  while(valCount>=0){
+                    val1 = ((val & bitMask[valCount])>>bitShift[valCount]) + 64;
+                    if(val1 < 64 || val1 > 127){ fprintf(stdout,"Loop List type %d: Illegal character ASCII code, %d\n",submatrix_type[pos],val1); }
+                    if(val1==92){ val1=60; }
+                    sprintf(tmp,"%c", val1 );
+                    strncat(valueString, tmp , strlen(tmp) );
+                    --valCount;
+                  }
+
+                  ++count;
+                  if((16*m+l)>254){
+                    // End of this submatrix so write out the final strings
+                    strncat(coordString,"\",", 2);
+                    strncat(valueString,"\"", 1);
+                    put_line(fd, coordString, strlen(coordString) );
+                    put_line(fd, valueString, strlen(valueString) );
+                  }
+                }// end of for l
+              }// end of for m
+
+
+            } else{ // array
+              sprintf(valueString,"[%d,\"", submatrix_type[pos] );
+
+
+              for(m=0; m<16; m++){
+                for(l=0; l<16; l++){val=hist->data[i+l+(k+m)*xbins];
+              // Array type
+              // Encode 0-63 values as a character using the ASCII code.
+              // ASCII code 0-31 are non-printable control characters (not permitted in JSON strings).
+              // ASCII code 128-255 are variable definitions on different operating systems (will not use here).
+              // ASCII codes 34, 47, 92 require a preceeding reverse solidus in JSON strings. (so we will avoid these)
+              // Encoding shall be: val + 64 = ASCII code. So characters 64 to 127 are used with the exception of 92 which is replaced by 60.
+              // Value of 92 will be made 92-32=60 instead of 92 to avoid the requirement for a preceeding character.
+
+              // Add this value to the string
+              valCount = list_valueSize[0];
+              while(valCount>=0){
+                val1 = ((val & bitMask[valCount])>>bitShift[valCount]) + 64;
+                if(val1 < 64 || val1 > 127){ fprintf(stdout,"Loop Array type %d: Illegal character ASCII code, %d\n",submatrix_type[pos],val1); }
+                if(val1==92){ val1=60; }
+                sprintf(tmp,"%c", val1 );
+                strncat(valueString, tmp , strlen(tmp) );
+                --valCount;
+              }
+              ++count;
+
+            }// end of for l
+          }// end of for m
+
+          // Add the trailing quotation marks and send the string
+          strncat(valueString,"\"", 1);
+          put_line(fd, valueString, strlen(valueString) );
+
+        }
+
+
+        put_line(fd, "]", 1);
+        ++pos;
+      }
+    }
+  }
+  if(lastType==0){
+    // This is the end so read out the empty list if its non-zero
+    sprintf(tmp,"[0,%d]", emptyCount );
+    put_line(fd, tmp, strlen(tmp) ); // empty
+  }
+  put_line(fd, "]", 1);
 }
-
+}
+}
+put_line(fd, HIST_TRL, strlen(HIST_TRL) );
+return(0);
+}
