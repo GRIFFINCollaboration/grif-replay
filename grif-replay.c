@@ -38,18 +38,6 @@ int main(int argc, char *argv[])
       if( open_next_sortfiles(sort) == 0 ){
          sort_next_file(cfg, sort);
          fprintf(stdout,"DONE\n");
-                     // Global counters for finding the Ge-RCMP coincidences
-                     fprintf(stdout,"Ge-RCMP Coincidence stats:\n");
-                     fprintf(stdout,"presort_ge_events_passed %d\n",presort_ge_events_passed);
-                     fprintf(stdout,"presort_rcmp_events_passed %d\n",presort_rcmp_events_passed);
-                     fprintf(stdout,"presort_rcmp_fb_events_built %d\n",presort_rcmp_fb_events_built);
-                     fprintf(stdout,"singles_ge_events %d\n",singles_ge_events);
-                     fprintf(stdout,"singles_rcmp_events %d\n",singles_rcmp_events);
-                     fprintf(stdout,"singles_rcmp_fb_events %d\n",singles_rcmp_fb_events);
-                     fprintf(stdout,"coinc_ge_rcmp_events %d\n",coinc_ge_rcmp_events);
-                     fprintf(stdout,"coinc_rcmp_ge_events %d\n",coinc_rcmp_ge_events);
-                     fprintf(stdout,"coinc_ge_rcmp_fb_events %d\n",coinc_ge_rcmp_fb_events);
-                     fprintf(stdout,"coinc_rcmp_ge_fb_events %d\n",coinc_rcmp_ge_fb_events);
          close_sortfiles(sort);
       }
       if( ++sort->current_filenum == FILE_QLEN ){ sort->current_filenum = 0; }

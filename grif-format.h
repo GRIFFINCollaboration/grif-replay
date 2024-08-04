@@ -36,15 +36,3 @@ typedef struct griffin_fragment_struct { // was 74 bytes, now ?
 
 // midas-timestamp should be redundant and equal to BOR time+timestamp
 //   can just check this in midas part
-
-// Global counters for finding the Ge-RCMP coincidences
-int presort_ge_events_passed;
-int presort_rcmp_events_passed;
-int presort_rcmp_fb_events_built;
-int singles_ge_events;
-int singles_rcmp_events;
-int singles_rcmp_fb_events;
-int coinc_ge_rcmp_events;
-int coinc_rcmp_ge_events;
-int coinc_ge_rcmp_fb_events;
-int coinc_rcmp_ge_fb_events;

@@ -86,6 +86,7 @@ wget 'http://panther:9093/?cmd=callspechandler&spectum0=Hitpattern_Energy&spectr
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <math.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include "config.h"
@@ -2591,7 +2592,7 @@ int send_spectrum_list(char *cfgname, int fd)
 static int submatrix_type[512*512];
 int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
 {
-  int i, j, k, l, m, pos, count, val, max, xbins, ybins, lastType=1, emptyCount=0;
+  int i, j, k, l, m, pos, count, val, max, xbins, ybins, lastType=1, emptyCount=0, *hist_data;
   int list_max[4], list_valueSize[4], val1, val2, val3, val4, valCount, listIndex, matrixMaximum=16;
   Config *cfg = configs[1];
   char tmp[4096];  // 70 bit values is 12 characters. 12*256=3072
@@ -2599,20 +2600,26 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
   char valueString[4096]; // List: 70 bit values is 12 characters. 12*64=768. Array: 70 bit values is 12 characters. 12*256=3072
   TH1I *hist;
 
-  int bitMask[12]={         0x3F, //  6 bits
+  int bitMask[6]={         0x3F, //  6 bits
                            0xFC0, // 12 bits
                          0x3F000, // 18 bits
                         0xFC0000, // 24 bits
                       0x3F000000, // 30 bits
+                      0xC0000000, // 32 bits
+                    // The variables for the matrix are currently 32 bits.
+                    /*
                      0xFC0000000, // 36 bits
                    0x3F000000000, // 42 bits
                   0xFC0000000000, // 48 bits
                 0x3F000000000000, // 54 bits
                0xFC0000000000000, // 60 bits
              0x3F000000000000000, // 66 bits
-            0xFC0000000000000000};// 70 bits
+            0xFC0000000000000000  // 70 bits
+            */
+          };
 
-  int bitShift[12]={ 0, 6, 12, 18, 24, 30, 36, 42, 48, 54, 60, 66};// 6 to 70 bits
+  int bitShift[6]={ 0, 6, 12, 18, 24, 30};// 6 to 32 bits
+  //int bitShift[12]={ 0, 6, 12, 18, 24, 30, 36, 42, 48, 54, 60, 66};// 6 to 70 bits
 
 
   if( name != NULL ){
@@ -2653,6 +2660,20 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
     } else if( hist->type == INT_2D ){
       xbins = hist->xbins; if( xbins > 8192 ){ xbins = 8192; }
       ybins = hist->ybins; if( ybins > 8192 ){ ybins = 8192; }
+      if( (hist_data = malloc( xbins*ybins*sizeof(int) )) == NULL){
+         fprintf(stderr,"can't alloc memory for sending 2d histo\n");
+         continue;
+      }
+      if( ! hist->symm ){
+         memcpy( hist_data, hist->data, xbins*ybins*sizeof(int) );
+      } else { // symmetrize here
+         for(k=0; k<ybins; k++){
+            for(i=0; i<=j; i++){
+               hist_data[i+k*xbins] = hist->data[i+k*xbins] +
+                                      hist->data[k+i*xbins];
+            }
+         }
+      }
       sprintf(tmp,"\"name\" : \"%s\",", hist->title );
       put_line(fd, tmp, strlen(tmp) );
       sprintf(tmp,"\"XaxisLength\" : %d,", xbins );
@@ -2708,6 +2729,10 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
           if(max>0xFFF){ list_valueSize[0]=2; ++submatrix_type[pos]; } // 18 bits
           if(max>0x3FFFF){ list_valueSize[0]=3; ++submatrix_type[pos]; } // 24 bits
           if(max>0xFFFFFF){ list_valueSize[0]=4; ++submatrix_type[pos]; } // 30 bits
+          if(max>0x3FFFFFFF){ list_valueSize[0]=5; ++submatrix_type[pos]; } // 32 bits
+          // The variables for the matrix are currently 32 bits.
+          if(max>0xFFFFFFFF){ fprintf(stdout,"Maximum value requires more than 32 bits to transmit!, %d\n",max); } // too big!
+          /*
           if(max>0x3FFFFFFF){ list_valueSize[0]=5; } // 36 bits
           if(max>0xFFFFFFFFF){ list_valueSize[0]=6; } // 42 bits
           if(max>0x3FFFFFFFFFF){ list_valueSize[0]=7; } // 48 bits
@@ -2716,7 +2741,7 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
           if(max>0xFFFFFFFFFFFFFFF){ list_valueSize[0]=10; } // 66 bits
           if(max>0x3FFFFFFFFFFFFFFFF){ list_valueSize[0]=11; } // 70 bits
           if(max>0xFFFFFFFFFFFFFFFFFF){ fprintf(stdout,"Maximum value requires more than 70 bits to transmit!, %d\n",max); } // Too big!
-
+*/
           ++pos;
           if(max>matrixMaximum){ matrixMaximum = max; }
         }
@@ -2762,6 +2787,8 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
                     if(list_max[listIndex]>0xFFF){ list_valueSize[listIndex]=2; } // 18 bits
                     if(list_max[listIndex]>0x3FFFF){ list_valueSize[listIndex]=3; } // 24 bits
                     if(list_max[listIndex]>0xFFFFFF){ list_valueSize[listIndex]=4; } // 30 bits
+                    if(list_max[listIndex]>0x3FFFFFF){ list_valueSize[listIndex]=5; } // 32 bits
+                    /*
                     if(list_max[listIndex]>0x3FFFFFFF){ list_valueSize[listIndex]=5; } // 36 bits
                     if(list_max[listIndex]>0xFFFFFFFFF){ list_valueSize[listIndex]=6; } // 42 bits
                     if(list_max[listIndex]>0x3FFFFFFFFFF){ list_valueSize[listIndex]=7; } // 48 bits
@@ -2769,6 +2796,7 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
                     if(list_max[listIndex]>0x3FFFFFFFFFFFFF){ list_valueSize[listIndex]=9; } // 60 bits
                     if(list_max[listIndex]>0xFFFFFFFFFFFFFFF){ list_valueSize[listIndex]=10; } // 66 bits
                     if(list_max[listIndex]>0x3FFFFFFFFFFFFFFFF){ list_valueSize[listIndex]=11; } // 70 bits
+                    */
                   }
                 }
               }

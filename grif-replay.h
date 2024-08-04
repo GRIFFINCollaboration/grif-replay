@@ -44,13 +44,13 @@ typedef struct sortstatus_struct {
    volatile long midas_bytes;         int cal_overwrite;
    volatile int  midas_timestamp;     FILE *data_fp;
    volatile int  shutdown_midas;      FILE *histo_fp;
-   volatile int  grif_sort_done;      
-   volatile int  online_mode;         
+   volatile int  grif_sort_done;
+   volatile int  online_mode;
    volatile int  run_in_progress;
    volatile int  run_number;
 } Sort_status;
 
-extern void web_main(int *); 
+extern void web_main(int *);
 extern Sort_status *get_sort_status();
 
 //////////////////////////// diagnostics ////////////////////////////////
@@ -80,4 +80,4 @@ extern int gen_derived_odb_tables();
 
 #endif
 
-// dynamically change #reorder_slots 
+// dynamically change #reorder_slots

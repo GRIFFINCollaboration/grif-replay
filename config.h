@@ -64,7 +64,7 @@ struct th1i_struct {
    int   entries;  int  num_gates;  char  *gate_names[MAX_HISTO_GATES];
    Sortvar *xvar;  Sortvar  *yvar;  int  *gate_passed[MAX_HISTO_GATES];
    int xmin; int xmax; int ymin; int ymax; int suppress; int user;
-   int xrange; int yrange;  int done_flag;
+   int xrange; int yrange;  int done_flag;  int symm;
    int   (*Reset)(TH1I *);
    int   (*Fill)(TH1I *, int, int);
    int   (*SetBinContent)(TH1I *, int, int);
@@ -79,7 +79,7 @@ struct th2i_struct { // float has around 24bits integer precision
    int   entries;  int  num_gates;  char  *gate_names[MAX_HISTO_GATES];
    Sortvar *xvar;  Sortvar  *yvar;  int  *gate_passed[MAX_HISTO_GATES];
    int xmin; int xmax; int ymin; int ymax; int suppress;  int user;
-   int xrange; int yrange;  int done_flag;
+   int xrange; int yrange;  int done_flag;  int symm;
    int   (*Reset)(TH2I *);
    int   (*Fill)(TH2I *, int, int, int);
    int   (*SetBinContent)(TH2I *, int, int, int);

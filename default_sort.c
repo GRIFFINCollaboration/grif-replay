@@ -7,6 +7,7 @@
 #include "config.h"
 #include "grif-format.h"
 #include "histogram.h"
+#include "grif-angles.h"
 
 #define SUBSYS_HPGE     0
 #define SUBSYS_BGO      1
@@ -82,11 +83,6 @@ int init_default_histos(Config *cfg, Sort_status *arg)
    init_chan_histos(cfg);
    init_singles_histos(cfg);
    init_coinc_histos(cfg);
-
-   // zero Global counters for finding the Ge-RCMP coincidences
-   presort_ge_events_passed=presort_rcmp_events_passed=presort_rcmp_fb_events_built=0;
-   singles_ge_events=singles_rcmp_events=singles_rcmp_fb_events=0;
-   coinc_ge_rcmp_events=coinc_rcmp_ge_events=coinc_ge_rcmp_fb_events=coinc_rcmp_ge_fb_events=0;
 
    return(0);
 }
@@ -187,7 +183,6 @@ int pre_sort(int frag_idx, int end_idx)
     // SubSystem-specific pre-processing
     switch(ptr->subsys){
       case SUBSYS_HPGE:
-      presort_ge_events_passed++;
       if( dt < bgo_window && alt->subsys == SUBSYS_BGO && !ptr->suppress ){
         // could alternatively use crystal numbers rather than clover#
         //    (don't currently have this for BGO)
@@ -203,7 +198,6 @@ int pre_sort(int frag_idx, int end_idx)
       }
       break;
       case SUBSYS_RCMP:
-      presort_rcmp_events_passed++;
       // RCMP Front-Back coincidence
       // Ensure its the same DSSD and that the two events are front and back
       // The charged particles enter the P side and this has superior energy resolution
@@ -214,7 +208,6 @@ int pre_sort(int frag_idx, int end_idx)
           if( ((ptr->ecal / alt->ecal)<=1.1 && (ptr->ecal / alt->ecal)>=0.9)){
             // Ensure esum comes from P side, but use this timestamp
             ptr->esum = polarity_table[ptr->chan]==0 ? ptr->ecal : (polarity_table[ptr->chan]==1 ? alt->ecal : -1);
-            presort_rcmp_fb_events_built++;
           }
         }
       }
@@ -417,14 +410,20 @@ int init_singles_histos(Config *cfg)
   return(0);
 }
 
+// Time difference spectra
 #define DT_SPEC_LENGTH 4096
 #define N_DT 14
 char dt_handles[N_DT][32]={ "dt_ge_ge", "dt_ge_bgo", "dt_ge_sep", "dt_ge_zds",
                             "dt_ge_pac", "dt_ge_labr", "dt_ge_rcmp", "dt_pac_zds",
                             "dt_pac_labr", "dt_rcmp_rcmp", "dt_ge_art", "dt_labr_art",
                             "dt_paces_art", "dt_art_art" };
-
 TH1I  *dt_hist[N_DT];
+
+// Angular difference spectra
+#define GE_ANG_CORR_SPEC_LENGTH 4096
+#define N_GE_ANG_CORR 52
+TH2I  *gg_ang_corr_hist[N_GE_ANG_CORR];
+
 TH1I  *ge_sum_b; // beta-gated gamma sum spectrum
 TH2I *gg, *gg_ab, *gg_opp, *gg_hit, *bgobgo_hit, *aa_hit, *gea_hit, *ge_paces, *ge_labr, *ge_rcmp, *labr_labr, *labr_rcmp, *ge_art, *paces_art, *labr_art, *art_art;
 
@@ -436,6 +435,7 @@ TH2I  *rcmp_fb[N_RCMP_POS];
 int init_coinc_histos(Config *cfg)
 {
   char title[STRING_LEN], handle[STRING_LEN];
+  char tmp[STRING_LEN];
   int i;
 
   open_folder(cfg, "Hits_and_Sums");
@@ -505,6 +505,13 @@ rcmp_fb[i] = H2_BOOK(cfg, rcmp_fb_handles[i], rcmp_fb_handles[i], E_2D_RCMP_SPEC
                                     E_2D_RCMP_SPEC_LENGTH, 0, E_2D_RCMP_SPEC_LENGTH);
 }
    close_folder(cfg);
+   open_folder(cfg, "Ang_Corr");
+   for(i=0; i<N_GE_ANG_CORR; i++){ // Create Ge-Ge angular correlation spectra
+     sprintf(tmp,"Ge-Ge_angular_bin%d",i);
+     gg_ang_corr_hist[i] = H2_BOOK(cfg, tmp, tmp, GE_ANG_CORR_SPEC_LENGTH, 0, GE_ANG_CORR_SPEC_LENGTH,
+                                                  GE_ANG_CORR_SPEC_LENGTH, 0, GE_ANG_CORR_SPEC_LENGTH);
+   }
+   close_folder(cfg);
    close_folder(cfg);
    return(0);
 }
@@ -529,7 +536,6 @@ int fill_singles_histos(Grif_event *ptr)
    case SUBSYS_HPGE: // GRGa
        // Only use GRGa
        if(output_table[ptr->chan] == 1){
-       singles_ge_events++;
 
          // Ge-Addback and ge-crystal-sum
          ge_sum->Fill(ge_sum, (int)ptr->ecal, 1);
@@ -618,10 +624,8 @@ int fill_singles_histos(Grif_event *ptr)
    case SUBSYS_ZDS:
    break;
    case SUBSYS_RCMP:
-   singles_rcmp_events++;
        rcmp_sum->Fill(rcmp_sum, (int)ptr->ecal, 1);
        if(ptr->esum>0){
-       singles_rcmp_fb_events++;
          rcmp_fb_sum->Fill(rcmp_fb_sum, (int)ptr->esum, 1);
        }
        pos  = crystal_table[ptr->chan];
@@ -650,16 +654,7 @@ int fill_singles_histos(Grif_event *ptr)
    return(0);
 }
 
-int grif_opposite[64] = {
-   58, 57, 60, 59,    62, 61, 64, 63,
-   50, 49, 52, 51,    54, 53, 56, 55,
-   34, 33, 36, 35,    38, 37, 40, 39,
-   42, 41, 44, 43,    46, 45, 48, 47,
-   18, 17, 20, 19,    22, 21, 24, 23,
-   26, 25, 28, 27,    30, 29, 32, 31,
-   10,  9, 12, 11,    14, 13, 16, 15,
-    2,  1,  4,  3,     6,  5,  8,  7
-};
+
 
 int frag_hist[MAX_COINC_EVENTS];
 int fill_coinc_histos(int win_idx, int frag_idx)
@@ -669,7 +664,7 @@ int fill_coinc_histos(int win_idx, int frag_idx)
    //int g_rcmp_lower_gate=22, g_rcmp_upper_gate=68;
    int g_aries_upper_gate=25;
    int g_rcmp_upper_gate=75;
-   int pos, c1, c2;
+   int pos, c1, c2, index;
    int global_window_size = 100; // size in grif-replay should be double this
 
    // histogram of coincwin-size
@@ -707,6 +702,11 @@ int fill_coinc_histos(int win_idx, int frag_idx)
                       c2 = crystal_table[alt->chan];
                       if( c2 >= 0 && c2 < 64 ){
                         gg_hit->Fill(gg_hit, c1, c2, 1);
+
+                        // Ge-Ge angular correlations
+                        // Fill the appropriate angular bin spectrum
+                        index = ge_angles_145mm[c1][c2];
+                        gg_ang_corr_hist[index]->Fill(gg_ang_corr_hist[index], (int)ptr->ecal, (int)alt->ecal, 1);
 
                         // Ge-Ge with 180 degrees between Ge1 and Ge2
                         if( c2 == grif_opposite[c1] ){
@@ -746,10 +746,8 @@ int fill_coinc_histos(int win_idx, int frag_idx)
                 }
                 break;
                 case SUBSYS_RCMP: // ge-rcmp
-                coinc_ge_rcmp_events++;
                 dt_hist[6]->Fill(dt_hist[6], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
                 if( abs_dt < g_rcmp_upper_gate && alt->esum>0){
-                coinc_ge_rcmp_fb_events++;
                 ge_rcmp->Fill(ge_rcmp, (int)ptr->ecal, (int)alt->esum, 1);
               }
               break;
@@ -816,11 +814,9 @@ int fill_coinc_histos(int win_idx, int frag_idx)
            // Only use GRGa
            if(output_table[alt->chan] == 1){
 
-             coinc_rcmp_ge_events++;
              dt_hist[6]->Fill(dt_hist[6], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
             // if( (abs_dt > g_rcmp_lower_gate && abs_dt < g_rcmp_upper_gate) && ptr->ecal>0){
              if( ( abs_dt < g_rcmp_upper_gate) && ptr->ecal>0){
-               coinc_rcmp_ge_fb_events++;
                ge_rcmp->Fill(ge_rcmp, (int)alt->ecal, (int)ptr->ecal, 1);
              }
            }
@@ -858,7 +854,6 @@ int fill_coinc_histos(int win_idx, int frag_idx)
 
                    dt_hist[10]->Fill(dt_hist[10], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
                    if( ( abs_dt < g_aries_upper_gate) && ptr->ecal>0){
-                     coinc_rcmp_ge_fb_events++;
                      ge_art->Fill(ge_art, (int)alt->ecal, (int)ptr->ecal, 1);
                    }
                  }

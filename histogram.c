@@ -169,6 +169,11 @@ TH2I *H2_BOOK(Config *cfg, char *name, char *title, int xbins, int xmin, int xma
 	 MAX_HISTOGRAMS );
       return(NULL);
    }
+   if( ybins == 0 ){ // => symmetric 2d matrix
+      ybins = xbins;  ymin = xmin;  ymax = xmax; result->symm = 1; 
+   } else {
+      result->symm = 0;
+   }
    if( (result->data = (int *)malloc(xbins*ybins*sizeof(int))) == NULL){
       fprintf(stderr,"H2_BOOK: data malloc failed\n");
       free(result); return(NULL);
