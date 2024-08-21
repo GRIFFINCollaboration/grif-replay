@@ -2247,8 +2247,9 @@ int open_next_sortfiles(Sort_status *arg)
    // first check if target has already been written
    if( (arg->histo_fp=fopen(tmp,"r")) != NULL ){
       fprintf(stderr,"histo file %s already exits overwriting\n", tmp);
-      sleep(1);
+      //sleep(1);
       fclose(arg->histo_fp);
+      unlink(tmp);
    }
    // then check target is writable
    if( (arg->histo_fp=fopen(tmp,"w+")) == NULL ){ // can't write - switch to current directory

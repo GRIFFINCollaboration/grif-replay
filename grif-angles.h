@@ -132,7 +132,7 @@ int ge_angles_110mm[64][64] = {
   {44,41,33,37,48,50,51,50,31,27,33,40,26,19,17,25,20,14,9,12,35,30,23,29,46,42,40,44,47,43,45,49,37,31,39,42,21,16,22,28,9,5,7,11,8,4,2,6,24,20,11,18,32,25,26,34,10,7,14,18,1,3,1,0}
 };
 
-// angular differences in degrees between HPGe crystal centers for the 110mm distance.
+// angular differences in degrees between HPGe crystal centers for the 145mm distance.
 // 145mm
 float angular_bins_145mm[52] = {
  0.000, 15.442, 21.905, 29.143, 33.143, 38.382, 44.57, 47.445, 48.741, 51.473,
