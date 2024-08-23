@@ -1044,6 +1044,8 @@ int load_config(Config *cfg, char *filename, char *buffer)
 //  (could change this to only setup the default, if recent fails)
 int init_config()
 {
+  char hostname[32];
+  int tmp;
    Config *cfg = configs[0];
    if( cfg == NULL ){ // not yet alloc'd live set
       if( (cfg=configs[0]=add_config("live")) == NULL ){ return(-1); }
@@ -1051,6 +1053,10 @@ int init_config()
    }
    init_default_config(cfg);  // populate default "test" config during testing
    load_config(cfg, DEFAULT_CONFIG, NULL); // attempt to load, ignore any error
+   tmp = gethostname(hostname, 32);
+   strtok(hostname, ".");
+   fprintf(stdout,"Initial setup complete :-)\n\n");
+   fprintf(stdout,"Now connect to grif-replay using a web browser at the following URL:\nhttps://griffincollaboration.github.io/SpectrumViewer/analyzerInterface.html?backend=%s&port=9093\n",hostname);
    return(0);
 }
 

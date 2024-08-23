@@ -9,15 +9,7 @@ Grif-Replay is composed of two parts; the data-sorting engine and server (writte
 
 ## Installation
 
-Download the repository from GitHub into your chosen working directory.
-
-The following three lines must be executed in a C shell. Many linux distributions default to Bash so you must first run the command `csh` to enter a C shell.
-
-`set sources=( grif-replay.c midas-format.c grif-format.c histogram.c web_server.c config.c reorder.c user_sort.c default_sort.c test_config.c )`
-
-`gcc -g     -o grif-replay $sources -rdynamic -ldl -lm -lpthread`
-
-`gcc -g -O3 -o grif-replay $sources -rdynamic -ldl -lm -lpthread`
+Download the repository from GitHub into your chosen working directory. Then in the working directory just run `make`.
 
 ## Running Grif-Replay
 
@@ -66,7 +58,7 @@ On the `Spectrum Viewer & Analysis` subpage of the Web Interface click on the ti
 
 In a terminal, navigate to the working directory, or any directory containing the tar2root.C script.
 Open `grsisort` or `Root`.
-run the command 
+run the command
 
 `.x tar2root.C("/tig/grifstore1/grifalt/schedule146/S2232/runXXXX.tar","runXXXX.root)`
 
