@@ -177,7 +177,7 @@ int pre_sort(int frag_idx, int end_idx)
     // Determine fold
     if( alt->subsys == ptr->subsys ){ ++ptr->fold; }
 
-    // Dertermine absolute time difference between timestamps
+    // Determine absolute time difference between timestamps
     dt = ptr->ts - alt->ts; if( dt < 0 ){ dt = -1*dt; }
 
     // SubSystem-specific pre-processing
@@ -186,13 +186,13 @@ int pre_sort(int frag_idx, int end_idx)
       if( dt < bgo_window && alt->subsys == SUBSYS_BGO && !ptr->suppress ){
         // could alternatively use crystal numbers rather than clover#
         //    (don't currently have this for BGO)
-        if( ptr->array_posn == alt->array_posn ){ ptr->suppress = 1; }
+        if( crystal_table[ptr->chan]/16 == crystal_table[alt->chan]/16 ){ ptr->suppress = 1; }
       }
       // Germanium addback -
       //    earliest fragment has the sum energy, others are marked -1
       // Ensure GRG events are both A or both B type using output_table
       if( dt < addback_window && alt->subsys == SUBSYS_HPGE && (output_table[ptr->chan] == output_table[alt->chan])){
-        if( alt->esum >= 0 && alt->array_posn == ptr->array_posn ){
+        if( alt->esum >= 0 && crystal_table[alt->chan]/16 == crystal_table[ptr->chan]/16 ){
           ptr->esum += alt->esum; alt->esum = -1;
         }
       }
@@ -336,6 +336,7 @@ int fill_chan_histos(Grif_event *ptr)
 
 TH1I  *ge_ab_e[NUM_CLOVER];
 TH1I  *ge_sum, *ge_ab_sum;  // ge_sum is sum of crystal energies
+TH1I  *ge_sum_b; // beta-gated gamma sum spectrum
 TH1I  *paces_sum;  // paces_sum is sum of crystal energies
 TH1I  *labr_sum;  // labr_sum is sum of crystal energies
 TH1I  *aries_sum;  // aries_sum is sum of tile energies
@@ -357,6 +358,8 @@ int init_singles_histos(Config *cfg)
   ge_ab_sum = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
   sprintf(title,  "Ge_Sum_Energy"); sprintf(handle, "Ge_Sum_E");
   ge_sum = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
+  sprintf(title,  "Ge_Sum_En_betaTagged"); sprintf(handle, "Ge_Sum_E_B");
+  ge_sum_b = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
   sprintf(title,  "PACES_Sum_Energy"); sprintf(handle, "Paces_Sum_E");
   paces_sum = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
   sprintf(title,  "LaBr3_Sum_Energy"); sprintf(handle, "Labr_Sum_E");
@@ -424,7 +427,6 @@ TH1I  *dt_hist[N_DT];
 #define N_GE_ANG_CORR 52
 TH2I  *gg_ang_corr_hist[N_GE_ANG_CORR];
 
-TH1I  *ge_sum_b; // beta-gated gamma sum spectrum
 TH2I *gg, *gg_ab, *gg_opp, *gg_hit, *bgobgo_hit, *aa_hit, *gea_hit, *ge_paces, *ge_labr, *ge_rcmp, *labr_labr, *labr_rcmp, *ge_art, *paces_art, *labr_art, *art_art;
 
 char rcmp_hit_handles[N_RCMP_POS][32]={ "RCS01_PN_hits","RCS02_PN_hits","RCS03_PN_hits","RCS04_PN_hits","RCS05_PN_hits","RCS06_PN_hits" };
@@ -480,8 +482,6 @@ int init_coinc_histos(Config *cfg)
    sprintf(title, "GGoppo"); sprintf(handle, "GGoppo");
    gg_opp    = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
 		                                       E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-   sprintf(title,  "Ge_Sum_En_betaGated"); sprintf(handle, "Ge_Sum_E_B");
-   ge_sum_b = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
    close_folder(cfg);
    open_folder(cfg, "Hits");
    sprintf(title, "GeGeHit"); sprintf(handle, "GGHit");
@@ -526,7 +526,8 @@ int fill_singles_histos(Grif_event *ptr)
   if( sys >=0 && sys < MAX_SUBSYS ){
     if( mult_hist[sys] != NULL ){ mult_hist[sys]->Fill(mult_hist[sys], ptr->fold, 1);  }
   }
-  pos = ptr->array_posn;
+  //pos = ptr->array_posn;
+  pos  = crystal_table[ptr->chan];
 
   // Here we should not use dtype because the dtype can change between experiments.
   // Here we should use the Subsytem name, which we can get from dtype.
@@ -731,6 +732,9 @@ int fill_coinc_histos(int win_idx, int frag_idx)
                 } break;
                 case SUBSYS_SCEPTAR:  // ge-sep
                 dt_hist[2]->Fill(dt_hist[2], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+                if( abs_dt < gg_gate ){
+                  ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1); // beta-gated Ge sum energy spectrum
+                }
                 break;
                 case SUBSYS_ARIES: // ge-aries
                 dt_hist[10]->Fill(dt_hist[10], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
@@ -756,6 +760,21 @@ int fill_coinc_histos(int win_idx, int frag_idx)
             } // end of inner switch(ALT) for ptr=HPGe
           }
          break; // outer-switch-case-GE
+
+         case SUBSYS_SCEPTAR:  // sceptar matrices
+         switch(alt->subsys){
+           case SUBSYS_HPGE: // sep-ge
+           // Only use GRGa
+           if(output_table[alt->chan] == 1){
+             dt_hist[2]->Fill(dt_hist[2], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+             if( abs_dt < gg_gate ){
+               ge_sum_b->Fill(ge_sum_b, (int)alt->ecal, 1); // beta-gated Ge sum energy spectrum
+             }
+           }
+           break;
+           default: break;
+         }
+         break;
 
       case SUBSYS_PACES: // paces matrices
          switch(alt->subsys){
@@ -799,6 +818,7 @@ int fill_coinc_histos(int win_idx, int frag_idx)
                   break;
                     default: break; // unprocessed coincidence combinations
                   } // end of inner switch(ALT)
+                  break;
 
       case SUBSYS_BGO: // bgo matrices
          if(alt->subsys == SUBSYS_BGO && abs_dt < gg_gate ){ // bgo-bgo

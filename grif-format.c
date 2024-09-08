@@ -53,10 +53,10 @@ void grif_status(int current_time)
    static int prev_time, prev_evt;
    int dt = current_time - prev_time, de = grif_evcount - prev_evt;
    int sum = grif_err[GRIF_ERR_ADDR] + grif_err[GRIF_ERR_HDR] + grif_err[GRIF_ERR_TRLR];
-   
+
    prev_time = current_time; if( dt == 0 ){ dt = 1; }
    prev_evt  = grif_evcount;
-   
+
    printf("GrifEvt: in:%10d err:%10d[%5.1f%%]         %6.3f Mevt/s\n         ",
           grif_evcount, sum, (100.0*sum)/grif_evcount, de/(1000000.0*dt) );
    printf("[Hdr:%d Trlr:%d addr:%d phwrds:%d trigMatch%d]\n",
@@ -96,7 +96,7 @@ void grif_main(Sort_status *arg)
 	if( (++wcnt % 256) == 0 ){
             printf("SEGFAULT:wcnt=%d\n", wcnt);
          }
-         ++evptr;       // DO NOT consume input data here or event 
+         ++evptr;       // DO NOT consume input data here or event
          if( evptr >= bufend){  // start can be overwritten before we use it
             evptr -= bufsize;
             if( (wrap = wcnt) > 255 ){
@@ -230,12 +230,12 @@ int unpack_grif3_event(unsigned *evntbuf, int evlen, Grif_event *ptr, int proces
          // next 2 words are [mstpat/ppg mstid] in filtered data
 	 //  [in unfiltered data, first word is "fake" master_id,
          //                 and following word is missing
-         if( ( *(evntbuf) >> 31 ) == 0 ){ val32 = *(evntbuf++); ++i; 
+         if( ( *(evntbuf) >> 31 ) == 0 ){ val32 = *(evntbuf++); ++i;
 	    ptr->wf_present = (val32 & 0x8000) >> 15;
 	    ptr->pileup     = (val32 & 0x001F);
-	 } 
+	 }
 	 if( ( *(evntbuf) >> 31 ) == 0 ){
-            ptr->master_id   = *(evntbuf++); ++i; 
+            ptr->master_id   = *(evntbuf++); ++i;
          }
 	 break;
       case 0xe:      // 14bit acc 14bit req                /* Event Trailer */
@@ -271,33 +271,47 @@ int unpack_grif3_event(unsigned *evntbuf, int evlen, Grif_event *ptr, int proces
 	    break;
 	 } else { // if dtype=6, maybe RF - extend sign from 30 to 32bits
 	    if( ptr->dtype == 6 && (val32 & (1<<29)) ){ val32 |= 0xC0000000; }
-	    if( ++qtcount == 1 ){                                /* Energy */
-	       ptr->q  = (ptr->dtype==6) ? val32 : val32 & 0x01ffffff;
-	       ptr->e_bad   = (value >> 25) & 0x1;
-	       ptr-> integ |= ((val32 & 0x7c000000) >> 17); ptr->nhit = 1;
-	    } else if( qtcount == 2 ){                         /* CFD Time */
-               ptr->cfd     = (ptr->dtype==6) ? val32 : val32 & 0x003fffff;
-	       ptr-> integ |= ((val32 & 0x7FC00000) >> 22);
-            } else if( qtcount == 3 ){
-	       if(ptr->dtype==6){ ptr->cc_long  = val32; }  /* descant long*/
-	       else { ptr->integ2 =   val32 & 0x003FFF;
-		      ptr->nhit   = ((val32 & 0xFF0000) >> 16); }
-	    } else if( qtcount == 4 ){
-	       if(ptr->dtype==6){ ptr->cc_short  = val32; } /* descant short*/
-	       else { ptr->q2 =  val32 & 0x3FFFFF;
-                                       ptr->e2_bad  = (val32 >> 25) & 0x1; }
-            } else if( qtcount == 5 ){
-	       ptr->integ3 =   val32 & 0x00003FFF;
-	       ptr->integ4 = ((val32 & 0x3FFF0000) >> 16);
-	    } else if( qtcount == 6 ){ ptr->q3 =  val32 & 0x3FFFFF;
-                                       ptr->e4_bad  = (val32 >> 25) & 0x1;
-	    } else if( qtcount == 7 ){ ptr->q4 =  val32 & 0x3FFFFF;
-                                       ptr->e4_bad  = (val32 >> 25) & 0x1;
-	    } else {
-               ++grif_err[GRIF_ERR_PHWORDS];
-               //fprintf(stderr,"Event %d(chan%d) excess PH words\n",
-               //   grif_evcount, ptr->chan ); 
-	    }
+
+      switch(++qtcount){
+        case 1:  /* Energy */
+        ptr->q  = (ptr->dtype==6) ? val32 : val32 & 0x01ffffff;
+        ptr->e_bad   = (value >> 25) & 0x1;
+        ptr-> integ |= ((val32 & 0x7c000000) >> 17); ptr->nhit = 1;
+        break;
+        case 2: /* CFD Time */
+        ptr->cfd     = (ptr->dtype==6) ? val32 : val32 & 0x003fffff;
+        ptr-> integ |= ((val32 & 0x7FC00000) >> 22);
+        break;
+        case 3:  /* descant long*/
+        if(ptr->dtype==6){ ptr->cc_long  = val32;
+        } else { ptr->integ2 =   val32 & 0x003FFF;
+          ptr->nhit   = ((val32 & 0xFF0000) >> 16);
+        }
+        break;
+        case 4:  /* descant short*/
+        if(ptr->dtype==6){ ptr->cc_short  = val32; }
+        else { ptr->q2 =  val32 & 0x3FFFFF;
+          ptr->e2_bad  = (val32 >> 25) & 0x1;
+        }
+        break;
+        case 5:
+        ptr->integ3 =   val32 & 0x00003FFF;
+        ptr->integ4 = ((val32 & 0x3FFF0000) >> 16);
+        break;
+        case 6: ptr->q3 =  val32 & 0x3FFFFF;
+        ptr->e4_bad  = (val32 >> 25) & 0x1;
+        break;
+        case 7: ptr->q4 =  val32 & 0x3FFFFF;
+        ptr->e4_bad  = (val32 >> 25) & 0x1;
+        break;
+
+          default:
+          ++grif_err[GRIF_ERR_PHWORDS];
+          //fprintf(stderr,"Event %d(chan%d) excess PH words\n",
+          //   grif_evcount, ptr->chan );
+          break;
+        }
+
             break;
          }
       case 0xf: fprintf(stderr,"griffin_decode: 0xF.......\n");

@@ -23,10 +23,11 @@
 //   (due to not fully clearing coincwin - may fix this later)
 int user_sort_init()
 {
+return(0);
    Config *cfg = configs[1]; // ** Sort is using config[1]
    Cond *cond;
    int i;
-   for(i=0; i<cfg->nconds; i++){ cond = cfg->condlist[i]; 
+   for(i=0; i<cfg->nconds; i++){ cond = cfg->condlist[i];
       if( cond->use_count == 0 ){ continue; }
       cond->pass_count = 0;
    }
@@ -37,6 +38,7 @@ int user_sort_init()
 extern Grif_event grif_event[MAX_COINC_EVENTS];
 int user_sort(int win_strt, int win_end, int flag)
 {
+return(0);
    Grif_event *alt, *ptr = &grif_event[win_strt];
    Config *cfg = configs[1]; // ** Sort is using config[1]
    int i, j, k, m, yvalid, yval, dt, *val = (int *)ptr, len = win_end-win_strt;
@@ -75,7 +77,7 @@ int user_sort(int win_strt, int win_end, int flag)
 
    // ------------ "single-variable" conditions ----------------------
    //       check  once here, not per-coinc-pair below
-   for(i=0; i<cfg->nconds; i++){ cond = cfg->condlist[i]; 
+   for(i=0; i<cfg->nconds; i++){ cond = cfg->condlist[i];
       if( cond->use_count == 0 ){ continue; }
       var = cond->var; if( var->offset == -1 ){ continue; }
       if( var->local ){      // NOT a window-wide variable e.g. crystal-number
@@ -158,12 +160,13 @@ int user_sort(int win_strt, int win_end, int flag)
 // update any condition counters here, for use later during sort
 int user_addto_window(int win_strt, int new_frag)
 {
+return(0);
    Grif_event *ptr = &grif_event[new_frag];
    Config *cfg = configs[1]; // ** Sort is using config[1]
    int i, *val = (int *)ptr;
    Sortvar *var;
    Cond *cond;
-   for(i=0; i<cfg->nconds; i++){ cond = cfg->condlist[i]; 
+   for(i=0; i<cfg->nconds; i++){ cond = cfg->condlist[i];
       if( cond->use_count == 0 ){ continue; }
       var = cond->var;
       if( var->offset == -1 || var->dtype != ptr->dtype || var->local ){
@@ -185,6 +188,7 @@ int user_addto_window(int win_strt, int new_frag)
 // update any condition counters
 int user_removefrom_window(int win_strt, int new_frag)
 {
+return(0);
    Grif_event *ptr = &grif_event[win_strt];
    Config *cfg = configs[1]; // ** Sort is using config[1]
    int i, *val = (int *)ptr;
@@ -211,12 +215,13 @@ int user_removefrom_window(int win_strt, int new_frag)
 
 int test_gates(Grif_event *ptr, Grif_event *alt)
 {
+return(0);
    Config *cfg = configs[1]; // ** Sort is using config[1]
    int i, j, value;
    Sortvar *var;
    Gate *gate;
    Cond *cond;
-   for(i=0; i<cfg->nconds; i++){ cond = cfg->condlist[i]; 
+   for(i=0; i<cfg->nconds; i++){ cond = cfg->condlist[i];
       if( cond->use_count == 0 ){ continue; }
       var = cond->var; if( var->offset != -1 ){ continue; } // already done
       cond->passed = 0; // value+valid already set in calc_coincvars
@@ -297,7 +302,8 @@ int calc_coincvars(Grif_event *ptr1, Grif_event *ptr2)
    int i, p1, p2, c1, c2, swap;
    Config *cfg = configs[1];
    Grif_event *tmp;
-   
+
+   return(0);
    for(i=0; i<cfg->nsortvar; i++){
       if( cfg->varlist[i].offset != -1 ){ continue; } // not coinc variable
       cfg->varlist[i].valid = 0;                      // invalidate
@@ -500,6 +506,8 @@ int init_user_config(Config *cfg) // setup sort variable structures
    Sortvar *s, *ptr;
    char *tmp;
    int i;
+
+   return(0);
    for(i=0; i<NUM_SORTVARS; i++){ ++cfg->nsortvar;
       tmp = sortvarlist[2*i];
       memcpy(cfg->varlist[i].name, tmp, strlen(tmp)+1);
@@ -604,4 +612,3 @@ int init_user_config(Config *cfg) // setup sort variable structures
    s=&cfg->varlist[PPG_PAT     ]; s->offset = -1;
    return(0);
 }
-
