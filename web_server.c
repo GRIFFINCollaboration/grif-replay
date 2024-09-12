@@ -26,8 +26,15 @@
 // The following is required on MacOS
  #ifndef SOCK_NONBLOCK
  #include <fcntl.h>
- # define SOCK_NONBLOCK O_NONBLOCK
+ #define SOCK_NONBLOCK 0
  #endif
+
+#if defined(__APPLE__) &&  defined(__MACH__)
+// Operating system is Mac OS
+#define PLATFORM_IS_MACOS 1
+#else
+#define PLATFORM_IS_MACOS 0
+#endif
 
 int handle_connection(int fd);
 
@@ -39,9 +46,16 @@ void web_main(int *arg)
 
    signal(SIGPIPE, SIG_IGN);
 
-   if( (sock_fd=socket(PF_INET,SOCK_STREAM|SOCK_NONBLOCK,IPPROTO_TCP)) == -1){
-      perror("create socket failed");  exit(-1);
-   }
+    if(PLATFORM_IS_MACOS){ // MAC Os
+       if( (sock_fd=socket(AF_INET,SOCK_STREAM|SOCK_NONBLOCK,0)) == -1){
+          perror("create socket failed");  exit(-1);
+       }
+    }else{ // linux etc
+      if( (sock_fd=socket(PF_INET,SOCK_STREAM|SOCK_NONBLOCK,IPPROTO_TCP)) == -1){
+            perror("create socket failed");  exit(-1);
+         }
+    }
+
    setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR, &sockopt, sizeof(int));
    memset(&sock_addr, 0, sizeof(sock_addr));
    sock_addr.sin_family = AF_INET;
