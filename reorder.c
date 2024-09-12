@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <pthread.h>
 #include "grif-replay.h"
 #include "midas-format.h"
@@ -15,6 +16,7 @@
 unsigned event_buffer[EVENTBUFSIZE+128];
 volatile unsigned long eventbuf_rdpos;
 volatile unsigned long eventbuf_wrpos;
+int reorder_insert_event_check(int grifc);
 
 // input ...
 //    minimum space is #grifcs * #events per grifc buffer
@@ -49,11 +51,11 @@ long tsevents_out;
 // [NOTE: grifc filter can fail if any data is delayed more than ~150us]
 #define REORDER_TSBUFSZ (REORDER_BUFSIZE>>3)
 typedef struct Reorder_buf_struct {
-   int     data[REORDER_BUFSIZE]; 
+   int     data[REORDER_BUFSIZE];
    long   tsbuf[REORDER_TSBUFSZ];
    long evtspos[REORDER_TSBUFSZ]; // position in databuf of each events ts
    long  hdrpos[REORDER_TSBUFSZ]; // position in databuf of each events hdr
-   volatile long    wrpos;  volatile long    rdpos;   long tmp_wrpos;  
+   volatile long    wrpos;  volatile long    rdpos;   long tmp_wrpos;
    volatile long ts_wrpos;  volatile long ts_rdpos;   int pending_events;
    volatile int    events;  volatile int  events_done;
 } Reorder_buffer;
@@ -86,7 +88,7 @@ int check_buffer(int grifc)
    unsigned word, type, rel_tspos;
 
    pthread_mutex_lock(&nxtlock);
-   
+
    state = STATE_HDR;
    err = ts = tsa = tsb = evcount = wcnt = 0;
    tscnt = buf->ts_wrpos - buf->ts_rdpos;
@@ -201,7 +203,7 @@ void reorder_a_main(Sort_status *arg)
          fprintf(stderr,"Can't alloc space for reorder buffer\n");
          arg->reorder_in_done = 1; return;
       }
-   } 
+   }
    //memset((char *)reorder_buf,     0, MAX_GRIFC*sizeof(Reorder_buffer));
 
    printf("starting reorder input ...\n");
@@ -254,8 +256,8 @@ void reorder_a_main(Sort_status *arg)
                grifc = ((*(evptr) >> 16) & 0xf); buf = reorder_buf[grifc];
                ++reorder_events_read; break;
             }
-            if( type == 0xA ){ ts1 = *(evptr) & 0xfffffff; 
-            } else if( type == 0xB ){ ts2 = *(evptr) & 0x3fff; 
+            if( type == 0xA ){ ts1 = *(evptr) & 0xfffffff;
+            } else if( type == 0xB ){ ts2 = *(evptr) & 0x3fff;
             } else if( type == 0xE ){
                //printf("DUMP [?] ts=0x%04x,0x%08x[@????] TRLR:0x%08x[@??] missing header\n", ts2, ts1, *(int *)evptr );
                ++err[ERR_FORMAT_IN];
@@ -263,7 +265,7 @@ void reorder_a_main(Sort_status *arg)
             ++bankbuf_rdpos; ++bad_cnt;
             ++evptr; if( evptr >= bufend){ evptr -= BANK_BUFSIZE; }
          }
-      } else if( type == 0xA ){ fmterr += ts1!=0; ts1 = *(evptr) & 0xfffffff; 
+      } else if( type == 0xA ){ fmterr += ts1!=0; ts1 = *(evptr) & 0xfffffff;
       } else if( type == 0xB ){ fmterr += ts2!=0; ts2 = *(evptr) &    0x3fff;
          tshi_pos = buf->tmp_wrpos + evlen;
       }
@@ -306,7 +308,7 @@ void reorder_a_main(Sort_status *arg)
             wrpos = buf->ts_wrpos % REORDER_TSBUFSZ; // store ts
             buf->tsbuf[wrpos] = ts1 + (ts2<<28);
             buf->evtspos[wrpos] = tshi_pos;
-            
+
             pthread_mutex_lock(&nxtlock);
             ++buf->ts_wrpos; ++buf->pending_events; // do these together - do not allow to be split
             pthread_mutex_unlock(&nxtlock);
@@ -353,13 +355,13 @@ int reorder_insert_event_check(int grifc) // ### ALL CURRENTLY LOCKED ###
    // ABOVE IRRELEVANT ...
    //    the only processing done here is between wrpos and tmp_wrpos
    //    (do not even touch rdpos, except to check if buf now half full)
-   // 
+   //
    pthread_mutex_lock(&nxtlock);
    pending = buf->pending_events;
    pthread_mutex_unlock(&nxtlock);
    //if( ++insert_event > EVENT_CHCK ){ check_buffer(grifc); }
    if( pending < NUM_ORDER_EVENT ){ /*check_buffer(grifc); */ return(0); }
-   
+
    ins_err = 0; first = -1;
    for(i=0; i<NUM_ORDER_EVENT; i++){ early_ts[i] = 0;
       wrpos = (buf->ts_wrpos - pending + i) % REORDER_TSBUFSZ;
@@ -375,16 +377,16 @@ int reorder_insert_event_check(int grifc) // ### ALL CURRENTLY LOCKED ###
       // seven events in buffer => nxt events hdrpos is already set
       wrpos = (buf->ts_wrpos - pending) % REORDER_TSBUFSZ;
       evlen = buf->hdrpos[(wrpos+1) % REORDER_TSBUFSZ] - buf->hdrpos[wrpos];
-      
+
       pthread_mutex_lock(&nxtlock); // use current rdpos in case updated
       wr_avail =  REORDER_BUFSIZE - (buf->wrpos - buf->rdpos);
       if( wr_avail>=REORDER_BUFSIZE/2 && wr_avail-evlen < REORDER_BUFSIZE/2 ){
          --reorder_ready_count;  // just passed half-way mark
       }
-      buf->wrpos += evlen; --buf->pending_events; ++buf->events; 
+      buf->wrpos += evlen; --buf->pending_events; ++buf->events;
       ++reorder_evcount[grifc];
       pthread_mutex_unlock(&nxtlock);
-      
+
       if( insert_event > EVENT_CHCK ){
          pthread_mutex_lock(&nxtlock);
          tmp = (buf->wrpos-1) % REORDER_BUFSIZE;
@@ -403,7 +405,7 @@ int reorder_insert_event_check(int grifc) // ### ALL CURRENTLY LOCKED ###
       //       ts       100 101 102 3 103 104 105
       //       early     0   0   0  1  0   0   0
       //       first seen when ts=3 appears
-      // 
+      //
       //    problem, where event comes early and timestamp is far in future
       //       ts:       100 101 203 102 103 104 105
       //       early:     0   0   0   1   0   0   0
@@ -419,17 +421,17 @@ int reorder_insert_event_check(int grifc) // ### ALL CURRENTLY LOCKED ###
          wrpos = (buf->ts_wrpos - pending) % REORDER_TSBUFSZ;
          buf->         tsbuf[(wrpos+3) % REORDER_TSBUFSZ] |= OUT_OF_ORDER_BIT;
          evlen = buf->hdrpos[(wrpos+4) % REORDER_TSBUFSZ] - buf->hdrpos[wrpos];
-         
+
          pthread_mutex_lock(&nxtlock); // do b4 changing wrpos
          wr_avail = REORDER_BUFSIZE - (buf->wrpos - buf->rdpos);
          if( wr_avail >= REORDER_BUFSIZE/2 && wr_avail-evlen <
              REORDER_BUFSIZE/2 ){ --reorder_ready_count; }
-         buf->wrpos += evlen; buf->pending_events -= 4; buf->events += 4; 
+         buf->wrpos += evlen; buf->pending_events -= 4; buf->events += 4;
          reorder_evcount[grifc] += 4;
          pthread_mutex_unlock(&nxtlock);
-         
+
          if( insert_event > EVENT_CHCK ){ printf("FINLZ[%d] 4 EVENTS\n", grifc); }
-      } else if( 
+      } else if(
       // just 3rd item is early ...
             ts_list[1] >= ts_list[0] && /* ts_list[2] is wrong */
             ts_list[3] >= ts_list[1] && ts_list[4] >= ts_list[3] &&
@@ -438,15 +440,15 @@ int reorder_insert_event_check(int grifc) // ### ALL CURRENTLY LOCKED ###
          wrpos = (buf->ts_wrpos - pending) % REORDER_TSBUFSZ;
          buf->         tsbuf[(wrpos+2) % REORDER_TSBUFSZ] |= OUT_OF_ORDER_BIT;
          evlen = buf->hdrpos[(wrpos+3) % REORDER_TSBUFSZ] - buf->hdrpos[wrpos];
-         
+
          pthread_mutex_lock(&nxtlock); // do b4 changing wrpos
          wr_avail = REORDER_BUFSIZE - (buf->wrpos - buf->rdpos);
          if( wr_avail >= REORDER_BUFSIZE/2 && wr_avail-evlen <
              REORDER_BUFSIZE/2 ){ --reorder_ready_count; }
-         buf->wrpos += evlen; buf->pending_events -= 3; buf->events += 3; 
+         buf->wrpos += evlen; buf->pending_events -= 3; buf->events += 3;
          reorder_evcount[grifc] += 3;
          pthread_mutex_unlock(&nxtlock);
-         
+
          //if( insert_event > EVENT_CHCK ){ printf("FINLZ[%d] 3 EVENTS\n", grifc); }
       } else {
          //if( insert_event > EVENT_CHCK ){ printf("UnHnd[%d] [Ev:%6d]: ", grifc, insert_event );
@@ -459,16 +461,16 @@ int reorder_insert_event_check(int grifc) // ### ALL CURRENTLY LOCKED ###
          //   }
          //   printf("]\n");
          //}
-         
+
          // Currently un-handled case, can easily add handling of other common errors
          err[ERR_UNKNOWN_ORDER_IN] += (buf->pending_events-1);
-         
+
          wrpos = (buf->ts_wrpos - pending) % REORDER_TSBUFSZ;
          for(i=0; i<pending; i++){
             buf->tsbuf[ (wrpos+i) % REORDER_TSBUFSZ ] |= OUT_OF_ORDER_BIT;
          }
          evlen = buf->hdrpos[(wrpos+i-1)%REORDER_TSBUFSZ] - buf->hdrpos[wrpos];
-         
+
          pthread_mutex_lock(&nxtlock); // do b4 changing wrpos
          wr_avail = REORDER_BUFSIZE - (buf->wrpos - buf->rdpos);
          if( wr_avail >= REORDER_BUFSIZE/2 && wr_avail-evlen <
@@ -477,7 +479,7 @@ int reorder_insert_event_check(int grifc) // ### ALL CURRENTLY LOCKED ###
          reorder_evcount[grifc] += (buf->pending_events-1);
          buf->pending_events = 1;
          pthread_mutex_unlock(&nxtlock);
-         
+
          //if( insert_event > EVENT_CHCK ){ printf("FINLZ[%d] %d EVENTS\n", grifc, buf->pending_events-1 ); }
       }
    }
@@ -497,7 +499,7 @@ int copy_event(Sort_status *arg, int grifc, int discard)
    Reorder_buffer *buf = reorder_buf[grifc];
    unsigned long ts, tsa, tsb;
    unsigned int usecs=100;
-       
+
    //printf("## Storing event [grifc#%d]:", grifc);
 
    if( grifc == 11 ){
@@ -593,7 +595,7 @@ void reorder_a_out(Sort_status *arg)
    unsigned long ts, prev_ts, buf_ts, max_ts, diff;
    unsigned int usecs=100, lim=10000000;
    Reorder_buffer *buf;
-   
+
    printf("starting reorder output ...\n");
    while( reorder_buf[MAX_GRIFC-1] == NULL ){ usleep(usecs);  }
    junk = 1; prev_ts = grifc = event = 0;
@@ -744,9 +746,9 @@ void reorder_b_main(Sort_status *arg)
       case 0xA:
          if( ts_stat != 0 ){ err_format=1; }
          tslo = *evptr & 0xFFFFFFF; ts_stat = 1; break;
-      case 0xB: 
+      case 0xB:
          if( ts_stat != 1 ){ err_format=1; }
-         ts   = *evptr &    0x3FFF; 
+         ts   = *evptr &    0x3FFF;
          ts <<= 28; ts += tslo; ts_stat = 2; break;
       default:  break;
       }
@@ -794,7 +796,7 @@ void reorder_b_main(Sort_status *arg)
       } while( newptr->in_use );
       // copy event to buf slot found above
       newptr->in_use =  1; newptr->evlen =  len;
-      newptr->ts     = ts; newptr->next  = NULL; 
+      newptr->ts     = ts; newptr->next  = NULL;
       if( evptr >= evstart ){
          memcpy((char *)(newptr->event),(char *)(evstart),4*len);
       } else {  // wrapped in middle of event
@@ -803,7 +805,7 @@ void reorder_b_main(Sort_status *arg)
          memcpy((char *)(newptr->event)+i,(char *)(bankbuf),4*len-i);
       }
       // update linked list ...
-      bufptr = NULL;  
+      bufptr = NULL;
       pthread_mutex_lock(&nxtlock);
       if( (nxtptr = tslot[ts_slot]) == NULL ){ // currently empty
          tslot[ts_slot] = newptr;
@@ -812,8 +814,8 @@ void reorder_b_main(Sort_status *arg)
             if( ts < nxtptr->ts || nxtptr->in_use == 0 ){ // insert here
                if( bufptr == NULL ){
                   tslot[ts_slot] = newptr; newptr->next = nxtptr;
-               } else { 
-                  bufptr->next = newptr; newptr->next=nxtptr; 
+               } else {
+                  bufptr->next = newptr; newptr->next=nxtptr;
                }
                break;
             }
@@ -850,7 +852,7 @@ void reorder_b_out(Sort_status *arg)
    volatile Tsbuf *buf, *nxt;
    unsigned int usecs=100;
    unsigned long ts, min_ts, start_ts, loop, skip;
-   
+
    usleep(100*usecs);
    err = diagnostics.reorder_error;
    printf("starting reorder output ...\n");
@@ -881,7 +883,7 @@ void reorder_b_out(Sort_status *arg)
       // Also require same condition to avoid having to lock tslot[ts_slot]
       //  - if events are far future - any update of tslot[ts_slot], after
       //    we stored it in buf just above, will be to add a far future event
-      //    
+      //
          if( ts - start_ts == TIMESLOT_SLOTS ){
             if( min_slot == -1 ){ printf("REORDER IMPOSSIBLE-ERROR\n");}else{
                skip += min_ts-ts;
@@ -901,13 +903,13 @@ void reorder_b_out(Sort_status *arg)
          break;
       }
       min_slot = -1; start_ts = ts; // found event - reset minimum_ts search
-      
+
       // iterate over this in-use linked list tslot[ts % TIMESLOT_SLOTS]
       //   will only be iterating over any equal timestamp events
-      while(1){ 
+      while(1){
          nxt = buf->next;
          if( buf->ts > ts ){ break; } //  done with this list
-         else {                       //  timestamps equal 
+         else {                       //  timestamps equal
             if( buf->ts < ts ){       // (or less than => error)
                //fprintf(stdout, "Order Error[Out:%d] at ts=%ld [buf=%ld]\n", tsevents_out, ts, buf->ts);
                // this is the usual ordering error - where events are delayed
@@ -950,7 +952,7 @@ void show_status_b()
    static int ref[TIMESLOT_EVENTS];
    int i, j, bufidx;
    volatile Tsbuf *buf;
-   
+
    memset(ref, 0, TIMESLOT_EVENTS*sizeof(int));
    printf("TIMESLOT LIST ...\n");
    j=0; for(i=0; i<TIMESLOT_SLOTS; i++){

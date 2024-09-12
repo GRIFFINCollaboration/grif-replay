@@ -245,8 +245,8 @@ return(0);
 }
 
 //
+const int ge_angles[64][64];
 int  clover_angles[16][16];
-int      ge_angles[64][64];
 int sceptar_angles[20][20];
 int   gesep_angles[64][20];
 int   gepac_angles[64][ 5];

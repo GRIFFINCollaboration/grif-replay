@@ -15,12 +15,19 @@
 #include <ctype.h>      // isxdigit(), isspace()
 #include <signal.h>
 #include "histogram.h"
+#include "web_server.h"
 
 #define MAX_QUEUE_LEN    4
-#define REQUEST_TIMEOUT 10 // 10 seconds 
+#define REQUEST_TIMEOUT 10 // 10 seconds
 #define URLLEN        2048 //      maximum url and other string lengths
 #define WEBPORT       9093 //    http standard recommends ~8000bytes BUT
                            // windows browsers will not handle more than 2000
+
+// The following is required on MacOS
+ #ifndef SOCK_NONBLOCK
+ #include <fcntl.h>
+ # define SOCK_NONBLOCK O_NONBLOCK
+ #endif
 
 int handle_connection(int fd);
 
@@ -40,7 +47,7 @@ void web_main(int *arg)
    sock_addr.sin_family = AF_INET;
    sock_addr.sin_port = htons(WEBPORT);
    sock_addr.sin_addr.s_addr = INADDR_ANY;
- 
+
    if( bind(sock_fd,(struct sockaddr *)&sock_addr, sizeof(sock_addr)) == -1){
       perror("bind failed"); close(sock_fd); return;
    }
@@ -68,7 +75,7 @@ void web_main(int *arg)
    }
    fprintf(stdout,"shutting down data server ...\n");
    close(sock_fd);
-   return;  
+   return;
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -108,7 +115,7 @@ int handle_connection(int fd)
    return( handle_command(fd, narg, url_args) );
 }
 
-int split_cmdurl(char *url)  // split ?cmd=XXX&arg1=XXX?... 
+int split_cmdurl(char *url)  // split ?cmd=XXX&arg1=XXX?...
 {
    int i=0, j=0, err=0, name_val=0;
    char *ptr = url;
@@ -136,7 +143,7 @@ int split_cmdurl(char *url)  // split ?cmd=XXX&arg1=XXX?...
          i = MAXURLARGS-1;  fprintf(stderr,"too many args in %s\n", url);
       }
    }
-   url_args[i][j] = 0; 
+   url_args[i][j] = 0;
    for(j=i+1; j<MAXURLARGS; j++){ url_args[j][i] = 0; } // clear other args
    return(i+1);
 }
@@ -192,7 +199,7 @@ int parse_line(char *buf, int first)
    remove_trailing_space(buf);
    if(strlen(buf) == 0 ){ return(0); }
    if( first ){
-      if(        ! strncmp(buf, "GET ",  4) ){ buf += 4; 
+      if(        ! strncmp(buf, "GET ",  4) ){ buf += 4;
       } else if( ! strncmp(buf, "HEAD ", 5) ){ buf += 5;
       } else {
          fprintf(stdout,"Unimplemented"); return(-1);
@@ -223,7 +230,7 @@ int remove_trailing_space(char *buf)
 //  - convert to uppercase, then subtract either (65-10):letter or 48:digit
 void decodeurl(char *dst, const char *src)
 {
-   char a, b;   
+   char a, b;
    while(*src){ // != '\0'
       if( (*src=='%') && ((a = src[1]) && (b = src[2])) && // a,b != '\0'
                          ( isxdigit(a) && isxdigit(b) ) ){ // a,b xdigits
@@ -242,8 +249,6 @@ void decodeurl(char *dst, const char *src)
 ///////////////////////////////////////////////////////////////////////////
 ////////////////////           socket I/O          ////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-int get_line(int fd, char *buf, int maxlen);
-int put_line(int fd, char *buf, int length);
 
 /* get next request - should be within timeout of connecting             */
 /* returns number of lines contained in request                          */

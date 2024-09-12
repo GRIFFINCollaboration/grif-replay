@@ -89,16 +89,12 @@ wget 'http://panther:9093/?cmd=callspechandler&spectum0=Hitpattern_Energy&spectr
 #include <math.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <ctype.h>
 #include "config.h"
 #include "grif-replay.h"
 #include "histogram.h"
+#include "web_server.h"
 
-int send_spectrum_list(char *name, int fd);
-int send_spectrum(int num, char urlarg[][STRING_LEN], char *, int fd);
-int send_sort_status(int fd);
-int send_datafile_list(char *path, int fd, int type);
-int send_histofile_list(char *path, int fd);
-int add_sortfile(char *path, char *histodir, char *confdir, char *calsrc);
 ///////////////////////////////////////////////////////////////////////////
 //////////////         Url  Command  interpreter          /////////////////
 ///////////////////////////////////////////////////////////////////////////
@@ -176,7 +172,7 @@ int handle_command(int fd, int narg, char url_args[][STRING_LEN])
       return(0);
    } else
    if( strcmp(ptr, "endCurrentFile") == 0 ){ /* -----------------------*/
-      end_current_sortile(fd);
+      end_current_sortfile(fd);
    } else
    if( strcmp(ptr, "openHistofile") == 0 ){ /* ---------------------- */
       if( strncmp(url_args[2],"filename",8) == 0 ){
@@ -646,6 +642,7 @@ int write_config(Config *cfg, FILE *fp)
    }
    fprintf(fp,"      ]}\n"); // NO COMMA AFTER FINAL TABLE
    fprintf(fp,"   ]\n}\n"); // Analyser,File
+   return(0);
 }
 
 static char config_data[1024*1024];
@@ -691,22 +688,22 @@ int load_config(Config *cfg, char *filename, char *buffer)
    clear_config(cfg); init_user_config(cfg); // setup hardcoded variables
    ptr=config_data;
    if( strncmp(ptr,"{\"Analyzer\":[", 13) != 0 ){
-      fprintf(stderr,"load_config: err1 byte %d\n", ptr-config_data);
+      fprintf(stderr,"load_config: err1 byte %ld\n", ptr-config_data);
        return(-1);
    } ptr += 13;
    if( strncmp(ptr,"{\"Variables\":[", 14) != 0 ){
-      fprintf(stderr,"load_config: err2 byte %d\n", ptr-config_data);
+      fprintf(stderr,"load_config: err2 byte %ld\n", ptr-config_data);
       return(-1);
    } ptr += 14;
    while( 1 ){ // variables
       if( strncmp(ptr,"]},", 3) == 0 ){ ptr+=3; break; }// empty section
       if( strncmp(ptr,"{\"name\":\"", 9) != 0 ){
-         fprintf(stderr,"load_config: err3 byte %d\n", ptr-config_data);
+         fprintf(stderr,"load_config: err3 byte %ld\n", ptr-config_data);
          return(-1);
       } ptr += 9;
       name = ptr; while( *ptr != '"' ){ ++ptr; } *ptr++ = 0;
       if( strncmp(ptr,",\"title\":\"", 10) != 0 ){
-         fprintf(stderr,"load_config: err4 byte %d\n", ptr-config_data);
+         fprintf(stderr,"load_config: err4 byte %ld\n", ptr-config_data);
          return(-1);
       } ptr += 10;
       title = ptr; while( *ptr != '"' ){ ++ptr; } *ptr++ = 0;
@@ -718,32 +715,32 @@ int load_config(Config *cfg, char *filename, char *buffer)
       ptr+=2; break; // skip '},'
    }
    if( strncmp(ptr,"{\"Gates\":[", 10) != 0 ){
-      fprintf(stderr,"load_config: err5 byte %d\n", ptr-config_data);
+      fprintf(stderr,"load_config: err5 byte %ld\n", ptr-config_data);
       return(-1);
    } ptr += 10;
    while( 1 ){ // Gates
       if( strncmp(ptr,"]},", 3) == 0 ){ ptr+=3; break; }// empty section
       if( strncmp(ptr,"{\"name\":\"", 9) != 0 ){
-         fprintf(stderr,"load_config: err6 byte %d\n", ptr-config_data);
+         fprintf(stderr,"load_config: err6 byte %ld\n", ptr-config_data);
          return(-1);
       } ptr += 9;
       name = ptr; while( *ptr != '"' ){ ++ptr; } *ptr++ = 0;
       cfg->lock=1; add_gate(cfg, name); cfg->lock=0;
       if( strncmp(ptr,",\"gateCondition\":[", 18) != 0 ){
-         fprintf(stderr,"load_config: err7 byte %d\n", ptr-config_data);
+         fprintf(stderr,"load_config: err7 byte %ld\n", ptr-config_data);
          return(-1);
       } ptr += 18;
       while( 1 ){ // Gate-Conditions
          if( strncmp(ptr,"{\"indexID\":", 11) != 0 ){
-            fprintf(stderr,"load_config: err8 byte %d\n", ptr-config_data);
+            fprintf(stderr,"load_config: err8 byte %ld\n", ptr-config_data);
             return(-1);
          } ptr += 11; while( *ptr != ',' ){ ++ptr; /* skip index id */ }
          if( strncmp(ptr,",\"Variable\":\"", 13) != 0 ){
-            fprintf(stderr,"load_config: err8b byte %d\n", ptr-config_data);
+            fprintf(stderr,"load_config: err8b byte %ld\n", ptr-config_data);
             return(-1);
          } ptr += 13; var = ptr; while( *ptr != '"' ){ ++ptr; } *ptr++ = 0;
          if( strncmp(ptr,",\"Logic\":\"", 10) != 0 ){
-            fprintf(stderr,"load_config: err8c byte %d\n", ptr-config_data);
+            fprintf(stderr,"load_config: err8c byte %ld\n", ptr-config_data);
             return(-1);
          } ptr += 10;
          if(       strncmp(ptr,"GE",2) == 0 ){ sprintf(op,">=");
@@ -753,15 +750,15 @@ int load_config(Config *cfg, char *filename, char *buffer)
          } else if(strncmp(ptr,"EQ",2) == 0 ){ sprintf(op,"=");
          } else if(strncmp(ptr,"RA",2) == 0 ){ sprintf(op,"RA");
          } else {
-            fprintf(stderr,"load_config:err9 byte %d\n",ptr-config_data);
+            fprintf(stderr,"load_config:err9 byte %ld\n", ptr-config_data);
             return(-1);
          } ptr += 3;
          if( strncmp(ptr,",\"Value\":", 9) != 0 ){
-            fprintf(stderr,"load_config: err9b byte %d\n", ptr-config_data);
+            fprintf(stderr,"load_config: err9b byte %ld\n", ptr-config_data);
             return(-1);
          } ptr += 9; valstr=ptr; while( isdigit(*ptr) ){ ++ptr; } *ptr++ = 0;
          if( sscanf( valstr, "%d", &value) < 1 ){
-            fprintf(stderr,"load_config:errA byte %d\n",ptr-config_data);
+            fprintf(stderr,"load_config:errA byte %ld\n", ptr-config_data);
             return(-1);
          }
          if( (i = next_condname(cfg) ) == -1 ){ return(-1);}
@@ -775,57 +772,57 @@ int load_config(Config *cfg, char *filename, char *buffer)
       ptr += 2; break; // skip '},'
    }
    if( strncmp(ptr,"{\"Histograms\":[", 15) != 0 ){
-      fprintf(stderr,"load_config: errB byte %d\n", ptr-config_data);
+      fprintf(stderr,"load_config: errB byte %ld\n", ptr-config_data);
       return(-1);
    } ptr += 15;
    while( 1 ){ // Histograms
       if( strncmp(ptr,"]},", 3) == 0 ){ ptr+=3; break; }// empty section
       if( strncmp(ptr,"{\"name\":\"",9) != 0 ){
-         fprintf(stderr,"load_config: errC byte %d\n", ptr-config_data);
+         fprintf(stderr,"load_config: errC byte %ld\n", ptr-config_data);
          return(-1);
       } ptr += 9;
       name = ptr; while( *ptr != '"' ){ ++ptr; } *ptr++ = 0;
       //if( strncmp(ptr,"{\"title\":\"",10) != 0 ){
-      //   fprintf(stderr,"load_config: errC byte %d\n", ptr-config_data);
+      //   fprintf(stderr,"load_config: errC byte %ld\n", ptr-config_data);
       //   return(-1);
       //} ptr += 10;
       //title = ptr; while( *ptr != '"' ){ ++ptr; } *ptr++ = 0;
       title = name;
       if( strncmp(ptr,",\"path\":\"", 9) != 0 ){
-         fprintf(stderr,"load_config: errD byte %d\n", ptr-config_data);
+         fprintf(stderr,"load_config: errD byte %ld\n", ptr-config_data);
          return(-1);
       } ptr += 9;
       path = ptr; while( *ptr != '"' ){ ++ptr; } *ptr++ = 0;
       if( strncmp(ptr,",\"Xvariable\":\"", 14) != 0 ){
-         fprintf(stderr,"load_config: errE byte %d\n", ptr-config_data);
+         fprintf(stderr,"load_config: errE byte %ld\n", ptr-config_data);
          return(-1);
       } ptr += 14;
       var = ptr; while( *ptr != '"' ){ ++ptr; } *ptr++ = 0;
       if( strncmp(ptr,",\"Xmin\":", 8) != 0 ){
-         fprintf(stderr,"load_config: errFa byte %d\n", ptr-config_data);
+         fprintf(stderr,"load_config: errFa byte %ld\n", ptr-config_data);
          return(-1);
       } ptr += 8;
       valstr = ptr; while( isdigit(*ptr) ){ ++ptr; } tmp[0]=*ptr; *ptr++=0;
       if( sscanf( valstr, "%d", &val2) < 1 ){
-         fprintf(stderr,"load_config:errFb byte %d\n",ptr-config_data);
+         fprintf(stderr,"load_config:errFb byte %ld\n", ptr-config_data);
             return(-1);
       }
       if( strncmp(ptr,"\"Xmax\":", 7) != 0 ){
-         fprintf(stderr,"load_config: errFc byte %d\n", ptr-config_data);
+         fprintf(stderr,"load_config: errFc byte %ld\n", ptr-config_data);
          return(-1);
       } ptr += 7;
       valstr = ptr; while( isdigit(*ptr) ){ ++ptr; } tmp[0]=*ptr; *ptr++=0;
       if( sscanf( valstr, "%d", &val3) < 1 ){
-         fprintf(stderr,"load_config:errFd byte %d\n",ptr-config_data);
+         fprintf(stderr,"load_config:errFd byte %ld\n", ptr-config_data);
             return(-1);
       }
       if( strncmp(ptr,"\"Xbins\":", 8) != 0 ){
-         fprintf(stderr,"load_config: errFe byte %d\n", ptr-config_data);
+         fprintf(stderr,"load_config: errFe byte %ld\n", ptr-config_data);
          return(-1);
       } ptr += 8;
       valstr = ptr; while( isdigit(*ptr) ){ ++ptr; } tmp[0]=*ptr; *ptr++=0;
       if( sscanf( valstr, "%d", &value) < 1 ){
-         fprintf(stderr,"load_config:errFf byte %d\n",ptr-config_data);
+         fprintf(stderr,"load_config:errFf byte %ld\n", ptr-config_data);
             return(-1);
       }
       if( strncmp(ptr,"\"Yvariable\":\"", 13) != 0 ){
@@ -836,47 +833,47 @@ int load_config(Config *cfg, char *filename, char *buffer)
          ptr += 13;
          var2 = ptr; while( *ptr != '"' ){ ++ptr; } *ptr++ = 0;
          if( strncmp(ptr,",\"Ymin\":", 8) != 0 ){
-            fprintf(stderr,"load_config: errG byte %d\n", ptr-config_data);
+            fprintf(stderr,"load_config: errG byte %ld\n", ptr-config_data);
             return(-1);
          } ptr += 8;
          valstr = ptr; while( isdigit(*ptr) ){++ptr;} tmp[0]=*ptr;*ptr++=0;
          if( sscanf( valstr, "%d", &val5) < 1 ){
-            fprintf(stderr,"load_config:errH byte %d\n",ptr-config_data);
+            fprintf(stderr,"load_config:errH byte %ld\n", ptr-config_data);
                return(-1);
          }
          if( strncmp(ptr,"\"Ymax\":", 7) != 0 ){
-            fprintf(stderr,"load_config: errHa byte %d\n", ptr-config_data);
+            fprintf(stderr,"load_config: errHa byte %ld\n", ptr-config_data);
             return(-1);
          } ptr += 7;
          valstr = ptr; while( isdigit(*ptr) ){++ptr;} tmp[0]=*ptr;*ptr++=0;
          if( sscanf( valstr, "%d", &val6) < 1 ){
-            fprintf(stderr,"load_config:errHb byte %d\n",ptr-config_data);
+            fprintf(stderr,"load_config:errHb byte %ld\n", ptr-config_data);
                return(-1);
          }
          if( strncmp(ptr,"\"Ybins\":", 8) != 0 ){
-            fprintf(stderr,"load_config: errHc byte %d\n", ptr-config_data);
+            fprintf(stderr,"load_config: errHc byte %ld\n", ptr-config_data);
             return(-1);
          } ptr += 8;
          valstr = ptr; while( isdigit(*ptr) ){++ptr;} tmp[0]=*ptr;*ptr++=0;
          if( sscanf( valstr, "%d", &val4) < 1 ){
-            fprintf(stderr,"load_config:errI byte %d\n",ptr-config_data);
+            fprintf(stderr,"load_config:errI byte %ld\n", ptr-config_data);
                return(-1);
          }
          cfg->lock=1;
          add_histo(cfg, name, title, path, value, var, val2, val3, val4, var2,val5,val6); cfg->lock=0;
       }
       if( strncmp(ptr,"\"histogramCondition\":[", 22) != 0 ){
-         fprintf(stderr,"load_config: errJ byte %d\n", ptr-config_data);
+         fprintf(stderr,"load_config: errJ byte %ld\n", ptr-config_data);
             return(-1);
       } ptr += 22;
       while(1){  // Histo gates
          if( strncmp(ptr,"]}", 2) == 0 ){ ptr+=2; break; } // empty list
          if( strncmp(ptr,"{\"indexID\":", 11) != 0 ){
-            fprintf(stderr,"load_config: errK byte %d\n",ptr-config_data);
+            fprintf(stderr,"load_config: errK byte %ld\n", ptr-config_data);
             return(-1);
          } ptr += 11; while( isdigit(*ptr) || *ptr=='-' ){++ptr;}
          if( strncmp(ptr,",\"Gate\":\"", 9) != 0 ){
-            fprintf(stderr,"load_config: errKa byte %d\n",ptr-config_data);
+            fprintf(stderr,"load_config: errKa byte %ld\n", ptr-config_data);
             return(-1);
          } ptr += 9;
          valstr = ptr; while( *ptr != '"' ){ ++ptr; } *ptr++ = 0;
@@ -888,33 +885,33 @@ int load_config(Config *cfg, char *filename, char *buffer)
       ptr += 3; break; // skip closing ]},
    }
    if( strncmp(ptr,"{\"Globals\":[", 12) != 0 ){
-      fprintf(stderr,"load_config: errL byte %d\n", ptr-config_data);
+      fprintf(stderr,"load_config: errL byte %ld\n", ptr-config_data);
       return(-1);
    } ptr += 12;
    while( 1 ){ // Globals
       if( strncmp(ptr,"]},", 3) == 0 ){ ptr+=3; break; }// empty section
       if( strncmp(ptr,"{\"name\":\"", 9) != 0 ){
-         fprintf(stderr,"load_config: errM byte %d\n", ptr-config_data);
+         fprintf(stderr,"load_config: errM byte %ld\n", ptr-config_data);
          return(-1);
       } ptr += 9;
       name = ptr; while( *ptr != '"' ){ ++ptr; } *ptr++ = 0;
       if( strncmp(ptr,",\"min\":",7) != 0 ){
-         fprintf(stderr,"load_config: errN byte %d\n", ptr-config_data);
+         fprintf(stderr,"load_config: errN byte %ld\n", ptr-config_data);
          return(-1);
       } ptr += 7;
       valstr = ptr; while( isdigit(*ptr) || *ptr=='-' ){++ptr;} *ptr++ = 0;
       if( sscanf( valstr, "%d", &value) < 1 ){
-         fprintf(stderr,"load_config:errO byte %d\n",ptr-config_data);
+         fprintf(stderr,"load_config:errO byte %ld\n", ptr-config_data);
          return(-1);
       }
       if( strncmp(ptr,"\"max\":",6) != 0 ){
-         fprintf(stderr,"load_config: errP byte %d\n", ptr-config_data);
+         fprintf(stderr,"load_config: errP byte %ld\n", ptr-config_data);
          return(-1);
       } ptr += 6;
       valstr = ptr; while( isdigit(*ptr) || *ptr=='-' ){++ptr;} *ptr++ = 0;
       // last char written over with 0 was '}'
       if( sscanf( valstr, "%d", &val2) < 1 ){
-         fprintf(stderr,"load_config:errQ byte %d\n",ptr-config_data);
+         fprintf(stderr,"load_config:errQ byte %ld\n", ptr-config_data);
          return(-1);
       }
       cfg->lock=1; add_global(cfg, name, value, val2); cfg->lock=0;
@@ -922,60 +919,60 @@ int load_config(Config *cfg, char *filename, char *buffer)
       ptr+=2; break; // skip '},'
    }
    if( strncmp(ptr,"{\"Calibrations\":[", 17) != 0 ){
-      fprintf(stderr,"load_config: errR byte %d\n", ptr-config_data);
+      fprintf(stderr,"load_config: errR byte %ld\n", ptr-config_data);
       return(-1);
    } ptr += 17;
    while( 1 ){ // Calibrations
       if( strncmp(ptr,"]},", 3) == 0 ){ ptr+=3; break; }// empty section
       if( strncmp(ptr,"{\"name\":\"", 9) != 0 ){
-         fprintf(stderr,"load_config: errS byte %d\n", ptr-config_data);
+         fprintf(stderr,"load_config: errS byte %ld\n", ptr-config_data);
          return(-1);
       } ptr += 9;
       name = ptr; while( *ptr != '"' ){ ++ptr; } *ptr++ = 0;
       if( strncmp(ptr,",\"address\":",11) != 0 ){
-         fprintf(stderr,"load_config: errV byte %d\n", ptr-config_data);
+         fprintf(stderr,"load_config: errV byte %ld\n", ptr-config_data);
          return(-1);
       } ptr += 11; valstr = ptr;
       while( isdigit(*ptr) || *ptr=='-' || *ptr=='.' ){++ptr;} *ptr++ = 0;
       if( sscanf( valstr, "%d", &address) < 1 ){
-         fprintf(stderr,"load_config:errX byte %d\n",ptr-config_data);
+         fprintf(stderr,"load_config:errX byte %ld\n", ptr-config_data);
          return(-1);
       }
       if( strncmp(ptr,"\"datatype\":",11) != 0 ){
-         fprintf(stderr,"load_config: errV byte %d\n", ptr-config_data);
+         fprintf(stderr,"load_config: errV byte %ld\n", ptr-config_data);
          return(-1);
       } ptr += 11; valstr = ptr;
       while( isdigit(*ptr) || *ptr=='-' || *ptr=='.' ){++ptr;} *ptr++ = 0;
       if( sscanf( valstr, "%d", &type) < 1 ){
-         fprintf(stderr,"load_config:errX byte %d\n",ptr-config_data);
+         fprintf(stderr,"load_config:errX byte %ld\n", ptr-config_data);
          return(-1);
       }
       if( strncmp(ptr,"\"offset\":",9) != 0 ){
-         fprintf(stderr,"load_config: errT byte %d\n", ptr-config_data);
+         fprintf(stderr,"load_config: errT byte %ld\n", ptr-config_data);
          return(-1);
       } ptr += 9; valstr = ptr;
       while( isdigit(*ptr) || *ptr=='-' || *ptr=='.' ){++ptr;} *ptr++ = 0;
       if( sscanf( valstr, "%f", &offset) < 1 ){
-         fprintf(stderr,"load_config:errU byte %d\n",ptr-config_data);
+         fprintf(stderr,"load_config:errU byte %ld\n", ptr-config_data);
          return(-1);
       }
       if( strncmp(ptr,"\"gain\":",7) != 0 ){
-         fprintf(stderr,"load_config: errV byte %d\n", ptr-config_data);
+         fprintf(stderr,"load_config: errV byte %ld\n", ptr-config_data);
          return(-1);
       } ptr += 7; valstr = ptr;
       while( isdigit(*ptr) || *ptr=='-' || *ptr=='.' ){++ptr;} *ptr++ = 0;
       if( sscanf( valstr, "%f", &gain) < 1 ){
-         fprintf(stderr,"load_config:errX byte %d\n",ptr-config_data);
+         fprintf(stderr,"load_config:errX byte %ld\n", ptr-config_data);
          return(-1);
       }
       if( strncmp(ptr,"\"quad\":",7) != 0 ){
-         fprintf(stderr,"load_config: errY byte %d\n", ptr-config_data);
+         fprintf(stderr,"load_config: errY byte %ld\n", ptr-config_data);
          return(-1);
       } ptr += 7; valstr = ptr;
       while(isdigit(*ptr)||*ptr=='.'||*ptr=='-'||*ptr=='+'||*ptr=='e'){++ptr;}
       *ptr++ = 0; // last char written over with 0 was '}'
       if( sscanf( valstr, "%f", &quad) < 1 ){
-         fprintf(stderr,"load_config:errZ byte %d\n",ptr-config_data);
+         fprintf(stderr,"load_config:errZ byte %ld\n", ptr-config_data);
          return(-1);
       }
       cfg->lock=1; edit_calibration(cfg,name,offset,gain,quad,address,type,1); cfg->lock=0;
@@ -983,17 +980,17 @@ int load_config(Config *cfg, char *filename, char *buffer)
       ptr+=2; break; // skip '},'
    }
    if( strncmp(ptr,"{\"Directories\":[", 16) != 0 ){
-      fprintf(stderr,"load_config: errZA byte %d\n", ptr-config_data);
+      fprintf(stderr,"load_config: errZA byte %ld\n", ptr-config_data);
       return(-1);
    } ptr += 16;
    while(1){
       if( strncmp(ptr,"{\"name\":\"", 9) != 0 ){
-         fprintf(stderr,"load_config: errZB byte %d\n", ptr-config_data);
+         fprintf(stderr,"load_config: errZB byte %ld\n", ptr-config_data);
          return(-1);
       } ptr += 9;
       name = ptr; while( *ptr != '"' ){ ++ptr; } *ptr++ = 0;
       if( strncmp(ptr,",\"Path\":\"", 9) != 0 ){
-         fprintf(stderr,"load_config: errZC byte %d\n", ptr-config_data);
+         fprintf(stderr,"load_config: errZC byte %ld\n", ptr-config_data);
          return(-1);
       } ptr += 9;
       path = ptr; while( *ptr != '"' ){ ++ptr; } *ptr++ = 0;
@@ -1003,17 +1000,17 @@ int load_config(Config *cfg, char *filename, char *buffer)
       ptr+=2; break; // skip '},'
    }
    if( strncmp(ptr,"{\"Midas\":[", 10) != 0 ){
-      fprintf(stderr,"load_config: errZD byte %d\n", ptr-config_data);
+      fprintf(stderr,"load_config: errZD byte %ld\n", ptr-config_data);
       return(-1);
    } ptr += 10;
    while(1){
       if( strncmp(ptr,"{\"name\":\"", 9) != 0 ){
-         fprintf(stderr,"load_config: errZE byte %d\n", ptr-config_data);
+         fprintf(stderr,"load_config: errZE byte %ld\n", ptr-config_data);
          return(-1);
       } ptr += 9;
       name = ptr; while( *ptr != '"' ){ ++ptr; } *ptr++ = 0;
       if( strncmp(ptr,",\"Value\":\"", 10) != 0 ){
-         fprintf(stderr,"load_config: errZF byte %d\n", ptr-config_data);
+         fprintf(stderr,"load_config: errZF byte %ld\n", ptr-config_data);
          return(-1);
       } ptr += 10;
       valstr = ptr; while( *ptr != '"' ){ ++ptr; } *ptr++ = 0;
@@ -1023,7 +1020,7 @@ int load_config(Config *cfg, char *filename, char *buffer)
       ++ptr; break; // skip '}'
    }
    if( strncmp(ptr,"]}", 2) != 0 || ptr+2-config_data != len ){
-      fprintf(stderr,"load_config: errR near %d\n", ptr-config_data);
+      fprintf(stderr,"load_config: errR near %ld\n", ptr-config_data);
       return(-1);
    }
    return(0);
@@ -1227,12 +1224,12 @@ int save_config(Config *cfg, char *filename, int overwrite)
    if( cfg->lock ){ return(-1); } // config file currently being read
    if( !overwrite ){
       if( (fp=fopen(filename,"r")) != NULL ){
-         fprintf(stderr,"save_config: file %d already exists\n", filename);
+         fprintf(stderr,"save_config: file %s already exists\n", filename);
          fclose(fp); return(-1);
       }
    }
    if( (fp=fopen(filename,"w")) == NULL ){
-      fprintf(stderr,"save_config: cant open %d to write\n", filename);
+      fprintf(stderr,"save_config: cant open %s to write\n", filename);
       return(-1);
    }
    write_config(cfg, fp);
@@ -2098,6 +2095,7 @@ int read_datafile_info(Sortfile *sort, char *path)
       if( done == 15 ){ break; } // 1st 4 bits of done all set
    }
    fclose(fp);
+   return(0);
 }
 
 int send_file_details(char *path, int fd)
@@ -2146,7 +2144,7 @@ int add_sortfile(char *path, char *histodir, char *confdir, char *calsrc)
    if( (dlen = i) == -1 ){ dlen = 0; } // no directory separator in path
    if( (sort->data_dir = malloc(dlen + 2)) == NULL ){
       fprintf(stderr,"can't alloc string for data_dir");
-      free_sortfile(); return(-1);
+      free_sortfile(&filelist[arg->current_filenum]); return(-1);
    }
    if( dlen == 0 ){ sprintf(sort->data_dir, ".");
    } else {
@@ -2156,7 +2154,7 @@ int add_sortfile(char *path, char *histodir, char *confdir, char *calsrc)
    }
    if( (sort->data_name = malloc(plen-dlen+1)) == NULL ){
       fprintf(stderr,"can't alloc string for :%s", path);
-      free_sortfile(); return(-1);
+      free_sortfile(&filelist[arg->current_filenum]); return(-1);
    }
    memcpy((char *)sort->data_name, path+dlen, plen-dlen);
    *(sort->data_name+plen-dlen) = 0;
@@ -2180,11 +2178,11 @@ int add_sortfile(char *path, char *histodir, char *confdir, char *calsrc)
    }
    if( (sort->histo_name = malloc(plen-dlen-ext_len+5)) == NULL ){
       fprintf(stderr,"can't alloc string for histoname");
-      free_sortfile(); return(-1);
+      free_sortfile(&filelist[arg->current_filenum]); return(-1);
    }
    if( (sort->conf_name = malloc(plen-dlen-ext_len+5+1)) == NULL ){ // .json = 5bytes
       fprintf(stderr,"can't alloc string for configname");
-      free_sortfile(); return(-1);
+      free_sortfile(&filelist[arg->current_filenum]); return(-1);
    }
    memcpy((char *)sort->histo_name, path+dlen, plen-dlen-ext_len);
    sprintf(sort->histo_name+plen-dlen-ext_len,".tar");
@@ -2197,7 +2195,7 @@ int add_sortfile(char *path, char *histodir, char *confdir, char *calsrc)
       plen=strlen(histodir);
       if( (sort->histo_dir = malloc(plen+1)) == NULL ){
          fprintf(stderr,"can't alloc string for histodir");
-         free_sortfile(); return(-1);
+         free_sortfile(&filelist[arg->current_filenum]); return(-1);
       }
       memcpy((char *)sort->histo_dir, histodir, plen);
       *(sort->histo_dir+plen) = 0;
@@ -2209,7 +2207,7 @@ int add_sortfile(char *path, char *histodir, char *confdir, char *calsrc)
       plen=strlen(confdir);
       if( (sort->conf_dir = malloc(plen+1)) == NULL ){
          fprintf(stderr,"can't alloc string for configdir");
-         free_sortfile(); return(-1);
+         free_sortfile(&filelist[arg->current_filenum]); return(-1);
       }
       memcpy((char *)sort->conf_dir, confdir, plen);
       *(sort->conf_dir+plen) = 0;
@@ -2221,12 +2219,13 @@ int add_sortfile(char *path, char *histodir, char *confdir, char *calsrc)
       plen=strlen(calsrc);
       if( (sort->cal_src = malloc(plen+1)) == NULL ){
          fprintf(stderr,"can't alloc string for cal_src");
-         free_sortfile(); return(-1);
+         free_sortfile(&filelist[arg->current_filenum]); return(-1);
       }
       memcpy((char *)sort->cal_src, calsrc, plen);
       *(sort->cal_src+plen) = 0;
    }
    if( ++arg->final_filenum == FILE_QLEN ){ arg->final_filenum = 0; } //wrap
+   return(0);
 }
 
 //////////////////////  sorting loop /////////////////////
@@ -2333,6 +2332,7 @@ int close_sortfiles(Sort_status *arg)
    if( arg->data_fp != NULL ){ fclose(arg->data_fp); }
    fclose(arg->histo_fp);
    free_sortfile(&filelist[arg->current_filenum]);
+   return(0);
 }
 
 int free_sortfile(Sortfile *sort)
@@ -2343,7 +2343,8 @@ int free_sortfile(Sortfile *sort)
    if( sort->data_name  != NULL ){ free(sort->data_name);  }
    if( sort->conf_dir   != NULL ){ free(sort->conf_dir);   }
    if( sort->conf_name  != NULL ){ free(sort->conf_name);  }
-   memset((char *)sort, sizeof(Sortfile), 0);
+   memset((char *)sort, 0, sizeof(Sortfile));
+   return(0);
 }
 
 // read sun/subrun from filename, then count #digits in each
@@ -2367,7 +2368,7 @@ int run_number(Sort_status *arg, Sortfile *sort, char *name)
             fprintf(stderr,"can't read run and subrun number in %s\n", name);
             return(-1);
          }
-         sort->subrun_digits == -1; ++ptr; while( 1 ){
+         sort->subrun_digits = -1; ++ptr; while( 1 ){
             if( !isdigit(*ptr) ){
                sort->subrun_digits = ptr-name-4-sort->run_digits;  break;
             }
@@ -2407,7 +2408,7 @@ int run_number(Sort_status *arg, Sortfile *sort, char *name)
    return(0);
 }
 
-int end_current_sortile(int fd)
+int end_current_sortfile(int fd)
 {
    Sort_status *arg;
    Sortfile *sort;
@@ -2781,7 +2782,6 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
               // Only make the value string as big as it needs to be for the maximum value in that subsubmatrix
               list_max[0] = list_max[1] = list_max[2] = list_max[3] = 0;
               list_valueSize[0] = list_valueSize[1] = list_valueSize[2] = list_valueSize[3] = 0;
-              list_valueSize[0];
               for(m=0; m<16; m++){
                 for(l=0; l<16; l++){
                   listIndex = floor((16*m+l)/64);
@@ -2821,8 +2821,8 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
                     // Print the string of coordinates first. Then the values.
                     if((16*m+l)>0){
                       // Write out the strings from the previous quarter of this submatrix
-                      strncat(coordString,"\",", 2);
-                      strncat(valueString,"\",", 2);
+                      strcat(coordString,"\",");
+                      strcat(valueString,"\",");
                       put_line(fd, coordString, strlen(coordString) );
                       put_line(fd, valueString, strlen(valueString) );
                     }
@@ -2835,8 +2835,8 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
                   if( val == 0 ){
                     if((16*m+l)>254){
                       // End of this submatrix so write out the final strings
-                      strncat(coordString,"\",", 2);
-                      strncat(valueString,"\"", 1);
+                      strcat(coordString,"\",");
+                      strcat(valueString,"\"");
                       put_line(fd, coordString, strlen(coordString) );
                       put_line(fd, valueString, strlen(valueString) );
                     }
@@ -2848,7 +2848,7 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
                   if(val1 < 64 || val1 > 127){ fprintf(stdout,"List type %d: Illegal coordinate character ASCII code, %d\n",submatrix_type[pos], val1); }
                   if(val1==92){ val1=60; }
                   sprintf(tmp,"%c", val1 );
-                  strncat(coordString, tmp , strlen(tmp) );
+                  strcat(coordString, tmp );
 
                   // Add this value to the string
                   valCount = list_valueSize[listIndex];
@@ -2857,15 +2857,15 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
                     if(val1 < 64 || val1 > 127){ fprintf(stdout,"Loop List type %d: Illegal character ASCII code, %d\n",submatrix_type[pos],val1); }
                     if(val1==92){ val1=60; }
                     sprintf(tmp,"%c", val1 );
-                    strncat(valueString, tmp , strlen(tmp) );
+                    strcat(valueString, tmp );
                     --valCount;
                   }
 
                   ++count;
                   if((16*m+l)>254){
                     // End of this submatrix so write out the final strings
-                    strncat(coordString,"\",", 2);
-                    strncat(valueString,"\"", 1);
+                    strcat(coordString,"\",");
+                    strcat(valueString,"\"");
                     put_line(fd, coordString, strlen(coordString) );
                     put_line(fd, valueString, strlen(valueString) );
                   }
@@ -2894,7 +2894,7 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
                 if(val1 < 64 || val1 > 127){ fprintf(stdout,"Loop Array type %d: Illegal character ASCII code, %d\n",submatrix_type[pos],val1); }
                 if(val1==92){ val1=60; }
                 sprintf(tmp,"%c", val1 );
-                strncat(valueString, tmp , strlen(tmp) );
+                strcat(valueString, tmp );
                 --valCount;
               }
               ++count;
@@ -2903,7 +2903,7 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
           }// end of for m
 
           // Add the trailing quotation marks and send the string
-          strncat(valueString,"\"", 1);
+          strcat(valueString,"\"");
           put_line(fd, valueString, strlen(valueString) );
 
         }

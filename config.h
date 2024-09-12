@@ -10,6 +10,22 @@
 
 #include "grif-replay.h"
 
+int send_spectrum_list(char *name, int fd);
+int send_spectrum(int num, char urlarg[][STRING_LEN], char *, int fd);
+int send_sort_status(int fd);
+int send_datafile_list(char *path, int fd, int type);
+int send_histofile_list(char *path, int fd);
+int send_file_details(char *path, int fd);
+int add_sortfile(char *path, char *histodir, char *confdir, char *calsrc);
+int open_next_sortfiles(Sort_status *arg);
+int free_sortfile(Sortfile *sort);
+int close_sortfiles(Sort_status *arg);
+int end_current_sortfile(int fd);
+void unload_midas_module();
+int pre_sort(int frag_idx, int end_idx);
+int user_addto_window(int win_strt, int new_frag);
+int default_sort(int win_idx, int frag_idx, int flag);
+int sort_built_event(int window_start, int win_end);
 /////////////////////////////////////////////////////////////////////////
 /////////////////////       Histograms       ////////////////////////////
 /////////////////////////////////////////////////////////////////////////
@@ -32,7 +48,7 @@ typedef struct sortvar_struct {     // sortvars used by histos AND conditions
    int value;      int offset;    int dtype;     //  but "use_count" only used
    int use_count_x;  int valid;   int local;     //  to refer to histo_use
    Histogram *histo_list_x[MAX_HISTOGRAMS];      // (inc/dec in add/rmv_histo)
-   char name[STRINGLEN]; char title[2*STRINGLEN];  
+   char name[STRINGLEN]; char title[2*STRINGLEN];
 } Sortvar;
 
 typedef struct cond_struct {      // use count inc/dec when un/applying gates
@@ -58,7 +74,7 @@ typedef struct th2i_struct TH2I;
 
 struct th1i_struct {
    int      type;  TH1I    *next;   char     path[FOLDER_PATH_LENGTH];
-   int     xbins;  int     ybins;   char          title[TITLE_LENGTH]; 
+   int     xbins;  int     ybins;   char          title[TITLE_LENGTH];
    int     *data;  int valid_bins;  char        handle[HANDLE_LENGTH];
    int underflow;  int   overflow;
    int   entries;  int  num_gates;  char  *gate_names[MAX_HISTO_GATES];
@@ -73,7 +89,7 @@ struct th1i_struct {
 };
 struct th2i_struct { // float has around 24bits integer precision
    int      type;  TH1I    *next;   char     path[FOLDER_PATH_LENGTH];
-   int     xbins;  int     ybins;   char          title[TITLE_LENGTH]; 
+   int     xbins;  int     ybins;   char          title[TITLE_LENGTH];
    int     *data;  int valid_bins;  char        handle[HANDLE_LENGTH];
    int underflow;  int   overflow;
    int   entries;  int  num_gates;  char  *gate_names[MAX_HISTO_GATES];
@@ -101,7 +117,7 @@ typedef struct config_set_struct {
    int current_depth;    Folder *treepath[FOLDER_PATH_LENGTH];            // length 2296
    int ncal;             Cal_coeff *calib[MAX_CALIB];
    int nglobal;          Global *globals[MAX_GLOBALS];
-   int nconds;           Cond  *condlist[MAX_CONDS];       //   sorted list 
+   int nconds;           Cond  *condlist[MAX_CONDS];       //   sorted list
    int ngates;           Gate  *gatelist[MAX_GATES];//(inactive at end)           47384
    int nusedvar;         Sortvar *usedvars[MAX_SORT_VARS];
    int nuser;            Histogram *user_histos[MAX_HISTOGRAMS];
@@ -115,12 +131,16 @@ typedef struct config_set_struct {
 
 extern Config *configs[MAX_CONFIGS]; // start unallocated
 
+extern int init_default_histos(Config *cfg, Sort_status *arg);
 extern int remove_histo(Config *cfg, char *name);
 extern int add_histo(Config *cfg, char *path, char *name, char *title, int xbins, char *xvarname, int xmin, int max, int ybins, char *yvarname, int ymin, int ymax);
 extern Histogram *find_histo(Config *cfg, char *name);
 
-extern Config *add_config();
+extern Config *add_config(char *name);
 extern int remove_config(Config *cfg);
+extern int next_condname(Config *cfg);
+extern int sum_histos(Config *cfg, int num, char url_args[][STRING_LEN], int fd);
+extern int set_calibration(Config *cfg, int num, char url_args[][STRING_LEN], int fd);
 
 /////////////////////////////////////////////////////////////////////////
 /////////////////////          Gains         ////////////////////////////
@@ -171,6 +191,11 @@ extern int add_cond_to_gate(Config *cfg, char *gatename, char *condname);
 /////////////////////////////////////////////////////////////////////////
 
 extern int init_config();
+extern int init_user_config(Config *cfg);
+extern int init_default_config(Config *cfg);
+extern int write_config(Config *cfg, FILE *fp);
+extern int copy_config(Config *src, Config *dst);
+extern int clear_config(Config *cfg);
 extern int delete_config(Config *cfg);
 extern int load_config(Config *cfg, char *filename, char *buffer);
 extern int save_config(Config *cfg, char *filename, int overwrite);
@@ -179,97 +204,97 @@ extern int set_directory(Config *cfg, char *name, char *path);
 extern int set_midas_param(Config *cfg, char *name, char *value);
 
 #define HPGeE        0 // HPGE
-#define HPGeA        1 // 
-#define HPGeT        2 // 
-#define HPGeTS       3 // 
-#define HPGePH       4 // 
-#define HPGeC        5 // 
-#define HPGeCL       6 // 
-#define HPGePU       7 // 
-#define HPGeIP       8 // 
-#define HPGeDT       9 // 
+#define HPGeA        1 //
+#define HPGeT        2 //
+#define HPGeTS       3 //
+#define HPGePH       4 //
+#define HPGeC        5 //
+#define HPGeCL       6 //
+#define HPGePU       7 //
+#define HPGeIP       8 //
+#define HPGeDT       9 //
 #define HPGeEU      10 // #
-#define HPGeAU      11 // 
-#define GRGTHETA    12 // 
-#define GRGPHI      13 // 
-#define CLVTHETA    14 // 
-#define CLVPHI      15 // 
+#define HPGeAU      11 //
+#define GRGTHETA    12 //
+#define GRGPHI      13 //
+#define CLVTHETA    14 //
+#define CLVPHI      15 //
 #define SEPE        16 // SCEPTAR
-#define SEPT        17 // 
-#define SEPTS       18 // 
-#define EPPH        19 // 
-#define SEPPU       20 // 
-#define SEPTHETA    21 // 
-#define SEPPH       22 // 
-#define SEPNUM      23 // 
+#define SEPT        17 //
+#define SEPTS       18 //
+#define EPPH        19 //
+#define SEPPU       20 //
+#define SEPTHETA    21 //
+#define SEPPH       22 //
+#define SEPNUM      23 //
 #define PACE        24 // PACES
-#define PACT        25 // 
-#define PACTS       26 // 
-#define PACPH       27 // 
-#define PACPU       28 // 
-#define PACTHETA    29 // 
-#define PACPHI      30 // 
-#define PACNUM      31 // 
+#define PACT        25 //
+#define PACTS       26 //
+#define PACPH       27 //
+#define PACPU       28 //
+#define PACTHETA    29 //
+#define PACPHI      30 //
+#define PACNUM      31 //
 #define LBLE        32 // LaBr3
-#define LBLT        33 // 
-#define LBLTS       34 // 
-#define LBLPH       35 // 
-#define LBLPU       36 // 
-#define LBLTHETA    37 // 
-#define LBLPHI      38 // 
-#define LBLNUM      39 // 
-#define LBT         40 // TACs  
-#define LBTT        41 // 
-#define LBTTS       42 // 
-#define LBTPH       43 // 
-#define LBTPU       44 // 
-#define LBTNUM      45 // 
-#define GRSE        46 // Clover BGO 
-#define GRST        47 // 
-#define GRSTS       48 // 
-#define GRSPH       49 // 
-#define GRSPU       50 // 
-#define GRSNUM      51 // 
-#define GRSPOS      52 // 
-#define GRSTYPE     53 // 
-#define LBSE        54 // Ancillary BGO 
-#define LBST        55 // 
-#define LBSTS       56 // 
-#define LBSPH       57 // 
-#define LBSPU       58 // 
-#define LBSNUM      59 // 
-#define LBSPOS      60 // 
-#define MIDAS_Time  61 // Time Differences 
-#define TD_GRG_GRG  62 // 
-#define TD_SEP_SEP  63 // 
-#define TD_PAC_PAC  64 // 
-#define TD_LBL_LBL  65 // 
-#define TSD_GRG_GRG 66 // 
-#define TSD_SEP_SEP 67 // 
-#define TSD_PAC_PAC 68 // 
-#define TSD_LBL_LBL 69 // 
-#define TD_GRG_SEP  70 // 
-#define TSD_GRG_SEP 71 // 
-#define TD_GRG_PAC  72 // 
-#define TSD_GRG_PAC 73 // 
-#define TD_SEP_PAC  74 // 
-#define TSD_SEP_PAC 75 // 
-#define TD_GRG_LBL  76 // 
-#define TSD_GRG_LBL 77 // 
-#define TD_SEP_LBL  78 // 
-#define TSD_SEP_LBL 79 // 
+#define LBLT        33 //
+#define LBLTS       34 //
+#define LBLPH       35 //
+#define LBLPU       36 //
+#define LBLTHETA    37 //
+#define LBLPHI      38 //
+#define LBLNUM      39 //
+#define LBT         40 // TACs
+#define LBTT        41 //
+#define LBTTS       42 //
+#define LBTPH       43 //
+#define LBTPU       44 //
+#define LBTNUM      45 //
+#define GRSE        46 // Clover BGO
+#define GRST        47 //
+#define GRSTS       48 //
+#define GRSPH       49 //
+#define GRSPU       50 //
+#define GRSNUM      51 //
+#define GRSPOS      52 //
+#define GRSTYPE     53 //
+#define LBSE        54 // Ancillary BGO
+#define LBST        55 //
+#define LBSTS       56 //
+#define LBSPH       57 //
+#define LBSPU       58 //
+#define LBSNUM      59 //
+#define LBSPOS      60 //
+#define MIDAS_Time  61 // Time Differences
+#define TD_GRG_GRG  62 //
+#define TD_SEP_SEP  63 //
+#define TD_PAC_PAC  64 //
+#define TD_LBL_LBL  65 //
+#define TSD_GRG_GRG 66 //
+#define TSD_SEP_SEP 67 //
+#define TSD_PAC_PAC 68 //
+#define TSD_LBL_LBL 69 //
+#define TD_GRG_SEP  70 //
+#define TSD_GRG_SEP 71 //
+#define TD_GRG_PAC  72 //
+#define TSD_GRG_PAC 73 //
+#define TD_SEP_PAC  74 //
+#define TSD_SEP_PAC 75 //
+#define TD_GRG_LBL  76 //
+#define TSD_GRG_LBL 77 //
+#define TD_SEP_LBL  78 //
+#define TSD_SEP_LBL 79 //
 #define ANG_GRG_GRG 80 // Angular Differences [HpGeDistDependant]
-#define ANG_CLV_CLV 81 // 
-#define ANG_SEP_SEP 82 // 
-#define ANG_PAC_PAC 83 // 
-#define ANG_LBL_LBL 84 // 
-#define ANG_GRG_SEP 85 // 
-#define ANG_GRG_PAC 86 // 
-#define ANG_GRG_LBL 87 // 
-#define ANG_PAC_LBL 88 // 
-#define ANG_SEP_LBL 89 // 
+#define ANG_CLV_CLV 81 //
+#define ANG_SEP_SEP 82 //
+#define ANG_PAC_PAC 83 //
+#define ANG_LBL_LBL 84 //
+#define ANG_GRG_SEP 85 //
+#define ANG_GRG_PAC 86 //
+#define ANG_GRG_LBL 87 //
+#define ANG_PAC_LBL 88 //
+#define ANG_SEP_LBL 89 //
 #define PPG_NUM     90 // Cycle Timing (PPG events)
-#define PPG_TIME    91 // 
-#define PPG_PAT     92 // 
+#define PPG_TIME    91 //
+#define PPG_PAT     92 //
 
 #endif

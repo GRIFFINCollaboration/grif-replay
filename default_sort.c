@@ -57,6 +57,15 @@ static float  offs_table[MAX_DAQSIZE]; float *offsets = offs_table;
 static float  quad_table[MAX_DAQSIZE]; float   *quads = quad_table;
 static short *chan_address = addr_table;
 extern Grif_event grif_event[MAX_COINC_EVENTS];
+
+// Default sort function declarations
+extern int init_chan_histos(Config *cfg);
+extern int init_singles_histos(Config *cfg);
+extern int init_coinc_histos(Config *cfg);
+extern int fill_chan_histos(Grif_event *ptr);
+extern int fill_singles_histos(Grif_event *ptr);
+extern int fill_coinc_histos(int win_idx, int frag_idx);
+
 // odb tables need to be transferred into config, which is saved with histos
 int init_default_histos(Config *cfg, Sort_status *arg)
 {
@@ -914,7 +923,7 @@ int fill_coinc_histos(int win_idx, int frag_idx)
    return(0);
 }
 
-int reorder_rcmp_US_strips(c1){
+int reorder_rcmp_US_strips(int c1){
 // Per GRIFFIN elog, https://grsilog.triumf.ca/GRIFFIN/25966
 switch(c1){
 
@@ -956,7 +965,7 @@ switch(c1){
 return(c1);
 }
 
-int reorder_rcmp_DS_strips(c1){
+int reorder_rcmp_DS_strips(int c1){
 // Per GRIFFIN elog, https://grsilog.triumf.ca/GRIFFIN/25968
 switch(c1){
 

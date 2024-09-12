@@ -77,6 +77,8 @@ typedef struct sortmetrics_struct {
 
 extern void midas_status(int), reorder_status(int), grif_status(int);
 extern int gen_derived_odb_tables();
+extern int open_next_subrun(Sort_status *arg);
+extern int read_odb_items(int len, int *bank_data);
 
 #endif
 

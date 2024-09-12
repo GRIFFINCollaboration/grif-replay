@@ -6,12 +6,16 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 #include <time.h>
 #include <pthread.h>
 #include "config.h"
+#include "histogram.h"
 #include "grif-format.h"
 #include "midas-format.h"
+
+int sort_next_file(Config *cfg, Sort_status *sort);
 
 int coinc_events_cutoff = 25;
 char midas_runtitle[STRINGLEN];
@@ -143,7 +147,7 @@ int sort_next_file(Config *cfg, Sort_status *sort)
    } else {
       unload_midas_module();
    }
-   printf("File took %d seconds\n", end-start);
+   printf("File took %ld seconds\n", end-start);
    show_coinc_stats();
    return(0);
 }
@@ -221,7 +225,7 @@ static void online_loop(Config *cfg, Sort_status *sort)
          }
       }
       copy_config(configs[0], configs[1]); // prepare for next run
-      printf("File took %d seconds\n", end-start);
+      printf("File took %ld seconds\n", end-start);
       show_coinc_stats();
    }
    unload_midas_module();

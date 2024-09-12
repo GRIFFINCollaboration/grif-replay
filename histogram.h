@@ -38,12 +38,14 @@
 extern int open_folder(Config *cfg, char* path);
 extern int close_folder(Config *cfg);
 extern int Zero_Histograms(Config *cfg);
+extern int delete_histograms(Config *cfg);
 extern TH1I *hist_querytitle(Config *cfg, char *name);
 extern TH1I *hist_queryhandle(Config *cfg, char *name);
 extern int write_histofile(Config *cfg, FILE *fp);
 extern Config *read_histofile(char *filename, int config_only);
 extern char *next_histotitle(Config *cfg, int reset);
 extern char *next_histotree_item(Config *cfg, int rst, int *type, int *asc);
+extern int delete_histo_tree(Config *cfg);
 extern Config *add_histoset();
 extern TH1I *H1_BOOK(Config *cfg, char *name, char *title, int xbins, int xmin, int xmax);
 extern int TH1I_Reset(TH1I *);
@@ -57,5 +59,6 @@ extern int TH2I_Fill(TH2I *, int xbin, int ybin, int count);
 extern int TH2I_SetBinContent(TH2I *, int xbin, int ybin, int value);
 extern int TH2I_GetBinContent(TH2I *, int xbin, int ybin);
 extern int TH2I_SetValidLen(TH2I *, int bins);
+extern int write_th1I(FILE *fp, void *ptr);
 
 #endif

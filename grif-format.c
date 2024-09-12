@@ -32,7 +32,6 @@ unsigned tmp_buf[256];
 volatile long grif_evcount;
 volatile long grifevent_wrpos;
 extern volatile long grifevent_rdpos;
-extern int process_event(Grif_event *ptr, int slot);
 static int unpack_grif3_event(unsigned *buf, int len, Grif_event *, int);
 extern Grif_event grif_event[MAX_COINC_EVENTS];
 // for a single coincidence window - can mark start of window wrt latest frag

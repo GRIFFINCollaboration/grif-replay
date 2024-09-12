@@ -36,3 +36,14 @@ typedef struct griffin_fragment_struct { // was 74 bytes, now ?
 
 // midas-timestamp should be redundant and equal to BOR time+timestamp
 //   can just check this in midas part
+
+extern int process_event(Grif_event *ptr, int slot);
+extern int apply_gains(Grif_event *ptr);
+extern int insert_presort_win(Grif_event *ptr, int slot);
+extern int insert_sort_win(Grif_event *ptr, int slot);
+extern int GetIDfromAddress(int addr);
+
+// User sort function declarations
+extern int calc_coincvars(Grif_event *ptr1, Grif_event *ptr2);
+extern int user_removefrom_window(int win_strt, int new_frag);
+extern int test_gates(Grif_event *ptr, Grif_event *alt);
