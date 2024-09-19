@@ -344,7 +344,8 @@ int fill_chan_histos(Grif_event *ptr)
 //#######################################################################
 
 TH1I  *ge_ab_e[NUM_CLOVER];
-TH1I  *ge_sum, *ge_ab_sum;  // ge_sum is sum of crystal energies
+TH1I  *ge_sum, *ge_sum_ab;  // ge_sum is sum of crystal energies
+TH1I  *ge_sum_us, *ge_sum_ds, *ge_sum_ab_us, *ge_sum_ab_ds;  // ge_sum is sum of crystal energies
 TH1I  *ge_sum_b; // beta-gated gamma sum spectrum
 TH1I  *paces_sum;  // paces_sum is sum of crystal energies
 TH1I  *labr_sum;  // labr_sum is sum of crystal energies
@@ -364,7 +365,7 @@ int init_singles_histos(Config *cfg)
   open_folder(cfg, "Hits_and_Sums");
   open_folder(cfg, "Sums");
   sprintf(title,  "Addback_Sum_Energy"); sprintf(handle, "Addback_Sum_E");
-  ge_ab_sum = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
+  ge_sum_ab = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
   sprintf(title,  "Ge_Sum_Energy"); sprintf(handle, "Ge_Sum_E");
   ge_sum = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
   sprintf(title,  "Ge_Sum_En_betaTagged"); sprintf(handle, "Ge_Sum_E_B");
@@ -379,6 +380,14 @@ int init_singles_histos(Config *cfg)
   rcmp_sum = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
   sprintf(title,  "RCMP_Sum_FB_Energy"); sprintf(handle, "RCMP_Sum_FB_E");
   rcmp_fb_sum = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
+  sprintf(title,  "Upstream_Ge_Sum_Energy"); sprintf(handle, "US_Ge_Sum_E");
+  ge_sum_us = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
+  sprintf(title,  "Downstream_Ge_Sum_Energy"); sprintf(handle, "DS_Ge_Sum_E");
+  ge_sum_ds = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
+  sprintf(title,  "Upstream_AB_Sum_Energy"); sprintf(handle, "US_AB_Sum_E");
+  ge_sum_ab_us = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
+  sprintf(title,  "Downstream_AB_Sum_Energy"); sprintf(handle, "DS_AB_Sum_E");
+  ge_sum_ab_ds = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
   for(i=0; i<NUM_CLOVER; i++){
     sprintf(title,  "Addback_%d", i );
     sprintf(handle, "Addback_%d", i );
@@ -527,7 +536,7 @@ rcmp_fb[i] = H2_BOOK(cfg, rcmp_fb_handles[i], rcmp_fb_handles[i], E_2D_RCMP_SPEC
 
 int fill_singles_histos(Grif_event *ptr)
 {
-  int i, j, dt, pos, sys, elem, ge_addback_gate = 25, ge_sum_gate = 25;
+  int i, j, dt, pos, sys, elem, clover, ge_addback_gate = 25, ge_sum_gate = 25;
   char *name, c;
   long ts;
 
@@ -544,24 +553,39 @@ int fill_singles_histos(Grif_event *ptr)
 
    switch (sys){
    case SUBSYS_HPGE: // GRGa
-       // Only use GRGa
-       if(output_table[ptr->chan] == 1){
-
-         // Ge-Addback and ge-crystal-sum
+     // Only use GRGa
+     if(output_table[ptr->chan] == 1){
+       
+       //  ge-crystal-sum
+       if( pos >= 0 && pos < 64 ){
          ge_sum->Fill(ge_sum, (int)ptr->ecal, 1);
-         if( pos >= 0 && pos < NUM_CLOVER && ptr->esum >= 0 ){   // ge addback
-           ge_ab_e[pos]->Fill(ge_ab_e[pos],  (int)ptr->esum, 1);
-           ge_ab_sum   ->Fill(ge_ab_sum,     (int)ptr->esum, 1);
+         ge_xtal->Fill(ge_xtal, pos, (int)ptr->ecal, 1);
+	 
+	 // Separate sum spectra for upstream and downstream
+	 if(pos<33){
+	   ge_sum_us->Fill(ge_sum_us, (int)ptr->ecal, 1);
+	 }else{
+	   ge_sum_ds->Fill(ge_sum_ds, (int)ptr->ecal, 1);
+	 }
+	 
+	 // Ge-Addback
+	 clover = (int)(pos/16)+1;
+         if( clover >= 0 && clover < NUM_CLOVER && ptr->esum >= 0 ){   // ge addback
+           ge_ab_e[clover]->Fill(ge_ab_e[clover],  (int)ptr->esum, 1);
+           ge_sum_ab   ->Fill(ge_sum_ab,     (int)ptr->esum, 1);
+	   
+	   // Separate Addback sum spectra for upstream and downstream
+	   if(clover<9){
+	     ge_sum_ab_us->Fill(ge_sum_ab_us, (int)ptr->ecal, 1);
+	   }else{
+	     ge_sum_ab_ds->Fill(ge_sum_ab_ds, (int)ptr->ecal, 1);
+	   } 
          }
-         // have already derived crystal num when reading odb_tables
-         pos = crystal_table[ptr->chan];
-         if( pos >= 0 && pos < 64 ){
-           ge_xtal->Fill(ge_xtal, pos, (int)ptr->ecal, 1);
-         } else {
-           fprintf(stderr,"bad ge crystal[%d] for chan %d\n", pos, ptr->chan);
-         }
+	 }else {
+	 fprintf(stderr,"bad ge crystal[%d] for chan %d\n", pos, ptr->chan);
        }
-      break;
+     }
+     break;
    case SUBSYS_BGO: // BGOs
       pos  = crystal_table[ptr->chan];
       elem = element_table[ptr->chan];
