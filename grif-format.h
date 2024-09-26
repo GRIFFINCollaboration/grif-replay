@@ -25,7 +25,7 @@ typedef struct griffin_fragment_struct { // was 74 bytes, now ?
  //int      dummy1;  int dummy2;        int     dummy3;   int    dummy4;  //##
    int      net_id;  int trigger_num;   long timestamp;  long ts;
    int  wf_present;  int waveform_length; int file_id;
-   int scl_present;  int scalar_length;  float    esum;
+   int scl_present;  int scalar_length;  float    esum;   int ab_alt_chan;
 } Grif_event;
 
 // Q* are the original Q-Sum from the digitizer

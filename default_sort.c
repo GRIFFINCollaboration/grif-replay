@@ -107,6 +107,7 @@ int GetIDfromAddress(int addr) { return( address_chan[addr] ); }
 
 int apply_gains(Grif_event *ptr)
 {
+  int tac_ts_offset[8] = {48,60,100,49,119,59,133,14};
    float energy;
    int chan;
    if( (chan=ptr->chan) >= odb_daqsize ){
@@ -123,6 +124,13 @@ int apply_gains(Grif_event *ptr)
    if( ptr->dtype >= 0 && ptr->dtype < MAX_SUBSYS ){
       ptr->subsys = dtype_subsys[ptr->dtype];
    } else { ptr->subsys = MAX_SUBSYS-1; }
+
+
+   // The TAC module produces its output signal around 2 microseconds later
+   // than the start and stop detector signals are processed.
+   if( ptr->subsys == SUBSYS_LABR_T){
+     ptr->ts -= 150 + tac_ts_offset[crystal_table[ptr->chan]-1]; // Subtract 2 microseconds from TAC timestamps plus a more precise offset
+   }
 
    // NOBODY CURRENTLY USES e2,e3,e4 ...
    //if( ptr->integ2 != 0 ){
@@ -173,6 +181,7 @@ int pre_sort(int frag_idx, int end_idx)
   Grif_event *alt, *ptr = &grif_event[frag_idx];
   int bgo_window = 20, addback_window = 20;
   int rcmp_fb_window = 10;
+  int art_tac_window = 25;
   int i, dt;
 
   //printf("\n");
@@ -200,9 +209,10 @@ int pre_sort(int frag_idx, int end_idx)
       // Germanium addback -
       //    earliest fragment has the sum energy, others are marked -1
       // Ensure GRG events are both A or both B type using output_table
+      // Remember the other crystal channel number in ab_alt_chan for use in Compton Polarimetry
       if( dt < addback_window && alt->subsys == SUBSYS_HPGE && (output_table[ptr->chan] == output_table[alt->chan])){
         if( alt->esum >= 0 && crystal_table[alt->chan]/16 == crystal_table[ptr->chan]/16 ){
-          ptr->esum += alt->esum; alt->esum = -1;
+          ptr->esum += alt->esum; alt->esum = -1; ptr->ab_alt_chan = alt->chan;
         }
       }
       break;
@@ -221,6 +231,16 @@ int pre_sort(int frag_idx, int end_idx)
         }
       }
       break;
+      case SUBSYS_LABR_T:
+      // TAC spectra
+      // For TAC08 the start is ARIES and the stop is any of the LaBr3. So this is three detector types.
+      // Here in the presort we will remember the ARIES tile that is in coincidence with the TAC.
+      // In the TAC event we save the tile chan as ab_alt_chan, and the tile energy as e2cal.
+      // So later in the main coincidence loop we only need to examine LBL and TAC.
+      if(dt < art_tac_window && alt->subsys == SUBSYS_ARIES && alt->ecal > 5){
+      ptr->ab_alt_chan = alt->chan; ptr->e2cal = alt->ecal;
+      }
+      break;
       default: // Unrecognized or unprocessed subsys type
       break;
     }// end of switch
@@ -235,6 +255,7 @@ int pre_sort(int frag_idx, int end_idx)
 
 #define MULT_SPEC_LENGTH   128
 #define E_SPEC_LENGTH     8192
+#define E_TAC_SPEC_LENGTH 16384
 #define E_2D_SPEC_LENGTH  4096
 #define E_2D_RCMP_SPEC_LENGTH  6400
 //#define T_SPEC_LENGTH     8192
@@ -286,7 +307,11 @@ int init_chan_histos(Config *cfg)
       open_folder(cfg, "Energy");
       sprintf(title,  "%s_Energy",         chan_name[i] );
       sprintf(handle, "%s_E",              chan_name[i] );
-      e_hist[i] = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
+      if( strcmp(subsys_handle[j],"LBT") == 0){
+        e_hist[i] = H1_BOOK(cfg, handle, title, E_TAC_SPEC_LENGTH, 0, E_TAC_SPEC_LENGTH);
+      }else{
+        e_hist[i] = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
+      }
       close_folder(cfg);
 //      open_folder(cfg, "Waveform");
 //      sprintf(title,  "%s_Waveform",       chan_name[i] );
@@ -296,7 +321,11 @@ int init_chan_histos(Config *cfg)
       open_folder(cfg, "PulseHeight");
       sprintf(title,  "%s_Pulse_Height",   chan_name[i] );
       sprintf(handle, "%s_Q",              chan_name[i] );
-      ph_hist[i] = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
+      if( strcmp(subsys_handle[j],"LBT") == 0){
+        ph_hist[i] = H1_BOOK(cfg, handle, title, E_TAC_SPEC_LENGTH, 0, E_TAC_SPEC_LENGTH);
+      }else{
+        ph_hist[i] = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
+      }
       close_folder(cfg);
       close_folder(cfg);
       if( strcmp(subsys_handle[j],"XXX") == 0 ){     // suppress XXX channels
@@ -350,9 +379,12 @@ TH1I  *ge_sum_b; // beta-gated gamma sum spectrum
 TH1I  *paces_sum;  // paces_sum is sum of crystal energies
 TH1I  *labr_sum;  // labr_sum is sum of crystal energies
 TH1I  *aries_sum;  // aries_sum is sum of tile energies
+TH1I  *aries_tac;  // aries_tac gated on 1475keV peak
 TH1I  *rcmp_sum, *rcmp_fb_sum;  // rcmp_sum is sum of strip energies, fb is with front-back coincidence
 TH2I  *ge_xtal, *bgo_xtal, *bgof_xtal, *bgos_xtal, *bgob_xtal, *bgoa_xtal, *labr_xtal, *paces_xtal, *aries_xtal;
 
+#define N_ARIES 76
+#define N_LABR 8
 #define N_RCMP_POS 6
 #define N_RCMP_STRIPS 32
 char rcmp_strips_handles[N_RCMP_POS][32]={ "RCS01_E_strips","RCS02_E_strips","RCS03_E_strips","RCS04_E_strips","RCS05_E_strips","RCS06_E_strips" };
@@ -433,19 +465,26 @@ int init_singles_histos(Config *cfg)
 
 // Time difference spectra
 #define DT_SPEC_LENGTH 4096
-#define N_DT 14
+#define N_DT 18
 char dt_handles[N_DT][32]={ "dt_ge_ge", "dt_ge_bgo", "dt_ge_sep", "dt_ge_zds",
                             "dt_ge_pac", "dt_ge_labr", "dt_ge_rcmp", "dt_pac_zds",
                             "dt_pac_labr", "dt_rcmp_rcmp", "dt_ge_art", "dt_labr_art",
-                            "dt_paces_art", "dt_art_art" };
+                            "dt_paces_art", "dt_art_art", "dt_art_tac", "dt_zds_tac", "dt_labr_tac", "dt_labr_zds" };
 TH1I  *dt_hist[N_DT];
+TH1I  *dt_tacs_hist[N_LABR];
 
 // Angular difference spectra
 #define GE_ANG_CORR_SPEC_LENGTH 4096
 #define N_GE_ANG_CORR 52
 TH2I  *gg_ang_corr_hist[N_GE_ANG_CORR];
 
-TH2I *gg, *gg_ab, *gg_opp, *gg_hit, *bgobgo_hit, *aa_hit, *gea_hit, *ge_paces, *ge_labr, *ge_rcmp, *labr_labr, *labr_rcmp, *ge_art, *paces_art, *labr_art, *art_art;
+// TAC spectra
+TH1I *tac_labr_hist[(int)((N_LABR)*(N_LABR-1)/2)]; // this index numbers are the LaBr-LaBr position numbers
+TH1I *tac_aries_lbl_hist[N_LABR];  // this index number is the LaBr position number
+TH1I *tac_aries_art_hist[N_ARIES];  // this index number is the Aries position number
+
+// En-En Coincidence matrices
+TH2I *gg, *gg_ab, *gg_opp, *gg_hit, *bgobgo_hit, *aa_hit, *gea_hit, *lba_hit, *ge_paces, *ge_labr, *ge_rcmp, *labr_labr, *labr_rcmp, *ge_art, *paces_art, *labr_art, *art_art;
 
 char rcmp_hit_handles[N_RCMP_POS][32]={ "RCS01_PN_hits","RCS02_PN_hits","RCS03_PN_hits","RCS04_PN_hits","RCS05_PN_hits","RCS06_PN_hits" };
 char rcmp_fb_handles[N_RCMP_POS][32]={ "RCS01_Front_Back","RCS02_Front_Back","RCS03_Front_Back","RCS04_Front_Back","RCS05_Front_Back","RCS06_Front_Back" }; // front-back
@@ -456,12 +495,16 @@ int init_coinc_histos(Config *cfg)
 {
   char title[STRING_LEN], handle[STRING_LEN];
   char tmp[STRING_LEN];
-  int i;
+  int i,j,k;
 
   open_folder(cfg, "Hits_and_Sums");
   open_folder(cfg, "Delta_t");
   for(i=0; i<N_DT; i++){ // Create delta-t spectra
     dt_hist[i] = H1_BOOK(cfg, dt_handles[i], dt_handles[i], DT_SPEC_LENGTH, 0, DT_SPEC_LENGTH);
+  }
+  for(i=0; i<N_LABR; i++){ // Create delta-t spectra separately for each TAC
+  sprintf(title, "dt_labr_tac%d",i+1);
+    dt_tacs_hist[i] = H1_BOOK(cfg, title, title, DT_SPEC_LENGTH, 0, DT_SPEC_LENGTH);
   }
   close_folder(cfg);
   close_folder(cfg);
@@ -511,6 +554,9 @@ int init_coinc_histos(Config *cfg)
    sprintf(title, "GeAriesHit"); sprintf(handle, "GAHit");
    gea_hit    = H2_BOOK(cfg, handle, title, 64, 0, 64,
                                             80, 0, 80);
+  sprintf(title, "LaBrAriesHit"); sprintf(handle, "LAHit");
+  lba_hit    = H2_BOOK(cfg, handle, title, 16, 0, 16,
+                                           80, 0, 80);
    sprintf(title, "AriesAriesHit"); sprintf(handle, "AAHit");
    aa_hit    = H2_BOOK(cfg, handle, title, 80, 0, 80,
                                            80, 0, 80);
@@ -529,6 +575,30 @@ rcmp_fb[i] = H2_BOOK(cfg, rcmp_fb_handles[i], rcmp_fb_handles[i], E_2D_RCMP_SPEC
      gg_ang_corr_hist[i] = H2_BOOK(cfg, tmp, tmp, GE_ANG_CORR_SPEC_LENGTH, 0, GE_ANG_CORR_SPEC_LENGTH,
                                                   GE_ANG_CORR_SPEC_LENGTH, 0, GE_ANG_CORR_SPEC_LENGTH);
    }
+   close_folder(cfg);
+   open_folder(cfg, "LBL_TACs");
+   k=-1;
+   for(i=1; i<=N_LABR; i++){ // Create TAC coincidence pair spectra
+     for(j=(i+1); j<=N_LABR; j++){
+       k++;
+     sprintf(tmp,"TAC_%d_%d",i,j);
+     tac_labr_hist[k] = H1_BOOK(cfg, tmp, tmp, E_TAC_SPEC_LENGTH, 0, E_TAC_SPEC_LENGTH);
+     }
+   }
+
+   close_folder(cfg);
+   open_folder(cfg, "ART_TACs");
+ sprintf(tmp,"TAC-ARIES-LaBr3-1275keV");
+ aries_tac = H1_BOOK(cfg, tmp, tmp, E_TAC_SPEC_LENGTH, 0, E_TAC_SPEC_LENGTH);
+   for(i=0; i<N_LABR; i++){ // Create TAC coincidence with ARIES spectra
+     sprintf(tmp,"TAC_ART_LBL%d",i+1);
+     tac_aries_lbl_hist[i] = H1_BOOK(cfg, tmp, tmp, E_TAC_SPEC_LENGTH, 0, E_TAC_SPEC_LENGTH);
+   }
+     for(i=0; i<N_ARIES; i++){ // Create TAC coincidence with ARIES spectra
+       sprintf(tmp,"TAC_LBL_ART%d",i+1);
+       tac_aries_art_hist[i] = H1_BOOK(cfg, tmp, tmp, E_TAC_SPEC_LENGTH, 0, E_TAC_SPEC_LENGTH);
+     }
+
    close_folder(cfg);
    close_folder(cfg);
    return(0);
@@ -555,31 +625,31 @@ int fill_singles_histos(Grif_event *ptr)
    case SUBSYS_HPGE: // GRGa
      // Only use GRGa
      if(output_table[ptr->chan] == 1){
-       
+
        //  ge-crystal-sum
        if( pos >= 0 && pos < 64 ){
          ge_sum->Fill(ge_sum, (int)ptr->ecal, 1);
          ge_xtal->Fill(ge_xtal, pos, (int)ptr->ecal, 1);
-	 
+
 	 // Separate sum spectra for upstream and downstream
 	 if(pos<33){
 	   ge_sum_us->Fill(ge_sum_us, (int)ptr->ecal, 1);
 	 }else{
 	   ge_sum_ds->Fill(ge_sum_ds, (int)ptr->ecal, 1);
 	 }
-	 
+
 	 // Ge-Addback
 	 clover = (int)(pos/16)+1;
          if( clover >= 0 && clover < NUM_CLOVER && ptr->esum >= 0 ){   // ge addback
            ge_ab_e[clover]->Fill(ge_ab_e[clover],  (int)ptr->esum, 1);
            ge_sum_ab   ->Fill(ge_sum_ab,     (int)ptr->esum, 1);
-	   
+
 	   // Separate Addback sum spectra for upstream and downstream
 	   if(clover<9){
 	     ge_sum_ab_us->Fill(ge_sum_ab_us, (int)ptr->ecal, 1);
 	   }else{
 	     ge_sum_ab_ds->Fill(ge_sum_ab_ds, (int)ptr->ecal, 1);
-	   } 
+	   }
          }
 	 }else {
 	 fprintf(stderr,"bad ge crystal[%d] for chan %d\n", pos, ptr->chan);
@@ -693,258 +763,359 @@ int fill_singles_histos(Grif_event *ptr)
 int frag_hist[MAX_COINC_EVENTS];
 int fill_coinc_histos(int win_idx, int frag_idx)
 {
-   Grif_event *alt, *ptr = &grif_event[win_idx];
-   int dt, abs_dt, i, gg_gate=25;
-   //int g_rcmp_lower_gate=22, g_rcmp_upper_gate=68;
-   int g_aries_upper_gate=25;
-   int g_rcmp_upper_gate=75;
-   int pos, c1, c2, index;
-   int global_window_size = 100; // size in grif-replay should be double this
+  Grif_event *alt, *ptr = &grif_event[win_idx];
+  int dt, abs_dt, i, gg_gate=25;
+  //int g_rcmp_lower_gate=22, g_rcmp_upper_gate=68;
+  int g_aries_upper_gate=25;
+  int g_aries_tac_gate=60;
+  int g_rcmp_upper_gate=75;
+  int pos, c1, c2, index;
+  int global_window_size = 100; // size in grif-replay should be double this
+  int corrected_tac_value;
+  int tac_offset[8] = {-7300,-5585,-6804,0,-6488,-5682,-5416,0};
 
-   // histogram of coincwin-size
-   dt = (frag_idx - win_idx + 2*MAX_COINC_EVENTS) %  MAX_COINC_EVENTS;
-   ++frag_hist[dt];
-   if( win_idx == frag_idx ){ return(0); } // window size = 1 - no coinc
-   if( (i=win_idx+1) == MAX_COINC_EVENTS ){ i = 0; } // wrap
-   // check all conicidences in window
-   while( 1 ){
-      alt = &grif_event[i];
-      abs_dt = dt = ptr->ts - alt->ts; if( dt < 0 ){ abs_dt = -1*dt; }
-      if( abs_dt > global_window_size ){ break; }
+  // histogram of coincwin-size
+  dt = (frag_idx - win_idx + 2*MAX_COINC_EVENTS) %  MAX_COINC_EVENTS;
+  ++frag_hist[dt];
+  if( win_idx == frag_idx ){ return(0); } // window size = 1 - no coinc
+  if( (i=win_idx+1) == MAX_COINC_EVENTS ){ i = 0; } // wrap
+  // check all conicidences in window
+  while( 1 ){
+    alt = &grif_event[i];
+    abs_dt = dt = ptr->ts - alt->ts; if( dt < 0 ){ abs_dt = -1*dt; }
+    if( abs_dt > global_window_size ){ break; }
 
-      switch(ptr->subsys){
+    switch(ptr->subsys){
       case SUBSYS_HPGE:
 
-            // Only use GRGa
-            if(output_table[ptr->chan] == 1){
+      // Only use GRGa
+      if(output_table[ptr->chan] == 1){
 
-              switch(alt->subsys){
-                case SUBSYS_HPGE:
-                // Only use GRGa
-                if(output_table[alt->chan] == 1){
+        switch(alt->subsys){
+          case SUBSYS_HPGE:
+          // Only use GRGa
+          if(output_table[alt->chan] == 1){
 
-                  dt_hist[0]->Fill(dt_hist[0], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // ge-ge
-                  // Ge-Ge matrices
-                  if( alt->dtype == 0 && abs_dt < gg_gate ){                 // ge-ge (and addback)
-                    gg->Fill(gg, (int)ptr->ecal, (int)alt->ecal, 1);
-                    if( ptr->esum >= 0 &&  alt->esum >= 0 ){
-                      gg_ab->Fill(gg_ab, (int)ptr->esum, (int)alt->esum, 1);
-                    }
-
-                    c1 = crystal_table[ptr->chan];
-                    if( c1 >= 0 && c1 < 64 ){
-                      c2 = crystal_table[alt->chan];
-                      if( c2 >= 0 && c2 < 64 ){
-                        gg_hit->Fill(gg_hit, c1, c2, 1);
-
-                        // Ge-Ge angular correlations
-                        // Fill the appropriate angular bin spectrum
-                        index = ge_angles_145mm[c1][c2];
-                        gg_ang_corr_hist[index]->Fill(gg_ang_corr_hist[index], (int)ptr->ecal, (int)alt->ecal, 1);
-
-                        // Ge-Ge with 180 degrees between Ge1 and Ge2
-                        if( c2 == grif_opposite[c1] ){
-                          gg_opp->Fill(gg_opp, (int)ptr->ecal, (int)alt->ecal, 1);
-                        }
-                      }
-                    }
-                  }
-                } break;
-                case SUBSYS_BGO:     // ge-bgo
-                dt_hist[1]->Fill(dt_hist[1], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
-                break;
-                case SUBSYS_PACES: // ge-paces
-                dt_hist[4]->Fill(dt_hist[4], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
-                if( abs_dt < gg_gate ){
-                  ge_paces  ->Fill(ge_paces, (int)ptr->ecal, (int)alt->ecal, 1);
-                } break;
-                case SUBSYS_LABR_L:  // ge-labr
-                dt_hist[5]->Fill(dt_hist[5], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
-                if( abs_dt < gg_gate ){
-                  ge_labr->Fill(ge_labr, (int)ptr->ecal, (int)alt->ecal, 1);
-                } break;
-                case SUBSYS_SCEPTAR:  // ge-sep
-                dt_hist[2]->Fill(dt_hist[2], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
-                if( abs_dt < gg_gate ){
-                  ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1); // beta-gated Ge sum energy spectrum
-                }
-                break;
-                case SUBSYS_ARIES: // ge-aries
-                dt_hist[10]->Fill(dt_hist[10], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
-                if( abs_dt < gg_gate ){
-                  ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1); // beta-gated Ge sum energy spectrum
-                  ge_art->Fill(ge_art, (int)ptr->ecal, (int)alt->esum, 1);
-                }
-                break;
-                case SUBSYS_ZDS: // ge-zds
-                dt_hist[3]->Fill(dt_hist[3], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
-                if( abs_dt < gg_gate ){
-                  ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1); // beta-gated Ge sum energy spectrum
-                }
-                break;
-                case SUBSYS_RCMP: // ge-rcmp
-                dt_hist[6]->Fill(dt_hist[6], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
-                if( abs_dt < g_rcmp_upper_gate && alt->esum>0){
-                ge_rcmp->Fill(ge_rcmp, (int)ptr->ecal, (int)alt->esum, 1);
+            dt_hist[0]->Fill(dt_hist[0], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // ge-ge
+            // Ge-Ge matrices
+            if( alt->dtype == 0 && abs_dt < gg_gate ){                 // ge-ge (and addback)
+              gg->Fill(gg, (int)ptr->ecal, (int)alt->ecal, 1);
+              if( ptr->esum >= 0 &&  alt->esum >= 0 ){
+                gg_ab->Fill(gg_ab, (int)ptr->esum, (int)alt->esum, 1);
               }
-              break;
 
-              default: break; // unprocessed coincidence combinations
-            } // end of inner switch(ALT) for ptr=HPGe
+              c1 = crystal_table[ptr->chan];
+              if( c1 >= 0 && c1 < 64 ){
+                c2 = crystal_table[alt->chan];
+                if( c2 >= 0 && c2 < 64 ){
+                  gg_hit->Fill(gg_hit, c1, c2, 1);
+
+                  // Ge-Ge angular correlations
+                  // Fill the appropriate angular bin spectrum
+                  index = ge_angles_145mm[c1][c2];
+                  gg_ang_corr_hist[index]->Fill(gg_ang_corr_hist[index], (int)ptr->ecal, (int)alt->ecal, 1);
+
+                  // Ge-Ge with 180 degrees between Ge1 and Ge2
+                  if( c2 == grif_opposite[c1] ){
+                    gg_opp->Fill(gg_opp, (int)ptr->ecal, (int)alt->ecal, 1);
+                  }
+                }
+              }
+            }
+          } break;
+          case SUBSYS_BGO:     // ge-bgo
+          dt_hist[1]->Fill(dt_hist[1], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+          break;
+          case SUBSYS_PACES: // ge-paces
+          dt_hist[4]->Fill(dt_hist[4], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+          if( abs_dt < gg_gate ){
+            ge_paces  ->Fill(ge_paces, (int)ptr->ecal, (int)alt->ecal, 1);
+          } break;
+          case SUBSYS_LABR_L:  // ge-labr
+          dt_hist[5]->Fill(dt_hist[5], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+          if( abs_dt < gg_gate ){
+            ge_labr->Fill(ge_labr, (int)ptr->ecal, (int)alt->ecal, 1);
+          } break;
+          case SUBSYS_SCEPTAR:  // ge-sep
+          dt_hist[2]->Fill(dt_hist[2], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+          if( abs_dt < gg_gate ){
+            ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1); // beta-gated Ge sum energy spectrum
           }
-         break; // outer-switch-case-GE
+          break;
+          case SUBSYS_ARIES: // ge-aries
+          dt_hist[10]->Fill(dt_hist[10], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+          if( abs_dt < g_aries_upper_gate ){
+            ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1); // beta-gated Ge sum energy spectrum
+            ge_art->Fill(ge_art, (int)ptr->ecal, (int)alt->esum, 1);
+            c1 = crystal_table[ptr->chan];
+            if(c1 >= 1 && c1 <=64 ){
+              c2 = crystal_table[alt->chan];
+              if(c2 >= 1 && c2 <=76 ){
+                gea_hit->Fill(gea_hit, c1, c2, 1);
+              }
+            }
+          }
+          break;
+          case SUBSYS_ZDS: // ge-zds
+          dt_hist[3]->Fill(dt_hist[3], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+          if( abs_dt < gg_gate ){
+            ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1); // beta-gated Ge sum energy spectrum
+          }
+          break;
+          case SUBSYS_RCMP: // ge-rcmp
+          dt_hist[6]->Fill(dt_hist[6], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+          if( abs_dt < g_rcmp_upper_gate && alt->esum>0){
+            ge_rcmp->Fill(ge_rcmp, (int)ptr->ecal, (int)alt->esum, 1);
+          }
+          break;
 
-         case SUBSYS_SCEPTAR:  // sceptar matrices
-         switch(alt->subsys){
-           case SUBSYS_HPGE: // sep-ge
-           // Only use GRGa
-           if(output_table[alt->chan] == 1){
-             dt_hist[2]->Fill(dt_hist[2], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
-             if( abs_dt < gg_gate ){
-               ge_sum_b->Fill(ge_sum_b, (int)alt->ecal, 1); // beta-gated Ge sum energy spectrum
-             }
-           }
-           break;
-           default: break;
-         }
-         break;
+          default: break; // unprocessed coincidence combinations
+        } // end of inner switch(ALT) for ptr=HPGe
+      }
+      break; // outer-switch-case-GE
+
+      case SUBSYS_SCEPTAR:  // sceptar matrices
+      switch(alt->subsys){
+        case SUBSYS_HPGE: // sep-ge
+        // Only use GRGa
+        if(output_table[alt->chan] == 1){
+          dt_hist[2]->Fill(dt_hist[2], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+          if( abs_dt < gg_gate ){
+            ge_sum_b->Fill(ge_sum_b, (int)alt->ecal, 1); // beta-gated Ge sum energy spectrum
+          }
+        }
+        break;
+        default: break;
+      }
+      break;
 
       case SUBSYS_PACES: // paces matrices
-         switch(alt->subsys){
-           case SUBSYS_ZDS:
-           dt_hist[7]->Fill(dt_hist[7], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // pac-zds
-           break;
-             case SUBSYS_HPGE:
-             // Only use GRGa
-             if(output_table[alt->chan] == 1){
-               dt_hist[4]->Fill(dt_hist[4], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // pac-ge
-             }
-             break;
-           case SUBSYS_LABR_L:
-           dt_hist[8]->Fill(dt_hist[8], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // pac-labr
-           break;
-         case SUBSYS_ARIES:
+      switch(alt->subsys){
+        case SUBSYS_ZDS:
+        dt_hist[7]->Fill(dt_hist[7], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // pac-zds
+        break;
+        case SUBSYS_HPGE:
+        // Only use GRGa
+        if(output_table[alt->chan] == 1){
+          dt_hist[4]->Fill(dt_hist[4], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // pac-ge
+        }
+        break;
+        case SUBSYS_LABR_L:
+        dt_hist[8]->Fill(dt_hist[8], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // pac-labr
+        break;
+        case SUBSYS_ARIES:
         dt_hist[13]->Fill(dt_hist[13], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // pac-aries
         if( ( abs_dt < g_aries_upper_gate) && ptr->ecal>0){
           paces_art->Fill(paces_art, (int)ptr->ecal, (int)alt->ecal, 1);
         }
-         break;
-           default: break; // unprocessed coincidence combinations
-         } // end of inner switch(ALT)
-
-               case SUBSYS_LABR_L: // Labr matrices
-                  switch(alt->subsys){
-                      case SUBSYS_HPGE:
-                      // Only use GRGa
-                      if(output_table[alt->chan] == 1){
-                        dt_hist[5]->Fill(dt_hist[5], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // labr-ge
-                      }
-                      break;
-                    case SUBSYS_LABR_L:
-                    dt_hist[8]->Fill(dt_hist[8], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // labr-labr
-                    break;
-                  case SUBSYS_ARIES:
-                 dt_hist[12]->Fill(dt_hist[12], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // laBr-aries
-                 if( ( abs_dt < g_aries_upper_gate) && ptr->ecal>0){
-                   labr_art->Fill(labr_art, (int)ptr->ecal, (int)alt->ecal, 1);
-                 }
-                  break;
-                    default: break; // unprocessed coincidence combinations
-                  } // end of inner switch(ALT)
-                  break;
-
-      case SUBSYS_BGO: // bgo matrices
-         if(alt->subsys == SUBSYS_BGO && abs_dt < gg_gate ){ // bgo-bgo
-            c1 = crystal_table[ptr->chan];
-            c2 = crystal_table[alt->chan];
-            bgobgo_hit->Fill(bgobgo_hit, c1, c2, 1);
-         } break;
-
-      case SUBSYS_RCMP: // rcmp matrices
-         //fprintf(stdout,"RCMP coinc. with %d, with dt=%d\n",alt->subsys,abs_dt);
-            switch(alt->subsys){
-              case SUBSYS_HPGE: // rcmp-ge
-           // Only use GRGa
-           if(output_table[alt->chan] == 1){
-
-             dt_hist[6]->Fill(dt_hist[6], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
-            // if( (abs_dt > g_rcmp_lower_gate && abs_dt < g_rcmp_upper_gate) && ptr->ecal>0){
-             if( ( abs_dt < g_rcmp_upper_gate) && ptr->ecal>0){
-               ge_rcmp->Fill(ge_rcmp, (int)alt->ecal, (int)ptr->ecal, 1);
-             }
-           }
-           break;
-         case SUBSYS_RCMP: // rcmp-rcmp
-        // fprintf(stdout,"RCMP coinc. with %d, with dt=%d\n",alt->subsys,abs_dt);
-           dt_hist[9]->Fill(dt_hist[9], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // rcmp-rcmp - This might need an extra condition for Polarity difference
-           pos = crystal_table[ptr->chan];
-           if(pos == crystal_table[alt->chan] && (polarity_table[ptr->chan] != polarity_table[alt->chan])){ // front and back of same DSSD
-             c1 = element_table[ptr->chan];
-             c2 = element_table[alt->chan];
-
-	     /*
-             if(pos>0 && pos<4){
-               c1 = reorder_rcmp_DS_strips(c1);
-               c2 = reorder_rcmp_DS_strips(c2);
-             }else if(pos>3 && pos<7){
-               c1 = reorder_rcmp_US_strips(c1);
-               c2 = reorder_rcmp_US_strips(c2);
-             }
-	     */
-             rcmp_hit[(pos-1)]->Fill(rcmp_hit[(pos-1)], c1, c2, 1);
-             rcmp_fb[(pos-1)]->Fill(rcmp_fb[(pos-1)], (int)ptr->ecal, (int)alt->ecal, 1);
-           }
-       break;
-      default: break;
-      break; // end of inner switch(ALT) for ptr=rcmp
+        break;
+        default: break; // unprocessed coincidence combinations
       } // end of inner switch(ALT)
 
-            case SUBSYS_ARIES: // aries matrices
-                  switch(alt->subsys){
-                    case SUBSYS_HPGE: // aries-ge
-                 // Only use GRGa
-                 if(output_table[alt->chan] == 1){
+      case SUBSYS_LABR_L: // Labr matrices
+      switch(alt->subsys){
+        case SUBSYS_HPGE:
+        // Only use GRGa
+        if(output_table[alt->chan] == 1){
+          dt_hist[5]->Fill(dt_hist[5], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // labr-ge
+        }
+        break;
+        case SUBSYS_LABR_L:
+        dt_hist[8]->Fill(dt_hist[8], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // labr-labr
+        break;
+        case SUBSYS_ZDS: // labr-zds
+        dt_hist[17]->Fill(dt_hist[17], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+        break;
+        case SUBSYS_ARIES:
+        dt_hist[12]->Fill(dt_hist[12], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // laBr-aries
+        if( ( abs_dt < g_aries_upper_gate) && ptr->ecal>0){
+          labr_art->Fill(labr_art, (int)ptr->ecal, (int)alt->ecal, 1);
 
-                   dt_hist[10]->Fill(dt_hist[10], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
-                   if( ( abs_dt < g_aries_upper_gate) && ptr->ecal>0){
-                     ge_art->Fill(ge_art, (int)alt->ecal, (int)ptr->ecal, 1);
-                   }
-                 }
-                 break;
-                   case SUBSYS_LABR_L: // aries-labr
-                  dt_hist[11]->Fill(dt_hist[11], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
-                  if( ( abs_dt < g_aries_upper_gate) && ptr->ecal>0){
-                    labr_art->Fill(labr_art, (int)alt->ecal, (int)ptr->ecal, 1);
-                  }
-                break;
-                  case SUBSYS_PACES: // aries-paces
-                 dt_hist[12]->Fill(dt_hist[12], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
-                 if( ( abs_dt < g_aries_upper_gate) && ptr->ecal>0){
-                   paces_art->Fill(paces_art, (int)alt->ecal, (int)ptr->ecal, 1);
-                 }
-               break;
-               case SUBSYS_ARIES: // aries-aries
-                 dt_hist[13]->Fill(dt_hist[13], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
-                 c1 = crystal_table[ptr->chan];
-                 if(c1 >= 1 && c1 <=76 ){
-                   c2 = crystal_table[alt->chan];
-                   if(c2 >= 1 && c2 <=76 ){
+          c1 = crystal_table[ptr->chan];
+          if(c1 >= 1 && c1 <=8 ){
+            c2 = crystal_table[alt->chan];
+            if(c2 >= 1 && c2 <=76 ){
+          lba_hit->Fill(lba_hit, c1, c2, 1);
+        }
+      }
+        }
+        break;
+        case SUBSYS_LABR_T: // labr-tac
+        dt_hist[16]->Fill(dt_hist[16], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+        dt_tacs_hist[crystal_table[alt->chan]-1]->Fill(dt_tacs_hist[crystal_table[alt->chan]-1], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+        if(crystal_table[alt->chan] == 8){ // ARIES TAC
 
-                   aa_hit->Fill(aa_hit, c1, c2, 1);
-                   art_art->Fill(art_art, (int)ptr->ecal, (int)alt->ecal, 1);
-                 }
-               }
-             break;
-            default: break;
-            break; // end of inner switch(ALT) for ptr=rcmp
-            } // end of inner switch(ALT)
+          corrected_tac_value = (int)alt->ecal + tac_offset[crystal_table[ptr->chan]-1];
+          tac_aries_lbl_hist[crystal_table[ptr->chan]-1]->Fill(tac_aries_lbl_hist[crystal_table[ptr->chan]-1], corrected_tac_value, 1); // tac spectrum per LBL
+          if(ptr->ecal >1225 && ptr->ecal <1315){ // gate on LaBr3 energy 1275keV
+            aries_tac->Fill(aries_tac, (int)corrected_tac_value, 1); // tac spectrum gated on 1332keV
+          }
+        }
 
-      default: break; // Unrecognized or unprocessed subsys type
-      }// end of switch(ptr)
-      if( i == frag_idx ){ break; }
-      if( ++i == MAX_COINC_EVENTS ){ i = 0; } // wrap
-   }// end of while
-   return(0);
+        break;
+        default: break; // unprocessed coincidence combinations
+      } // end of inner switch(ALT)
+      break;
+
+      case SUBSYS_BGO: // bgo matrices
+      if(alt->subsys == SUBSYS_BGO && abs_dt < gg_gate ){ // bgo-bgo
+        c1 = crystal_table[ptr->chan];
+        c2 = crystal_table[alt->chan];
+        bgobgo_hit->Fill(bgobgo_hit, c1, c2, 1);
+      } break;
+
+      case SUBSYS_RCMP: // rcmp matrices
+      //fprintf(stdout,"RCMP coinc. with %d, with dt=%d\n",alt->subsys,abs_dt);
+      switch(alt->subsys){
+        case SUBSYS_HPGE: // rcmp-ge
+        // Only use GRGa
+        if(output_table[alt->chan] == 1){
+
+          dt_hist[6]->Fill(dt_hist[6], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+          // if( (abs_dt > g_rcmp_lower_gate && abs_dt < g_rcmp_upper_gate) && ptr->ecal>0){
+          if( ( abs_dt < g_rcmp_upper_gate) && ptr->ecal>0){
+            ge_rcmp->Fill(ge_rcmp, (int)alt->ecal, (int)ptr->ecal, 1);
+          }
+        }
+        break;
+        case SUBSYS_RCMP: // rcmp-rcmp
+        // fprintf(stdout,"RCMP coinc. with %d, with dt=%d\n",alt->subsys,abs_dt);
+        dt_hist[9]->Fill(dt_hist[9], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // rcmp-rcmp - This might need an extra condition for Polarity difference
+        pos = crystal_table[ptr->chan];
+        if(pos == crystal_table[alt->chan] && (polarity_table[ptr->chan] != polarity_table[alt->chan])){ // front and back of same DSSD
+          c1 = element_table[ptr->chan];
+          c2 = element_table[alt->chan];
+
+          /*
+          if(pos>0 && pos<4){
+          c1 = reorder_rcmp_DS_strips(c1);
+          c2 = reorder_rcmp_DS_strips(c2);
+        }else if(pos>3 && pos<7){
+        c1 = reorder_rcmp_US_strips(c1);
+        c2 = reorder_rcmp_US_strips(c2);
+      }
+      */
+      rcmp_hit[(pos-1)]->Fill(rcmp_hit[(pos-1)], c1, c2, 1);
+      rcmp_fb[(pos-1)]->Fill(rcmp_fb[(pos-1)], (int)ptr->ecal, (int)alt->ecal, 1);
+    }
+    break;
+    default: break;
+  } // end of inner switch(ALT)
+  break; // end of inner switch(ALT) for ptr=rcmp
+
+  case SUBSYS_ARIES: // aries matrices
+  switch(alt->subsys){
+    case SUBSYS_HPGE: // aries-ge
+    // Only use GRGa
+    if(output_table[alt->chan] == 1){
+
+      dt_hist[10]->Fill(dt_hist[10], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+      if( ( abs_dt < g_aries_upper_gate) && ptr->ecal>0 && alt->ecal>0){
+        ge_art->Fill(ge_art, (int)alt->ecal, (int)ptr->ecal, 1);
+        c1 = crystal_table[ptr->chan];
+        if(c1 >= 1 && c1 <=76 ){
+          c2 = crystal_table[alt->chan];
+          if(c2 >= 1 && c2 <=64 ){
+        gea_hit->Fill(gea_hit, c2, c1, 1);
+      }
+    }
+      }
+    }
+    break;
+    case SUBSYS_LABR_L: // aries-labr
+    dt_hist[11]->Fill(dt_hist[11], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+    if( ( abs_dt < g_aries_upper_gate) && ptr->ecal>0){
+      labr_art->Fill(labr_art, (int)alt->ecal, (int)ptr->ecal, 1);
+      c1 = crystal_table[alt->chan];
+      if(c1 >= 1 && c1 <=8 ){
+        c2 = crystal_table[ptr->chan];
+        if(c2 >= 1 && c2 <=76 ){
+      lba_hit->Fill(lba_hit, c1, c2, 1);
+    }
+  }
+    }
+    break;
+    case SUBSYS_PACES: // aries-paces
+    dt_hist[12]->Fill(dt_hist[12], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+    if( ( abs_dt < g_aries_upper_gate) && ptr->ecal>0){
+      paces_art->Fill(paces_art, (int)alt->ecal, (int)ptr->ecal, 1);
+    }
+    break;
+    case SUBSYS_ARIES: // aries-aries
+    dt_hist[13]->Fill(dt_hist[13], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+    c1 = crystal_table[ptr->chan];
+    if(c1 >= 1 && c1 <=76 ){
+      c2 = crystal_table[alt->chan];
+      if(c2 >= 1 && c2 <=76 ){
+
+        aa_hit->Fill(aa_hit, c1, c2, 1);
+        art_art->Fill(art_art, (int)ptr->ecal, (int)alt->ecal, 1);
+      }
+    }
+    break;
+    case SUBSYS_LABR_T: // aries-tac
+        if(crystal_table[alt->chan] == 8){ // ARIES TAC
+        dt_hist[14]->Fill(dt_hist[14], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+          tac_aries_art_hist[crystal_table[ptr->chan]-1]->Fill(tac_aries_art_hist[crystal_table[ptr->chan]-1], (int)alt->ecal, 1); // tac spectrum per ART tiles
+        }
+    break;
+    default: break;
+  } // end of inner switch(ALT)
+  break; // end of inner switch(ALT) for ptr=rcmp
+
+
+  case SUBSYS_ZDS: // zds matrices
+  switch(alt->subsys){
+    case SUBSYS_LABR_T: // zds-tac
+    dt_hist[15]->Fill(dt_hist[15], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+    break;
+    case SUBSYS_HPGE: // zds-HPGe
+    // Only use GRGa
+    if(output_table[alt->chan] == 1){
+      dt_hist[3]->Fill(dt_hist[3], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+    }
+    break;
+    case SUBSYS_LABR_L: // zds-labr
+    dt_hist[17]->Fill(dt_hist[17], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+    break;
+    default: break;
+  } // end of inner switch(ALT)
+  break;
+
+  case SUBSYS_LABR_T: // tac matrices
+  switch(alt->subsys){
+    case SUBSYS_ZDS: // tac-zds
+    dt_hist[15]->Fill(dt_hist[15], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+    break;
+    case SUBSYS_ARIES: // tac-aries
+    if(crystal_table[ptr->chan] == 8){ // ARIES TAC
+    dt_hist[14]->Fill(dt_hist[14], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+      tac_aries_art_hist[crystal_table[alt->chan]-1]->Fill(tac_aries_art_hist[crystal_table[alt->chan]-1], (int)ptr->ecal, 1); // tac spectrum per ART tiles
+    }
+    break;
+    case SUBSYS_LABR_L: // tac-labr
+    dt_hist[16]->Fill(dt_hist[16], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+    dt_tacs_hist[crystal_table[ptr->chan]-1]->Fill(dt_tacs_hist[crystal_table[ptr->chan]-1], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+    if(crystal_table[ptr->chan] == 8){ // ARIES TAC
+
+      corrected_tac_value = (int)ptr->ecal + tac_offset[crystal_table[alt->chan]-1];
+      tac_aries_lbl_hist[crystal_table[alt->chan]-1]->Fill(tac_aries_lbl_hist[crystal_table[alt->chan]-1], corrected_tac_value, 1); // tac spectrum per LBL
+      if(alt->ecal >1225 && alt->ecal <1315){ // gate on LaBr3 energy 1275keV
+
+        aries_tac->Fill(aries_tac, corrected_tac_value, 1); // tac spectrum gated on 1332keV
+      }
+    }
+    break;
+    default: break;
+  } // end of inner switch(ALT)
+  break;
+
+  default: break; // Unrecognized or unprocessed subsys type
+}// end of switch(ptr)
+if( i == frag_idx ){ break; }
+if( ++i == MAX_COINC_EVENTS ){ i = 0; } // wrap
+}// end of while
+return(0);
 }
 
 int reorder_rcmp_US_strips(int c1){
@@ -1193,7 +1364,7 @@ int gen_derived_odb_tables()
 
     // Determine crystal and element position numbers for each Subsystem
     //if(dtype_table[i] == 3 || dtype_table[i] == 8 || dtype_table[i] == 5){ // LBL and LBS, LaBr3 and ancillary BGOs, PAC paces
-    if((strncmp(sys_name,"LBL",3) == 0) || (strncmp(sys_name,"LBS",3) == 0) || (strncmp(sys_name,"LBT",3) == 0)){ // LBL and LBS, LaBr3 and ancillary BGOs, PAC paces
+    if((strncmp(sys_name,"ART",3) == 0) || (strncmp(sys_name,"LBL",3) == 0) || (strncmp(sys_name,"LBS",3) == 0) || (strncmp(sys_name,"LBT",3) == 0)){ // LBL and LBS, LaBr3 and ancillary BGOs, PAC paces
       crystal_table[i] = pos;
       if(        crystal == 'A' ){ element_table[i] = 1;
       } else if( crystal == 'B' ){ element_table[i] = 2;

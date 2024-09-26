@@ -185,6 +185,7 @@ int unpack_grif3_event(unsigned *evntbuf, int evlen, Grif_event *ptr, int proces
          ptr->dtype  = ((value & 0x0000F) >>  0);
          ptr->address= ((value & 0xFFFF0) >>  4);
          ptr->chan = GetIDfromAddress(ptr->address);
+         ptr->ab_alt_chan = -1; // initialize as -1, used in addback
          if( ptr->dtype != 0xF && (ptr->chan < 0) ){
             ++grif_err[GRIF_ERR_ADDR];
             //if( ++errcount < 100 || (errcount % 1000 == 0) ){
