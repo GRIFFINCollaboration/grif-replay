@@ -6,24 +6,25 @@
 //########         Subsystem and Detector definitions          ##########
 //#######################################################################
 
-#define SUBSYS_HPGE     0
-#define SUBSYS_BGO      1
-#define SUBSYS_SCEPTAR  2
-#define SUBSYS_PACES    3
-#define SUBSYS_LABR_BGO 4
-#define SUBSYS_LABR_T   5
-#define SUBSYS_LABR_L   6
-#define SUBSYS_DESCANT  7
-#define SUBSYS_ARIES    8
-#define SUBSYS_ZDS      9
-#define SUBSYS_RCMP    10
+#define SUBSYS_HPGE      0
+#define SUBSYS_BGO       1
+#define SUBSYS_SCEPTAR   2
+#define SUBSYS_PACES     3
+#define SUBSYS_LABR_BGO  4
+#define SUBSYS_LABR_T    5
+#define SUBSYS_LABR_L    6
+#define SUBSYS_DESCANT   7
+#define SUBSYS_ARIES     8
+#define SUBSYS_ZDS       9
+#define SUBSYS_RCMP     10
+#define SUBSYS_DES_WALL 12
 
 #define MAX_SUBSYS 24
 static char subsys_handle[MAX_SUBSYS][8] = {
   "GRG", "GRS", "SEP",  "PAC",
   "LBS", "LBT", "LBL",  "DSC",
   "ART", "ZDS", "RCS",  "XXX",
-  "",    "",    "",    "",
+  "DSW",    "",    "",    "",
   "",    "",    "",    "",
   "",    "",    "",    ""
 };
@@ -31,7 +32,7 @@ static char subsys_name[MAX_SUBSYS][STRING_LEN] = {
    "Griffin",  "BGO",   "SCEPTAR",   "PACES", //  0- 3
    "LaBrS",    "LaBrT", "LaBrX",   "Descant", //  4- 7
    "ARIES",    "ZDS",   "RCMP",        "XXX", //  8-11
-   "",         "",      "",         "",       // 12-15
+   "DES_WALL",    "",      "",         "",    // 12-15
    "",         "",      "",         "",
    "",         "",       "",        "Unknown"
 }; // final entry will be used if not found - make sure it is not empty
@@ -41,20 +42,25 @@ static char subsys_name[MAX_SUBSYS][STRING_LEN] = {
 #define N_LABR 8
 #define N_RCMP_POS 6
 #define N_RCMP_STRIPS 32
+#define N_DES_WALL 60
 
 //#######################################################################
 //########                Histogram axis lengths               ##########
 //#######################################################################
 
-#define MULT_SPEC_LENGTH   128
-#define E_SPEC_LENGTH     8192
-#define E_TAC_SPEC_LENGTH 16384
-#define E_2D_SPEC_LENGTH  4096
-#define E_2D_RCMP_SPEC_LENGTH  6400
+#define MULT_SPEC_LENGTH         128
+#define E_SPEC_LENGTH           8192
+#define E_TAC_SPEC_LENGTH      16384
+#define E_TOF_SPEC_LENGTH       8192
+#define E_PSD_SPEC_LENGTH       1024
+#define E_2D_TOF_SPEC_LENGTH    1024
+#define E_2D_SPEC_LENGTH        4096
+#define E_2D_RCMP_SPEC_LENGTH   6400
 //#define T_SPEC_LENGTH     8192
 //#define WV_SPEC_LENGTH    4096
-#define DT_SPEC_LENGTH 4096
+#define DT_SPEC_LENGTH          1024
 #define GE_ANG_CORR_SPEC_LENGTH 4096
+#define DSW_ANG_CORR_SPEC_LENGTH 4096
 
 //#######################################################################
 //########        Individual channel singles HISTOGRAMS        ##########
@@ -87,7 +93,6 @@ TH1I  *ge_sum_b; // beta-gated gamma sum spectrum
 
 // ARIES, PACES and LaBr3
 TH1I  *aries_sum;  // aries_sum is sum of tile energies
-TH1I  *aries_tac;  // aries_tac gated on 1475keV peak
 TH1I  *paces_sum;  // paces_sum is sum of crystal energies
 TH1I  *labr_sum;  // labr_sum is sum of crystal energies
 
@@ -100,26 +105,46 @@ char rcmp_fb_handles[N_RCMP_POS][32]={ "RCS01_Front_Back","RCS02_Front_Back","RC
 TH2I  *rcmp_hit[N_RCMP_POS];
 TH2I  *rcmp_fb[N_RCMP_POS];
 
+// DESCANT WALL
+TH1I  *desw_tof[N_DES_WALL];  // DESCANT Wall Time-Of-Flight
+TH1I  *desw_tof_corr[N_DES_WALL];  // DESCANT Wall corrected Time-Of-Flight
+TH1I  *desw_psd[N_DES_WALL];  // DESCANT Wall Pulse Shape Discrimination
+TH1I  *desw_sum_e, *desw_sum_tof, *desw_sum_psd;  // DESCANT Wall Sums of energies and corrected time-of-fligts and PSD
+TH1I  *desw_sum_e_b, *desw_sum_tof_b;  // DESCANT Wall Beta-tagged Sums of energies and corrected time-of-fligts
+TH2I  *desw_psd_e[N_DES_WALL]; // DESCANT Wall PSD vs Pulse Height
+TH2I  *desw_psd_tof[N_DES_WALL]; // DESCANT Wall PSD vs corrected-TOF
+
 // TAC spectra
 TH1I *tac_labr_hist[(int)((N_LABR)*(N_LABR-1)/2)]; // this index numbers are the LaBr-LaBr position numbers
 TH1I *tac_aries_lbl_hist[N_LABR];  // this index number is the LaBr position number
 TH1I *tac_aries_art_hist[N_ARIES];  // this index number is the Aries position number
+TH1I *aries_tac;  // aries_tac gated on 1275keV peak
+TH1I *aries_tac_Egate;  // aries_tac gated on 1275keV peak
+TH1I *aries_tac_artEn;  // aries energy in coincidence with TAC
 
 // Energy vs detector number 2D histograms
-TH2I  *ge_xtal, *bgo_xtal, *bgof_xtal, *bgos_xtal, *bgob_xtal, *bgoa_xtal, *labr_xtal, *paces_xtal, *aries_xtal;
+TH2I  *ge_xtal, *bgo_xtal, *bgof_xtal, *bgos_xtal, *bgob_xtal, *bgoa_xtal, *labr_xtal, *paces_xtal, *aries_xtal, *desw_e_xtal, *desw_tof_xtal;
 
 // Time difference spectra
-#define N_DT 18
-char dt_handles[N_DT][32]={ "dt_ge_ge", "dt_ge_bgo", "dt_ge_sep", "dt_ge_zds",
-                            "dt_ge_pac", "dt_ge_labr", "dt_ge_rcmp", "dt_pac_zds",
-                            "dt_pac_labr", "dt_rcmp_rcmp", "dt_ge_art", "dt_labr_art",
-                            "dt_paces_art", "dt_art_art", "dt_art_tac", "dt_zds_tac", "dt_labr_tac", "dt_labr_zds" };
+#define N_DT 22
+char dt_handles[N_DT][32]={ "dt_ge_ge", "dt_ge_bgo", "dt_ge_sep", "dt_ge_zds",  // 0-3
+                            "dt_ge_pac", "dt_ge_labr", "dt_ge_rcmp", "dt_pac_zds", // 4-7
+                            "dt_pac_labr", "dt_rcmp_rcmp", "dt_ge_art", "dt_labr_art", // 8-11
+                            "dt_paces_art", "dt_art_art", "dt_art_tac", "dt_zds_tac", "dt_labr_tac", "dt_labr_zds", // 12-17
+                             "dt_dsw_dsw", "dt_dsw_ge", "dt_dsw_art", "dt_dsw_zds"  }; // 18-21
 TH1I  *dt_hist[N_DT];
 TH1I  *dt_tacs_hist[N_LABR];
 
+// Two-dimensional hitpatterns
+TH2I *gg_hit, *bgobgo_hit, *aa_hit, *gea_hit, *lba_hit, *dsw_hit;
+
 // En-En Coincidence matrices
-TH2I *gg, *gg_ab, *gg_opp, *gg_hit, *bgobgo_hit, *aa_hit, *gea_hit, *lba_hit, *ge_paces, *ge_labr, *ge_rcmp, *labr_labr, *labr_rcmp, *ge_art, *paces_art, *labr_art, *art_art;
+TH2I *gg, *gg_ab, *gg_opp, *ge_paces, *ge_labr, *ge_rcmp, *labr_labr, *labr_rcmp, *ge_art, *paces_art, *labr_art, *art_art, *dsw_dsw, *ge_dsw, *art_dsw;
 
 // Angular Correlation histograms
 #define N_GE_ANG_CORR 52
 TH2I  *gg_ang_corr_hist[N_GE_ANG_CORR];
+#define N_GRG_ART_ANG_CORR 114
+TH2I  *grg_art_ang_corr_hist[N_GRG_ART_ANG_CORR];
+#define N_DSW_DSW_ANG_CORR 42 
+TH2I  *dsw_dsw_ang_corr_hist[N_DSW_DSW_ANG_CORR];

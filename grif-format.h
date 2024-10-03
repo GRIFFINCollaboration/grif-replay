@@ -10,21 +10,21 @@
 // INSERT NEW VALUES, WITHOUT ALSO ADJUSTING THE OFFSETS IN USER_SORT.C
 // **************************************************************************
 typedef struct griffin_fragment_struct { // was 74 bytes, now ?
-   int     address;  int chan;          int     dtype;    int array_posn; // 0
-   int        ecal;  int e2cal;         int     e3cal;    int    e4cal;   // 4
-   int      energy;  int q;             int     e_bad;    int    integ;   // 8
-   int     energy2;  int q2;            int    e2_bad;    int   integ2;   //12
-   int     energy3;  int q3;            int    e3_bad;    int   integ3;   //16
-   int     energy4;  int q4;            int    e4_bad;    int   integ4;   //20
-   int         cfd;  int cc_long;       int  cc_short;    int     nhit;   //24
-   int    trig_req;  int trig_acc;      int     pileup;   int suppress;   //28
-   int   deadtime;   int bank_start;    int    ts_int;    int    esum_i;  //32
+   int     address;  int chan;          int      dtype;    int array_posn; // 0
+   int        ecal;  int e2cal;         int      e3cal;    int    e4cal;   // 4
+   int      energy;  int q;             int      e_bad;    int    integ;   // 8
+   int     energy2;  int q2;            int     e2_bad;    int   integ2;   //12
+   int     energy3;  int q3;            int     e3_bad;    int   integ3;   //16
+   int     energy4;  int q4;            int     e4_bad;    int   integ4;   //20
+   int         cfd;  int psd;           int   cc_short;    int     nhit;   //24
+   int    trig_req;  int trig_acc;      int     pileup;    int suppress;   //28
+   int   deadtime;   int bank_start;    int     ts_int;   int    esum_i;  //32
    int   master_id;  int master_pattern;int  esum_supr;   int    e_supr;  //36
    int     crystal;  int fold;          int     subsys;   int    dummy4;  //40
    int      angle1;  int angle2;        int     angle3;   int    angle4;  //44
  //int      dummy1;  int dummy2;        int     dummy3;   int    dummy4;  //##
    int      net_id;  int trigger_num;   long timestamp;  long ts;
-   int  wf_present;  int waveform_length; int file_id;
+   int  wf_present;  int waveform_length;  int file_id;
    int scl_present;  int scalar_length;  float    esum;   int ab_alt_chan;
 } Grif_event;
 

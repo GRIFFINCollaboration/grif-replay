@@ -283,7 +283,8 @@ int unpack_grif3_event(unsigned *evntbuf, int evlen, Grif_event *ptr, int proces
         ptr-> integ |= ((val32 & 0x7FC00000) >> 22);
         break;
         case 3:  /* descant long*/
-        if(ptr->dtype==6){ ptr->cc_long  = val32;
+        if(ptr->dtype==6){
+          //ptr->cc_long  = val32; // Not used? cc_long was changed to psd in grif-format.h
         } else { ptr->integ2 =   val32 & 0x003FFF;
           ptr->nhit   = ((val32 & 0xFF0000) >> 16);
         }
