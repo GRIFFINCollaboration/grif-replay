@@ -190,9 +190,9 @@ void reorder_status(int current_time)
 // if no errors, global tmp_wrpos is updated to include latest event
 // THEN after timestamp sequence check, final wrpos is updated to include evt
 void reorder_a_main(Sort_status *arg)
-{
+{// need to init wrpos[if this fn is started in the middle an event, it will be unset]
    int grifc, evlen, rd_avail, wr_avail, tshi_pos, *err = diagnostics.reorder_error;
-   int i, tmp, wrpos, type, bad_blk, bad_cnt, fmterr, *evptr, *bufend;
+   int i, tmp, wrpos=0, type, bad_blk, bad_cnt, fmterr, *evptr, *bufend;
    unsigned int usecs=100;
    Reorder_buffer *buf;
    long ts1, ts2;
