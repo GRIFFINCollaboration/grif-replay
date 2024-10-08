@@ -328,8 +328,14 @@ int fill_chan_histos(Grif_event *ptr)
    static int event;
    int chan, sys;
 
+   // Check for unassigned channel numbers
    if( (chan = ptr->chan) == -1 ){
-      return(-1);
+     return(-1);
+   }
+   // Check for invalid channel numbers, prossibly due to data corruption
+   if( chan < 0 || chan > odb_daqsize ){
+     fprintf(stderr,"Invalid channel number in fill_chan_histos(), %d\n",chan);
+     return(-1);
    }
    if( ++event < 16384 ){
       ts_hist -> Fill(ts_hist, event,  (int)(ptr->timestamp/100));
@@ -603,21 +609,35 @@ sprintf(tmp,"TAC-ARIES-Energy");
 
 int fill_singles_histos(Grif_event *ptr)
 {
-  int i, j, dt, pos, sys, elem, clover, ge_addback_gate = 25, ge_sum_gate = 25;
+  int i, j, dt, chan, pos, sys, elem, clover, ge_addback_gate = 25, ge_sum_gate = 25;
   char *name, c;
   long ts;
 
+  chan = ptr->chan;
+  // Check for invalid channel numbers, prossibly due to data corruption
+  if( chan < 0 || chan > odb_daqsize ){
+    fprintf(stderr,"Invalid channel number in fill_singles_histos(), %d\n",chan);
+    return(-1);
+  }
+
   sys = ptr->subsys;
+  // Check this is a valid susbsytem type
   if( sys >=0 && sys < MAX_SUBSYS ){
     if( mult_hist[sys] != NULL ){ mult_hist[sys]->Fill(mult_hist[sys], ptr->fold, 1);  }
   }
-  //pos = ptr->array_posn;
+
+  // Check that this is the correctly assigned subsystem type, based on the datatype in the PSC table
+  if( sys != dtype_subsys[dtype_table[ptr->chan]] ){
+    fprintf(stderr,"Subsytem assigned [%s] does not match expectation from PSC datatype [%d] for channel %d\n",subsys_handle[sys],dtype_table[ptr->chan],ptr->chan);
+    return(-1);
+  }
+
+  // Get the position for this fragment
   pos  = crystal_table[ptr->chan];
 
   // Here we should not use dtype because the dtype can change between experiments.
-  // Here we should use the Subsytem name, which we can get from dtype.
+  // Here we use the Subsytem name, which is obtained from dtype.
   // The dtype->subsystem mapping is done from the PSC table
-
    switch (sys){
      case SUBSYS_HPGE: // GRGa
      // Only use GRGa
@@ -1454,6 +1474,7 @@ int gen_derived_odb_tables()
   memset(polarity_table, 0xff, MAX_DAQSIZE*sizeof(int));
   memset(output_table,   0xff, MAX_DAQSIZE*sizeof(int));
   memset(subsys_dtype_mat,  0,       16*16*sizeof(int));
+  memset(dtype_subsys,     -1,  MAX_SUBSYS*sizeof(int));
   for(i=0; i<MAX_DAQSIZE && i<odb_daqsize; i++){
     if( (tmp=sscanf(chan_name[i], "%3c%d%c%c%d%c", &sys_name, &pos, &crystal, &polarity, &element, &type)) != 6 ){
       fprintf(stderr,"can't decode name[%s] decoded %d of 6 items\n", chan_name[i], tmp );
