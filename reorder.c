@@ -67,7 +67,7 @@ volatile int reorder_active[MAX_GRIFC];
 volatile int reorder_evcount[MAX_GRIFC];
 volatile int reorder_discard[MAX_GRIFC];
 int reorder_init[MAX_GRIFC];
-int reorder_stat[4*MAX_GRIFC];
+int reorder_stat[5*MAX_GRIFC];
 
 // single-thread-debug
 //   or known file
@@ -213,7 +213,7 @@ void reorder_a_main(Sort_status *arg)
    memset((char *)reorder_discard, 0, MAX_GRIFC*sizeof(int));
    memset((char *)reorder_evcount, 0, MAX_GRIFC*sizeof(int));
    memset((char *)reorder_init,    0, MAX_GRIFC*sizeof(int));
-   memset((char *)reorder_stat,    0, MAX_GRIFC*sizeof(int)*4);
+   memset((char *)reorder_stat,    0, MAX_GRIFC*sizeof(int)*5);
    bad_blk = bad_cnt = fmterr = evlen = wrap = 0;  grifc = -1;
    // to avoid annoying complications, all events are checked for correct
    // format here, and obviously bad events are removed
@@ -632,7 +632,7 @@ void reorder_a_out(Sort_status *arg)
          if( ts != -1 ){// check for 60 second or more difference in timestamps
             diff = buf_ts > ts ? buf_ts - ts : ts - buf_ts;
             if( diff > 6000000000 ){ // 6 billion
-               printf("@");
+               if( (++reorder_stat[i+4*MAX_GRIFC] % 1000) == 0 ){ printf("@"); }
                if(  buf_ts > ts ){ // buf_ts is probably wrong - dump it
                   copy_event(arg, i, EV_COPY); ++event; ++tsevents_out;
                   --i; continue;
@@ -658,9 +658,10 @@ void reorder_a_out(Sort_status *arg)
    arg->reorder_out_done = 1;
    printf("END reorder output ...\n");
    for(i=0; i<MAX_GRIFC; i++){
-      printf("Grifc%2d - Early[%6d] Late[%6d] BadFormat[%6d:%6dWords]\n", i,
+      printf("Grifc%2d - Early[%6d] Late[%6d] BadFormat[%6d:%6dWords] VeryWrong[%6d]\n", i,
              reorder_stat[i+0*MAX_GRIFC], reorder_stat[i+1*MAX_GRIFC],
-             reorder_stat[i+2*MAX_GRIFC], reorder_stat[i+3*MAX_GRIFC]  );
+             reorder_stat[i+2*MAX_GRIFC], reorder_stat[i+3*MAX_GRIFC],
+             reorder_stat[i+4*MAX_GRIFC] );
    }
    return;
 }
