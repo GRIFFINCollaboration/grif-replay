@@ -113,7 +113,7 @@ int check_buffer(int grifc)
          }
          tmp = buf->hdrpos[rel_tspos] % REORDER_BUFSIZE;
          if( buf->hdrpos[rel_tspos] != i ){ err = 1;
-            printf("     [%d]  ERR Event %d, pos:%ld[%d]: Wrong Hdrpos:%ld[%ld]\n", grifc,
+            printf("     [%d]  ERR Event %d, pos:%ld[%d]: Wrong Hdrpos:%ld[%d]\n", grifc,
                    evcount, i, rdpos, buf->hdrpos[rel_tspos], tmp );
          }
          evstart = i; state = STATE_TSA; break;
