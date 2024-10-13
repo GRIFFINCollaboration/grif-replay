@@ -23,16 +23,16 @@ typedef struct midas_bank_header_struct {
 //#define BANK_BUFSIZE (64*1024*1024)
 #define BANK_BUFSIZE (4*1024*1024) // this is 32bit-words
 extern unsigned bankbuf[BANK_BUFSIZE];
-extern volatile unsigned long bankbuf_wrpos;    
+extern volatile unsigned long bankbuf_wrpos;
 extern volatile unsigned long bankbuf_rdpos;
 // without brackets, and using wrpos = bankbuf_wrpos % BANK_BUFSIZE;
-//    when bankbuf_wrpos = 34104, wrpos = 58720256 
+//    when bankbuf_wrpos = 34104, wrpos = 58720256
 
 extern void midas_main(Sort_status *arg);
 extern int next_record(Sort_status *arg);
 extern int next_event(Sort_status *arg);
 extern int next_bank(Sort_status *arg, char **bank_name);
-extern int copy_bank();
+extern int copy_bank(unsigned *ptr, int size);
 
 #define REORDER_BUFSIZE (1024*1024)
 #define EVENTBUFSIZE (8*REORDER_BUFSIZE)

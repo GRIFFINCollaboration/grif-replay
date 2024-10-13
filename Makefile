@@ -4,7 +4,7 @@ OBJECTS = config.o grif-replay.o midas-format.o grif-format.o histogram.o \
 CFLAGS  = -g -O3 -fPIC 
 
 grif-replay: $(OBJECTS)
-	$(CC) $(CFLAGS) -o $@ $(OBJECTS) -rdynamic -ldl -lm -lpthread
+	$(CC) $(CFLAGS) -o $@ $(OBJECTS) -rdynamic -lz -ldl -lm -lpthread
 
 midas: midas_module.so
 

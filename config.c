@@ -1053,7 +1053,7 @@ int init_config()
    tmp = gethostname(hostname, 32);
    strtok(hostname, ".");
    fprintf(stdout,"Initial setup complete :-)\n\n");
-   fprintf(stdout,"Now connect to grif-replay using a web browser at the following URL:\nhttps://griffincollaboration.github.io/SpectrumViewer/analyzerInterface.html?backend=%s&port=9093\nor\nhttps://griffincollaboration.github.io/SpectrumViewer/analyzerInterface.html?backend=localhost&port=9093\nif %s is the computer where you are running the browser.\n\n",hostname,hostname);
+   fprintf(stdout,"Now connect to grif-replay using a web browser at the following URL:\nhttps://griffincollaboration.github.io/SpectrumViewer/analyzerInterface.html?backend=%s&port=9093\n",hostname);
    return(0);
 }
 

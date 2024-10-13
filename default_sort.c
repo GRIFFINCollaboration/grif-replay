@@ -12,8 +12,9 @@
 
 int          odb_daqsize;// number of daq channels currently defined in the odb
 int     subsys_dtype_mat[MAX_SUBSYS][MAX_SUBSYS]; // map using names and dtypes
-int         subsys_dtype[MAX_SUBSYS];             // subsys->dtype
+int         subsys_dtype[MAX_SUBSYS];             // subsys->dtype, usage: subsys_dtype[dtype] = subsys_handle
 int         dtype_subsys[MAX_SUBSYS];             // dtype->subsys
+int     psc_dtype_subsys[MAX_SUBSYS];             // PSC psc_dtype->subsys, usage: psc_dtype_subsys[subsys_handle] = dtype from PSC table
 int        crystal_table[MAX_DAQSIZE]; // Ge/BGO have 4 "crystals" per clover
 int        element_table[MAX_DAQSIZE]; // BGO have 5 elements per crystal
 int       polarity_table[MAX_DAQSIZE]; // 1 is negative, 0 is positive, -1 is unset
@@ -71,12 +72,30 @@ int init_default_histos(Config *cfg, Sort_status *arg)
 //#######################################################################
 
 float spread(int val){ return( val + rand()/(1.0*RAND_MAX) ); }
-int GetIDfromAddress(int addr) { return( address_chan[addr] ); }
+int GetIDfromAddress(unsigned short addr){ // address must be an unsigned short
+  return(address_chan[addr]);
+  /*
+// These checks are very slow. I have never seen any of these errors reported
+ int chan=-1;
+  if(addr<0){ // Comparison of "|| addr>MAX_ADDRESS" is not needed because always false (unsigned short)addr < constant 65536
+    fprintf(stderr,"Invalid address [%04X,%d] requested during unpacking\n",addr,addr);
+    return(-1);
+  }
+  chan = address_chan[addr];
+  if( chan<0 || chan>odb_daqsize ){
+      fprintf(stderr,"Invalid channel number [%d] found for address [%04X,%d] requested during unpacking\n",chan,addr,addr);
+      return(-1);
+  }else{
+    return( chan );
+  }
+  */
+}
 
 int apply_gains(Grif_event *ptr)
 {
   int tac_ts_offset[8] = {50,58,405,73,73,404,110,154};
-   float energy;
+  int caen_ts_offset = -60; // this value (-60) aligns the timestamps of HPGe with ZDS(CAEN)
+   float energy,psd;
    int chan;
    if( (chan=ptr->chan) >= odb_daqsize ){
       fprintf(stderr,"unpack_event: ignored event in chan:%d [0x%04x]\n",
@@ -84,15 +103,35 @@ int apply_gains(Grif_event *ptr)
       return(-1);
    }
 
-   ptr->energy = energy = ( ptr->integ == 0 ) ? 0 : spread(ptr->q)/ptr->integ;
+   ptr->energy = energy = ( ptr->integ == 0 ) ? ptr->q : spread(ptr->q)/ptr->integ;
    ptr->ecal=ptr->esum = offsets[chan]+energy*(gains[chan]+energy*quads[chan]);
 
    // Assign the Sub System index based on dtype
    // The dtype to subsys mapping was determined from the PSC table in the function gen_derived_odb_tables()
-   if( ptr->dtype >= 0 && ptr->dtype < MAX_SUBSYS ){
-      ptr->subsys = dtype_subsys[ptr->dtype];
+    if( ptr->dtype >= 0 && ptr->dtype < MAX_SUBSYS ){
+        ptr->subsys = dtype_subsys[ptr->dtype];
+      if( debug ){ printf("--SET EVT[%4d]=%d\n", ptr - grif_event, ptr->subsys ); }
+      if( ptr->subsys != subsys_dtype[dtype_table[ptr->chan]] ){
+         // Hack for non-DESCANT things in CAEN electronics
+         // All CAEN channels are set to dtype 6 by default.
+         // Reassign subsys value for these three channels that are not DSW
+         if(ptr->subsys == SUBSYS_DES_WALL){ // These are all CAEN electronics channels
+          ptr->subsys = subsys_dtype[dtype_table[ptr->chan]];
+          ptr->ts -= caen_ts_offset; // Subtract from CAEN timestamps to align coincidences
+
+        }else{
+                // non-CAEN electronics channel so there is an error here
+        	     printf("--ERROR\n");
+        }
+      }
    } else { ptr->subsys = MAX_SUBSYS-1; }
 
+   if( ptr->address == 11016 && ptr->cfd == 648641 ){
+     printf("mark this event\n");
+   }
+
+   // fprintf(stdout,"apply_gains %s chan%d: %d/%d=%d",subsys_handle[ptr->subsys],chan,ptr->q,ptr->integ,ptr->energy);
+   // fprintf(stdout,", [%f,%f,%f] -> %d\n",quads[chan],gains[chan],offsets[chan],ptr->ecal);
 
    // The TAC module produces its output signal around 2 microseconds later
    // than the start and stop detector signals are processed.
@@ -104,7 +143,9 @@ int apply_gains(Grif_event *ptr)
    // use psd for Pulse Shape Discrimination provides a distinction between neutron and gamma events
    //if( ptr->subsys == SUBSYS_DESCANT || ptr->subsys == SUBSYS_DES_WALL){
    if( ptr->subsys == SUBSYS_DES_WALL){
-     ptr->psd = (ptr->cc_short / ptr->energy)*(E_PSD_SPEC_LENGTH/2); // psd = long integration divided by short integration
+     ptr->ts -= caen_ts_offset; // Subtract from CAEN timestamps to align coincidences
+     psd = ( ptr->q != 0 ) ? (spread(ptr->cc_short) / spread(ptr->q)) : 0;
+     ptr->psd = (psd*(E_PSD_SPEC_LENGTH/2)); // psd = long integration divided by short integration
    }
 
 
@@ -163,6 +204,10 @@ int pre_sort(int frag_idx, int end_idx)
   int i, dt, tof;
 
   //printf("\n");
+
+  //if( ptr->dtype ==  6 ){
+  // printf("Dsc\n");;
+  // }
 
   //if( ptr->dtype !=  0 ){ return(0); } // not Ge event
   //if( ptr->dtype == 15 ){ return(0); } // scalar
@@ -224,7 +269,10 @@ int pre_sort(int frag_idx, int end_idx)
       // DESCANT detectors
       // use e4cal for Time-Of-Flight which is derived from the time difference between a beta hit and the DESCANT hit - equivalent to neutron energy
       if(dt < desw_beta_window){
-        if( ((alt->subsys == SUBSYS_ARIES && polarity_table[alt->chan] == 0) || (alt->subsys == SUBSYS_ZDS && output_table[alt->chan]==0)) && alt->ecal > 5){
+	//  if( ((alt->subsys == SUBSYS_ARIES && polarity_table[alt->chan] == 0) || (alt->subsys == SUBSYS_ZDS && output_table[alt->chan]==0)) && alt->ecal > 5){
+  // Use ARIES Fast output (polarity_table[alt->chan] == 0) in CAEN electronics
+  // Use ZDS B output (output_table[alt->chan] == 0) in CAEN electronics
+        if( ((alt->subsys == SUBSYS_ARIES && polarity_table[alt->chan] == 0) || (alt->subsys == SUBSYS_ZDS && output_table[alt->chan]==0)) && alt->energy > 5){
         // Calculate time-of-flight and correct it for this DESCANT detector distance
         tof = ptr->cfd - alt->cfd;
         ptr->energy4 = (int)(tof);
@@ -248,7 +296,7 @@ int pre_sort(int frag_idx, int end_idx)
 int init_chan_histos(Config *cfg)
 {                      // 1d histograms for Q,E,T,Wf for each channel in odb
    char title[STRING_LEN], handle[STRING_LEN];
-   int i, j;
+   int i, j, pos;
 
    open_folder(cfg, "Hits_and_Sums");
    open_folder(cfg, "Hits");
@@ -300,19 +348,22 @@ int init_chan_histos(Config *cfg)
       }
       close_folder(cfg);
       if( strcmp(subsys_handle[j],"DSW") == 0){
-        open_folder(cfg, "PSD");
-        sprintf(title,  "%s_PSD",         chan_name[i] );
-        sprintf(handle, "%s_PSD",         chan_name[i] );
-        desw_psd[i] = H1_BOOK(cfg, handle, title, E_PSD_SPEC_LENGTH, 0, E_PSD_SPEC_LENGTH);
-        close_folder(cfg);
-        open_folder(cfg, "Time_Of_Flight");
-        sprintf(title,  "%s_Corrected_TOF", chan_name[i] );
-        sprintf(handle, "%s_CTOF",         chan_name[i] );
-        desw_tof_corr[i] = H1_BOOK(cfg, handle, title, E_TOF_SPEC_LENGTH, 0, E_TOF_SPEC_LENGTH);
-        sprintf(title,  "%s_TOF",         chan_name[i] );
-        sprintf(handle, "%s_TOF",         chan_name[i] );
-        desw_tof[i] = H1_BOOK(cfg, handle, title, E_TOF_SPEC_LENGTH, 0, E_TOF_SPEC_LENGTH);
-        close_folder(cfg);
+        pos  = crystal_table[i];
+        if(pos>0 && pos<=N_DES_WALL){
+          open_folder(cfg, "PSD");
+          sprintf(title,  "%s_PSD",         chan_name[i] );
+          sprintf(handle, "%s_PSD",         chan_name[i] );
+          desw_psd[pos] = H1_BOOK(cfg, handle, title, E_PSD_SPEC_LENGTH, 0, E_PSD_SPEC_LENGTH);
+          close_folder(cfg);
+          open_folder(cfg, "Time_Of_Flight");
+          sprintf(title,  "%s_Corrected_TOF", chan_name[i] );
+          sprintf(handle, "%s_CTOF",         chan_name[i] );
+          desw_tof_corr[pos] = H1_BOOK(cfg, handle, title, E_TOF_SPEC_LENGTH, 0, E_TOF_SPEC_LENGTH);
+          sprintf(title,  "%s_TOF",         chan_name[i] );
+          sprintf(handle, "%s_TOF",         chan_name[i] );
+          desw_tof[pos] = H1_BOOK(cfg, handle, title, E_TOF_SPEC_LENGTH, 0, E_TOF_SPEC_LENGTH);
+          close_folder(cfg);
+        }
       }
       close_folder(cfg);
       if( strcmp(subsys_handle[j],"XXX") == 0 ){     // suppress XXX channels
@@ -326,12 +377,16 @@ int init_chan_histos(Config *cfg)
 int fill_chan_histos(Grif_event *ptr)
 {
    static int event;
-   int chan, sys;
+   int chan, sys, pos;
 
    // Check for unassigned channel numbers
    if( (chan = ptr->chan) == -1 ){
      return(-1);
    }
+   if( ptr->dtype == 6 ){
+      ++sys;
+   }
+
    // Check for invalid channel numbers, prossibly due to data corruption
    if( chan < 0 || chan > odb_daqsize ){
      fprintf(stderr,"Invalid channel number in fill_chan_histos(), %d\n",chan);
@@ -345,10 +400,12 @@ int fill_chan_histos(Grif_event *ptr)
    ph_hist[chan] -> Fill(ph_hist[chan],  (int)ptr->energy,     1);
    e_hist[chan]  -> Fill(e_hist[chan],   (int)ptr->ecal,       1);
    if( ptr->subsys == SUBSYS_DES_WALL){
-     desw_psd[chan]       -> Fill(desw_psd[chan],   (int)ptr->psd,       1);
-     desw_tof[chan]       -> Fill(desw_tof[chan],   (int)ptr->energy4,       1);
-     desw_tof_corr[chan]  -> Fill(desw_tof_corr[chan],   (int)ptr->e4cal,       1);
-
+     pos  = crystal_table[chan];
+     if(pos>0 && pos<=N_DES_WALL){
+       desw_psd[pos]       -> Fill(desw_psd[pos],   (int)ptr->psd,       1);
+       desw_tof[pos]       -> Fill(desw_tof[pos],   (int)ptr->energy4,       1);
+       desw_tof_corr[pos]  -> Fill(desw_tof_corr[pos],   (int)ptr->e4cal,       1);
+     }
    }
 
    hit_hist[0]   -> Fill(hit_hist[0],    chan,            1);
@@ -626,9 +683,11 @@ int fill_singles_histos(Grif_event *ptr)
     if( mult_hist[sys] != NULL ){ mult_hist[sys]->Fill(mult_hist[sys], ptr->fold, 1);  }
   }
 
+
   // Check that this is the correctly assigned subsystem type, based on the datatype in the PSC table
-  if( sys != dtype_subsys[dtype_table[ptr->chan]] ){
-    fprintf(stderr,"Subsytem assigned [%s] does not match expectation from PSC datatype [%d] for channel %d\n",subsys_handle[sys],dtype_table[ptr->chan],ptr->chan);
+  //if( sys != dtype_subsys[dtype_table[ptr->chan]] ){
+  if( sys != subsys_dtype[dtype_table[ptr->chan]] ){
+    fprintf(stderr,"Subsystem assigned [%s,%d] does not match expectation from PSC datatype [%d] which gives sys handle %d for channel %d\n",subsys_handle[sys],sys,dtype_table[ptr->chan],subsys_dtype[dtype_table[ptr->chan]],ptr->chan);
     return(-1);
   }
 
@@ -775,9 +834,9 @@ int fill_singles_histos(Grif_event *ptr)
        */
        elem = (int)(elem + (int)(polarity_table[ptr->chan]*N_RCMP_STRIPS)); // polarity_table value is 0 or 1
        if( pos < 1 || pos > 6 ){
-         fprintf(stderr,"bad RCMP DSSD[%d] for chan %d, elem%d, pol%d\n", pos, ptr->chan, elem, polarity_table[ptr->chan]);
+          fprintf(stderr,"bad RCMP DSSD[%d] for chan %d, elem%d, pol%d\n", pos, ptr->chan, elem, polarity_table[ptr->chan]);
        } else if( elem < 0 || elem > 63 ){
-         fprintf(stderr,"bad RCMP strip[%d] for chan %d, pos%d, pol%d\n", elem, ptr->chan, pos, polarity_table[ptr->chan]);
+          fprintf(stderr,"bad RCMP strip[%d] for chan %d, pos%d, pol%d\n", elem, ptr->chan, pos, polarity_table[ptr->chan]);
        } else {
          rcmp_strips[(pos-1)]->Fill(rcmp_strips[(pos-1)], elem, (int)ptr->ecal, 1);
        }
@@ -1474,7 +1533,8 @@ int gen_derived_odb_tables()
   memset(polarity_table, 0xff, MAX_DAQSIZE*sizeof(int));
   memset(output_table,   0xff, MAX_DAQSIZE*sizeof(int));
   memset(subsys_dtype_mat,  0,       16*16*sizeof(int));
-  memset(dtype_subsys,     -1,  MAX_SUBSYS*sizeof(int));
+  memset(dtype_subsys,   0xff,  MAX_SUBSYS*sizeof(int));
+  memset(subsys_dtype,   0xff,  MAX_SUBSYS*sizeof(int));
   for(i=0; i<MAX_DAQSIZE && i<odb_daqsize; i++){
     if( (tmp=sscanf(chan_name[i], "%3c%d%c%c%d%c", &sys_name, &pos, &crystal, &polarity, &element, &type)) != 6 ){
       fprintf(stderr,"can't decode name[%s] decoded %d of 6 items\n", chan_name[i], tmp );
@@ -1543,7 +1603,7 @@ int gen_derived_odb_tables()
   // list of addresses. array index is channel number
   memset(address_chan, 0xFF, sizeof(address_chan)); // set to -1
   for(i=0; i<MAX_ADDRESS && i<odb_daqsize; i++){
-    address_chan[ chan_address[i] ] = i;
+    address_chan[ (unsigned short)chan_address[i] ] = i;
   }
 
   // check the Subsytem to dtype mapping
@@ -1571,7 +1631,6 @@ subsys_handle[j], tmp, subsys_dtype_mat[j][tmp]);
 // This method finds the most common subsys for each datatype and warns if there is more then one.
 // This naturally allows more than one detector type per subsytem which is required for GRG and RCS.
 
-
 for(j=0; j<MAX_SUBSYS; j++){ // j:datatype
    tmp = -1; dtype_subsys[j] = MAX_SUBSYS-1;
   for(i=0; i<MAX_SUBSYS; i++){ // i:subsystem
@@ -1587,6 +1646,35 @@ for(j=0; j<MAX_SUBSYS; j++){ // j:datatype
   }
 }
 
+// Redefine dtype_subsys so we can use it to convert dtype from PSC table to subsys handle index
+memset(psc_dtype_subsys,    0xFF,  MAX_SUBSYS*sizeof(int));
+for(i=0; i<MAX_SUBSYS; i++){
+  psc_dtype_subsys[subsys_dtype[i]] = i;
+}
+
+/*
+// Print out all the unpacked PSC table information for checking/debugging
+fprintf(stdout,"chan\tname\t\taddr\tchan\tdtype\tsubsys\n");
+for(i=0; i<odb_daqsize; i++){
+fprintf(stdout,"%d\t%s\t0x%04X (%d)\t%d\t%d\t%s\n",i,chan_name[i],chan_address[i],chan_address[i],address_chan[(unsigned short)chan_address[i]],dtype_table[i],subsys_handle[dtype_subsys[dtype_table[i]]]);
+}
+*/
+
+/*
+// Print out all the dtype-subsys tables for checking/debugging
+fprintf(stdout,"\nsubsys_dtype\n");
+for(i=0; i<MAX_SUBSYS; i++){
+fprintf(stdout,"%d=%d\n",i,subsys_dtype[i]);
+}
+fprintf(stdout,"\ndtype_subsys\n");
+for(i=0; i<MAX_SUBSYS; i++){
+fprintf(stdout,"%d=%d\n",i,dtype_subsys[i]);
+}
+fprintf(stdout,"\npsc_dtype_subsys\n");
+for(i=0; i<MAX_SUBSYS; i++){
+fprintf(stdout,"%d=%d\n",i,psc_dtype_subsys[i]);
+}
+*/
 
 //memset(address_clover, 0xFF, sizeof(address_clover)); // set to -1
 //for(i=0; i<odb_daqsize; i++){

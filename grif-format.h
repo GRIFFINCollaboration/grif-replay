@@ -41,7 +41,7 @@ extern int process_event(Grif_event *ptr, int slot);
 extern int apply_gains(Grif_event *ptr);
 extern int insert_presort_win(Grif_event *ptr, int slot);
 extern int insert_sort_win(Grif_event *ptr, int slot);
-extern int GetIDfromAddress(int addr);
+extern int GetIDfromAddress(unsigned short addr);
 
 // User sort function declarations
 extern int calc_coincvars(Grif_event *ptr1, Grif_event *ptr2);

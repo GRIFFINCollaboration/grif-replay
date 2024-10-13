@@ -7,6 +7,7 @@
 #include <string.h> // memset
 #include <time.h>   // time()
 #include <math.h>   // NAN
+#include <zlib.h>   //
 
 #include "config.h"
 #include "histogram.h"
@@ -45,6 +46,7 @@ int Zero_Histograms(Config *cfg)
       ptr = (TH1I *)cfg->histo_list[i];
       ptr->Reset(ptr);
    }
+   return(0);
 }
 
 /* if this starts being slow - add names to hash table */
@@ -96,7 +98,7 @@ TH1I *H1_BOOK(Config *cfg, char *name, char *title, int nbins, int xmin, int xma
    }
    if( (tlen=strlen(title)) >= TITLE_LENGTH  ){ tlen = TITLE_LENGTH-1; }
    if( (hlen=strlen(name))  >= HANDLE_LENGTH ){ hlen = HANDLE_LENGTH-1; }
-      
+
    memcpy(result->path, cfg->current_path, strlen(cfg->current_path)+1 );
    memcpy(result->handle, name, hlen+1);
    memcpy(result->title, title, tlen+1);
@@ -169,18 +171,13 @@ TH2I *H2_BOOK(Config *cfg, char *name, char *title, int xbins, int xmin, int xma
 	 MAX_HISTOGRAMS );
       return(NULL);
    }
-   if( ybins == 0 ){ // => symmetric 2d matrix
-      ybins = xbins;  ymin = xmin;  ymax = xmax; result->symm = 1; 
-   } else {
-      result->symm = 0;
-   }
    if( (result->data = (int *)malloc(xbins*ybins*sizeof(int))) == NULL){
       fprintf(stderr,"H2_BOOK: data malloc failed\n");
       free(result); return(NULL);
    }
    if( (tlen=strlen(title)) >= TITLE_LENGTH  ){ tlen = TITLE_LENGTH-1; }
    if( (hlen=strlen(name))  >= HANDLE_LENGTH ){ hlen = HANDLE_LENGTH-1; }
-      
+
    memcpy(result->path, cfg->current_path, strlen(cfg->current_path)+1 );
    memcpy(result->handle, name, hlen+1);
    memcpy(result->title, title, tlen+1);
@@ -287,13 +284,13 @@ int TH2I_SetValidLen(TH2I *this, int bins)
 //   other fields for communication between programs having file open
 //   memory map this entry - doesn't actually reduce disk-reads when checking?
 //     could do similar with unused bits of indiv. spec headers (unnecessary?)
-// 
+//
 // use name[100] for [path]/handle [=>short name in tar content listings]
 // use uid/gid for xbin/ybin - also shown in listing
 // use real size and mtime, linkflag=0 to allow extract file, title->linkname
 // encode bin-format in mode [shown in listing], but also store name in ownr
 // store compression format in group, over/underflow in devmaj/min?
-// 
+//
 // have tree since store pathnames, also don't need to store directory entries
 // as histo folders don't have any attributes that need saving
 //
@@ -311,12 +308,12 @@ int TH2I_SetValidLen(TH2I *this, int bins)
 //    gnu tar - numeric fields can be bin not ascii [set msb of leading byte]
 //    prefix[155] -> atime[12] ctime[12] offset[12] longname[4] pad[1]
 //    4 sparse entries:{offset[12] bytes[12]} realsize[12] extended[1] pad[17]
-// 
+//
 // tar includes plenty of unused header space plus standard extension method
 // - so can include everything in tar header
 // => minimum size is 0.5k (300k per 600 histo) (1-2Mbyte per tigress run!)
 // tigress eta files have 2600 spectra in 1150k (would be ~*2)
-// 
+//
 // will be trivial to convert these files to root files
 // (using script which will work on any root version, not compiled program)
 // ----------------------------------------------------------------------------
@@ -348,6 +345,7 @@ int delete_histograms(Config *cfg)
       free(ptr->data); //free(ptr);
    }
    cfg->nhistos = 0;
+   return(0);
 }
 
 int write_histofile(Config *cfg, FILE *fp)
@@ -394,11 +392,60 @@ int close_histofile(Config *cfg)
    return( remove_config(cfg) );
 }
 
+///////////////////////////////////////////////////////////////////////////
+#define COMPRESS_BUFSIZ 270000000
+// allow for 8k^2 = 65M-chan * 4bytes = 256Mbytes [~270000000]
+static char compress_buf[COMPRESS_BUFSIZ];
+int compress_buffer(char *input, int size)
+{
+   z_stream strm;
+   int status;
+
+   strm.zalloc = Z_NULL;
+   strm.zfree = Z_NULL;
+   strm.opaque = Z_NULL;
+   if( (status = deflateInit(&strm, Z_DEFAULT_COMPRESSION)) != Z_OK ){
+      fprintf(stderr,"zlib compression error\n"); return(-1);
+   }
+   strm.avail_in = size;
+   strm.next_in = input;
+
+   strm.avail_out = COMPRESS_BUFSIZ; // should never be filled
+   strm.next_out = compress_buf;
+   deflate(&strm, Z_FINISH);
+   status = COMPRESS_BUFSIZ - strm.avail_out;
+   deflateEnd(&strm);
+   return(status);
+}
+int decompress_buffer(char *input, int size)
+{
+   z_stream strm;
+   int status;
+
+   strm.zalloc = Z_NULL;
+   strm.zfree = Z_NULL;
+   strm.opaque = Z_NULL;
+   strm.avail_in = 0;strm.next_in = Z_NULL;
+   if( (status = inflateInit(&strm)) != Z_OK ){
+      fprintf(stderr,"zlib decompression error\n"); return(-1);
+   }
+   strm.avail_in = size;
+   strm.next_in = input;
+
+   strm.avail_out = COMPRESS_BUFSIZ; // should never be filled
+   strm.next_out = compress_buf;
+   inflate(&strm, Z_NO_FLUSH);
+   status = COMPRESS_BUFSIZ - strm.avail_out;
+   inflateEnd(&strm);
+   return(status);
+}
+///////////////////////////////////////////////////////////////////////////
+
 // alloc and read new histogram set (+config file)
 Config *read_histofile(char *filename, int config_only)
 {
    unsigned size, xbins, xmin, xmax, ybins, ymin, ymax, len;
-   int pad, err=0;
+   int pad, err=0, bins;
    Config *cfg;
    TH1I *histo;
    char tmp[64];
@@ -456,7 +503,13 @@ Config *read_histofile(char *filename, int config_only)
       } else {
          histo = (TH1I *)H2_BOOK(cfg, file_head.name,file_head.link,xbins,0,xbins,ybins,0,ybins);
       }
-      memcpy(histo->data, file_body, size); // Do not include pad!
+      bins = (ybins != 0) ? xbins*ybins : xbins;
+      if( bins > 65536 && file_body[0] == 120 &&  file_body[1] == -100 ){ // compressed
+         size = decompress_buffer(file_body, size);
+         memcpy(histo->data, compress_buf, size);
+      } else {
+         memcpy(histo->data, file_body, size); // Do not include pad!
+      }
    }
    fclose(fp);
    if( err ){ remove_config(cfg); return(NULL); }
@@ -494,7 +547,7 @@ int write_th1I(FILE *fp, void *ptr)
 
    // binformat, #entries, compression format(use size for now)
 
-   bins = (hist->type==INT_2D) ? hist->xbins*hist->ybins : hist->xbins; 
+   bins = (hist->type==INT_2D) ? hist->xbins*hist->ybins : hist->xbins;
    // check for empty (count non-zero at same time)
    count = 0; for(i=0; i<bins; i++){
       if( hist->data[i] != 0 ){
@@ -503,8 +556,11 @@ int write_th1I(FILE *fp, void *ptr)
    }
    if( count == 0 ){ size=0; mode=0; }
    //else if( count * 6 < ptr->xbins*sizeof(float) ){ size = count*6; mode=1; }
-   else { size = bins*sizeof(int);  mode=2; } // just write data
-   
+   else if( bins > 65536 ){
+      size = compress_buffer(hist->data, bins*sizeof(int));
+      mode = 3; // gzip compressed
+   } else { size = bins*sizeof(int);  mode=2; } // just write data
+
    sprintf(file_head.size    ,"%011o", size );
    sprintf(file_head.owner   ,"%10d",  hist->underflow );
    sprintf(file_head.group   ,"%10d",  hist->overflow  );
@@ -519,6 +575,7 @@ int write_th1I(FILE *fp, void *ptr)
    case  0: break;
    case  1: size = pad = 0; break;
    case  2: memcpy( file_body, hist->data, size ); break;
+   case  3: memcpy( file_body, compress_buf, size ); break;
    default: break;
    }
    fwrite( &file_body, sizeof(char), size+pad, fp);
@@ -581,7 +638,7 @@ int check_folder(char *folder) // return valid length (or -1) if invalid
 //    [  e.g.: list of pointers (to current folder and each higer folder)  ]
 // BUT, doing after histos are all created is also simple enough
 // ---------------- Example Tree ----------------------------
-//     TOP [--NO]                 Top has no Name/Next-Folder 
+//     TOP [--NO]                 Top has no Name/Next-Folder
 //      |
 //      A------B--C
 //      |      |  |
@@ -598,7 +655,7 @@ int create_histo_tree(Config *cfg)
    Folder *curr_folder, *f;
    TH1I *curr_histo;
    int i, len;
-   
+
    if( cfg->folders_valid ){ return(0); } // already up to date
    else {
       delete_histo_tree(cfg);             // start over
@@ -723,7 +780,7 @@ char *next_histotree_item(Config *cfg, int reset, int *type, int *ascend)
    }
    if( histo == NULL ){ // end of histos in this folder - exit folder
       // **before going up a level, need to go to next folder on this level
-      if( folder->next_folder != NULL ){ 
+      if( folder->next_folder != NULL ){
          folder = cfg->treepath[cfg->current_depth] = folder->next_folder;
          histo = NULL;
          memcpy(name,  folder->name, strlen(folder->name)+1);
@@ -757,11 +814,11 @@ char *next_histotree_item(Config *cfg, int reset, int *type, int *ascend)
    *type = 1; return(name);
 }
 // ----------------------------------------------------------------------------
-// json format ... 
+// json format ...
 //
 // {} = object start/end, comma-sep list of zero or more "string":value
 // [] = array start/end,  comma-sep list of zero or more          value
-// 
+//
 //     value: null, string, number[int/float], bool, array or object
 //
 // *NOTE* spec says NO-TRAILING-COMMAS (although they are usually accepted)

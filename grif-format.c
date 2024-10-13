@@ -13,12 +13,12 @@ void dbg_grifbuf(unsigned *evstrt, int reorder){
    printf("EVBUF[size:%d]: wrpos:%8d rdpos:%8d [%8d avail]\n",
       EVENTBUFSIZE, eventbuf_wrpos%EVENTBUFSIZE, eventbuf_rdpos%EVENTBUFSIZE,
       eventbuf_wrpos-eventbuf_rdpos );
-   printf("                                  evstart:%8d\n", evstrt-event_buffer);
+   printf("                                  evstart:%8ld\n", evstrt-event_buffer);
    } else {
-   printf("BANKBUF[size:%d]: wrpos:%8d rdpos:%8d [%8d avail]\n",
+   printf("BANKBUF[size:%d]: wrpos:%8ld rdpos:%8ld [%8d avail]\n",
       BANK_BUFSIZE, bankbuf_wrpos%BANK_BUFSIZE, bankbuf_rdpos%BANK_BUFSIZE,
       bankbuf_wrpos-bankbuf_rdpos );
-   printf("                                  evstart:%8d\n", evstrt-bankbuf);
+   printf("                                  evstart:%8ld\n", evstrt-bankbuf);
    }
 }
 
@@ -56,7 +56,7 @@ void grif_status(int current_time)
    prev_time = current_time; if( dt == 0 ){ dt = 1; }
    prev_evt  = grif_evcount;
 
-   printf("GrifEvt: in:%10d err:%10d[%5.1f%%]         %6.3f Mevt/s\n         ",
+   printf("GrifEvt: in:%10ld err:%10d[%5.1f%%]         %6.3f Mevt/s\n         ",
           grif_evcount, sum, (100.0*sum)/grif_evcount, de/(1000000.0*dt) );
    printf("[Hdr:%d Trlr:%d addr:%d phwrds:%d trigMatch%d]\n",
           grif_err[GRIF_ERR_HDR], grif_err[GRIF_ERR_TRLR], grif_err[GRIF_ERR_ADDR],
@@ -164,6 +164,7 @@ int unpack_grif3_event(unsigned *evntbuf, int evlen, Grif_event *ptr, int proces
    static int savelen, prevtrig, errcount;
    int *wave_ptr = NULL;
 
+   if( debug ){ printf("--CLR EVT[%4ld]\n", ptr - grif_event ); }
    memset(ptr, 0, sizeof(Grif_event) );
    ptr->master_id = -1;  ptr->file_id = grif_evcount;
    if( ((*evntbuf) & 0x80000000) != 0x80000000 ){
@@ -183,6 +184,11 @@ int unpack_grif3_event(unsigned *evntbuf, int evlen, Grif_event *ptr, int proces
 	 }
 	 qtcount = 0;
          ptr->dtype  = ((value & 0x0000F) >>  0);
+
+         //if( ptr->dtype == 6 ){
+	 //   printf("DSC\n");
+	 //}
+
          ptr->address= ((value & 0xFFFF0) >>  4);
          ptr->chan = GetIDfromAddress(ptr->address);
          ptr->ab_alt_chan = -1; // initialize as -1, used in addback
@@ -279,7 +285,12 @@ int unpack_grif3_event(unsigned *evntbuf, int evlen, Grif_event *ptr, int proces
         ptr-> integ |= ((val32 & 0x7c000000) >> 17); ptr->nhit = 1;
         break;
         case 2: /* CFD Time */
-        ptr->cfd     = (ptr->dtype==6) ? val32 : val32 & 0x003fffff;
+	  if(ptr->dtype==6){
+	    ptr->cfd      = val32 & 0x3ff;
+	    ptr->cc_short = (val32 & 0x1fffc)>>10;
+	  }else{
+	    ptr->cfd = val32 & 0x003fffff;
+	  }
         ptr-> integ |= ((val32 & 0x7FC00000) >> 22);
         break;
         case 3:  /* descant long*/

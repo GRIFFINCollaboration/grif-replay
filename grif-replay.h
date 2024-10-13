@@ -24,6 +24,8 @@
 #define SORT_ALL 0     // for built-events, sort all events in window at once
 #define SORT_ONE 1     //     not-built, sort events one-by-one as they leave window
 
+extern int debug;
+
 #define FILE_QLEN 256
 typedef struct sortfile_struct {
    char  *data_dir; char  *data_name;
