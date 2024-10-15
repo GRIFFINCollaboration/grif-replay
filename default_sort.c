@@ -274,7 +274,8 @@ int pre_sort(int frag_idx, int end_idx)
   // Use ZDS B output (output_table[alt->chan] == 0) in CAEN electronics
         if( ((alt->subsys == SUBSYS_ARIES && polarity_table[alt->chan] == 0) || (alt->subsys == SUBSYS_ZDS && output_table[alt->chan]==0)) && alt->energy > 5){
         // Calculate time-of-flight and correct it for this DESCANT detector distance
-        tof = ptr->cfd - alt->cfd;
+	  tof = abs(ptr->cfd - alt->cfd);
+	  //  fprintf(stdout,"tof: %d - %d = %f\n",ptr->cfd, alt->cfd, tof);
         ptr->energy4 = (int)(tof);
         ptr->e4cal = (int)(tof * DSW_tof_corr_factor[ptr->chan]);
       }
@@ -403,8 +404,10 @@ int fill_chan_histos(Grif_event *ptr)
      pos  = crystal_table[chan];
      if(pos>0 && pos<=N_DES_WALL){
        desw_psd[pos]       -> Fill(desw_psd[pos],   (int)ptr->psd,       1);
-       desw_tof[pos]       -> Fill(desw_tof[pos],   (int)ptr->energy4,       1);
-       desw_tof_corr[pos]  -> Fill(desw_tof_corr[pos],   (int)ptr->e4cal,       1);
+       if(ptr->energy4>0){
+	 desw_tof[pos]       -> Fill(desw_tof[pos],   (int)ptr->energy4,       1);
+	 desw_tof_corr[pos]  -> Fill(desw_tof_corr[pos],   (int)ptr->e4cal,       1);
+       }
      }
    }
 

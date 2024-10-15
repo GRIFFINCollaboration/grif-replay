@@ -176,7 +176,8 @@ int translate_caen_bank(unsigned *ptr, int len)
             e   =  ptr[i  ] >> 16; ovr = (ptr[i] >> 15) & 0x1;
             cc  = (ptr[i++]      ) & 0x7fff; // 15bits
             tmp_bankbuf[outpos++] = (ovr<<25) + e;
-            tmp_bankbuf[outpos++] = ((cc<<10) | cfd); // cfd:10 bits
+          //  tmp_bankbuf[outpos++] = ((cc<<10) | cfd); // cfd:10 bits
+            tmp_bankbuf[outpos++] = ((cc<<10) | (timestamp&0x3fff)); // Save lower 10 bits of 2ns timestamp. Largest value is 2048ns
             tmp_bankbuf[outpos++] = (0xE<<28) + ((lost&0x3fff)<<14)
                               + (tmp_bankbuf[out_start+3] & 0x3fff);
          }
