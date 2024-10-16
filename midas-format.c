@@ -118,8 +118,8 @@ int translate_caen_bank(unsigned *ptr, int len)
          if( !(ev_size==2 && (chan_words % ev_size != 0)) && // UNCLEAR
                              (chan_words % ev_size != 2) ){ return(-1); }
          // event data for this channel-pair follows ...
-         out_start = outpos;
          for(j=0; j<(chan_words-2)/ev_size; j++){
+         out_start = outpos;
             msb       = ptr[i  ] >> 31; // msb set => odd-channel
             timestamp = ptr[i++] & 0x7FFFFFFF;
             addr = (0x8000 + (board_id * 0x100) + 2*chan_pair + msb);
@@ -129,8 +129,8 @@ int translate_caen_bank(unsigned *ptr, int len)
    /* 1 */  tmp_bankbuf[outpos++] = (use_waveform<<15) | dual_trace;
    /* 2 */  tmp_bankbuf[outpos++] = caen_event_id++ & 0x7FFFFFFF;
    /* 3 */  tmp_bankbuf[outpos++] = (0x9<<28) + 0;
-   /* 4 */  tmp_bankbuf[outpos++] = (0xA<<28) + (grif_ts & 0xFFFFFFF);
-   /* 5 */  tmp_bankbuf[outpos++] = (0xB<<28) + (grif_ts>>28);
+   /* 4 */  tmp_bankbuf[outpos++] = 0; // fill in timestamp later
+   /* 5 */  tmp_bankbuf[outpos++] = 0; // fill in timestamp later
 
             if( use_waveform ){
                // waveform uses all 32bits of each word - no room for grif hdr
@@ -153,13 +153,13 @@ int translate_caen_bank(unsigned *ptr, int len)
             e = cfd = cc = ovr = lost = 0;
             switch( ext_format ){
             case 0:  break; // no extra word present
-            case 1:  timestamp |= (ptr[i] & 0xfff0000)<<15;
+            case 1:  timestamp |= ((long)(ptr[i] & 0xffff0000))<<15;
                     /* 16 bits of baseline */
                      ++i; break;
-            case 2:  timestamp |= (ptr[i] & 0xfff0000)<<15;
+            case 2:  timestamp |= ((long)(ptr[i] & 0xffff0000))<<15;
                     /* [15..12} - 4 bits of flags */
                      ++i; break;
-            case 3:  timestamp |= (ptr[i] & 0xfff0000)<<15;
+            case 3:  timestamp |= ((long)(ptr[i] & 0xffff0000))<<15;
                     /* [15..12} - 4 bits of flags */
                      cfd = ptr[i] & 0x3FF;  ++i; break;
             case 4:  ++i; break; // missing from analyzer code?
@@ -171,8 +171,8 @@ int translate_caen_bank(unsigned *ptr, int len)
             default: ++i; break;
             }
             grif_ts = timestamp / 5; // (timestamp was in 2ns units)
-            tmp_bankbuf[out_start+4] |=  (grif_ts & 0xFFFFFFF);
-            tmp_bankbuf[out_start+5] |= ((grif_ts>>28) & 0x3fff);
+            tmp_bankbuf[out_start+4] = (0xA<<28) +  (grif_ts & 0xFFFFFFF);
+            tmp_bankbuf[out_start+5] = (0xB<<28) + ((grif_ts>>28) & 0x3fff);
             e   =  ptr[i  ] >> 16; ovr = (ptr[i] >> 15) & 0x1;
             cc  = (ptr[i++]      ) & 0x7fff; // 15bits
             tmp_bankbuf[outpos++] = (ovr<<25) + e;

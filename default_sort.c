@@ -274,7 +274,7 @@ int pre_sort(int frag_idx, int end_idx)
   // Use ZDS B output (output_table[alt->chan] == 0) in CAEN electronics
         if( ((alt->subsys == SUBSYS_ARIES && polarity_table[alt->chan] == 0) || (alt->subsys == SUBSYS_ZDS && output_table[alt->chan]==0)) && alt->energy > 5){
         // Calculate time-of-flight and correct it for this DESCANT detector distance
-	  tof = abs(ptr->cfd - alt->cfd);
+	       tof = abs(ptr->cfd - alt->cfd);
 	  //  fprintf(stdout,"tof: %d - %d = %f\n",ptr->cfd, alt->cfd, tof);
         ptr->energy4 = (int)(tof);
         ptr->e4cal = (int)(tof * DSW_tof_corr_factor[ptr->chan]);
@@ -306,6 +306,7 @@ int init_chan_histos(Config *cfg)
       hit_hist[i] = H1_BOOK(cfg, hit_handles[i], title, MAX_DAQSIZE, 0, MAX_DAQSIZE);
    }
    ts_hist = H1_BOOK(cfg, "ts", "Timestamp", 163840, 0, 163840);
+   gc_hist = H1_BOOK(cfg, "gc", "ZDS GRIF-CAEN", 16, 0, 16);
    close_folder(cfg);
    open_folder(cfg, "Multiplicities");
    for(i=0; i<MAX_SUBSYS; i++){ mult_hist[i] = NULL;
@@ -819,6 +820,12 @@ int fill_singles_histos(Grif_event *ptr)
    }
    break;
    case SUBSYS_ZDS:
+    if(output_table[ptr->chan]==0){ // CAEN ZDS
+     gc_hist->Fill(gc_hist, 2, 1);
+    }
+    if(output_table[ptr->chan]==1){ // GRIF16 ZDS
+     gc_hist->Fill(gc_hist, 1, 1);
+    }
    break;
    case SUBSYS_RCMP:
        rcmp_sum->Fill(rcmp_sum, (int)ptr->ecal, 1);
@@ -959,9 +966,11 @@ int fill_coinc_histos(int win_idx, int frag_idx)
         }
           break;
           case SUBSYS_ZDS: // ge-zds
-          dt_hist[3]->Fill(dt_hist[3], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
-          if( abs_dt < gg_gate ){
-            ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1); // beta-gated Ge sum energy spectrum
+          if(output_table[alt->chan]==1){ // GRIF16 ZDS
+            dt_hist[3]->Fill(dt_hist[3], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+            if( abs_dt < gg_gate ){
+              ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1); // beta-gated Ge sum energy spectrum
+            }
           }
           break;
           case SUBSYS_RCMP: // ge-rcmp
@@ -998,7 +1007,9 @@ int fill_coinc_histos(int win_idx, int frag_idx)
       case SUBSYS_PACES: // paces matrices
       switch(alt->subsys){
         case SUBSYS_ZDS: // paces-zds
-        dt_hist[7]->Fill(dt_hist[7], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // pac-zds
+        if(output_table[alt->chan]==1){ // GRIF16 ZDS
+          dt_hist[7]->Fill(dt_hist[7], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // pac-zds
+        }
         break;
         case SUBSYS_HPGE: // paces-ge
         // Only use GRGa
@@ -1032,7 +1043,9 @@ int fill_coinc_histos(int win_idx, int frag_idx)
         dt_hist[8]->Fill(dt_hist[8], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // labr-labr
         break;
         case SUBSYS_ZDS: // labr-zds
-        dt_hist[17]->Fill(dt_hist[17], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+        if(output_table[alt->chan]==1){ // GRIF16 ZDS
+          dt_hist[17]->Fill(dt_hist[17], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+        }
         break;
         case SUBSYS_ARIES:
         if(polarity_table[alt->chan] == 1){ // Only use ARIES Standard Output
@@ -1201,34 +1214,55 @@ int fill_coinc_histos(int win_idx, int frag_idx)
 
 
   case SUBSYS_ZDS: // zds matrices
-  switch(alt->subsys){
-    case SUBSYS_LABR_T: // zds-tac
-    dt_hist[15]->Fill(dt_hist[15], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
-    break;
-    case SUBSYS_HPGE: // zds-HPGe
-    // Only use GRGa
-    if(output_table[alt->chan] == 1){
-      dt_hist[3]->Fill(dt_hist[3], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
-      ge_sum_b->Fill(ge_sum_b, (int)alt->ecal, 1); // beta-gated Ge sum energy spectrum
-    }
-    break;
-    case SUBSYS_LABR_L: // zds-labr
-    dt_hist[17]->Fill(dt_hist[17], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
-    break;
-    case SUBSYS_DES_WALL: // ZDS-DSW
-    dt_hist[21]->Fill(dt_hist[21], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
 
-     desw_sum_e_b->Fill(desw_sum_e_b, (int)alt->ecal, 1);
-     desw_sum_tof_b->Fill(desw_sum_tof_b, (int)alt->e4cal, 1); // e4cal = corrected time-of-flight
-    break;
-    default: break;
-  } // end of inner switch(ALT)
+  if(output_table[ptr->chan]==1){ // GRIF16 ZDS
+    switch(alt->subsys){
+      case SUBSYS_ZDS: // ZDS GRIF-CAEN
+        if(output_table[alt->chan]==0){ // ZDS GRIF-CAEN coincidence
+         gc_hist->Fill(gc_hist, 3, 1);
+          gc_hist->Fill(gc_hist, 5, 1);
+          dt_hist[22]->Fill(dt_hist[22], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+          dt_hist[23]->Fill(dt_hist[23], (int)(abs(ptr->cfd - alt->cfd)+DT_SPEC_LENGTH/2), 1);
+        }
+      break;
+      case SUBSYS_LABR_T: // zds-tac
+      dt_hist[15]->Fill(dt_hist[15], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+      break;
+      case SUBSYS_HPGE: // zds-HPGe
+      // Only use GRGa
+      if(output_table[alt->chan] == 1){
+        dt_hist[3]->Fill(dt_hist[3], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+        ge_sum_b->Fill(ge_sum_b, (int)alt->ecal, 1); // beta-gated Ge sum energy spectrum
+      }
+      break;
+      case SUBSYS_LABR_L: // zds-labr
+      dt_hist[17]->Fill(dt_hist[17], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+      break;
+      case SUBSYS_DES_WALL: // ZDS-DSW
+      dt_hist[21]->Fill(dt_hist[21], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+
+      desw_sum_e_b->Fill(desw_sum_e_b, (int)alt->ecal, 1);
+      desw_sum_tof_b->Fill(desw_sum_tof_b, (int)alt->e4cal, 1); // e4cal = corrected time-of-flight
+      break;
+      default: break;
+    } // end of inner switch(ALT)
+  }else if(output_table[ptr->chan]==0){ // CAEN ZDS
+    if(alt->subsys == SUBSYS_ZDS && output_table[alt->chan]==1){ // ZDS CAEN-GRIF coincidence
+      gc_hist->Fill(gc_hist, 4, 1);
+      gc_hist->Fill(gc_hist, 5, 1);
+      dt_hist[22]->Fill(dt_hist[22], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+      dt_hist[23]->Fill(dt_hist[23], (int)(abs(ptr->cfd - alt->cfd)+DT_SPEC_LENGTH/2), 1);
+    }
+
+}
   break; // end of ptr ZDS
 
   case SUBSYS_LABR_T: // tac matrices
   switch(alt->subsys){
     case SUBSYS_ZDS: // tac-zds
-    dt_hist[15]->Fill(dt_hist[15], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+    if(output_table[alt->chan]==1){ // GRIF16 ZDS
+      dt_hist[15]->Fill(dt_hist[15], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+    }
     break;
     case SUBSYS_ARIES: // tac-aries
     if(polarity_table[alt->chan] == 1){ // Only use ARIES Standard Output
@@ -1297,10 +1331,12 @@ int fill_coinc_histos(int win_idx, int frag_idx)
     }
     break;
     case SUBSYS_ZDS: // DSW-ZDS
-    dt_hist[21]->Fill(dt_hist[21], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+    if(output_table[alt->chan]==0){ // CAEN ZDS
+      dt_hist[21]->Fill(dt_hist[21], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
 
-     desw_sum_e_b->Fill(desw_sum_e_b, (int)ptr->ecal, 1);
-     desw_sum_tof_b->Fill(desw_sum_tof_b, (int)ptr->e4cal, 1); // e4cal = corrected time-of-flight
+      desw_sum_e_b->Fill(desw_sum_e_b, (int)ptr->ecal, 1);
+      desw_sum_tof_b->Fill(desw_sum_tof_b, (int)ptr->e4cal, 1); // e4cal = corrected time-of-flight
+    }
     break;
     default: break;
   } // end of inner switch(ALT)

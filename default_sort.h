@@ -68,6 +68,7 @@ static char subsys_name[MAX_SUBSYS][STRING_LEN] = {
 
 // Pulse height and energy
 TH1I   *ts_hist; // timestamp
+TH1I   *gc_hist; // GRIF-CAEN hitpattern for checking coincidences
 TH1I   *ph_hist[MAX_DAQSIZE];
 TH1I    *e_hist[MAX_DAQSIZE];
 //TH1I *wave_hist[MAX_DAQSIZE];
@@ -126,12 +127,13 @@ TH1I *aries_tac_artEn;  // aries energy in coincidence with TAC
 TH2I  *ge_xtal, *bgo_xtal, *bgof_xtal, *bgos_xtal, *bgob_xtal, *bgoa_xtal, *labr_xtal, *paces_xtal, *aries_xtal, *desw_e_xtal, *desw_tof_xtal;
 
 // Time difference spectra
-#define N_DT 22
+#define N_DT 24
 char dt_handles[N_DT][32]={ "dt_ge_ge", "dt_ge_bgo", "dt_ge_sep", "dt_ge_zds",  // 0-3
                             "dt_ge_pac", "dt_ge_labr", "dt_ge_rcmp", "dt_pac_zds", // 4-7
                             "dt_pac_labr", "dt_rcmp_rcmp", "dt_ge_art", "dt_labr_art", // 8-11
                             "dt_paces_art", "dt_art_art", "dt_art_tac", "dt_zds_tac", "dt_labr_tac", "dt_labr_zds", // 12-17
-                             "dt_dsw_dsw", "dt_dsw_ge", "dt_dsw_art", "dt_dsw_zds"  }; // 18-21
+                             "dt_dsw_dsw", "dt_dsw_ge", "dt_dsw_art", "dt_dsw_zds", // 18-21
+                              "dt_zds_GRIF_CAEN_10ns", "dt_zds_GRIF_CAEN_2ns"  };
 TH1I  *dt_hist[N_DT];
 TH1I  *dt_tacs_hist[N_LABR];
 
@@ -146,5 +148,5 @@ TH2I *gg, *gg_ab, *gg_opp, *ge_paces, *ge_labr, *ge_rcmp, *labr_labr, *labr_rcmp
 TH2I  *gg_ang_corr_hist[N_GE_ANG_CORR];
 #define N_GRG_ART_ANG_CORR 114
 TH2I  *grg_art_ang_corr_hist[N_GRG_ART_ANG_CORR];
-#define N_DSW_DSW_ANG_CORR 42 
+#define N_DSW_DSW_ANG_CORR 42
 TH2I  *dsw_dsw_ang_corr_hist[N_DSW_DSW_ANG_CORR];
