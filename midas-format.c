@@ -2,6 +2,7 @@
 #include <time.h>
 #include <string.h>
 #include <unistd.h>
+#include <math.h>
 
 #include "grif-replay.h"
 #include "midas-format.h"

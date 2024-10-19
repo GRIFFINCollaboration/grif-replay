@@ -91,6 +91,7 @@ TH1I  *ge_ab_e[N_CLOVER];
 TH1I  *ge_sum, *ge_sum_ab;  // ge_sum is sum of crystal energies
 TH1I  *ge_sum_us, *ge_sum_ds, *ge_sum_ab_us, *ge_sum_ab_ds;  // ge_sum is sum of crystal energies
 TH1I  *ge_sum_b; // beta-gated gamma sum spectrum
+TH1I  *ge_sum_b, *ge_sum_b_sep, *ge_sum_b_zds, *ge_sum_b_art; // beta-gated gamma sum spectrum per ancillary
 
 // ARIES, PACES and LaBr3
 TH1I  *aries_sum;  // aries_sum is sum of tile energies
@@ -133,8 +134,8 @@ char dt_handles[N_DT][32]={ "dt_ge_ge", "dt_ge_bgo", "dt_ge_sep", "dt_ge_zds",  
                             "dt_ge_pac", "dt_ge_labr", "dt_ge_rcmp", "dt_pac_zds", // 4-7
                             "dt_pac_labr", "dt_rcmp_rcmp", "dt_ge_art", "dt_labr_art", // 8-11
                             "dt_paces_art", "dt_art_art", "dt_art_tac", "dt_zds_tac", "dt_labr_tac", "dt_labr_zds", // 12-17
-                             "dt_dsw_dsw", "dt_dsw_ge", "dt_dsw_art", "dt_dsw_zds", // 18-21
-                              "dt_zds_GRIF_CAEN_10ns", "dt_zds_GRIF_CAEN_2ns", "dt_dsw_dsw_2ns", "dt_dsw_zds_2ns"  }; // 22-25
+                            "dt_dsw_dsw", "dt_dsw_ge", "dt_dsw_art", "dt_dsw_zds", // 18-21
+                            "dt_zds_GRIF_CAEN_10ns", "dt_zds_GRIF_CAEN_2ns", "dt_dsw_dsw_2ns", "dt_dsw_zds_2ns"  }; // 22-25
 TH1I  *dt_hist[N_DT];
 TH1I  *dt_tacs_hist[N_LABR];
 
