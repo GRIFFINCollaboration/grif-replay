@@ -264,6 +264,21 @@ int pre_sort(int frag_idx, int end_idx)
       ptr->ab_alt_chan = alt->chan; ptr->e4cal = alt->ecal;
       }
       break;
+      case SUBSYS_ZDS:
+      if(output_table[ptr->chan]==0){ // CAEN Zds
+        if(alt->subsys == SUBSYS_DES_WALL){
+          if(dt < desw_beta_window){
+          // Calculate time-of-flight and correct it for this DESCANT detector distance
+          tof = (spread(abs(ptr->cfd - alt->cfd))*2.0) + 100; //if( tof < 0 ){ tof = -1*tof; }
+          //  fprintf(stdout,"tof: %d - %d = %f\n",ptr->cfd, alt->cfd, tof);
+          alt->energy4 = (int)(tof); // Time of flight
+          alt->e4cal = (int)(spread(tof) * DSW_tof_corr_factor[crystal_table[alt->chan]-1]); // Corrected Time of Flight
+        }
+      }
+
+      }
+      break;
+      /*
       //case SUBSYS_DESCANT:
       case SUBSYS_DES_WALL:
       // DESCANT detectors
@@ -283,6 +298,8 @@ int pre_sort(int frag_idx, int end_idx)
     }
 
       break;
+*/
+
       default: // Unrecognized or unprocessed subsys type
       break;
     }// end of switch
@@ -821,8 +838,8 @@ int fill_singles_histos(Grif_event *ptr)
    break;
    case SUBSYS_DES_WALL: // DESCANT Wall
     desw_sum_e->Fill(desw_sum_e, (int)ptr->ecal, 1);
-    desw_sum_tof->Fill(desw_sum_tof, (int)ptr->e4cal, 1); // e4cal = corrected time-of-flight
-    desw_sum_psd->Fill(desw_sum_psd, (int)ptr->psd, 1);
+    if(ptr->psd>0){ desw_sum_psd->Fill(desw_sum_psd, (int)ptr->psd, 1); }
+    if(ptr->e4cal>0){ desw_sum_tof->Fill(desw_sum_tof, (int)ptr->e4cal, 1); } // e4cal = corrected time-of-flight
     pos  = crystal_table[ptr->chan];
     if( pos < 1 || pos > 60 ){
       fprintf(stderr,"bad descant wall detector[%d] for chan %d\n", pos, ptr->chan);
