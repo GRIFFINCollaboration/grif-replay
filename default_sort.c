@@ -272,12 +272,13 @@ int pre_sort(int frag_idx, int end_idx)
 	//  if( ((alt->subsys == SUBSYS_ARIES && polarity_table[alt->chan] == 0) || (alt->subsys == SUBSYS_ZDS && output_table[alt->chan]==0)) && alt->ecal > 5){
   // Use ARIES Fast output (polarity_table[alt->chan] == 0) in CAEN electronics
   // Use ZDS B output (output_table[alt->chan] == 0) in CAEN electronics
-        if( (((alt->subsys == SUBSYS_ARIES) && (polarity_table[alt->chan] == 0)) || ((alt->subsys == SUBSYS_ZDS) && (output_table[alt->chan]==0))) && alt->energy > 5){
+        //if( ((alt->subsys == SUBSYS_ARIES) && (polarity_table[alt->chan] == 0))
+        if(alt->subsys == SUBSYS_ZDS && output_table[alt->chan]==0){
         // Calculate time-of-flight and correct it for this DESCANT detector distance
-         tof = ptr->cfd - alt->cfd; if( tof < 0 ){ tof = -1*tof; }
+        tof = (ptr->cfd - alt->cfd) + 1000; //if( tof < 0 ){ tof = -1*tof; }
 	  //  fprintf(stdout,"tof: %d - %d = %f\n",ptr->cfd, alt->cfd, tof);
-        ptr->energy4 = (int)(tof);
-        ptr->e4cal = (int)(tof * DSW_tof_corr_factor[crystal_table[ptr->chan]-1]);
+        ptr->energy4 = (int)(tof); // Time of flight
+        ptr->e4cal = (int)(tof * DSW_tof_corr_factor[crystal_table[ptr->chan]-1]); // Corrected Time of Flight
       }
     }
 
