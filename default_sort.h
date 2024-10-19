@@ -110,6 +110,7 @@ TH2I  *rcmp_fb[N_RCMP_POS];
 // DESCANT WALL
 TH1I  *desw_tof[N_DES_WALL];  // DESCANT Wall Time-Of-Flight
 TH1I  *desw_tof_corr[N_DES_WALL];  // DESCANT Wall corrected Time-Of-Flight
+TH1I  *desw_tof_psd[N_DES_WALL];  // DESCANT Wall corrected Time-Of-Flight, PSD gated
 TH1I  *desw_psd[N_DES_WALL];  // DESCANT Wall Pulse Shape Discrimination
 TH1I  *desw_sum_e, *desw_sum_tof, *desw_sum_psd;  // DESCANT Wall Sums of energies and corrected time-of-fligts and PSD
 TH1I  *desw_sum_e_b, *desw_sum_tof_b;  // DESCANT Wall Beta-tagged Sums of energies and corrected time-of-fligts

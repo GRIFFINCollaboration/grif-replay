@@ -376,6 +376,9 @@ int init_chan_histos(Config *cfg)
           desw_psd[pos] = H1_BOOK(cfg, handle, title, E_PSD_SPEC_LENGTH, 0, E_PSD_SPEC_LENGTH);
           close_folder(cfg);
           open_folder(cfg, "Time_Of_Flight");
+          sprintf(title,  "%s_TOF_PSD-gated", chan_name[i] );
+          sprintf(handle, "%s_CTOF_PSDn",         chan_name[i] );
+          desw_tof_psd[pos] = H1_BOOK(cfg, handle, title, E_TOF_SPEC_LENGTH, 0, E_TOF_SPEC_LENGTH);
           sprintf(title,  "%s_Corrected_TOF", chan_name[i] );
           sprintf(handle, "%s_CTOF",         chan_name[i] );
           desw_tof_corr[pos] = H1_BOOK(cfg, handle, title, E_TOF_SPEC_LENGTH, 0, E_TOF_SPEC_LENGTH);
@@ -424,8 +427,11 @@ int fill_chan_histos(Grif_event *ptr)
      if(pos>0 && pos<=N_DES_WALL){
        desw_psd[pos]       -> Fill(desw_psd[pos],   (int)ptr->psd,       1);
        if(ptr->energy4>0){
-	 desw_tof[pos]       -> Fill(desw_tof[pos],   (int)ptr->energy4,       1);
-	 desw_tof_corr[pos]  -> Fill(desw_tof_corr[pos],   (int)ptr->e4cal,       1);
+         desw_tof[pos]       -> Fill(desw_tof[pos],   (int)ptr->energy4,       1);
+         desw_tof_corr[pos]  -> Fill(desw_tof_corr[pos],   (int)ptr->e4cal,       1);
+         if(ptr->psd>10 && ptr->psd<710){
+           desw_tof_psd[pos]  -> Fill(desw_tof_psd[pos],   (int)ptr->e4cal,       1);
+         }
        }
      }
    }
