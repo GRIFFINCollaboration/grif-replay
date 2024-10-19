@@ -112,8 +112,9 @@ TH1I  *desw_tof_corr[N_DES_WALL];  // DESCANT Wall corrected Time-Of-Flight
 TH1I  *desw_psd[N_DES_WALL];  // DESCANT Wall Pulse Shape Discrimination
 TH1I  *desw_sum_e, *desw_sum_tof, *desw_sum_psd;  // DESCANT Wall Sums of energies and corrected time-of-fligts and PSD
 TH1I  *desw_sum_e_b, *desw_sum_tof_b;  // DESCANT Wall Beta-tagged Sums of energies and corrected time-of-fligts
-TH2I  *desw_psd_e[N_DES_WALL]; // DESCANT Wall PSD vs Pulse Height
-TH2I  *desw_psd_tof[N_DES_WALL]; // DESCANT Wall PSD vs corrected-TOF
+TH1I  *desw_sum_e_nn, *desw_sum_tof_nn;  // DESCANT Wall fold>2 Sums of energies and corrected time-of-fligts
+TH1I  *desw_sum_e_nn_a, *desw_sum_tof_nn_a;  // DESCANT Wall fold>2, angle>60 Sums of energies and corrected time-of-fligts
+TH2I  *desw_psd_e, *desw_psd_tof; // DESCANT Wall PSD vs energies or corrected-TOF
 
 // TAC spectra
 TH1I *tac_labr_hist[(int)((N_LABR)*(N_LABR-1)/2)]; // this index numbers are the LaBr-LaBr position numbers
@@ -127,13 +128,13 @@ TH1I *aries_tac_artEn;  // aries energy in coincidence with TAC
 TH2I  *ge_xtal, *bgo_xtal, *bgof_xtal, *bgos_xtal, *bgob_xtal, *bgoa_xtal, *labr_xtal, *paces_xtal, *aries_xtal, *desw_e_xtal, *desw_tof_xtal;
 
 // Time difference spectra
-#define N_DT 24
+#define N_DT 26
 char dt_handles[N_DT][32]={ "dt_ge_ge", "dt_ge_bgo", "dt_ge_sep", "dt_ge_zds",  // 0-3
                             "dt_ge_pac", "dt_ge_labr", "dt_ge_rcmp", "dt_pac_zds", // 4-7
                             "dt_pac_labr", "dt_rcmp_rcmp", "dt_ge_art", "dt_labr_art", // 8-11
                             "dt_paces_art", "dt_art_art", "dt_art_tac", "dt_zds_tac", "dt_labr_tac", "dt_labr_zds", // 12-17
                              "dt_dsw_dsw", "dt_dsw_ge", "dt_dsw_art", "dt_dsw_zds", // 18-21
-                              "dt_zds_GRIF_CAEN_10ns", "dt_zds_GRIF_CAEN_2ns"  };
+                              "dt_zds_GRIF_CAEN_10ns", "dt_zds_GRIF_CAEN_2ns", "dt_dsw_dsw_2ns", "dt_dsw_zds_2ns"  }; // 22-25
 TH1I  *dt_hist[N_DT];
 TH1I  *dt_tacs_hist[N_LABR];
 

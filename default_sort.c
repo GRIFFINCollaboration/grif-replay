@@ -110,7 +110,7 @@ int apply_gains(Grif_event *ptr)
    // The dtype to subsys mapping was determined from the PSC table in the function gen_derived_odb_tables()
     if( ptr->dtype >= 0 && ptr->dtype < MAX_SUBSYS ){
         ptr->subsys = dtype_subsys[ptr->dtype];
-      if( debug ){ printf("--SET EVT[%4d]=%d\n", ptr - grif_event, ptr->subsys ); }
+      if( debug ){ printf("--SET EVT[%4ld]=%d\n", ptr - grif_event, ptr->subsys ); }
       if( ptr->subsys != subsys_dtype[dtype_table[ptr->chan]] ){
          // Hack for non-DESCANT things in CAEN electronics
          // All CAEN channels are set to dtype 6 by default.
@@ -199,7 +199,7 @@ int pre_sort(int frag_idx, int end_idx)
   int bgo_window = 20, addback_window = 20;
   int rcmp_fb_window = 10;
   int art_tac_window = 25;
-  int desw_beta_window = 50; // Very generous right now.
+  int desw_beta_window = 80;
   float desw_median_distance = 1681.8328; // descant wall median source-to-detector distance in mm
   int i, dt, tof;
 
@@ -272,12 +272,12 @@ int pre_sort(int frag_idx, int end_idx)
 	//  if( ((alt->subsys == SUBSYS_ARIES && polarity_table[alt->chan] == 0) || (alt->subsys == SUBSYS_ZDS && output_table[alt->chan]==0)) && alt->ecal > 5){
   // Use ARIES Fast output (polarity_table[alt->chan] == 0) in CAEN electronics
   // Use ZDS B output (output_table[alt->chan] == 0) in CAEN electronics
-        if( ((alt->subsys == SUBSYS_ARIES && polarity_table[alt->chan] == 0) || (alt->subsys == SUBSYS_ZDS && output_table[alt->chan]==0)) && alt->energy > 5){
+        if( (((alt->subsys == SUBSYS_ARIES) && (polarity_table[alt->chan] == 0)) || ((alt->subsys == SUBSYS_ZDS) && (output_table[alt->chan]==0))) && alt->energy > 5){
         // Calculate time-of-flight and correct it for this DESCANT detector distance
-	       tof = abs(ptr->cfd - alt->cfd);
+         tof = ptr->cfd - alt->cfd; if( tof < 0 ){ tof = -1*tof; }
 	  //  fprintf(stdout,"tof: %d - %d = %f\n",ptr->cfd, alt->cfd, tof);
         ptr->energy4 = (int)(tof);
-        ptr->e4cal = (int)(tof * DSW_tof_corr_factor[ptr->chan]);
+        ptr->e4cal = (int)(tof * DSW_tof_corr_factor[crystal_table[ptr->chan]-1]);
       }
     }
 
@@ -456,6 +456,7 @@ int init_singles_histos(Config *cfg)
   rcmp_fb_sum = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
   sprintf(title,  "RCMP_Sum_Energy"); sprintf(handle, "RCMP_Sum_E");
   rcmp_sum = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
+
   sprintf(title,  "DES_Wall_Sum_Energy"); sprintf(handle, "DESW_Sum_E");
   desw_sum_e = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
   sprintf(title,  "DES_Wall_Sum_TOF"); sprintf(handle, "DESW_Sum_TOF");
@@ -466,6 +467,15 @@ int init_singles_histos(Config *cfg)
   desw_sum_e_b = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
   sprintf(title,  "DES_Wall_Sum_TOF_betaTagged"); sprintf(handle, "DESW_Sum_TOF_B");
   desw_sum_tof_b = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
+  sprintf(title,  "DES_Wall_Sum_En_fold2"); sprintf(handle, "DESW_Sum_E_nn");
+  desw_sum_e_nn = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
+  sprintf(title,  "DES_Wall_Sum_TOF_fold2"); sprintf(handle, "DESW_Sum_TOF_nn");
+  desw_sum_tof_nn = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
+  sprintf(title,  "DES_Wall_Sum_En_fold2_ang60"); sprintf(handle, "DESW_Sum_E_nn_a");
+  desw_sum_e_nn_a = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
+  sprintf(title,  "DES_Wall_Sum_TOF_fold2_ang60"); sprintf(handle, "DESW_Sum_TOF_nn_a");
+  desw_sum_tof_nn_a = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
+
   sprintf(title,  "Upstream_Ge_Sum_Energy"); sprintf(handle, "US_Ge_Sum_E");
   ge_sum_us = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
   sprintf(title,  "Downstream_Ge_Sum_Energy"); sprintf(handle, "DS_Ge_Sum_E");
@@ -513,6 +523,12 @@ int init_singles_histos(Config *cfg)
                                             E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
   sprintf(title, "DES_Wall_TOF_DetNum"); sprintf(handle, "DSW_TOF_Xtal");
   desw_tof_xtal     = H2_BOOK(cfg, handle, title, 64, 0, 64,
+                                            E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
+  sprintf(title, "DES_Wall_PSD_En"); sprintf(handle, "DES_Wall_PSD_En");
+  desw_psd_e     = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
+                                            E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
+  sprintf(title, "DES_Wall_PSD_TOF"); sprintf(handle, "DES_Wall_PSD_TOF");
+  desw_psd_tof     = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
                                             E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
     for(i=0; i<N_RCMP_POS; i++){ // Create RCMP DSSD strip spectra
       rcmp_strips[i] = H2_BOOK(cfg, rcmp_strips_handles[i], rcmp_strips_handles[i], 2*N_RCMP_STRIPS, 0, 2*N_RCMP_STRIPS,
@@ -806,6 +822,8 @@ int fill_singles_histos(Grif_event *ptr)
     } else {
         desw_e_xtal->Fill(desw_e_xtal, pos, (int)ptr->ecal, 1);
         desw_tof_xtal->Fill(desw_tof_xtal, pos, (int)ptr->e4cal, 1);
+        desw_psd_e->Fill(desw_psd_e, (int)ptr->psd, (int)ptr->ecal, 1);
+        desw_psd_tof->Fill(desw_psd_tof, (int)ptr->psd, (int)ptr->e4cal, 1);
     }
    break;
    case SUBSYS_ARIES: // ARIES
@@ -1238,12 +1256,6 @@ int fill_coinc_histos(int win_idx, int frag_idx)
       case SUBSYS_LABR_L: // zds-labr
       dt_hist[17]->Fill(dt_hist[17], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
       break;
-      case SUBSYS_DES_WALL: // ZDS-DSW
-      dt_hist[21]->Fill(dt_hist[21], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
-
-      desw_sum_e_b->Fill(desw_sum_e_b, (int)alt->ecal, 1);
-      desw_sum_tof_b->Fill(desw_sum_tof_b, (int)alt->e4cal, 1); // e4cal = corrected time-of-flight
-      break;
       default: break;
     } // end of inner switch(ALT)
   }else if(output_table[ptr->chan]==0){ // CAEN ZDS
@@ -1254,7 +1266,15 @@ int fill_coinc_histos(int win_idx, int frag_idx)
       dt_hist[23]->Fill(dt_hist[23], (int)(abs(ptr->cfd - alt->cfd)+DT_SPEC_LENGTH/2), 1);
     }
 
-}
+    if(alt->subsys == SUBSYS_DES_WALL){ // ZDS-DSW
+    dt_hist[21]->Fill(dt_hist[21], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+    dt_hist[25]->Fill(dt_hist[25], (int)(abs(ptr->cfd - alt->cfd)+DT_SPEC_LENGTH/2), 1);
+
+    desw_sum_e_b->Fill(desw_sum_e_b, (int)alt->ecal, 1);
+    desw_sum_tof_b->Fill(desw_sum_tof_b, (int)alt->e4cal, 1); // e4cal = corrected time-of-flight
+  }
+
+} // end of CAEN ZDS
   break; // end of ptr ZDS
 
   case SUBSYS_LABR_T: // tac matrices
@@ -1298,6 +1318,7 @@ int fill_coinc_histos(int win_idx, int frag_idx)
   switch(alt->subsys){
     case SUBSYS_DES_WALL: // DSW-DSW
     dt_hist[18]->Fill(dt_hist[18], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+    dt_hist[24]->Fill(dt_hist[24], (int)(abs(ptr->cfd - alt->cfd)+DT_SPEC_LENGTH/2), 1);
 
     c1 = crystal_table[ptr->chan];
     if( c1 >= 1 && c1 <= 60 ){
@@ -1307,10 +1328,21 @@ int fill_coinc_histos(int win_idx, int frag_idx)
         dsw_dsw->Fill(dsw_dsw, (int)ptr->e4cal, (int)alt->e4cal, 1);
         c1--; c2--;
 
+        // Fold 2 sum spectra
+        desw_sum_e_nn->Fill(desw_sum_e_nn, (int)ptr->ecal, 1);
+        desw_sum_tof_nn->Fill(desw_sum_tof_nn, (int)ptr->e4cal, 1); // e4cal = corrected time-of-flight
+
         // DSW-DSW angular correlations
         // Fill the appropriate angular bin spectrum with the corrected time-of-flight value
         index = DSW_DSW_angles[c1][c2];
         dsw_dsw_ang_corr_hist[index]->Fill(dsw_dsw_ang_corr_hist[index], (int)ptr->e4cal, (int)alt->e4cal, 1);
+
+        // Fold 2, angle greater than 60 degrees, sum spectra
+        // index 13 = 58.555, index 14 = 61.535
+        if(index>13){
+          desw_sum_e_nn_a->Fill(desw_sum_e_nn_a, (int)ptr->ecal, 1);
+          desw_sum_tof_nn_a->Fill(desw_sum_tof_nn_a, (int)ptr->e4cal, 1); // e4cal = corrected time-of-flight
+        }
       }
     }
     break;
@@ -1333,6 +1365,7 @@ int fill_coinc_histos(int win_idx, int frag_idx)
     case SUBSYS_ZDS: // DSW-ZDS
     if(output_table[alt->chan]==0){ // CAEN ZDS
       dt_hist[21]->Fill(dt_hist[21], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+      dt_hist[25]->Fill(dt_hist[25], (int)(abs(ptr->cfd - alt->cfd)+DT_SPEC_LENGTH/2), 1);
 
       desw_sum_e_b->Fill(desw_sum_e_b, (int)ptr->ecal, 1);
       desw_sum_tof_b->Fill(desw_sum_tof_b, (int)ptr->e4cal, 1); // e4cal = corrected time-of-flight

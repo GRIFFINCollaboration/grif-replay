@@ -287,7 +287,7 @@ int unpack_grif3_event(unsigned *evntbuf, int evlen, Grif_event *ptr, int proces
         case 2: /* CFD Time */
 	  if(ptr->dtype==6){
 	    ptr->cfd      = val32 & 0x3ff;
-	    ptr->cc_short = (val32 & 0x1fffc)>>10;
+	    ptr->cc_short = ((val32>>10) & 0x7fff);
 	  }else{
 	    ptr->cfd = val32 & 0x003fffff;
 	  }

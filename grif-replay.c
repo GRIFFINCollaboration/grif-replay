@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
    Sort_status *sort = &sort_status;
    int web_arg=1;  Config *cfg;
 
-   sort->reorder = 1;  sort->single_thread = 0;  sort->sort_thread = 1;
+   sort->reorder = 2;  sort->single_thread = 0;  sort->sort_thread = 1;
    pthread_create(&web_thread, NULL,(void* (*)(void*))web_main, &web_arg);
    while( !shutdown_server ){ // monitor file queue and sort any added files
 
