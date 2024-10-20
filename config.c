@@ -1940,7 +1940,7 @@ int sum_histos(Config *cfg, int num, char url_args[][STRING_LEN], int fd)
       return(-1);
    }
    if( (fp=fopen(url_args[3],"w")) == NULL ){
-      fprintf(stderr,"can;t open %s to write\n", url_args[3]);
+      fprintf(stderr,"can't open %s to write\n", url_args[3]);
       return(-1);
    }
    if( (sum=add_config(url_args[3])) == NULL ){ return(-1); }
