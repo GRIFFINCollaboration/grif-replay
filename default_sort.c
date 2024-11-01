@@ -102,6 +102,11 @@ int apply_gains(Grif_event *ptr)
             	                                  chan, ptr->address );
       return(-1);
    }
+   if( chan<0 ){
+      fprintf(stderr,"unpack_event: ignored event with negative chan:%d\n",
+            	                                  chan );
+      return(-1);
+   }
 
    ptr->energy = energy = ( ptr->integ == 0 ) ? ptr->q : spread(ptr->q)/ptr->integ;
    ptr->ecal=ptr->esum = offsets[chan]+energy*(gains[chan]+energy*quads[chan]);
