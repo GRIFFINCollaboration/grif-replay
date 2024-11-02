@@ -28,3 +28,8 @@ web_server.o:   web_server.c histogram.h
 #SOURCES = config.c grif-replay.c midas-format.c grif-format.c histogram.c \
            web_server.c reorder.c user_sort.c default_sort.c test_config.c
 
+clean:
+	rm -f *.o grif-replay midas_module.so
+
+# if there is a file called "clean", above will fail without this ...
+.PHONY: clean
