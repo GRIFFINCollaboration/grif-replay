@@ -17,7 +17,7 @@
 #include "midas.h"
 
 extern Sort_metrics diagnostics;
-extern char midas_runtitle[STRINGLEN];
+extern char midas_runtitle[SYS_PATH_LENGTH];
 
 static int midas_local_run_state;
 static int single_thread_flag;
