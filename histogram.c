@@ -94,8 +94,8 @@ TH1I *H1_BOOK(Config *cfg, char *name, char *title, int nbins, int xmin, int xma
    }
    // always allocate the data for sorting histograms
    // skip allocation for large histos read from disk (only read when needed)
-   if( nbins <= SMALL_HISTO_BINS  &&
-       cfg != configs[0] && cfg != configs[1] ){
+   if( nbins <= SMALL_HISTO_BINS ||
+       cfg == configs[0] || cfg == configs[1] ){
       if( (result->data = (int *)malloc(nbins*sizeof(int))) == NULL){
          fprintf(stderr,"H1_BOOK: data malloc failed\n");
          free(result); return(NULL);
@@ -180,8 +180,8 @@ TH2I *H2_BOOK(Config *cfg, char *name, char *title, int xbins, int xmin, int xma
    }
    // always allocate the data for sorting histograms
    // skip allocation for large histos read from disk (only read when needed)
-   if( xbins*ybins <= SMALL_HISTO_BINS &&
-       cfg != configs[0] && cfg != configs[1] ){
+   if( xbins*ybins <= SMALL_HISTO_BINS ||
+       cfg == configs[0] || cfg == configs[1] ){
       if( (result->data = (int *)malloc(xbins*ybins*sizeof(int))) == NULL){
          fprintf(stderr,"H2_BOOK: data malloc failed\n");
          free(result); return(NULL);
@@ -527,17 +527,6 @@ Config *read_histofile(char *filename, int config_only)
       if( config_only ){ // config file was not the first entry
          remove_config( cfg ); return( NULL );
       }
-      if( size+pad <= SMALL_HISTO_BINS*sizeof(int) ){
-         if( fread( &file_body, sizeof(char), size+pad, fp) <  size+pad ){
-            fprintf(stderr,"short read histo:%s[%d]\n",file_head.name,size);
-            err=1; break;
-         }
-      } else {
-         if( fseek(fp, size+pad, SEEK_CUR) < 0 ){
-            fprintf(stderr,"short seek histo:%s[%d]\n", file_head.name, size);
-            err=1; break;
-         }
-      }
       memcpy(tmp, file_head.uid, 8); tmp[8]=0;
       if( sscanf(tmp, "%o", &xbins) < 1 ){
          fprintf(stderr,"can't read histo xbins from:%s\n", file_head.uid);
@@ -548,7 +537,7 @@ Config *read_histofile(char *filename, int config_only)
          fprintf(stderr,"can't read histo ybins from:%s\n", file_head.gid);
          err=1; break;
       }
-      if( sscanf(file_head.owner,"%d_%d", &xmin, &xmax) != 2 ){
+     if( sscanf(file_head.owner,"%d_%d", &xmin, &xmax) != 2 ){
          xmin = 0; xmax = xbins;
       }
       if( sscanf(file_head.group,"%d_%d", &ymin, &ymax) != 2 ){
@@ -557,6 +546,18 @@ Config *read_histofile(char *filename, int config_only)
       len = strlen(file_head.prefix);
       memcpy(cfg->current_path, file_head.prefix, len);
       cfg->current_path[len]=0;
+      bins = ( ybins == 0 ) ? xbins : xbins*ybins;
+      if( bins <= SMALL_HISTO_BINS*sizeof(int) ){
+         if( fread( &file_body, sizeof(char), size+pad, fp) <  size+pad ){
+            fprintf(stderr,"short read histo:%s[%d]\n",file_head.name,size);
+            err=1; break;
+         }
+      } else {
+         if( fseek(fp, size+pad, SEEK_CUR) < 0 ){
+            fprintf(stderr,"short seek histo:%s[%d]\n", file_head.name, size);
+            err=1; break;
+         }
+      }
       if( ybins == 0 ){
          histo = (TH1I *)H1_BOOK(cfg, file_head.name,file_head.link,xbins,0,xbins);
       } else {
