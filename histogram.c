@@ -19,8 +19,8 @@ int open_folder(Config *cfg, char* folder)
    int plen, flen;
 
    if( (flen = check_folder(folder)) <= 0 ){ return(-1); }
-   if( flen + (plen = strlen(path)) >= FOLDER_PATH_LENGTH ){
-      fprintf(stderr,"folder path longer than %d\n", FOLDER_PATH_LENGTH );
+   if( flen + (plen = strlen(path)) >= HISTO_FOLDER_LENGTH ){
+      fprintf(stderr,"folder path longer than %d\n", HISTO_FOLDER_LENGTH );
       return(-1);
    }
    if( path[0] == 0 ){ memcpy(path, folder, flen); path[flen]=0; }
@@ -72,7 +72,7 @@ TH1I *hist_queryhandle(Config *cfg, char *name)
 
 char *next_histotitle(Config *cfg, int reset)
 {
-   static char filename[FOLDER_PATH_LENGTH+256];
+   static char filename[HISTO_FOLDER_LENGTH+TITLE_LENGTH+1];
    static int index;
    if( reset ){ index = 0; }
    if( index >= cfg->nhistos ){ return(NULL); }
@@ -92,9 +92,17 @@ TH1I *H1_BOOK(Config *cfg, char *name, char *title, int nbins, int xmin, int xma
 	 MAX_HISTOGRAMS );
       return(NULL);
    }
-   if( (result->data = (int *)malloc(nbins*sizeof(int))) == NULL){
-      fprintf(stderr,"H1_BOOK: data malloc failed\n");
-      free(result); return(NULL);
+   // always allocate the data for sorting histograms
+   // skip allocation for large histos read from disk (only read when needed)
+   if( nbins <= SMALL_HISTO_BINS  &&
+       cfg != configs[0] && cfg != configs[1] ){
+      if( (result->data = (int *)malloc(nbins*sizeof(int))) == NULL){
+         fprintf(stderr,"H1_BOOK: data malloc failed\n");
+         free(result); return(NULL);
+      }
+      memset(result->data, 0, nbins*sizeof(int) );
+   } else {
+      result->data = NULL;
    }
    if( (tlen=strlen(title)) >= TITLE_LENGTH  ){ tlen = TITLE_LENGTH-1; }
    if( (hlen=strlen(name))  >= HANDLE_LENGTH ){ hlen = HANDLE_LENGTH-1; }
@@ -102,7 +110,6 @@ TH1I *H1_BOOK(Config *cfg, char *name, char *title, int nbins, int xmin, int xma
    memcpy(result->path, cfg->current_path, strlen(cfg->current_path)+1 );
    memcpy(result->handle, name, hlen+1);
    memcpy(result->title, title, tlen+1);
-   memset(result->data, 0, nbins*sizeof(int) );
    result->underflow     = 0;
    result->overflow      = 0;
    result->entries       = 0;
@@ -171,9 +178,17 @@ TH2I *H2_BOOK(Config *cfg, char *name, char *title, int xbins, int xmin, int xma
 	 MAX_HISTOGRAMS );
       return(NULL);
    }
-   if( (result->data = (int *)malloc(xbins*ybins*sizeof(int))) == NULL){
-      fprintf(stderr,"H2_BOOK: data malloc failed\n");
-      free(result); return(NULL);
+   // always allocate the data for sorting histograms
+   // skip allocation for large histos read from disk (only read when needed)
+   if( xbins*ybins <= SMALL_HISTO_BINS &&
+       cfg != configs[0] && cfg != configs[1] ){
+      if( (result->data = (int *)malloc(xbins*ybins*sizeof(int))) == NULL){
+         fprintf(stderr,"H2_BOOK: data malloc failed\n");
+         free(result); return(NULL);
+      }
+      memset(result->data, 0, xbins*ybins*sizeof(int) );
+   } else {
+      result->data = NULL;
    }
    if( (tlen=strlen(title)) >= TITLE_LENGTH  ){ tlen = TITLE_LENGTH-1; }
    if( (hlen=strlen(name))  >= HANDLE_LENGTH ){ hlen = HANDLE_LENGTH-1; }
@@ -181,7 +196,6 @@ TH2I *H2_BOOK(Config *cfg, char *name, char *title, int xbins, int xmin, int xma
    memcpy(result->path, cfg->current_path, strlen(cfg->current_path)+1 );
    memcpy(result->handle, name, hlen+1);
    memcpy(result->title, title, tlen+1);
-   memset(result->data, 0, xbins*ybins*sizeof(int) );
    result->underflow     = 0;
    result->overflow      = 0;
    result->entries       = 0;
@@ -207,7 +221,6 @@ TH2I *H2_BOOK(Config *cfg, char *name, char *title, int xbins, int xmin, int xma
 
 int TH2I_Reset(TH2I *this)
 {
-
   // fprintf(stdout,"Reset TH1I histogram, %s\n",this->title);
    memset(this->data, 0, this->xbins*this->ybins*sizeof(int)); return(0);
    this->valid_bins    = this->xbins*this->ybins;
@@ -439,12 +452,41 @@ int decompress_buffer(char *input, int size)
    inflateEnd(&strm);
    return(status);
 }
+int read_histo_data(Histogram *histo, FILE *fp)
+{
+   int bins = (histo->ybins != 0) ? histo->xbins*histo->ybins : histo->xbins;
+   int size = histo->data_size;
+   if( histo->data != NULL ){
+      fprintf(stderr,"histo data already present:%s\n", histo->title );
+      return(-1);
+   }
+   if( (histo->data = (int *)malloc(bins*sizeof(int))) == NULL){
+      fprintf(stderr,"read_histo_data: data malloc failed\n");
+      return(-1);
+   }
+   if( fseek(fp, histo->file_data_offset, SEEK_SET) < 0 ){
+      fprintf(stderr,"failed_seek histo:%s[%d]\n", histo->title );
+      return(-1);
+   }
+   if( fread( &file_body, sizeof(char), size, fp) < size ){
+      fprintf(stderr,"short read histo:%s[%d]\n", histo->title, size );
+      return(-1);
+   }
+   // compressed data starts with signed bytes: 120,-100
+   if( bins > SMALL_HISTO_BINS && file_body[0]==120 && file_body[1]==-100 ){
+      size = decompress_buffer(file_body, size);
+      memcpy(histo->data, compress_buf, size);
+   } else {
+      memcpy(histo->data, file_body, size);
+   }
+   return(0);
+}
 ///////////////////////////////////////////////////////////////////////////
-
 // alloc and read new histogram set (+config file)
 Config *read_histofile(char *filename, int config_only)
 {
    unsigned size, xbins, xmin, xmax, ybins, ymin, ymax, len;
+   long file_offset = 0;
    int pad, err=0, bins;
    Config *cfg;
    TH1I *histo;
@@ -452,7 +494,7 @@ Config *read_histofile(char *filename, int config_only)
    FILE *fp;
 
    if( (cfg=add_config(filename)) == NULL ){ return(NULL); }
-   if( (fp=fopen(filename,"r")) == NULL){ // can't open
+   if( (fp=cfg->histo_fp=fopen(filename,"r")) == NULL){ // can't open
       fprintf(stderr,"can't open file:%s to read\n", filename );
       remove_config(cfg); return(NULL);
    }
@@ -463,21 +505,38 @@ Config *read_histofile(char *filename, int config_only)
          fprintf(stderr,"can't read histo size from:%s\n", file_head.size);
          err=1; break;
       }
+      file_offset += sizeof(File_head);
       pad = (512 - (size % 512)) % 512; // pad to multiple of 512 bytes
-      if( fread( &file_body, sizeof(char), size+pad, fp) <  size+pad ){
-         fprintf(stderr,"short read on histo:%s[%d]\n", file_head.name, size);
-         err=1; break;
-      }
       if( cfg->nhistos == 0 && strcmp(file_head.name, "config_file") == 0 ){
          if( config_only ){
+            if( fread( &file_body, sizeof(char), size+pad, fp) <  size+pad ){
+               fprintf(stderr,"short read histo:%s[%d]\n",file_head.name,size);
+               err=1; break;
+            }
             load_config(cfg, NULL, file_body );
             return( cfg );
-         } else {
-            continue; // do not try to load this as histogram
+         } else { // do not try to load this as histogram - skip it
+            if( fseek(fp, size+pad, SEEK_CUR) < 0 ){
+               fprintf(stderr,"short seek histo:%s[%d]\n",file_head.name,size);
+               err=1; break;
+            }
+            file_offset += size+pad;
+            continue; 
          }
       }
-      if( config_only ){ // config file was not there
+      if( config_only ){ // config file was not the first entry
          remove_config( cfg ); return( NULL );
+      }
+      if( size+pad <= SMALL_HISTO_BINS*sizeof(int) ){
+         if( fread( &file_body, sizeof(char), size+pad, fp) <  size+pad ){
+            fprintf(stderr,"short read histo:%s[%d]\n",file_head.name,size);
+            err=1; break;
+         }
+      } else {
+         if( fseek(fp, size+pad, SEEK_CUR) < 0 ){
+            fprintf(stderr,"short seek histo:%s[%d]\n", file_head.name, size);
+            err=1; break;
+         }
       }
       memcpy(tmp, file_head.uid, 8); tmp[8]=0;
       if( sscanf(tmp, "%o", &xbins) < 1 ){
@@ -503,15 +562,13 @@ Config *read_histofile(char *filename, int config_only)
       } else {
          histo = (TH1I *)H2_BOOK(cfg, file_head.name,file_head.link,xbins,0,xbins,ybins,0,ybins);
       }
-      bins = (ybins != 0) ? xbins*ybins : xbins;
-      if( bins > 65536 && file_body[0] == 120 &&  file_body[1] == -100 ){ // compressed
-         size = decompress_buffer(file_body, size);
-         memcpy(histo->data, compress_buf, size);
-      } else {
+      if( bins <= SMALL_HISTO_BINS ){
          memcpy(histo->data, file_body, size); // Do not include pad!
+      } else {
+         histo->file_data_offset = file_offset;  histo->data_size = size+pad;
       }
+      file_offset += size+pad;
    }
-   fclose(fp);
    if( err ){ remove_config(cfg); return(NULL); }
    return(cfg);
 }
@@ -590,7 +647,7 @@ int sum_th1I(Config *dst_cfg, TH1I *dst, TH1I *src)
    int i;
    if( dst == NULL ){
       if( src->type == INT_1D ){
-         memcpy(dst_cfg->current_path, src->path, FOLDER_PATH_LENGTH);
+         memcpy(dst_cfg->current_path, src->path, HISTO_FOLDER_LENGTH);
          dst = H1_BOOK(dst_cfg, src->handle, src->title, src->xbins, src->xmin, src->xmax);
       } else {
          dst = (TH1I *)H2_BOOK(dst_cfg, src->handle, src->title, src->xbins, src->xmin, src->xmax, src->ybins, src->ymin, src->ymax);
@@ -612,11 +669,11 @@ int check_folder(char *folder) // return valid length (or -1) if invalid
 {
    int i, len;
 
-   for(i=0; i<FOLDER_PATH_LENGTH; i++){
+   for(i=0; i<HISTO_FOLDER_LENGTH; i++){
       if( folder[i] == '\0' ){ break; }
    }
-   if( (len=i) >= FOLDER_PATH_LENGTH ){
-      fprintf(stderr,"folder longer than %d\n", FOLDER_PATH_LENGTH );
+   if( (len=i) >= HISTO_FOLDER_LENGTH ){
+      fprintf(stderr,"folder longer than %d\n", HISTO_FOLDER_LENGTH );
       return(-1);
    }
    if( folder[len-1] == '/' ){ --len; } // remove trailing /
@@ -650,7 +707,7 @@ int check_folder(char *folder) // return valid length (or -1) if invalid
 // depth first, otherwise keep order same as when created
 int create_histo_tree(Config *cfg)
 {
-   char name[FOLDER_PATH_LENGTH];
+   char name[HISTO_FOLDER_LENGTH];
    char *fldstart, *p;
    Folder *curr_folder, *f;
    TH1I *curr_histo;
@@ -741,11 +798,11 @@ int delete_histo_tree(Config *cfg)
 //           2:ExitFolder     [return zero-length string]
 // Null return => done [type=2 - exit top folder]
 // first call [enter top folder, with empty name] => return empty string, type0
-#define MAX_DEPTH FOLDER_PATH_LENGTH
+#define MAX_DEPTH HISTO_FOLDER_LENGTH
 static int curr_depth;
 char *next_histotree_item(Config *cfg, int reset, int *type, int *ascend)
 {
-   static char name[FOLDER_PATH_LENGTH];
+   static char name[HISTO_FOLDER_LENGTH];
    static Folder* folder;
    static TH1I *histo;
 

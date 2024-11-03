@@ -1047,6 +1047,7 @@ int init_config()
    if( cfg == NULL ){ // not yet alloc'd live set
       if( (cfg=configs[0]=add_config("live")) == NULL ){ return(-1); }
       if( (configs[1]=add_config("sort")) == NULL ){ return(-1); }
+      configs[0]->type = configs[1]->type = MEM_CONFIG;
    }
    init_default_config(cfg);  // populate default "test" config during testing
    load_config(cfg, DEFAULT_CONFIG, NULL); // attempt to load, ignore any error
@@ -1188,9 +1189,9 @@ Config *add_config(char *name)
    if( (cfg = configs[i] = calloc(1, sizeof(Config))) == NULL ){
       fprintf(stderr,"can't alloc new config\n");
    }
-   if( (len=strlen(name)+1) > FOLDER_PATH_LENGTH ){
+   if( (len=strlen(name)+1) >  SYS_PATH_LENGTH ){
       fprintf(stderr,"truncating configname: %s\n", name);
-      len = FOLDER_PATH_LENGTH;
+      len = SYS_PATH_LENGTH;
    }
    memcpy(cfg->name, name, len);
    for(i=0; i<MAX_CALIB;   i++){cfg->calib[i]    = &cfg->calib_array[i]; }
@@ -1289,9 +1290,9 @@ int add_global(Config *cfg, char *name, int value, int val2)
       if( cfg->nglobal >= MAX_GLOBALS ){
          fprintf(stderr,"too many globals for %s\n", name); return(-1);
       }
-      if( (len=strlen(name)+1) > STRINGLEN ){
+      if( (len=strlen(name)+1) > STRING_LEN ){
          fprintf(stderr,"truncating globalname: %s\n", name);
-         len = STRINGLEN;
+         len = STRING_LEN;
       }
       memcpy(global->name, name, len);
        ++cfg->nglobal;
@@ -1351,9 +1352,9 @@ int add_gate(Config *cfg, char *name)
    if( cfg->ngates >= MAX_GATES ){
       fprintf(stderr,"too many gategates: %d\n", MAX_GATES); return(-1);
    }
-   if( (len=strlen(name)+1) > STRINGLEN ){
+   if( (len=strlen(name)+1) > STRING_LEN ){
       fprintf(stderr,"truncating gatename: %s\n", name);
-      len = STRINGLEN;
+      len = STRING_LEN;
    }
    memcpy(gate->name, name, len);
    gate->nconds = 0; ++cfg->ngates;
@@ -1518,9 +1519,9 @@ int add_cond(Config *cfg, char *name, char *varname, char *op, int value)
       fprintf(stderr,"add_cond: can't find variable[%s]\n", varname);
       return(-1);
    }
-   if( (len=strlen(name)+1) > STRINGLEN ){
+   if( (len=strlen(name)+1) > STRING_LEN ){
       fprintf(stderr,"truncating condname: %s\n", name);
-      len = STRINGLEN;
+      len = STRING_LEN;
    }
    memcpy(cond->name, name, len);
    if(        strcmp(op,"LT")  == 0 ){ cond->op = GATEOP_LT;
@@ -1876,7 +1877,7 @@ int set_directory(Config *cfg, char *name, char *path)
    time_t current_time = time(NULL);
    int len;
 
-   if( (len=strlen(path)) >= FOLDER_PATH_LENGTH ){
+   if( (len=strlen(path)) >= SYS_PATH_LENGTH ){
       fprintf(stderr,"set_directory: path too long[%s]\n", path);
       return(-1);
    }
@@ -1899,7 +1900,7 @@ int set_midas_param(Config *cfg, char *name, char *value)
    time_t current_time = time(NULL);
    int len;
 
-   if( (len=strlen(value)) >= FOLDER_PATH_LENGTH ){
+   if( (len=strlen(value)) >= SYS_PATH_LENGTH ){
       fprintf(stderr,"set_midas_param: value too long[%s]\n", value);
       return(-1);
    }
@@ -2655,8 +2656,12 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
     if( (hist = hist_querytitle(cfg, url_args[2*(j+1)+1])) == NULL ){ // don't have it
     sprintf(tmp,"\'%s\':NULL", name );
     put_line(fd, tmp, strlen(tmp) );
-  } else {                                // do have this - send contents
-    if( hist->type == INT_1D ){
+   } else {                            // do have this - send contents
+    if( hist->data == NULL ){ read_histo_data(hist, cfg->histo_fp ); }
+    if( hist->data == NULL ){ // we were not able to read data
+       sprintf(tmp,"\'%s\':NULL", name );
+       put_line(fd, tmp, strlen(tmp) );
+    } else if( hist->type == INT_1D ){
       sprintf(tmp,"\'%s\':[", hist->title );
       put_line(fd, tmp, strlen(tmp) );
       for(i=0; i<hist->xbins; i++){

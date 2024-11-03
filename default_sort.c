@@ -1516,7 +1516,7 @@ return(c1);
 
 static char   path[256];
 static char dirname[64],value[32],type[32];
-extern char midas_runtitle[STRINGLEN];
+extern char midas_runtitle[SYS_PATH_LENGTH];
 
 static void *arrayptr;
 int read_odb_items(int len, int *bank_data)
@@ -1561,7 +1561,7 @@ int read_odb_items(int len, int *bank_data)
       } else if( strncasecmp(ptr,"<key name=\"Run Title\" type=\"STRING\"", 35) == 0 ){
          ptr = str+1;
          if( (str = strchr(ptr,c)) == NULL ){ break; }
-         i = (str-ptr) > STRINGLEN-1 ? STRINGLEN-1 : (str-ptr);
+         i = (str-ptr) > SYS_PATH_LENGTH-1 ? SYS_PATH_LENGTH-1 : (str-ptr);
          memcpy( midas_runtitle, ptr, i ); midas_runtitle[i] = 0;
          ptr += i+1;
          if( (str = strchr(ptr,d)) == NULL ){ break; }

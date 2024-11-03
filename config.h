@@ -35,12 +35,11 @@ int sort_built_event(int window_start, int win_end);
 typedef struct th1i_struct Histogram;
 
 typedef struct global_struct {
-   char name[STRINGLEN]; int min; int max;
+   char name[STRING_LEN]; int min; int max;
 } Global;
 
-#define MAX_CALIB 4096 // should be MAX_DAQSIZEZ
 typedef struct cal_coeff_struct {
-   char name[64]; float offset; float gain; float quad;
+   char name[CHAN_NAMELEN]; float offset; float gain; float quad;
    short address; short datatype;
 } Cal_coeff;
 
@@ -48,22 +47,22 @@ typedef struct sortvar_struct {     // sortvars used by histos AND conditions
    int value;      int offset;    int dtype;     //  but "use_count" only used
    int use_count_x;  int valid;   int local;     //  to refer to histo_use
    Histogram *histo_list_x[MAX_HISTOGRAMS];      // (inc/dec in add/rmv_histo)
-   char name[STRINGLEN]; char title[2*STRINGLEN];
+   char name[STRING_LEN]; char title[STRING_LEN];
 } Sortvar;
 
 typedef struct cond_struct {      // use count inc/dec when un/applying gates
-   char name[STRINGLEN]; Sortvar *var; int op; int value;      // (to histos)
+   char name[STRING_LEN]; Sortvar *var; int op; int value;      // (to histos)
    int use_count;  int veto;
    int passed; int pass_count;  // passed only used during sort
 } Cond;
 
 typedef struct gate_struct {
-   char name[STRINGLEN]; int nconds; Cond *conds[MAX_GATE_CONDS];
+   char name[STRING_LEN]; int nconds; Cond *conds[MAX_GATE_CONDS];
    int use_count;  int passed;
 } Gate;
 
 typedef struct histo_folder_struct {
-   char name[FOLDER_PATH_LENGTH];
+   char name[HISTO_FOLDER_LENGTH];
    struct histo_folder_struct *next_subfolder;  // 1 level lower
    struct histo_folder_struct *next_folder;     // same level
    struct th1i_struct *first_histo;             // same level
@@ -72,11 +71,12 @@ typedef struct histo_folder_struct {
 typedef struct th1i_struct TH1I;
 typedef struct th2i_struct TH2I;
 
-struct th1i_struct {
-   int      type;  TH1I    *next;   char     path[FOLDER_PATH_LENGTH];
+// float has around 24bits integer precision
+struct th1i_struct {  long  file_data_offset;    int data_size;
+   int      type;  TH1I    *next;   char     path[HISTO_FOLDER_LENGTH];
    int     xbins;  int     ybins;   char          title[TITLE_LENGTH];
    int     *data;  int valid_bins;  char        handle[HANDLE_LENGTH];
-   int underflow;  int   overflow;
+   int underflow;  int   overflow; 
    int   entries;  int  num_gates;  char  *gate_names[MAX_HISTO_GATES];
    Sortvar *xvar;  Sortvar  *yvar;  int  *gate_passed[MAX_HISTO_GATES];
    int xmin; int xmax; int ymin; int ymax; int suppress; int user;
@@ -87,8 +87,8 @@ struct th1i_struct {
    int   (*GetBinContent)(TH1I *, int);
    int   (*SetValidLen  )(TH1I *, int);
 };
-struct th2i_struct { // float has around 24bits integer precision
-   int      type;  TH1I    *next;   char     path[FOLDER_PATH_LENGTH];
+struct th2i_struct {  long  file_data_offset;  int data_size;
+   int      type;  TH1I    *next;   char     path[HISTO_FOLDER_LENGTH];
    int     xbins;  int     ybins;   char          title[TITLE_LENGTH];
    int     *data;  int valid_bins;  char        handle[HANDLE_LENGTH];
    int underflow;  int   overflow;
@@ -103,18 +103,22 @@ struct th2i_struct { // float has around 24bits integer precision
    int   (*SetValidLen  )(TH2I *, int);
 };
 
+#define DISK_CONFIG 0
+#define MEM_CONFIG  1
+
 // group config element stuff together, with add/delete/copy fns
 //   to allow quick switch between storing data or pointers (malloc/free)
-typedef struct config_set_struct {
-   char name[FOLDER_PATH_LENGTH];
-   char data_dir[FOLDER_PATH_LENGTH];   // most recent datafile directory
-   char histo_dir[FOLDER_PATH_LENGTH];  // most recent histofile directory
-   char config_dir[FOLDER_PATH_LENGTH]; // most recent configfile directory
-   char midas_title[STRINGLEN];         // title of midas run(histo_config)
-   char current_path[FOLDER_PATH_LENGTH]; // current histogram path
+typedef struct config_set_struct { int  type; // memory(live,sort) or disk
+   FILE             *histo_fp;
+   char name[SYS_PATH_LENGTH];     // "live", "sort", or pathname of tar file
+   char data_dir[SYS_PATH_LENGTH];   // most recent datafile directory
+   char histo_dir[SYS_PATH_LENGTH];  // most recent histofile directory
+   char config_dir[SYS_PATH_LENGTH]; // most recent configfile directory
+   char midas_title[SYS_PATH_LENGTH];// title of midas run(histo_config)
+   char current_path[HISTO_FOLDER_LENGTH]; // current histogram path
    int  midas_start_time;  int midas_runtime;  int mtime;  int lock;
    int folders_valid;    Folder first_folder;
-   int current_depth;    Folder *treepath[FOLDER_PATH_LENGTH];            // length 2296
+   int current_depth;    Folder *treepath[HISTO_FOLDER_LENGTH]; // length 2296
    int ncal;             Cal_coeff *calib[MAX_CALIB];
    int nglobal;          Global *globals[MAX_GLOBALS];
    int nconds;           Cond  *condlist[MAX_CONDS];       //   sorted list
@@ -135,6 +139,7 @@ extern int init_default_histos(Config *cfg, Sort_status *arg);
 extern int remove_histo(Config *cfg, char *name);
 extern int add_histo(Config *cfg, char *path, char *name, char *title, int xbins, char *xvarname, int xmin, int max, int ybins, char *yvarname, int ymin, int ymax);
 extern Histogram *find_histo(Config *cfg, char *name);
+extern int read_histo_data(Histogram *histo, FILE *fp);
 
 extern Config *add_config(char *name);
 extern int remove_config(Config *cfg);

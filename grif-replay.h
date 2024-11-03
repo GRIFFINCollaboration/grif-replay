@@ -1,25 +1,30 @@
 #ifndef GRIF_REPLAY_H
 #define GRIF_REPLAY_H
 
-#define FOLDER_PATH_LENGTH 155 // stored in 155 char field
-#define HANDLE_LENGTH       32 // stored in 100 char field
-#define TITLE_LENGTH       100 // stored in 100 char field
-//#define FILE_BUFSIZ    1048576 // 64k * 4 * 4 [1M]
-#define FILE_BUFSIZ    (1024*1024*256) // [256M] now have matrices 8k*8k*4
-#define STRING_LEN         256
+#define SYS_PATH_LENGTH    2048 // allow this much space for filesystem paths
+                                // also any other "large" strings
 
-#define MAX_HISTO_GATES     32
+// tar file format limits some string lengths ...
+#define HISTO_FOLDER_LENGTH 155 // stored in 155 char field
+#define HANDLE_LENGTH       100 // stored in 100 char field
+#define TITLE_LENGTH        100 // stored in 100 char field
+//#define FILE_BUFSIZ     1048576 // 64k * 4 * 4 [1M]
+#define FILE_BUFSIZ     (1024*1024*1024) // allows matrices up to 16k*16k*4
+#define STRING_LEN          256
+
+#define MAX_HISTO_GATES     64
 #define MAX_SORT_VARS      256
 #define MAX_HISTOGRAMS   16384
 #define MAX_ADDRESS    0x10000
-#define MAX_CONFIGS         64
+#define MAX_CONFIGS        256
 #define MAX_CONDS         1024
 #define MAX_DAQSIZE       1200 // max #channels that can be defined in odb
-#define CHAN_NAMELEN        32 // size of midas osb strings
+#define CHAN_NAMELEN        32 // size of midas odb strings
 #define MAX_GATE_CONDS      64
 #define MAX_GATES          256
 #define MAX_GLOBALS        256
-#define STRINGLEN           64 // max length of gate/histo etc. names
+#define MAX_CALIB  MAX_DAQSIZE
+#define SMALL_HISTO_BINS 65536 // 64k bins
 
 #define SORT_ALL 0     // for built-events, sort all events in window at once
 #define SORT_ONE 1     //     not-built, sort events one-by-one as they leave window

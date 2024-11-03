@@ -18,7 +18,7 @@
 int sort_next_file(Config *cfg, Sort_status *sort);
 
 int coinc_events_cutoff = 25;
-char midas_runtitle[STRINGLEN];
+char midas_runtitle[SYS_PATH_LENGTH];
 Sort_metrics diagnostics;
 static Sort_status sort_status;
 volatile int shutdown_server = 0;
@@ -141,7 +141,7 @@ int sort_next_file(Config *cfg, Sort_status *sort)
    cfg->midas_start_time = diagnostics.midas_run_start;
    cfg->midas_runtime    = diagnostics.midas_last_timestamp+1;
    cfg->midas_runtime   -= cfg->midas_start_time;
-   memcpy(cfg->midas_title, midas_runtitle, STRINGLEN);
+   memcpy(cfg->midas_title, midas_runtitle, SYS_PATH_LENGTH);
    if( !sort->online_mode ){
       write_histofile(cfg, sort->histo_fp);
    } else {
@@ -206,7 +206,7 @@ static void online_loop(Config *cfg, Sort_status *sort)
       cfg->midas_start_time = diagnostics.midas_run_start;
       cfg->midas_runtime    = diagnostics.midas_last_timestamp+1;
       cfg->midas_runtime   -= cfg->midas_start_time;
-      memcpy(cfg->midas_title, midas_runtitle, STRINGLEN);
+      memcpy(cfg->midas_title, midas_runtitle, SYS_PATH_LENGTH);
       fp = NULL;
       if( strlen(cfg->histo_dir) > 0 ){
          sprintf(tmp,"%s/run%05d.tar", cfg->histo_dir, sort->run_number);
