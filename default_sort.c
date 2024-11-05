@@ -208,6 +208,11 @@ int pre_sort(int frag_idx, int end_idx)
   float desw_median_distance = 1681.8328; // descant wall median source-to-detector distance in mm
   int i, dt, tof;
 
+      // Protect yourself
+  if( ptr->chan<0 || ptr->chan >= odb_daqsize ){
+     fprintf(stderr,"presort error: ignored event in chan:%d\n",ptr->chan );
+     return(-1);
+  }
   //printf("\n");
 
   //if( ptr->dtype ==  6 ){
@@ -219,6 +224,12 @@ int pre_sort(int frag_idx, int end_idx)
   i = frag_idx; ptr->fold = 1;
   while( i != end_idx ){ // need at least two events in window
     if( ++i >=  MAX_COINC_EVENTS ){ i=0; } alt = &grif_event[i]; // WRAP
+
+    // Protect yourself
+      if( alt->chan<0 || alt->chan >= odb_daqsize ){
+         fprintf(stderr,"presort error: ignored event in chan:%d\n",alt->chan );
+         return(-1);
+      }
 
     // Determine fold
     if( alt->subsys == ptr->subsys ){ ++ptr->fold; }
