@@ -939,6 +939,12 @@ int fill_coinc_histos(int win_idx, int frag_idx)
   int corrected_tac_value;
   int tac_offset[8] = {-7300,-5585,-6804,0,-6488,-5682,-5416,0};
 
+        // Protect yourself
+    if( ptr->chan<0 || ptr->chan >= odb_daqsize ){
+       fprintf(stderr,"presort error: ignored event in chan:%d\n",ptr->chan );
+       return(-1);
+    }
+    
   // histogram of coincwin-size
   dt = (frag_idx - win_idx + 2*MAX_COINC_EVENTS) %  MAX_COINC_EVENTS;
   ++frag_hist[dt];
@@ -947,6 +953,13 @@ int fill_coinc_histos(int win_idx, int frag_idx)
   // check all conicidences in window
   while( 1 ){
     alt = &grif_event[i];
+
+          // Protect yourself
+      if( alt->chan<0 || alt->chan >= odb_daqsize ){
+         fprintf(stderr,"presort error: ignored event in chan:%d\n",alt->chan );
+         return(-1);
+      }
+
     abs_dt = dt = ptr->ts - alt->ts; if( dt < 0 ){ abs_dt = -1*dt; }
     if( abs_dt > global_window_size ){ break; }
 
