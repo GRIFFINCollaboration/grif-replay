@@ -1067,16 +1067,15 @@ int clear_config(Config *cfg)
    //   fprintf(stderr,"refusing to delete config:%s\n", cfg->name);
    //   return(-1);
    //}
+   for(i=0; i<MAX_HISTOGRAMS; i++){ histo = &cfg->histo_array[i];
+      if( histo->data != NULL ){ free(histo->data); histo->data = NULL; }
+   }
    memset(cfg, 0, sizeof(Config));      // delete any current vars, gates etc.
    for(i=0; i<MAX_CALIB;     i++){cfg->calib[i]    = &cfg->calib_array[i]; }
    for(i=0; i<MAX_GLOBALS;   i++){cfg->globals[i]  = &cfg->global_array[i]; }
    for(i=0; i<MAX_CONDS;     i++){cfg->condlist[i] = &cfg->cond_array[i]; }
    for(i=0; i<MAX_GATES;     i++){cfg->gatelist[i] = &cfg->gate_array[i]; }
    // used_sortvars, and user histos start empty and are filled randomly
-   while( cfg->nhistos != 0 ){
-      histo = cfg->histo_list[0];
-      if( remove_histo(cfg, histo->handle) ){ return(-1); }
-   }
    cfg->mtime = current_time;
    return(0);
 }
@@ -1931,7 +1930,6 @@ int sum_histos(Config *cfg, int num, char url_args[][STRING_LEN], int fd)
    int i, j, arg;
    FILE *fp;
 
-
    if( strncmp(url_args[2], "outputfilename", 14) != 0 ){
       fprintf(stderr,"expected \"outputfilename\" at %s\n", url_args[2]);
       return(-1);
@@ -1957,7 +1955,18 @@ int sum_histos(Config *cfg, int num, char url_args[][STRING_LEN], int fd)
       if( (tmp = read_histofile(url_args[i+1],0)) == NULL ){ continue; }
       fprintf(stderr,"Adding histograms from %s ...\n", url_args[i+1]);
       for(j=0; j<tmp->nhistos; j++){
-         sum_th1I(sum,(TH1I *)sum->histo_list[j],(TH1I *)tmp->histo_list[j]);
+         if( tmp->histo_list[j]->data == NULL ){
+            read_histo_data(tmp->histo_list[j], tmp->histo_fp );
+            if( tmp->histo_list[j]->data == NULL ){
+               fprintf(stderr, "sum_histos:cant alloc data for %s:%s\n",
+                       url_args[i+1], tmp->histo_list[j]->handle );
+               return(-1);
+            }
+            sum_th1I(sum,(TH1I *)sum->histo_list[j],(TH1I *)tmp->histo_list[j]);
+            free(tmp->histo_list[j]->data); tmp->histo_list[j]->data = NULL;
+         } else {
+            sum_th1I(sum,(TH1I *)sum->histo_list[j],(TH1I *)tmp->histo_list[j]);
+         }
       }
       if( i != 4 ){ // update start time and duration for subsequent files
          tmp_conf=read_histofile(url_args[i+1], 1);
@@ -2925,8 +2934,9 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
     put_line(fd, tmp, strlen(tmp) ); // empty
   }
   put_line(fd, "]", 1);
-}
-}
+  free(hist->data); hist->data = NULL;
+    }
+    }
 }
 put_line(fd, HIST_TRL, strlen(HIST_TRL) );
 return(0);

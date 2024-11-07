@@ -645,15 +645,22 @@ int write_th1I(FILE *fp, void *ptr)
 
 int sum_th1I(Config *dst_cfg, TH1I *dst, TH1I *src)
 {
-   int i;
+   int i, bins;
    if( dst == NULL ){
+      memcpy(dst_cfg->current_path, src->path, HISTO_FOLDER_LENGTH);
       if( src->type == INT_1D ){
-         memcpy(dst_cfg->current_path, src->path, HISTO_FOLDER_LENGTH);
          dst = H1_BOOK(dst_cfg, src->handle, src->title, src->xbins, src->xmin, src->xmax);
       } else {
          dst = (TH1I *)H2_BOOK(dst_cfg, src->handle, src->title, src->xbins, src->xmin, src->xmax, src->ybins, src->ymin, src->ymax);
       }
       if( dst == NULL ){ return(-1); }
+      if( dst->data == NULL ){
+         bins = (dst->ybins != 0) ? dst->xbins*dst->ybins : dst->xbins;
+         if( (dst->data = (int *)malloc(bins*sizeof(int))) == NULL){
+            fprintf(stderr,"sum_TH1I: data malloc failed\n");
+            return(-1);
+         }
+      }
       memcmp(dst->data, src->data, dst->valid_bins*sizeof(int) );
       return(0);
    }
