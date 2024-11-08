@@ -126,7 +126,7 @@ int apply_gains(Grif_event *ptr)
 
         }else{
                 // non-CAEN electronics channel so there is an error here
-        	     printf("--ERROR\n");
+        	     printf("--ERROR... Channel %d: There is a mismatch in the subsys type assigned [%d, %s] in comparison to the assignment in the PSC table [%d, %s]\n",ptr->chan,ptr->subsys,subsys_name[ptr->subsys],subsys_dtype[dtype_table[ptr->chan]],subsys_name[subsys_dtype[dtype_table[ptr->chan]]]);
         }
       }
    } else { ptr->subsys = MAX_SUBSYS-1; }
@@ -944,7 +944,7 @@ int fill_coinc_histos(int win_idx, int frag_idx)
        fprintf(stderr,"presort error: ignored event in chan:%d\n",ptr->chan );
        return(-1);
     }
-    
+
   // histogram of coincwin-size
   dt = (frag_idx - win_idx + 2*MAX_COINC_EVENTS) %  MAX_COINC_EVENTS;
   ++frag_hist[dt];
