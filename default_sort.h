@@ -122,12 +122,15 @@ TH2I  *desw_psd_e, *desw_psd_tof; // DESCANT Wall PSD vs energies or corrected-T
 TH1I *tac_labr_hist[(int)((N_LABR)*(N_LABR-1)/2)]; // this index numbers are the LaBr-LaBr position numbers
 TH1I *tac_aries_lbl_hist[N_LABR];  // this index number is the LaBr position number
 TH1I *tac_aries_art_hist[N_ARIES];  // this index number is the Aries position number
+TH1I *tac_aries_lbl_sum;  // ARIES TAC sum spectrum of all LBLs
+TH1I *tac_aries_art_sum;  // ARIES TAC sum spectrum of all ARTs
 TH1I *aries_tac;  // aries_tac gated on 1275keV peak
 TH1I *aries_tac_Egate;  // aries_tac gated on 1275keV peak
 TH1I *aries_tac_artEn;  // aries energy in coincidence with TAC
+TH2I *lblE_tac, *zdsE_tac, *ariesE_tac;  // lbl or zds or aries energy vs TAC
 
 // Energy vs detector number 2D histograms
-TH2I  *ge_xtal, *bgo_xtal, *bgof_xtal, *bgos_xtal, *bgob_xtal, *bgoa_xtal, *labr_xtal, *paces_xtal, *aries_xtal, *desw_e_xtal, *desw_tof_xtal;
+TH2I  *ge_xtal, *bgo_xtal, *bgof_xtal, *bgos_xtal, *bgob_xtal, *bgoa_xtal, *labr_xtal, *labr_tac_xtal, *paces_xtal, *aries_xtal, *art_tac_xtal, *desw_e_xtal, *desw_tof_xtal;
 
 // Time difference spectra
 #define N_DT 26
@@ -144,7 +147,7 @@ TH1I  *dt_tacs_hist[N_LABR];
 TH2I *gg_hit, *bgobgo_hit, *aa_hit, *gea_hit, *lba_hit, *dsw_hit;
 
 // En-En Coincidence matrices
-TH2I *gg, *gg_ab, *gg_opp, *ge_paces, *ge_labr, *ge_rcmp, *labr_labr, *labr_rcmp, *ge_art, *paces_art, *labr_art, *art_art, *dsw_dsw, *ge_dsw, *art_dsw;
+TH2I *gg, *gg_ab, *gg_opp, *ge_paces, *ge_labr, *ge_rcmp, *labr_labr, *labr_zds, *labr_rcmp, *ge_art, *paces_art, *labr_art, *art_art, *dsw_dsw, *ge_dsw, *art_dsw;
 
 // Angular Correlation histograms
 #define N_GE_ANG_CORR 52

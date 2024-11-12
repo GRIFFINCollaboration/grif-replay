@@ -11,6 +11,18 @@ Grif-Replay is composed of two parts; the data-sorting engine and server (writte
 
 Download the repository from GitHub into your chosen working directory. Then in the working directory just run `make`.
 
+### Create the Midas shared-object file
+
+If this instance of grif-replay is intended to connect to an online Midas experiment then the Midas shared-object file must also be created. This requires two additional files which are deliberately not included in this grif-replay Github repository. The two required files are named libmidas.a and midas.h. They must match the version of Midas installed on the machine that you intend to connect to (which may be a different version than the version of midas that is installed on the local machine where grif-replay is installed.). Copy these two files (libmidas.a and midas.h) to the grif-replay directory.
+
+There is a dependancy in the midas.h file for a file named git-revision.h. This is not required by grif-replay so there are two options; either comment out this line in the midas.h file (#include "git-revision.h"), or alternatively create a blank version of this file in the grif-replay directory ('touch git-revision.h').
+
+Then compile the Midas shared-object file with the following command:
+
+`make midas`
+
+See the Connect to Online instructions for how to attach grif-replay to the Midas experiment.
+
 ## Running Grif-Replay
 
 ### Launch the server

@@ -564,6 +564,12 @@ int init_singles_histos(Config *cfg)
   sprintf(title, "ARIESEnergy_CrystalNum"); sprintf(handle, "AriesEnergy_Xtal");
   aries_xtal     = H2_BOOK(cfg, handle, title, 80, 0, 80,
                                             E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
+  sprintf(title, "TAC_LBL_ART_vs_LBL_Num"); sprintf(handle, "TAC_ART_LBL_LBL_Xtal");
+  labr_tac_xtal     = H2_BOOK(cfg, handle, title, 16, 0, 16,
+			                                      E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
+  sprintf(title, "TAC_LBL_ART_vs_ART_Num"); sprintf(handle, "TAC_ART_LBL_ART_Xtal");
+  art_tac_xtal     = H2_BOOK(cfg, handle, title, 80, 0, 80,
+			                                      E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
   sprintf(title, "DES_Wall_En_DetNum"); sprintf(handle, "DSW_En_Xtal");
   desw_e_xtal     = H2_BOOK(cfg, handle, title, 64, 0, 64,
                                             E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
@@ -631,6 +637,9 @@ int init_coinc_histos(Config *cfg)
    sprintf(title, "LaBrLabr"); sprintf(handle, "LaBrLabr");
    labr_labr   = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
  		                                         E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
+sprintf(title, "LaBrZds"); sprintf(handle, "LaBrZds");
+labr_zds   = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
+                                          E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
      sprintf(title, "DSWDSW"); sprintf(handle, "DSWDSW");
      dsw_dsw        = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
    		                                      E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
@@ -710,6 +719,10 @@ rcmp_fb[i] = H2_BOOK(cfg, rcmp_fb_handles[i], rcmp_fb_handles[i], E_2D_RCMP_SPEC
    }
    close_folder(cfg);
    open_folder(cfg, "ART_TACs");
+     sprintf(tmp,"TAC_ART_LBL_LBLSUM");
+   tac_aries_lbl_sum = H1_BOOK(cfg, tmp, tmp, E_TAC_SPEC_LENGTH, 0, E_TAC_SPEC_LENGTH);
+     sprintf(tmp,"TAC_ART_LBL_ARTSUM");
+   tac_aries_art_sum = H1_BOOK(cfg, tmp, tmp, E_TAC_SPEC_LENGTH, 0, E_TAC_SPEC_LENGTH);
  sprintf(tmp,"TAC-ARIES-LaBr3-1275keV");
  aries_tac = H1_BOOK(cfg, tmp, tmp, E_TAC_SPEC_LENGTH, 0, E_TAC_SPEC_LENGTH);
 sprintf(tmp,"TAC-ARTE-LaBr3-1275keV");
@@ -1114,21 +1127,23 @@ int fill_coinc_histos(int win_idx, int frag_idx)
 
       case SUBSYS_LABR_L: // Labr matrices
       switch(alt->subsys){
-        case SUBSYS_HPGE:
+        case SUBSYS_HPGE: // labr-ge
         // Only use GRGa
         if(output_table[alt->chan] == 1){
           dt_hist[5]->Fill(dt_hist[5], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // labr-ge
         }
         break;
-        case SUBSYS_LABR_L:
+        case SUBSYS_LABR_L: // labr-labr
         dt_hist[8]->Fill(dt_hist[8], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // labr-labr
+        labr_labr->Fill(labr_labr, (int)ptr->ecal, (int)alt->ecal, 1);
         break;
         case SUBSYS_ZDS: // labr-zds
         if(output_table[alt->chan]==1){ // GRIF16 ZDS
           dt_hist[17]->Fill(dt_hist[17], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+          labr_zds->Fill(labr_zds, (int)ptr->ecal, (int)alt->ecal, 1);
         }
         break;
-        case SUBSYS_ARIES:
+        case SUBSYS_ARIES: // labr-aries
         if(polarity_table[alt->chan] == 1){ // Only use ARIES Standard Output
           dt_hist[12]->Fill(dt_hist[12], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // laBr-aries
           if( ( abs_dt < g_aries_upper_gate) && ptr->ecal>0){
@@ -1146,16 +1161,19 @@ int fill_coinc_histos(int win_idx, int frag_idx)
         break;
         case SUBSYS_LABR_T: // labr-tac
         dt_hist[16]->Fill(dt_hist[16], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
-        c1=crystal_table[alt->chan];
+        c1=crystal_table[alt->chan];  // assign c1 as TAC number
         if(c1 >= 1 && c1 <=8 ){ // 8 LBL
 
           dt_tacs_hist[c1-1]->Fill(dt_tacs_hist[c1-1], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
-          if(abs_dt < lbl_tac_gate && c1 == 8){ // ARIES TAC
-            c2 = crystal_table[ptr->chan] - 1;
 
-            if(c2 >= 0 && c2 <8 ){ // 8 Tacs
+
+          if(abs_dt < lbl_tac_gate && c1 == 8){ // labr-tac with the ARIES TAC
+            c2 = crystal_table[ptr->chan] - 1; // assign c2 as LBL number
+
+            if(c2 >= 0 && c2 <8 ){ // 8 LBL detectors
               corrected_tac_value = (int)alt->ecal + tac_offset[c2];
               tac_aries_lbl_hist[c2]->Fill(tac_aries_lbl_hist[c2], corrected_tac_value, 1); // tac spectrum per LBL
+              tac_aries_lbl_sum->Fill(tac_aries_lbl_sum, corrected_tac_value, 1); // sum tac spectrum including all LBL
               if(ptr->ecal >1225 && ptr->ecal <1315){ // gate on LaBr3 energy 1275keV
                 aries_tac->Fill(aries_tac, (int)corrected_tac_value, 1); // tac spectrum gated on 1275keV
                 aries_tac_artEn->Fill(aries_tac_artEn, alt->e4cal, 1); // ARIES energy spectrum in coincidence with TAC
@@ -1164,8 +1182,9 @@ int fill_coinc_histos(int win_idx, int frag_idx)
                 }
               }
             }
-          }
-        }
+          } // end of ARIES TAC
+
+        } // end of all LaBr3 TAC
 
         break;
         default: break; // unprocessed coincidence combinations
@@ -1281,6 +1300,7 @@ int fill_coinc_histos(int win_idx, int frag_idx)
       if(crystal_table[alt->chan] == 8){ // ARIES TAC
         dt_hist[14]->Fill(dt_hist[14], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
         tac_aries_art_hist[crystal_table[ptr->chan]-1]->Fill(tac_aries_art_hist[crystal_table[ptr->chan]-1], (int)alt->ecal, 1); // tac spectrum per ART tiles
+        tac_aries_art_sum->Fill(tac_aries_art_sum, (int)alt->ecal, 1); // sum tac spectrum including all art
       }
       break;
       default: break;
@@ -1356,16 +1376,19 @@ int fill_coinc_histos(int win_idx, int frag_idx)
       if(crystal_table[ptr->chan] == 8){ // ARIES TAC
         dt_hist[14]->Fill(dt_hist[14], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
         tac_aries_art_hist[crystal_table[alt->chan]-1]->Fill(tac_aries_art_hist[crystal_table[alt->chan]-1], (int)ptr->ecal, 1); // tac spectrum per ART tiles
+        tac_aries_art_sum->Fill(tac_aries_art_sum, (int)ptr->ecal, 1); // sum tac spectrum including all art
       }
     }
     break;
     case SUBSYS_LABR_L: // tac-labr
     dt_hist[16]->Fill(dt_hist[16], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
     dt_tacs_hist[crystal_table[ptr->chan]-1]->Fill(dt_tacs_hist[crystal_table[ptr->chan]-1], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+    
     if(abs_dt < lbl_tac_gate && crystal_table[ptr->chan] == 8){ // ARIES TAC
 
       corrected_tac_value = (int)ptr->ecal + tac_offset[crystal_table[alt->chan]-1];
       tac_aries_lbl_hist[crystal_table[alt->chan]-1]->Fill(tac_aries_lbl_hist[crystal_table[alt->chan]-1], corrected_tac_value, 1); // tac spectrum per LBL
+      tac_aries_lbl_sum->Fill(tac_aries_lbl_sum, corrected_tac_value, 1); // sum tac spectrum including all LBL
       if(alt->ecal >1225 && alt->ecal <1315){ // gate on LaBr3 energy 1275keV
 
         aries_tac->Fill(aries_tac, corrected_tac_value, 1); // tac spectrum gated on 1275keV
