@@ -10,12 +10,12 @@ void dbg_dump_event(unsigned *buf, int len){
 }
 void dbg_grifbuf(unsigned *evstrt, int reorder){
    if( reorder ){
-   printf("EVBUF[size:%d]: wrpos:%8d rdpos:%8d [%8d avail]\n",
+   printf("EVBUF[size:%d]: wrpos:%8ld rdpos:%8ld [%8ld avail]\n",
       EVENTBUFSIZE, eventbuf_wrpos%EVENTBUFSIZE, eventbuf_rdpos%EVENTBUFSIZE,
       eventbuf_wrpos-eventbuf_rdpos );
    printf("                                  evstart:%8ld\n", evstrt-event_buffer);
    } else {
-   printf("BANKBUF[size:%d]: wrpos:%8ld rdpos:%8ld [%8d avail]\n",
+   printf("BANKBUF[size:%d]: wrpos:%8ld rdpos:%8ld [%8ld avail]\n",
       BANK_BUFSIZE, bankbuf_wrpos%BANK_BUFSIZE, bankbuf_rdpos%BANK_BUFSIZE,
       bankbuf_wrpos-bankbuf_rdpos );
    printf("                                  evstart:%8ld\n", evstrt-bankbuf);

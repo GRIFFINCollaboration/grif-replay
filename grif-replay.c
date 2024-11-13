@@ -300,8 +300,7 @@ int process_event(Grif_event *ptr, int slot)
       midas_status(cur_time); reorder_status(cur_time);  grif_status(cur_time);
       printf("ProcEvt: %10d[Good:%3d%% Skip:%3d%% WinFull:%3d%%] %6.3f Mevt/s\n",
              calls, (int)(100.0*(calls-skipped-prefull)/calls),
-             (int)(100.0*skipped/calls), (int)(100.0*prefull/calls,
-                                               de/(1000000.0*dt)  )
+             (int)(100.0*skipped/calls), (int)(100.0*prefull/calls), (de/(1000000.0*dt))
       );
       prv_time = cur_time;
    }

@@ -1383,7 +1383,7 @@ int fill_coinc_histos(int win_idx, int frag_idx)
     case SUBSYS_LABR_L: // tac-labr
     dt_hist[16]->Fill(dt_hist[16], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
     dt_tacs_hist[crystal_table[ptr->chan]-1]->Fill(dt_tacs_hist[crystal_table[ptr->chan]-1], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
-    
+
     if(abs_dt < lbl_tac_gate && crystal_table[ptr->chan] == 8){ // ARIES TAC
 
       corrected_tac_value = (int)ptr->ecal + tac_offset[crystal_table[alt->chan]-1];
@@ -1612,7 +1612,7 @@ int read_odb_items(int len, int *bank_data)
          memcpy( midas_runtitle, ptr, i ); midas_runtitle[i] = 0;
          ptr += i+1;
          if( (str = strchr(ptr,d)) == NULL ){ break; }
-      } else if( strncmp(ptr,"</keyarray>",10) == 0 ){ active = 0; arrayptr = '\0';
+      } else if( strncmp(ptr,"</keyarray>",10) == 0 ){ active = 0; arrayptr = (void *)('\0');
       } else if( strncmp(ptr,"<keyarray ",10) == 0 ){
          if( strcmp(path,"/DAQ/params/MSC") != 0 &&
              strcmp(path,"/DAQ/MSC")        != 0 &&
@@ -1698,7 +1698,7 @@ int gen_derived_odb_tables()
   memset(dtype_subsys,   0xff,  MAX_SUBSYS*sizeof(int));
   memset(subsys_dtype,   0xff,  MAX_SUBSYS*sizeof(int));
   for(i=0; i<MAX_DAQSIZE && i<odb_daqsize; i++){
-    if( (tmp=sscanf(chan_name[i], "%3c%d%c%c%d%c", &sys_name, &pos, &crystal, &polarity, &element, &type)) != 6 ){
+    if( (tmp=sscanf(chan_name[i], "%3c%d%c%c%d%c", sys_name, &pos, &crystal, &polarity, &element, &type)) != 6 ){
       fprintf(stderr,"can't decode name[%s] decoded %d of 6 items\n", chan_name[i], tmp );
       continue;
     }

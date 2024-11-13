@@ -166,7 +166,7 @@ int check_buffer(int grifc)
       printf("     [%d]  ERR Event count mismatch - event-check:%d claimed:%d\n", grifc,
              evcount, buf->events );
    }
-   printf("CHKBF[%d] [Completed:%d] DataEvents:%d pending:%d claim:%d rdpos:%ld[%d] wrpos:%ld[%d] tmp_wrpos:%ld[%d] {tsrdpos:%ld[%d] tswrpos:%ld[%d]}\n", grifc, buf->events_done, evcount, buf->pending_events, buf->events, buf->rdpos,  buf->rdpos % REORDER_BUFSIZE, buf->wrpos,  buf->wrpos % REORDER_BUFSIZE, buf->tmp_wrpos,  buf->tmp_wrpos % REORDER_BUFSIZE, buf->ts_rdpos,  buf->ts_rdpos % REORDER_TSBUFSZ, buf->ts_wrpos,  buf->ts_wrpos % REORDER_TSBUFSZ ); fflush(stdout);
+   printf("CHKBF[%d] [Completed:%d] DataEvents:%d pending:%d claim:%d rdpos:%ld[%ld] wrpos:%ld[%ld] tmp_wrpos:%ld[%ld] {tsrdpos:%ld[%ld] tswrpos:%ld[%ld]}\n", grifc, buf->events_done, evcount, buf->pending_events, buf->events, buf->rdpos,  buf->rdpos % REORDER_BUFSIZE, buf->wrpos,  buf->wrpos % REORDER_BUFSIZE, buf->tmp_wrpos,  buf->tmp_wrpos % REORDER_BUFSIZE, buf->ts_rdpos,  buf->ts_rdpos % REORDER_TSBUFSZ, buf->ts_wrpos,  buf->ts_wrpos % REORDER_TSBUFSZ ); fflush(stdout);
    pthread_mutex_unlock(&nxtlock);
    if( err == 0 ){
       return(0);
@@ -180,7 +180,7 @@ void reorder_status(int current_time)
    int sum, *err = diagnostics.reorder_error;
    sum = err[0] + err[2] + err[3] + err[4] + err[5] + err[6] + err[7];// err[8] is in addition to other
                                                                       // errors - do not add to total
-   printf("Reorder: in:%10d out:%10d err:%10d[%5.1f%%] [Desync:%d]\n         ",
+   printf("Reorder: in:%10ld out:%10ld err:%10d[%5.1f%%] [Desync:%d]\n         ",
           tsevents_in, tsevents_out, sum, (100.0*sum)/tsevents_in, err[8] );
    printf("[init:%d format:%d length:%d early:%d late:%d,%d, unk:%d]\n",
           err[2], err[0], err[3], err[5], err[4], err[6], err[7] );
@@ -208,7 +208,7 @@ void reorder_a_main(Sort_status *arg)
 
    printf("starting reorder input ...\n");
    reorder_ready_count = 0;
-   evptr = bankbuf; bufend = bankbuf + BANK_BUFSIZE;
+   evptr = (int *)(bankbuf); bufend = (int *)(bankbuf + BANK_BUFSIZE);
    memset((char *)reorder_active,  0, MAX_GRIFC*sizeof(int));
    memset((char *)reorder_discard, 0, MAX_GRIFC*sizeof(int));
    memset((char *)reorder_evcount, 0, MAX_GRIFC*sizeof(int));
@@ -390,7 +390,7 @@ int reorder_insert_event_check(int grifc) // ### ALL CURRENTLY LOCKED ###
       if( insert_event > EVENT_CHCK ){
          pthread_mutex_lock(&nxtlock);
          tmp = (buf->wrpos-1) % REORDER_BUFSIZE;
-         printf("FINLZ[%d] ts=0x%015x[In  :%4ld] TRLR:0x%08x[@%6ld] len=%2d  ", grifc, buf->tsbuf[wrpos], wrpos, buf->data[tmp], tmp, evlen );
+         printf("FINLZ[%d] ts=0x%015lx[In  :%4d] TRLR:0x%08x[@%6d] len=%2d  ", grifc, buf->tsbuf[wrpos], wrpos, buf->data[tmp], tmp, evlen );
          for(i=0; i<evlen; i++){
             tmp = (buf->wrpos - evlen + i) % REORDER_BUFSIZE;
             printf("0x%08x ", buf->data[tmp] );
@@ -980,6 +980,6 @@ void show_status_b()
    for(i=0; i<TIMESLOT_EVENTS; i++){
       buf = &timeslot_buffer[i];
       if( buf->in_use == 0 && buf->next == NULL ){ continue; }
-      printf("  buf#%05d:%s[bufts%07ld] Nxt=%05d\n", i, buf->in_use ? "busy" : "idle", buf->ts, buf->next==NULL ? 0 : buf->next-timeslot_buffer);
+      printf("  buf#%05d:%s[bufts%07ld] Nxt=%05ld\n", i, buf->in_use ? "busy" : "idle", buf->ts, buf->next==NULL ? 0 : buf->next-timeslot_buffer);
    }
 }

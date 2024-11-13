@@ -502,7 +502,7 @@ int handle_command(int fd, int narg, char url_args[][STRING_LEN])
    if( strcmp(ptr, "viewConfig") == 0 ){ /* -------------------- */
       if( web_fp == NULL ){
          if( (web_fp=fdopen(fd,"r+")) == NULL ){
-            fprintf(stderr,"cviewConfig can't fdopen web fd\n"); return(-1);
+            fprintf(stderr,"viewConfig can't fdopen web fd\n"); return(-1);
          }
       }
       if( strcmp(url_args[2],"filename") == 0 ){

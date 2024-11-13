@@ -421,10 +421,10 @@ int compress_buffer(char *input, int size)
       fprintf(stderr,"zlib compression error\n"); return(-1);
    }
    strm.avail_in = size;
-   strm.next_in = input;
+   strm.next_in = (unsigned char *)input;
 
    strm.avail_out = COMPRESS_BUFSIZ; // should never be filled
-   strm.next_out = compress_buf;
+   strm.next_out = (unsigned char *)compress_buf;
    deflate(&strm, Z_FINISH);
    status = COMPRESS_BUFSIZ - strm.avail_out;
    deflateEnd(&strm);
@@ -443,10 +443,10 @@ int decompress_buffer(char *input, int size)
       fprintf(stderr,"zlib decompression error\n"); return(-1);
    }
    strm.avail_in = size;
-   strm.next_in = input;
+   strm.next_in = (unsigned char *)input;
 
    strm.avail_out = COMPRESS_BUFSIZ; // should never be filled
-   strm.next_out = compress_buf;
+   strm.next_out = (unsigned char *)compress_buf;
    inflate(&strm, Z_NO_FLUSH);
    status = COMPRESS_BUFSIZ - strm.avail_out;
    inflateEnd(&strm);
@@ -465,7 +465,7 @@ int read_histo_data(Histogram *histo, FILE *fp)
       return(-1);
    }
    if( fseek(fp, histo->file_data_offset, SEEK_SET) < 0 ){
-      fprintf(stderr,"failed_seek histo:%s[%d]\n", histo->title );
+      fprintf(stderr,"failed_seek histo:%s\n", histo->title );
       return(-1);
    }
    if( fread( &file_body, sizeof(char), size, fp) < size ){
@@ -521,7 +521,7 @@ Config *read_histofile(char *filename, int config_only)
                err=1; break;
             }
             file_offset += size+pad;
-            continue; 
+            continue;
          }
       }
       if( config_only ){ // config file was not the first entry
@@ -591,7 +591,7 @@ int write_th1I(FILE *fp, void *ptr)
    sprintf(file_head.uid     ,"%07o", hist->xbins);
    sprintf(file_head.gid     ,"%07o", (hist->type==INT_2D) ? hist->ybins : 0);
    //sprintf(file_head.size    ,"%011o", 0 ); // fill in proper size later
-   sprintf(file_head.mtime   ,"%011o", filetime );
+   sprintf(file_head.mtime   ,"%011lo", filetime );
    memset(file_head.cksum, ' ', 8);// cksum entry counted as 8 blanks, no null
    file_head.type[0] = 0;          // only 1byte
    // linkname[100] is from 157 to 256
@@ -615,7 +615,7 @@ int write_th1I(FILE *fp, void *ptr)
    if( count == 0 ){ size=0; mode=0; }
    //else if( count * 6 < ptr->xbins*sizeof(float) ){ size = count*6; mode=1; }
    else if( bins > 65536 ){
-      size = compress_buffer(hist->data, bins*sizeof(int));
+      size = compress_buffer((char *)(hist->data), bins*sizeof(int));
       mode = 3; // gzip compressed
    } else { size = bins*sizeof(int);  mode=2; } // just write data
 
@@ -892,7 +892,8 @@ char *next_histotree_item(Config *cfg, int reset, int *type, int *ascend)
 int dump_histo_tree(Folder *folder)
 {
    while( 1 ){
-      printf("\"%s\"\n", (folder->name == NULL) ? "NULL" : folder->name);
+      //printf("\"%s\"\n", (folder->name == NULL) ? "NULL" : folder->name); // warning: comparison of array 'folder->name' equal to a null pointer is always false
+      printf("\"%s\"\n", folder->name);
       if( folder->next_subfolder != NULL ){
  	 printf(" / \n");
          dump_histo_tree(folder->next_subfolder);
