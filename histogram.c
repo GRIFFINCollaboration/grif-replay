@@ -178,6 +178,11 @@ TH2I *H2_BOOK(Config *cfg, char *name, char *title, int xbins, int xmin, int xma
 	 MAX_HISTOGRAMS );
       return(NULL);
    }
+   if(ybins == 0){
+     // This matrix will be symmetrized. Set the flag and the ybins to equal xbins.
+     result->symm = true;
+     ybins = xbins;
+   }
    // always allocate the data for sorting histograms
    // skip allocation for large histos read from disk (only read when needed)
    if( xbins*ybins <= SMALL_HISTO_BINS ||

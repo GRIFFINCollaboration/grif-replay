@@ -656,6 +656,11 @@ labr_zds   = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
    labr_rcmp  = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
                                             E_2D_RCMP_SPEC_LENGTH, 0, E_2D_RCMP_SPEC_LENGTH);
    sprintf(title, "GGoppo"); sprintf(handle, "GGoppo");
+   /*
+   gg_opp    = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
+		                                       E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
+                                           */
+   // Test symmeterization. set as symmetric on creation by setting ybins to zero in a 2d histogram.
    gg_opp    = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
 		                                       E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
    close_folder(cfg);
