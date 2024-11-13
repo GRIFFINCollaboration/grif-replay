@@ -61,6 +61,7 @@ static char subsys_name[MAX_SUBSYS][STRING_LEN] = {
 #define DT_SPEC_LENGTH          1024
 #define GE_ANG_CORR_SPEC_LENGTH 4096
 #define DSW_ANG_CORR_SPEC_LENGTH 4096
+#define SYMMETERIZE 0 // When the ybins are set to zero for a 2D histogram it will be symmeterized
 
 //#######################################################################
 //########        Individual channel singles HISTOGRAMS        ##########

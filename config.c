@@ -2686,9 +2686,11 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
          fprintf(stderr,"can't alloc memory for sending 2d histo\n");
          continue;
       }
-      if( ! hist->symm ){
+      if( hist->symm == 0 ){
+        fprintf(stdout,"Send non-symmetrized matrix\n");
          memcpy( hist_data, hist->data, xbins*ybins*sizeof(int) );
       } else { // symmetrize here
+        fprintf(stdout,"Send symmetrized matrix\n");
          for(k=0; k<ybins; k++){
             for(i=0; i<=j; i++){
                hist_data[i+k*xbins] = hist->data[i+k*xbins] +
@@ -2710,7 +2712,7 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
       put_line(fd, tmp, strlen(tmp) );
       sprintf(tmp,"\"YaxisMax\" : %d,", hist->ymax );
       put_line(fd, tmp, strlen(tmp) );
-      sprintf(tmp,"\"symmetrized\" : %s,", 0 ? "false" : "true" );
+      sprintf(tmp,"\"symmetrized\" : %s,", hist->symm ? "true" : "false" );
       put_line(fd, tmp, strlen(tmp) );
       pos = 0;
       for(k=0; k<ybins; k+=16){

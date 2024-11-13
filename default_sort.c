@@ -662,7 +662,7 @@ labr_zds   = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
                                            */
    // Test symmeterization. set as symmetric on creation by setting ybins to zero in a 2d histogram.
    gg_opp    = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
-		                                       E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
+		                                       SYMMETERIZE, 0, E_2D_SPEC_LENGTH);
    close_folder(cfg);
    open_folder(cfg, "Hits");
    sprintf(title, "GeGeHit"); sprintf(handle, "GGHit");
@@ -765,6 +765,7 @@ int fill_singles_histos(Grif_event *ptr)
   // Check this is a valid susbsytem type
   if( sys >=0 && sys < MAX_SUBSYS ){
     if( mult_hist[sys] != NULL ){ mult_hist[sys]->Fill(mult_hist[sys], ptr->fold, 1);  }
+    return(-1);
   }
 
 

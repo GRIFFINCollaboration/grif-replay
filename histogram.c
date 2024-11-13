@@ -180,8 +180,10 @@ TH2I *H2_BOOK(Config *cfg, char *name, char *title, int xbins, int xmin, int xma
    }
    if(ybins == 0){
      // This matrix will be symmetrized. Set the flag and the ybins to equal xbins.
-     result->symm = true;
+     result->symm = 1; // Symmetric matrix
      ybins = xbins;
+   }else{
+     result->symm = 0; // Non-symmetric matrix
    }
    // always allocate the data for sorting histograms
    // skip allocation for large histos read from disk (only read when needed)
