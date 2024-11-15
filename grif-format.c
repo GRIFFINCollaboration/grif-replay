@@ -183,22 +183,23 @@ int unpack_grif3_event(unsigned *evntbuf, int evlen, Grif_event *ptr, int proces
             //   grif_evcount, ptr->chan );
 	 }
 	 qtcount = 0;
-         ptr->dtype  = ((value & 0x0000F) >>  0);
+         ptr->dtype  = ((value & 0x000000F) >>  0);
 
          //if( ptr->dtype == 6 ){
 	 //   printf("DSC\n");
 	 //}
 
          ptr->address= ((value & 0xFFFF0) >>  4);
+        // fprintf(stdout,"%d\n",ptr->address);
          ptr->chan = GetIDfromAddress(ptr->address);
-         ptr->ab_alt_chan = -1; // initialize as -1, used in addback
          if( ptr->dtype != 0xF && (ptr->chan < 0) ){
             ++grif_err[GRIF_ERR_ADDR];
             //if( ++errcount < 100 || (errcount % 1000 == 0) ){
-            //   fprintf(stderr,"Ignoring Event - Unknown address [0x%04x]\n", ptr->address);
+             fprintf(stderr,"Ignoring Event - Unknown address [0x%04x] returns chan %d\n", ptr->address, ptr->chan);
             //}
             return(-1);
          }
+         ptr->ab_alt_chan = -1; // initialize as -1, used in addback
          wave_ptr  = &ptr->waveform_length;     /* should be zero here */
          // if network count not present, next 2 words are [mstpat/ppg mstid]
          // (in filtered data)

@@ -745,6 +745,7 @@ sprintf(tmp,"TAC-ARIES-Energy");
 
    close_folder(cfg);
    close_folder(cfg);
+
    return(0);
 }
 

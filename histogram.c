@@ -178,12 +178,14 @@ TH2I *H2_BOOK(Config *cfg, char *name, char *title, int xbins, int xmin, int xma
 	 MAX_HISTOGRAMS );
       return(NULL);
    }
-   if(ybins == 0){
+   if( ybins == 0 ){
      // This matrix will be symmetrized. Set the flag and the ybins to equal xbins.
      result->symm = 1; // Symmetric matrix
+     result->type = INT_2D_SYMM;
      ybins = xbins;
    }else{
      result->symm = 0; // Non-symmetric matrix
+     result->type = INT_2D;
    }
    // always allocate the data for sorting histograms
    // skip allocation for large histos read from disk (only read when needed)
@@ -220,7 +222,6 @@ TH2I *H2_BOOK(Config *cfg, char *name, char *title, int xbins, int xmin, int xma
    result->SetBinContent = &TH2I_SetBinContent;
    result->GetBinContent = &TH2I_GetBinContent;
    result->SetValidLen   = &TH2I_SetValidLen;
-   result->type          = INT_2D;
    cfg->histo_list[cfg->nhistos++] = (void *)result;
    cfg->folders_valid = 0;
    return(result);
@@ -398,10 +399,9 @@ int write_histofile(Config *cfg, FILE *fp)
    for(i=0; i<cfg->nhistos; i++){
       if( ((TH1I *)cfg->histo_list[i])->suppress ){ continue; }
       switch( type = ((TH1I *)cfg->histo_list[i])->type ){
-	//case FLOAT_1D: write_th1f(fp, histogram_list[i] ); break;
       case INT32_1D: write_th1I(fp, cfg->histo_list[i] ); break;
       case INT32_2D: write_th1I(fp, cfg->histo_list[i] ); break;
-      //case INT16_1D: write_th1s(fp, histogram_list[i] ); break;
+      case INT32_2D_SYMM: write_th1I(fp, cfg->histo_list[i] ); break;
       }
    }
    return(0);
@@ -568,6 +568,7 @@ Config *read_histofile(char *filename, int config_only)
       if( ybins == 0 ){
          histo = (TH1I *)H1_BOOK(cfg, file_head.name,file_head.link,xbins,0,xbins);
       } else {
+        if(file_head.type[0] == 'C'){  ybins=0; } // set ybins to 0 for H2_BOOK to handle as symmetric
          histo = (TH1I *)H2_BOOK(cfg, file_head.name,file_head.link,xbins,0,xbins,ybins,0,ybins);
       }
       if( bins <= SMALL_HISTO_BINS ){
@@ -596,11 +597,17 @@ int write_th1I(FILE *fp, void *ptr)
    sprintf(file_head.prefix,"%s", hist->path);
    sprintf(file_head.mode    ,"0000755"); // encode type?
    sprintf(file_head.uid     ,"%07o", hist->xbins);
-   sprintf(file_head.gid     ,"%07o", (hist->type==INT_2D) ? hist->ybins : 0);
+   sprintf(file_head.gid     ,"%07o", (hist->type==INT_2D || hist->type==INT_2D_SYMM) ? hist->ybins : 0);
    //sprintf(file_head.size    ,"%011o", 0 ); // fill in proper size later
    sprintf(file_head.mtime   ,"%011lo", filetime );
    memset(file_head.cksum, ' ', 8);// cksum entry counted as 8 blanks, no null
-   file_head.type[0] = 0;          // only 1byte
+
+   switch( hist->type ){
+   case INT32_1D: file_head.type[0] = 'A'; break;
+   case INT32_2D: file_head.type[0] = 'B'; break;
+   case INT32_2D_SYMM: file_head.type[0] = 'C'; break;
+   }
+
    // linkname[100] is from 157 to 256
    //sprintf(file_head.magic   ,"Grif1"    ); // ustar
    sprintf(file_head.magic   ,"ustar"    ); // ustar FOLLOWED BY NULL
@@ -612,11 +619,11 @@ int write_th1I(FILE *fp, void *ptr)
 
    // binformat, #entries, compression format(use size for now)
 
-   bins = (hist->type==INT_2D) ? hist->xbins*hist->ybins : hist->xbins;
+   bins = (hist->type==INT_2D || hist->type==INT_2D_SYMM) ? hist->xbins*hist->ybins : hist->xbins;
    // check for empty (count non-zero at same time)
    count = 0; for(i=0; i<bins; i++){
       if( hist->data[i] != 0 ){
-         ++count; if( hist->type==INT_2D ){ break; }
+         ++count; if( hist->type==INT_2D || hist->type==INT_2D_SYMM){ break; }
       }
    }
    if( count == 0 ){ size=0; mode=0; }
@@ -878,7 +885,7 @@ char *next_histotree_item(Config *cfg, int reset, int *type, int *ascend)
          *type = 2; return(NULL);  // all done (curr_depth = 0)
       }
    }
-   if( histo->type == INT_2D ){
+   if( histo->type == INT_2D  || histo->type==INT_2D_SYMM){
       sprintf(name, "%s:2d", histo->title );
    } else {
       sprintf(name, "%s", histo->title );

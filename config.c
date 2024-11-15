@@ -2679,7 +2679,7 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
         put_line(fd, tmp, strlen(tmp) );
       }
       put_line(fd, "]", 1 );
-    } else if( hist->type == INT_2D ){
+    } else if( hist->type == INT_2D || hist->type == INT_2D_SYMM ){
       xbins = hist->xbins; if( xbins > 8192 ){ xbins = 8192; }
       ybins = hist->ybins; if( ybins > 8192 ){ ybins = 8192; }
       if( (hist_data = malloc( xbins*ybins*sizeof(int) )) == NULL){
@@ -2687,14 +2687,13 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
          continue;
       }
       if( hist->symm == 0 ){
-        fprintf(stdout,"Send non-symmetrized matrix\n");
          memcpy( hist_data, hist->data, xbins*ybins*sizeof(int) );
-      } else { // symmetrize here
-        fprintf(stdout,"Send symmetrized matrix\n");
+      } else { // symmetrize here before sending
+         memset( hist_data, 0, xbins*ybins*sizeof(int) );
          for(k=0; k<ybins; k++){
-            for(i=0; i<=j; i++){
-               hist_data[i+k*xbins] = hist->data[i+k*xbins] +
-                                      hist->data[k+i*xbins];
+            for(i=0; i<=k; i++){
+              hist_data[i+k*xbins] = hist->data[i+k*xbins] + hist->data[k+i*xbins];
+              hist_data[k+i*xbins] = hist->data[i+k*xbins] + hist->data[k+i*xbins];
             }
          }
       }
@@ -2720,9 +2719,9 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
           count = 0; max=0;
           for(m=0; m<16; m++){
             for(l=0; l<16; l++){
-              if( hist->data[i+l + (k+m)*xbins]!=0){
+              if( hist_data[i+l + (k+m)*xbins]!=0){
                 ++count;
-                if( hist->data[i+l + (k+m)*xbins]>max){max = hist->data[i+l + (k+m)*xbins];}
+                if( hist_data[i+l + (k+m)*xbins]>max){max = hist_data[i+l + (k+m)*xbins];}
               }
             }
           }
@@ -2801,8 +2800,8 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
               for(m=0; m<16; m++){
                 for(l=0; l<16; l++){
                   listIndex = floor((16*m+l)/64);
-                  if( hist->data[i+l + (k+m)*xbins]>list_max[listIndex]){
-                    list_max[listIndex] = hist->data[i+l + (k+m)*xbins];
+                  if( hist_data[i+l + (k+m)*xbins]>list_max[listIndex]){
+                    list_max[listIndex] = hist_data[i+l + (k+m)*xbins];
 
                     // Set the value size required for the largest number in each value string
                     if(list_max[listIndex]>0){ list_valueSize[listIndex] = 0; } // 6 bits
@@ -2826,7 +2825,7 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
 
               // Loop through this submatrix and build the strings
               for(m=0; m<16; m++){
-                for(l=0; l<16; l++){val=hist->data[i+l+(k+m)*xbins];
+                for(l=0; l<16; l++){val=hist_data[i+l+(k+m)*xbins];
                   // List type (8 comma-separated strings which requires 16 quotes and 7 commas).
                   // All strings must be present (the quotes) but can have zero length.
                   // String of single-character coordinates for 0-63.
@@ -2894,7 +2893,7 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
 
 
               for(m=0; m<16; m++){
-                for(l=0; l<16; l++){val=hist->data[i+l+(k+m)*xbins];
+                for(l=0; l<16; l++){val=hist_data[i+l+(k+m)*xbins];
               // Array type
               // Encode 0-63 values as a character using the ASCII code.
               // ASCII code 0-31 are non-printable control characters (not permitted in JSON strings).

@@ -11,11 +11,12 @@
 #define FLOAT_2D            11
 #define DOUBLE_2D           12
 #define INT32_2D            13
-#define INT16_2D            14
+#define INT32_2D_SYMM       14
 #define INT64_2D            15
 
 #define INT_1D        INT32_1D
 #define INT_2D        INT32_2D
+#define INT_2D_SYMM   INT32_2D_SYMM
 
 // to allow flexible histogram ranges and scaling ...
 // should provide BOTH variable scaling var[gain+offset]->bin#
