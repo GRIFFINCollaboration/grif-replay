@@ -597,6 +597,8 @@ int init_coinc_histos(Config *cfg)
   char tmp[STRING_LEN];
   int i,j,k;
 
+  // Set the ybins as SYMMETERIZE to create a symmeterized 2d histogram.
+
   open_folder(cfg, "Hits_and_Sums");
   open_folder(cfg, "Delta_t");
   for(i=0; i<N_DT; i++){ // Create delta-t spectra
@@ -612,19 +614,22 @@ int init_coinc_histos(Config *cfg)
   open_folder(cfg, "Coinc");
   sprintf(title, "Addback_GG"); sprintf(handle, "Addback_GG");
   gg_ab     = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
-		                                      E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
+		                                      SYMMETERIZE, 0, E_2D_SPEC_LENGTH);
   sprintf(title, "GG"); sprintf(handle, "GG");
   gg        = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
-		                                      E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
+		                                      SYMMETERIZE, 0, E_2D_SPEC_LENGTH);
   sprintf(title, "GePaces"); sprintf(handle, "GePaces");
   ge_paces  = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
 		                                      E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
   sprintf(title, "GeLabr"); sprintf(handle, "GeLabr");
    ge_labr   = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
 		                                       E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-   sprintf(title, "GeAries"); sprintf(handle, "GeAries");
-    ge_art   = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
+   sprintf(title, "GeZds"); sprintf(handle, "GeZds");
+    ge_zds   = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
  		                                         E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
+     sprintf(title, "GeAries"); sprintf(handle, "GeAries");
+      ge_art   = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
+   		                                         E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
    sprintf(title, "LaBrAries"); sprintf(handle, "LaBrAries");
     labr_art   = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
    		                                         E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
@@ -633,10 +638,10 @@ int init_coinc_histos(Config *cfg)
      		                                         E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
    sprintf(title, "AriesAries"); sprintf(handle, "AriesAries");
     art_art   = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
-     		                                        E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
+     		                                        SYMMETERIZE, 0, E_2D_SPEC_LENGTH);
    sprintf(title, "LaBrLabr"); sprintf(handle, "LaBrLabr");
    labr_labr   = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
- 		                                         E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
+ 		                                         SYMMETERIZE, 0, E_2D_SPEC_LENGTH);
 sprintf(title, "LaBrZds"); sprintf(handle, "LaBrZds");
 labr_zds   = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
                                           E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
@@ -656,11 +661,6 @@ labr_zds   = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
    labr_rcmp  = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
                                             E_2D_RCMP_SPEC_LENGTH, 0, E_2D_RCMP_SPEC_LENGTH);
    sprintf(title, "GGoppo"); sprintf(handle, "GGoppo");
-   /*
-   gg_opp    = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
-		                                       E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-                                           */
-   // Test symmeterization. set as symmetric on creation by setting ybins to zero in a 2d histogram.
    gg_opp    = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
 		                                       SYMMETERIZE, 0, E_2D_SPEC_LENGTH);
    close_folder(cfg);
@@ -696,7 +696,7 @@ rcmp_fb[i] = H2_BOOK(cfg, rcmp_fb_handles[i], rcmp_fb_handles[i], E_2D_RCMP_SPEC
    for(i=0; i<N_GE_ANG_CORR; i++){ // Create Ge-Ge angular correlation spectra
      sprintf(tmp,"Ge-Ge_angular_bin%d",i);
      gg_ang_corr_hist[i] = H2_BOOK(cfg, tmp, tmp, GE_ANG_CORR_SPEC_LENGTH, 0, GE_ANG_CORR_SPEC_LENGTH,
-                                                  GE_ANG_CORR_SPEC_LENGTH, 0, GE_ANG_CORR_SPEC_LENGTH);
+                                                              SYMMETERIZE, 0, GE_ANG_CORR_SPEC_LENGTH);
    }
    close_folder(cfg);
    open_folder(cfg, "Ge_ART_Ang_Corr");
@@ -710,7 +710,7 @@ rcmp_fb[i] = H2_BOOK(cfg, rcmp_fb_handles[i], rcmp_fb_handles[i], E_2D_RCMP_SPEC
    for(i=0; i<N_DSW_DSW_ANG_CORR; i++){ // Create DSW-DSW angular correlation spectra
      sprintf(tmp,"DSW-DSW_angular_bin%d",i);
      dsw_dsw_ang_corr_hist[i] = H2_BOOK(cfg, tmp, tmp, DSW_ANG_CORR_SPEC_LENGTH, 0, DSW_ANG_CORR_SPEC_LENGTH,
-                                                       DSW_ANG_CORR_SPEC_LENGTH, 0, DSW_ANG_CORR_SPEC_LENGTH);
+                                                                    SYMMETERIZE, 0, DSW_ANG_CORR_SPEC_LENGTH);
    }
    close_folder(cfg);
    open_folder(cfg, "LBL_TACs");
@@ -1070,6 +1070,7 @@ int fill_coinc_histos(int win_idx, int frag_idx)
             if( abs_dt < gg_gate ){
               ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1); // beta-gated Ge sum energy spectrum
               ge_sum_b_zds->Fill(ge_sum_b_zds, (int)ptr->ecal, 1); // Zds-gated Ge sum energy spectrum
+                ge_zds->Fill(ge_zds, (int)ptr->ecal, (int)alt->ecal, 1);
             }
           }
           break;
@@ -1345,6 +1346,7 @@ int fill_coinc_histos(int win_idx, int frag_idx)
         dt_hist[3]->Fill(dt_hist[3], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
         ge_sum_b->Fill(ge_sum_b, (int)alt->ecal, 1); // beta-gated Ge sum energy spectrum
         ge_sum_b_zds->Fill(ge_sum_b_zds, (int)alt->ecal, 1); // Zds-gated Ge sum energy spectrum
+        ge_zds->Fill(ge_zds, (int)alt->ecal, (int)ptr->ecal, 1);
       }
       break;
       case SUBSYS_LABR_L: // zds-labr

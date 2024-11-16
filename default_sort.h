@@ -148,7 +148,7 @@ TH1I  *dt_tacs_hist[N_LABR];
 TH2I *gg_hit, *bgobgo_hit, *aa_hit, *gea_hit, *lba_hit, *dsw_hit;
 
 // En-En Coincidence matrices
-TH2I *gg, *gg_ab, *gg_opp, *ge_paces, *ge_labr, *ge_rcmp, *labr_labr, *labr_zds, *labr_rcmp, *ge_art, *paces_art, *labr_art, *art_art, *dsw_dsw, *ge_dsw, *art_dsw;
+TH2I *gg, *gg_ab, *gg_opp, *ge_paces, *ge_labr, *ge_rcmp, *labr_labr, *labr_zds, *labr_rcmp, *ge_art, *ge_zds, *paces_art, *labr_art, *art_art, *dsw_dsw, *ge_dsw, *art_dsw;
 
 // Angular Correlation histograms
 #define N_GE_ANG_CORR 52
