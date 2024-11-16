@@ -2693,7 +2693,7 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
          for(k=0; k<ybins; k++){
             for(i=0; i<=k; i++){
               hist_data[i+k*xbins] = hist->data[i+k*xbins] + hist->data[k+i*xbins];
-              hist_data[k+i*xbins] = hist->data[i+k*xbins] + hist->data[k+i*xbins];
+            //  hist_data[k+i*xbins] = hist->data[i+k*xbins] + hist->data[k+i*xbins];
             }
          }
       }
