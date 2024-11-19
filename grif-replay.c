@@ -275,7 +275,7 @@ void sort_main(Sort_status *arg)
    while(1){
       // if( arg->shutdown_midas != 0 ){  break; }
       rd_avail = grifevent_wrpos - grifevent_nxtpos;
-      if( arg->grif_sort_done && rd_avail == 0 ){ break; }
+      if( arg->grif_sort_done && rd_avail < 1 ){ break; }
       if( rd_avail < 1 ){ usleep(usecs); continue; }
       process_event(&grif_event[nxtpos], nxtpos);
       nxtpos = ++grifevent_nxtpos % MAX_COINC_EVENTS;
