@@ -167,9 +167,14 @@ int tar2root(char *tarfile, char *rootfile)
                      spec2d[count2]->SetBinContent(i,j,comp_ptr[i+j*xbins]);
                }}
             } else {
+ 	       if( file_head.type == 'C' ){ // symmetric matrix
+               for(j=0; j<ybins; j++){ for(i=0; i<xbins; i++){
+                     spec2d[count2]->SetBinContent(i,j,file_body[i+j*xbins]+
+						       file_body[j+i*xbins]);
+	       }} } else {
                for(j=0; j<ybins; j++){ for(i=0; i<xbins; i++){
                      spec2d[count2]->SetBinContent(i,j,file_body[i+j*xbins]);
-               }}
+	       }} }
             }
             spec2d[count2++]->Write();
          }

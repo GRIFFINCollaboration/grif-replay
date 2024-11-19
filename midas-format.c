@@ -90,6 +90,13 @@ static int caen_event_id;
 //    0x000000df 0x00280019 0x00078b89 0x000000dd
 //    0x00a500b3 0x0008c690 0x0000032f 0x002e002e
 
+int board_to_grifc[32]={ // board-id is 5bits -> 32 values
+    8,  9, 10, 11,  12, 13,  6,  7,
+   15, 15, 15, 15,  15, 15, 15, 15,
+   15, 15, 15, 15,  15, 15, 15, 15,
+   15, 15, 15, 15,  15, 15, 15, 15,
+   15, 15, 15, 15,  15, 15, 15, 15
+}
 int translate_caen_bank(unsigned *ptr, int len)
 {
    int i, j, k, m, outpos, tmp_outpos, out_start, addr, msb, board_id;
@@ -123,7 +130,9 @@ int translate_caen_bank(unsigned *ptr, int len)
          out_start = outpos;
             msb       = ptr[i  ] >> 31; // msb set => odd-channel
             timestamp = ptr[i++] & 0x7FFFFFFF;
-            addr = (0x8000 + (board_id * 0x100) + 2*chan_pair + msb);
+	  //addr = (0x8000 + (board_id * 0x100) + 2*chan_pair + msb);
+            addr = (0x8000 + (board_to_grifc[board_id] * 0x1000) +
+		                               2*chan_pair + msb);
 
    /* 0 */  tmp_bankbuf[outpos++] = (0x8<<28) + ((CAEN_ID)<<25) +
                ((CAEN_WORDS)<<20) + (addr<<4) + (DESCANT_DTYPE);
