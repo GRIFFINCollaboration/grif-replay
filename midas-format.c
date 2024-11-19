@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h> // abort()
 #include <time.h>
 #include <string.h>
 #include <unistd.h>
@@ -90,12 +91,25 @@ static int caen_event_id;
 //    0x000000df 0x00280019 0x00078b89 0x000000dd
 //    0x00a500b3 0x0008c690 0x0000032f 0x002e002e
 
-int board_to_grifc[32]={ // board-id is 5bits -> 32 values
-    8,  9, 10, 11,  12, 13,  6,  7,
-   15, 15, 15, 15,  15, 15, 15, 15,
-   15, 15, 15, 15,  15, 15, 15, 15,
-   15, 15, 15, 15,  15, 15, 15, 15,
-   15, 15, 15, 15,  15, 15, 15, 15
+
+// assign caen board_id to grifc mapping in order of channel definition in odb
+int board_to_grifc[32];   // board-id is 5bits -> 32 values
+int grifc_to_boardid[16]; // to allow translating back to original address
+int read_caen_odb_addresses(int odb_daqsize, unsigned short *addr_table)
+{
+   int i, addr, board_id, curr_grifc=8;
+   memset(board_to_grifc, -1, 32*sizeof(int));
+   for(i=0; i<MAX_DAQSIZE && i<odb_daqsize; i++){
+      if( ((addr = addr_table[i]) & 0x8000 ) == 0 ){ continue; }
+      board_id = (addr - 0x8000) >> 8;
+      if( board_to_grifc[board_id] != -1 ){ continue; }
+      board_to_grifc[board_id] = curr_grifc;
+      grifc_to_boardid[curr_grifc++] = board_id;
+      if( curr_grifc >= 16 ){
+         printf("midas-format.c:read_caen_odb_addresses - more than 8 caen board id's - can't sort this data\n"); abort();
+      }
+   }
+   return(0);
 }
 int translate_caen_bank(unsigned *ptr, int len)
 {

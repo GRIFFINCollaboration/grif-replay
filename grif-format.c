@@ -188,9 +188,19 @@ int unpack_grif3_event(unsigned *evntbuf, int evlen, Grif_event *ptr, int proces
          //if( ptr->dtype == 6 ){
 	 //   printf("DSC\n");
 	 //}
-
          ptr->address= ((value & 0xFFFF0) >>  4);
-        // fprintf(stdout,"%d\n",ptr->address);
+	 // ptr->address >= 0x8000 - currently this will be caen data events
+	 //   which have had their address altered to allow reordering
+         //   now the address should be changed back to what it was
+         if( (unsigned)(ptr->address) >= 0x8000 ){
+	    extern int grifc_to_boardid[16];
+	    int board_id, grifc;
+	    grifc = (ptr->address >> 12 ) & 0xF;
+	    board_id = grifc_to_boardid[grifc];
+	    ptr->address = 0x8000 + (board_id * 0x100) + (ptr->address & 0xFF);
+	 }
+	 
+         // fprintf(stdout,"%d\n",ptr->address);
          ptr->chan = GetIDfromAddress(ptr->address);
          if( ptr->dtype != 0xF && (ptr->chan < 0) ){
             ++grif_err[GRIF_ERR_ADDR];

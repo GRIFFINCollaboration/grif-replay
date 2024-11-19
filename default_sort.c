@@ -1687,13 +1687,18 @@ int read_odb_items(int len, int *bank_data)
    //   daq-address, name, type, gains etc.
    //
    gen_derived_odb_tables();
+   
    return(0);
 }
 
+extern int read_caen_odb_addresses(int odb_daqsize, unsigned short *addr_table);
 int gen_derived_odb_tables()
 {
   char sys_name[64], crystal, polarity, type;
   int i, j, tmp, pos, element;
+
+  read_caen_odb_addresses(odb_daqsize, (unsigned short *)addrs);
+  
   // Also require Ge crystal numbers - which cannot be calculated from
   // data-fragment [only contains array-posn, which is clover number]
   // so calculate them here ...
