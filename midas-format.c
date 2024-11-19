@@ -131,7 +131,7 @@ int translate_caen_bank(unsigned *ptr, int len)
             msb       = ptr[i  ] >> 31; // msb set => odd-channel
             timestamp = ptr[i++] & 0x7FFFFFFF;
 	  //addr = (0x8000 + (board_id * 0x100) + 2*chan_pair + msb);
-            addr = (0x8000 + (board_to_grifc[board_id] * 0x1000) +
+            addr = (0x0000 + (board_to_grifc[board_id] * 0x1000) +
 		                               2*chan_pair + msb);
 
    /* 0 */  tmp_bankbuf[outpos++] = (0x8<<28) + ((CAEN_ID)<<25) +
