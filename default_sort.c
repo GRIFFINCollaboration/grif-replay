@@ -764,7 +764,7 @@ int fill_singles_histos(Grif_event *ptr)
 
   sys = ptr->subsys;
   // Check this is a valid susbsytem type
-  if( sys >=0 && sys < MAX_SUBSYS ){
+  if( sys <0 || sys > MAX_SUBSYS ){
     if( mult_hist[sys] != NULL ){ mult_hist[sys]->Fill(mult_hist[sys], ptr->fold, 1);  }
     return(-1);
   }
@@ -1687,7 +1687,7 @@ int read_odb_items(int len, int *bank_data)
    //   daq-address, name, type, gains etc.
    //
    gen_derived_odb_tables();
-   
+
    return(0);
 }
 
@@ -1698,7 +1698,7 @@ int gen_derived_odb_tables()
   int i, j, tmp, pos, element;
 
   read_caen_odb_addresses(odb_daqsize, (unsigned short *)addrs);
-  
+
   // Also require Ge crystal numbers - which cannot be calculated from
   // data-fragment [only contains array-posn, which is clover number]
   // so calculate them here ...
