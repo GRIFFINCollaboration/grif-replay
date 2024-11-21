@@ -203,6 +203,7 @@ int pre_sort(int frag_idx, int end_idx)
   Grif_event *alt, *ptr = &grif_event[frag_idx];
   int bgo_window = 20, addback_window = 20;
   int rcmp_fb_window = 10;
+  int lbl_tac_window = 25;
   int art_tac_window = 25;
   int desw_beta_window = 80;
   float desw_median_distance = 1681.8328; // descant wall median source-to-detector distance in mm
@@ -278,6 +279,19 @@ int pre_sort(int frag_idx, int end_idx)
       // So later in the main coincidence loop we only need to examine LBL and TAC.
       if(dt < art_tac_window && alt->subsys == SUBSYS_ARIES && crystal_table[ptr->chan] == 8){
       ptr->ab_alt_chan = alt->chan; ptr->e4cal = alt->ecal;
+      }
+      // For TAC01-07 we have a LBL-LBL coincidence
+      // Here save the LBL Id number and the LBL energy in the TAC event
+      // Save LBL channel number into ptr->q2 or q3 or q4
+      // Save LBL energy ecal into TAC ptr-ecal2 or ecal3 or ecal4
+      if(dt < lbl_tac_window && alt->subsys == SUBSYS_LABR_L && crystal_table[ptr->chan] < 8){
+        if(ptr->e2cal<1){
+          ptr->q2 = alt->chan; ptr->e2cal = alt->ecal;
+        }else if(ptr->e3cal<1){
+          ptr->q3 = alt->chan; ptr->e3cal = alt->ecal;
+        }else{
+          ptr->q4 = alt->chan; ptr->e4cal = alt->ecal; // If this is set then we have LBL multiplicity >2 for this TAC
+        }
       }
       break;
       case SUBSYS_ZDS:
@@ -714,14 +728,24 @@ rcmp_fb[i] = H2_BOOK(cfg, rcmp_fb_handles[i], rcmp_fb_handles[i], E_2D_RCMP_SPEC
    }
    close_folder(cfg);
    open_folder(cfg, "LBL_TACs");
+   for(i=0; i<N_LABR; i++){ // intialize the index for the TAC coincidence pair spectra
+     for(j=0; j<N_LABR; j++){
+       tac_labr_hist_index[i][j] = -1;
+     }
+   }
    k=-1;
    for(i=1; i<=N_LABR; i++){ // Create TAC coincidence pair spectra
      for(j=(i+1); j<=N_LABR; j++){
        k++;
      sprintf(tmp,"TAC_%d_%d",i,j);
      tac_labr_hist[k] = H1_BOOK(cfg, tmp, tmp, E_TAC_SPEC_LENGTH, 0, E_TAC_SPEC_LENGTH);
+     tac_labr_hist_index[i-1][j-1] = k;
      }
    }
+ sprintf(tmp,"TAC_%d_%d",2,1); // Add additional histogram (2_1) needed for Compton Walk corrections
+ tac_labr_hist[++k] = H1_BOOK(cfg, tmp, tmp, E_TAC_SPEC_LENGTH, 0, E_TAC_SPEC_LENGTH);
+ tac_labr_hist_index[1][0] = k;
+
    close_folder(cfg);
    open_folder(cfg, "ART_TACs");
      sprintf(tmp,"TAC_ART_LBL_LBLSUM");
@@ -751,7 +775,7 @@ sprintf(tmp,"TAC-ARIES-Energy");
 
 int fill_singles_histos(Grif_event *ptr)
 {
-  int i, j, dt, chan, pos, sys, elem, clover, ge_addback_gate = 25, ge_sum_gate = 25;
+  int i, j, dt, chan, pos, sys, elem, clover, c1,c2, index, ge_addback_gate = 25, ge_sum_gate = 25;
   char *name, c;
   long ts;
 
@@ -875,6 +899,19 @@ int fill_singles_histos(Grif_event *ptr)
    case SUBSYS_SCEPTAR:
    break;
    case SUBSYS_LABR_T:
+
+   // Save LBL channel number into ptr->q2 or q3 or q4
+   // Save LBL energy ecal into TAC ptr-ecal2 or ecal3 or ecal4
+   if(ptr->e4cal>0){ break; } // more than two LaBr3 in coincidence with this TAC event so reject
+   c1 = crystal_table[ptr->q2]-1;
+   c2 = crystal_table[ptr->q3]-1;
+   if(c1>=0 && c1<N_LABR && c2>=0 && c2<N_LABR){
+     index = tac_labr_hist_index[c1][c2];
+     if(index>=0 && index<(int)((N_LABR)*(N_LABR-1)/2)+1){
+       tac_labr_hist[index]->Fill(tac_labr_hist[index], (int)(ptr->ecal), 1);
+     }
+   }
+
    break;
    case SUBSYS_DESCANT:
    break;
@@ -1391,20 +1428,24 @@ int fill_coinc_histos(int win_idx, int frag_idx)
     break;
     case SUBSYS_LABR_L: // tac-labr
     dt_hist[16]->Fill(dt_hist[16], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
-    dt_tacs_hist[crystal_table[ptr->chan]-1]->Fill(dt_tacs_hist[crystal_table[ptr->chan]-1], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+    c1 = crystal_table[ptr->chan]-1;
+    if(c1>=0 && c1<N_LABR){
+      dt_tacs_hist[c1]->Fill(dt_tacs_hist[c1], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // LBL TACs
 
-    if(abs_dt < lbl_tac_gate && crystal_table[ptr->chan] == 8){ // ARIES TAC
 
-      corrected_tac_value = (int)ptr->ecal + tac_offset[crystal_table[alt->chan]-1];
-      tac_aries_lbl_hist[crystal_table[alt->chan]-1]->Fill(tac_aries_lbl_hist[crystal_table[alt->chan]-1], corrected_tac_value, 1); // tac spectrum per LBL
-      tac_aries_lbl_sum->Fill(tac_aries_lbl_sum, corrected_tac_value, 1); // sum tac spectrum including all LBL
-      if(alt->ecal >1225 && alt->ecal <1315){ // gate on LaBr3 energy 1275keV
+      if(abs_dt < lbl_tac_gate && crystal_table[ptr->chan] == 8){ // ARIES TAC
 
-        aries_tac->Fill(aries_tac, corrected_tac_value, 1); // tac spectrum gated on 1275keV
-        aries_tac_artEn->Fill(aries_tac_artEn, ptr->e4cal, 1); // ARIES energy spectrum in coincidence with TAC
+        corrected_tac_value = (int)ptr->ecal + tac_offset[crystal_table[alt->chan]-1];
+        tac_aries_lbl_hist[crystal_table[alt->chan]-1]->Fill(tac_aries_lbl_hist[crystal_table[alt->chan]-1], corrected_tac_value, 1); // tac spectrum per LBL
+        tac_aries_lbl_sum->Fill(tac_aries_lbl_sum, corrected_tac_value, 1); // sum tac spectrum including all LBL
+        if(alt->ecal >1225 && alt->ecal <1315){ // gate on LaBr3 energy 1275keV
 
-        if(ptr->e4cal >24 && ptr->e4cal <36){ // gate on ARIES energy
-          aries_tac_Egate->Fill(aries_tac_Egate, corrected_tac_value, 1); // tac spectrum gated on 1275keV
+          aries_tac->Fill(aries_tac, corrected_tac_value, 1); // tac spectrum gated on 1275keV
+          aries_tac_artEn->Fill(aries_tac_artEn, ptr->e4cal, 1); // ARIES energy spectrum in coincidence with TAC
+
+          if(ptr->e4cal >24 && ptr->e4cal <36){ // gate on ARIES energy
+            aries_tac_Egate->Fill(aries_tac_Egate, corrected_tac_value, 1); // tac spectrum gated on 1275keV
+          }
         }
       }
     }

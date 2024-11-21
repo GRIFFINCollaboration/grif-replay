@@ -88,8 +88,8 @@ TH1I *H1_BOOK(Config *cfg, char *name, char *title, int nbins, int xmin, int xma
 
    if( cfg == NULL ){ return(NULL); }
    if( cfg->nhistos >= MAX_HISTOGRAMS ){
-      fprintf(stderr,"H1_BOOK: max number of histograms:%d exceeded\n",
-	 MAX_HISTOGRAMS );
+      fprintf(stderr,"H1_BOOK: max number of histograms:%d exceeded when handling %s\n",
+	 MAX_HISTOGRAMS, name );
       return(NULL);
    }
    // always allocate the data for sorting histograms
@@ -174,8 +174,8 @@ TH2I *H2_BOOK(Config *cfg, char *name, char *title, int xbins, int xmin, int xma
 
    if( cfg == NULL ){return(NULL); }
    if( cfg->nhistos >= MAX_HISTOGRAMS ){
-      fprintf(stderr,"H2_BOOK: max number of histograms:%d exceeded\n",
-	 MAX_HISTOGRAMS );
+      fprintf(stderr,"H2_BOOK: max number of histograms:%d exceeded when handling %s\n",
+	 MAX_HISTOGRAMS, name );
       return(NULL);
    }
    if( ybins == 0 ){

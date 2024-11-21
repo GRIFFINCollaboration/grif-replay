@@ -40,6 +40,7 @@ static char subsys_name[MAX_SUBSYS][STRING_LEN] = {
 #define N_CLOVER 16
 #define N_ARIES 76
 #define N_LABR 8
+#define N_TACS 12
 #define N_RCMP_POS 6
 #define N_RCMP_STRIPS 32
 #define N_DES_WALL 60
@@ -120,7 +121,9 @@ TH1I  *desw_sum_e_nn_a, *desw_sum_tof_nn_a;  // DESCANT Wall fold>2, angle>60 Su
 TH2I  *desw_psd_e, *desw_psd_tof; // DESCANT Wall PSD vs energies or corrected-TOF
 
 // TAC spectra
-TH1I *tac_labr_hist[(int)((N_LABR)*(N_LABR-1)/2)]; // this index numbers are the LaBr-LaBr position numbers
+TH1I *tac_labr_hist[(int)((N_LABR)*(N_LABR-1)/2)+1]; // this index numbers are the LaBr-LaBr position numbers
+// One additional histogram (2_1) needed for Compton Walk corrections
+int tac_labr_hist_index[N_LABR][N_LABR]; // index for filling tac_labr_hist from LBL id numbers
 TH1I *tac_aries_lbl_hist[N_LABR];  // this index number is the LaBr position number
 TH1I *tac_aries_art_hist[N_ARIES];  // this index number is the Aries position number
 TH1I *tac_aries_lbl_sum;  // ARIES TAC sum spectrum of all LBLs
@@ -142,7 +145,7 @@ char dt_handles[N_DT][32]={ "dt_ge_ge", "dt_ge_bgo", "dt_ge_sep", "dt_ge_zds",  
                             "dt_dsw_dsw", "dt_dsw_ge", "dt_dsw_art", "dt_dsw_zds", // 18-21
                             "dt_zds_GRIF_CAEN_10ns", "dt_zds_GRIF_CAEN_2ns", "dt_dsw_dsw_2ns", "dt_dsw_zds_2ns"  }; // 22-25
 TH1I  *dt_hist[N_DT];
-TH1I  *dt_tacs_hist[N_LABR];
+TH1I  *dt_tacs_hist[N_TACS];
 
 // Two-dimensional hitpatterns
 TH2I *gg_hit, *bgobgo_hit, *aa_hit, *gea_hit, *lba_hit, *dsw_hit;
