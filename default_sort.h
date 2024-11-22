@@ -123,6 +123,7 @@ TH2I  *desw_psd_e, *desw_psd_tof; // DESCANT Wall PSD vs energies or corrected-T
 // TAC spectra
 TH1I *tac_labr_hist[(int)((N_LABR)*(N_LABR-1)/2)+1]; // this index numbers are the LaBr-LaBr position numbers
 // One additional histogram (2_1) needed for Compton Walk corrections
+TH2I *tac_labr_CompWalk[N_LABR]; // First LBL gated on 1332keV, this matrix is second LBL E vs TAC
 int tac_labr_hist_index[N_LABR][N_LABR]; // index for filling tac_labr_hist from LBL id numbers
 TH1I *tac_aries_lbl_hist[N_LABR];  // this index number is the LaBr position number
 TH1I *tac_aries_art_hist[N_ARIES];  // this index number is the Aries position number

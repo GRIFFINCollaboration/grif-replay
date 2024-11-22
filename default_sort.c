@@ -706,6 +706,8 @@ rcmp_fb[i] = H2_BOOK(cfg, rcmp_fb_handles[i], rcmp_fb_handles[i], E_2D_RCMP_SPEC
                                     E_2D_RCMP_SPEC_LENGTH, 0, E_2D_RCMP_SPEC_LENGTH);
 }
    close_folder(cfg);
+   close_folder(cfg);
+   open_folder(cfg, "Ang_Corr");
    open_folder(cfg, "GG_Ang_Corr");
    for(i=0; i<N_GE_ANG_CORR; i++){ // Create Ge-Ge angular correlation spectra
      sprintf(tmp,"Ge-Ge_angular_bin%d",i);
@@ -727,6 +729,8 @@ rcmp_fb[i] = H2_BOOK(cfg, rcmp_fb_handles[i], rcmp_fb_handles[i], E_2D_RCMP_SPEC
                                                                     SYMMETERIZE, 0, DSW_ANG_CORR_SPEC_LENGTH);
    }
    close_folder(cfg);
+   close_folder(cfg);
+   open_folder(cfg, "Fast-Timing");
    open_folder(cfg, "LBL_TACs");
    for(i=0; i<N_LABR; i++){ // intialize the index for the TAC coincidence pair spectra
      for(j=0; j<N_LABR; j++){
@@ -747,6 +751,14 @@ rcmp_fb[i] = H2_BOOK(cfg, rcmp_fb_handles[i], rcmp_fb_handles[i], E_2D_RCMP_SPEC
  tac_labr_hist_index[1][0] = k;
 
    close_folder(cfg);
+      open_folder(cfg, "LBL_Walk");
+
+      for(i=1; i<=N_LABR; i++){ // Create TAC Compton Walk matrices for calibrations
+        sprintf(tmp,"TAC_%d_CompWalk",i);
+        tac_labr_CompWalk[i-1] = H2_BOOK(cfg, tmp, tmp, 2048, 0, 2048,
+      			                                            2048, 0, 2048);
+      }
+      close_folder(cfg);
    open_folder(cfg, "ART_TACs");
      sprintf(tmp,"TAC_ART_LBL_LBLSUM");
    tac_aries_lbl_sum = H1_BOOK(cfg, tmp, tmp, E_TAC_SPEC_LENGTH, 0, E_TAC_SPEC_LENGTH);
@@ -789,7 +801,7 @@ int fill_singles_histos(Grif_event *ptr)
   sys = ptr->subsys;
   // Check this is a valid susbsytem type
   if( sys <0 || sys > MAX_SUBSYS ){
-    if( mult_hist[sys] != NULL ){ mult_hist[sys]->Fill(mult_hist[sys], ptr->fold, 1);  }
+    if( mult_hist[sys] != NULL && sys>=0 && sys<MAX_SUBSYS){ mult_hist[sys]->Fill(mult_hist[sys], ptr->fold, 1);  }
     return(-1);
   }
 
@@ -903,12 +915,23 @@ int fill_singles_histos(Grif_event *ptr)
    // Save LBL channel number into ptr->q2 or q3 or q4
    // Save LBL energy ecal into TAC ptr-ecal2 or ecal3 or ecal4
    if(ptr->e4cal>0){ break; } // more than two LaBr3 in coincidence with this TAC event so reject
-   c1 = crystal_table[ptr->q2]-1;
-   c2 = crystal_table[ptr->q3]-1;
+   c1 = crystal_table[ptr->q2]-1; // c1 runs from 0 to 7
+   c2 = crystal_table[ptr->q3]-1; // c2 runs from 0 to 7
    if(c1>=0 && c1<N_LABR && c2>=0 && c2<N_LABR){
      index = tac_labr_hist_index[c1][c2];
      if(index>=0 && index<(int)((N_LABR)*(N_LABR-1)/2)+1){
        tac_labr_hist[index]->Fill(tac_labr_hist[index], (int)(ptr->ecal), 1);
+     }
+
+     // Compton Walk matrix for calibrations
+     // First LBL gated on 1332keV, this matrix is second LBL E vs TAC
+     if(crystal_table[ptr->chan] == 1){ // Use TAC01
+       if(c1 == 0 && c2>0 && ptr->e2cal>1252 && ptr->e2cal<1412){ // LBL01 gated on 1332keV
+         tac_labr_CompWalk[c2]->Fill(tac_labr_CompWalk[c2], (int)(ptr->ecal/4), (int)ptr->e3cal, 1); // TAC01 and other LBL energy
+       }
+       if(c1 == 0 && c2==1 && ptr->e3cal>1252 && ptr->e3cal<1412){ // LBL02 gated on 1332keV
+         tac_labr_CompWalk[c1]->Fill(tac_labr_CompWalk[c1], (int)(ptr->ecal/4), (int)ptr->e2cal, 1); // TAC01 and other LBL energy
+       }
      }
    }
 
