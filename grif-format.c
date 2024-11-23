@@ -121,7 +121,7 @@ void grif_main(Sort_status *arg)
          //if( ( ++grif_evcount % 1000000) == 0 ){
          //   fprintf(stderr, "%10d events ...\n", grif_evcount);
          //}
-      }
+      } else { --grifevent_wrpos; } // dump this event
       if( ++evptr >= bufend ){ evptr -= bufsize; }
       ++wcnt; evstart = evptr;  ++grifevent_wrpos;
       if(  reorder ){ eventbuf_rdpos += wcnt; // consume input data here
@@ -199,7 +199,7 @@ int unpack_grif3_event(unsigned *evntbuf, int evlen, Grif_event *ptr, int proces
 	    board_id = grifc_to_boardid[grifc];
 	    ptr->address = 0x8000 + (board_id * 0x100) + (ptr->address & 0xFF);
 	 }
-	 
+
          // fprintf(stdout,"%d\n",ptr->address);
          ptr->chan = GetIDfromAddress(ptr->address);
          if( ptr->dtype != 0xF && (ptr->chan < 0) ){
@@ -342,5 +342,5 @@ int unpack_grif3_event(unsigned *evntbuf, int evlen, Grif_event *ptr, int proces
       default:  fprintf(stderr,"griffin_decode: default case\n"); return(-1);
       }
    }
-   return(0);
+   return( (ptr->dtype == 15) ); // return true if scalar, so they are discarded
 }
