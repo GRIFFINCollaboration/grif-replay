@@ -618,7 +618,7 @@ int init_coinc_histos(Config *cfg)
   for(i=0; i<N_DT; i++){ // Create delta-t spectra
     dt_hist[i] = H1_BOOK(cfg, dt_handles[i], dt_handles[i], DT_SPEC_LENGTH, 0, DT_SPEC_LENGTH);
   }
-  for(i=0; i<N_LABR; i++){ // Create delta-t spectra separately for each TAC
+  for(i=0; i<N_TACS; i++){ // Create delta-t spectra separately for each TAC
   sprintf(title, "dt_labr_tac%d",i+1);
     dt_tacs_hist[i] = H1_BOOK(cfg, title, title, DT_SPEC_LENGTH, 0, DT_SPEC_LENGTH);
   }
@@ -1367,8 +1367,11 @@ int fill_coinc_histos(int win_idx, int frag_idx)
       case SUBSYS_LABR_T: // aries-tac
       if(crystal_table[alt->chan] == 8){ // ARIES TAC
         dt_hist[14]->Fill(dt_hist[14], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
-        tac_aries_art_hist[crystal_table[ptr->chan]-1]->Fill(tac_aries_art_hist[crystal_table[ptr->chan]-1], (int)alt->ecal, 1); // tac spectrum per ART tiles
         tac_aries_art_sum->Fill(tac_aries_art_sum, (int)alt->ecal, 1); // sum tac spectrum including all art
+        c2 = crystal_table[ptr->chan]-1;
+        if(c2>=0 && c2<N_ARIES){
+        tac_aries_art_hist[c2]->Fill(tac_aries_art_hist[c2], (int)alt->ecal, 1); // tac spectrum per ART tiles
+      }
       }
       break;
       default: break;
