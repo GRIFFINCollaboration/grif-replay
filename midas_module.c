@@ -126,7 +126,7 @@ void midas_module_main(Sort_status *arg)
   
    single_thread_flag = arg->single_thread;
    bankbuf_wrpos = bankbuf_rdpos = 0;
-   debug = 1;
+   //debug = 1;
 
    if( cm_connect_experiment(midas_host, midas_expt, "Grif_Replay", NULL)
                                                      != CM_SUCCESS ){
