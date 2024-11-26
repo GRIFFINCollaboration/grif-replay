@@ -2552,16 +2552,19 @@ int send_spectrum_list(char *cfgname, int fd)
    int i, type, ascend;
    char *name;
 
-   if( strlen(cfgname) != 0 ){
-      for(i=0; i<MAX_CONFIGS; i++){ if( configs[i] == NULL ){ continue; }
-         if(strcmp(configs[i]->name, cfgname) == 0){ cfg = configs[i]; break; }
-      }
-      if( i == MAX_CONFIGS ){
-         if( (cfg=read_histofile(cfgname,0)) == NULL ){
-            fprintf(stderr,"send_spec_list: can't find or read:%s\n", cfgname);
-            return(-1);
-         }
-      }
+     if( strlen(cfgname) != 0 ){
+       for(i=0; i<MAX_CONFIGS; i++){ if( configs[i] == NULL ){ continue; }
+       if(strcmp(configs[i]->name, cfgname) == 0){ cfg = configs[i]; break; }
+     }
+     if( i < MAX_CONFIGS ){ // Found this histogram file already open
+       // If the histogram file was open, clear this config in case the file on disk has been modified
+       remove_config(configs[i]);
+     }
+     // Now read the histogram file
+     if( (cfg=read_histofile(cfgname,0)) == NULL ){
+       fprintf(stderr,"send_spec_list: can't find or read:%s\n", cfgname);
+       return(-1);
+     }
    }
    if( (name = next_histotree_item(cfg, 1, &type, &ascend )) == NULL ){
       fprintf(stderr,"send_spectrum_list: EMPTY LIST\n");
