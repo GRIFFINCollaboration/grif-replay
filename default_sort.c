@@ -1199,6 +1199,9 @@ int fill_coinc_histos(int win_idx, int frag_idx)
         // Only use GRGa
         if(output_table[alt->chan] == 1){
           dt_hist[5]->Fill(dt_hist[5], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // labr-ge
+          if( abs_dt < gg_gate ){
+            ge_labr->Fill(ge_labr, (int)alt->ecal, (int)ptr->ecal, 1);
+          }
         }
         break;
         case SUBSYS_LABR_L: // labr-labr
@@ -1407,9 +1410,11 @@ int fill_coinc_histos(int win_idx, int frag_idx)
       // Only use GRGa
       if(output_table[alt->chan] == 1){
         dt_hist[3]->Fill(dt_hist[3], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
-        ge_sum_b->Fill(ge_sum_b, (int)alt->ecal, 1); // beta-gated Ge sum energy spectrum
-        ge_sum_b_zds->Fill(ge_sum_b_zds, (int)alt->ecal, 1); // Zds-gated Ge sum energy spectrum
-        ge_zds->Fill(ge_zds, (int)alt->ecal, (int)ptr->ecal, 1);
+        if( abs_dt < gg_gate ){
+          ge_sum_b->Fill(ge_sum_b, (int)alt->ecal, 1); // beta-gated Ge sum energy spectrum
+          ge_sum_b_zds->Fill(ge_sum_b_zds, (int)alt->ecal, 1); // Zds-gated Ge sum energy spectrum
+          ge_zds->Fill(ge_zds, (int)alt->ecal, (int)ptr->ecal, 1);
+        }
       }
       break;
       case SUBSYS_LABR_L: // zds-labr
