@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
    Sort_status *sort = &sort_status;
    int web_arg=1;  Config *cfg;
 
-   sort->reorder = 0;  sort->single_thread = 0;  sort->sort_thread = 1;
+   sort->reorder = 1;  sort->single_thread = 0;  sort->sort_thread = 1;
    pthread_create(&web_thread, NULL,(void* (*)(void*))web_main, &web_arg);
    while( !shutdown_server ){ // monitor file queue and sort any added files
 
@@ -71,6 +71,7 @@ void show_coinc_stats()
    printf("Coinc[500-%4d]:%d\n", MAX_COINC_EVENTS, sum);
 }
 
+static int presort_window_start, sort_window_start;
 static int done_events;
 extern void grif_main(Sort_status *arg);
 extern void reorder_a_main(Sort_status *arg);
@@ -85,6 +86,7 @@ int sort_next_file(Config *cfg, Sort_status *sort)
 {
    time_t end, start=time(NULL);
    done_events = 0;
+   presort_window_start = sort_window_start = 0;
    memset(&diagnostics, 0, sizeof(Sort_metrics) );
    diagnostics.run_sort_start = start;
    sort->shutdown_midas = sort->end_of_data = 0;
@@ -171,6 +173,7 @@ static void online_loop(Config *cfg, Sort_status *sort)
       reorder_save = sort->reorder;
       singlethread_save = sort->single_thread;
       sortthread_save = sort->sort_thread;
+      presort_window_start = sort_window_start = 0;
 
       if( reorder_save ){
         printf("creating reorder threads\n");
@@ -341,7 +344,6 @@ int insert_presort_win(Grif_event *ptr, int slot)
 {
    int window_width = 200; // 2us - MAXIMUM (indiv. gates can be smaller)
    int win_count, win_end;
-   static int window_start;
    Grif_event *alt;
    long dt;
 
@@ -366,8 +368,8 @@ int insert_presort_win(Grif_event *ptr, int slot)
    */
 
    ///////////////// Presort window (used for suppression/addback)
-   while( window_start != slot ){ alt = &grif_event[window_start];
-      win_count = (slot - window_start+2*MAX_COINC_EVENTS) % MAX_COINC_EVENTS;
+   while( presort_window_start != slot ){ alt = &grif_event[presort_window_start];
+   win_count = (slot - presort_window_start+2*MAX_COINC_EVENTS) % MAX_COINC_EVENTS;
       dt = ptr->ts - alt->ts; if( dt < 0 ){ dt *= -1; }
 
       // should exit while-loop when no more events outside window
@@ -382,9 +384,9 @@ int insert_presort_win(Grif_event *ptr, int slot)
       //    ( either because dt > coincwidth OR due to error recovery)
       // NOTE event[slot] is out of window - use slot-1 as window-end
       if( (win_end = slot-1) < 0 ){ win_end = MAX_COINC_EVENTS-1; } // WRAP
-      pre_sort(window_start, win_end);
-      insert_sort_win(alt, window_start); // add event to next window
-      if( ++window_start >= MAX_COINC_EVENTS ){ window_start=0; } // WRAP
+      pre_sort(presort_window_start, win_end);
+      insert_sort_win(alt, presort_window_start); // add event to next window
+      if( ++presort_window_start >= MAX_COINC_EVENTS ){ presort_window_start=0; } // WRAP
    }
    return(0);
 }
@@ -394,7 +396,6 @@ int insert_sort_win(Grif_event *ptr, int slot)
 {
    int window_width = 200; // 2us - MAXIMUM (indiv. gates can be smaller)
    int win_count, win_end;
-   static int window_start;
    Grif_event *alt;
    long dt;
 
@@ -406,8 +407,8 @@ int insert_sort_win(Grif_event *ptr, int slot)
           i, window_start, slot-1,
           debug_show_ts(grif_event[window_start].ts) );
    */
-   while( window_start != slot ){ alt = &grif_event[window_start];
-      win_count = (slot - window_start+2*MAX_COINC_EVENTS) % MAX_COINC_EVENTS;
+   while( sort_window_start != slot ){ alt = &grif_event[sort_window_start];
+       win_count = (slot - sort_window_start+2*MAX_COINC_EVENTS) % MAX_COINC_EVENTS;
       dt = ptr->ts - alt->ts; if( dt < 0 ){ dt *= -1; }
 
       // should exit while-loop when no more events outside window
@@ -417,7 +418,7 @@ int insert_sort_win(Grif_event *ptr, int slot)
          if( win_count > coinc_events_cutoff ){ ++sortfull; } else {
             // now removed all events not in coinc with newly added fragment
             //   so can update coinc window counters with just-added frag
-            user_addto_window(window_start, slot);
+            user_addto_window(sort_window_start, slot);
             break;
          }
       }
@@ -427,10 +428,10 @@ int insert_sort_win(Grif_event *ptr, int slot)
       // NOTE event[slot] is out of window - use slot-1 as window-end
       if( (win_end = slot-1) < 0 ){ win_end = MAX_COINC_EVENTS-1; } // WRAP
       if( alt->chan != -1 ){ ++sorted;
-         default_sort(window_start, win_end, SORT_ONE);
+         default_sort(sort_window_start, win_end, SORT_ONE);
          //user_sort(window_start, win_end, SORT_ONE);
       } else { ++skipped; }
-      if( ++window_start >= MAX_COINC_EVENTS ){ window_start=0; } // WRAP
+      if( ++sort_window_start >= MAX_COINC_EVENTS ){ sort_window_start=0; } // WRAP
       ++grifevent_rdpos;  ++completed_events;
    }
    return(0);
