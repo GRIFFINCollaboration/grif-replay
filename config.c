@@ -2689,10 +2689,10 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
          fprintf(stderr,"can't alloc memory for sending 2d histo\n");
          continue;
       }
+         memset(hist_data, 0, xbins*ybins*sizeof(int) );
       if( hist->symm == 0 ){
          memcpy( hist_data, hist->data, xbins*ybins*sizeof(int) );
       } else { // symmetrize here before sending
-         memset( hist_data, 0, xbins*ybins*sizeof(int) );
          for(k=0; k<ybins; k++){
             for(i=0; i<=k; i++){
               hist_data[i+k*xbins] = hist->data[i+k*xbins] + hist->data[k+i*xbins];
@@ -2938,7 +2938,7 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
     put_line(fd, tmp, strlen(tmp) ); // empty
   }
   put_line(fd, "]", 1);
-  free(hist->data); hist->data = NULL;
+  free(hist_data);
     }
     }
 }

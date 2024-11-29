@@ -88,6 +88,9 @@ TH1I  *hit_hist[N_HITPAT], *mult_hist[MAX_SUBSYS];
 //########          Sums and coincidence  HISTOGRAMS           ##########
 //#######################################################################
 
+// test
+TH2I  *test_histogram;
+
 // HPGe
 TH1I  *ge_ab_e[N_CLOVER];
 TH1I  *ge_sum, *ge_sum_ab;  // ge_sum is sum of crystal energies
