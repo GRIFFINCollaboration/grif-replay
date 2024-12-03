@@ -764,9 +764,14 @@ rcmp_fb[i] = H2_BOOK(cfg, rcmp_fb_handles[i], rcmp_fb_handles[i], E_2D_RCMP_SPEC
    close_folder(cfg);
    open_folder(cfg, "Ang_Corr");
    open_folder(cfg, "GG_Ang_Corr");
-   for(i=0; i<N_GE_ANG_CORR; i++){ // Create Ge-Ge angular correlation spectra
-     sprintf(tmp,"Ge-Ge_angular_bin%d",i);
-     gg_ang_corr_hist[i] = H2_BOOK(cfg, tmp, tmp, GE_ANG_CORR_SPEC_LENGTH, 0, GE_ANG_CORR_SPEC_LENGTH,
+   for(i=0; i<N_GE_ANG_CORR; i++){ // Create Ge-Ge angular correlation spectra for HPGe at 110mm
+     sprintf(tmp,"Ge-Ge_110mm_angular_bin%d",i);
+     gg_ang_corr_110_hist[i] = H2_BOOK(cfg, tmp, tmp, GE_ANG_CORR_SPEC_LENGTH, 0, GE_ANG_CORR_SPEC_LENGTH,
+                                                              SYMMETERIZE, 0, GE_ANG_CORR_SPEC_LENGTH);
+   }
+   for(i=0; i<N_GE_ANG_CORR; i++){ // Create Ge-Ge angular correlation spectra for HPGe at 145mm
+     sprintf(tmp,"Ge-Ge_145mm_angular_bin%d",i);
+     gg_ang_corr_145_hist[i] = H2_BOOK(cfg, tmp, tmp, GE_ANG_CORR_SPEC_LENGTH, 0, GE_ANG_CORR_SPEC_LENGTH,
                                                               SYMMETERIZE, 0, GE_ANG_CORR_SPEC_LENGTH);
    }
    close_folder(cfg);
@@ -1135,8 +1140,10 @@ int fill_coinc_histos(int win_idx, int frag_idx)
                   // Fill the appropriate angular bin spectrum
                   // c1 and c2 run from 0 to 63 for ge_angles_145mm.
                   c1--; c2--;
+                  index = ge_angles_110mm[c1][c2];
+                  gg_ang_corr_110_hist[index]->Fill(gg_ang_corr_110_hist[index], (int)ptr->ecal, (int)alt->ecal, 1);
                   index = ge_angles_145mm[c1][c2];
-                  gg_ang_corr_hist[index]->Fill(gg_ang_corr_hist[index], (int)ptr->ecal, (int)alt->ecal, 1);
+                  gg_ang_corr_145_hist[index]->Fill(gg_ang_corr_145_hist[index], (int)ptr->ecal, (int)alt->ecal, 1);
 
                 }
               }

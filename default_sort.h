@@ -159,7 +159,8 @@ TH2I *gg, *gg_ab, *gg_opp, *ge_paces, *ge_labr, *ge_rcmp, *labr_labr, *labr_zds,
 
 // Angular Correlation histograms
 #define N_GE_ANG_CORR 52
-TH2I  *gg_ang_corr_hist[N_GE_ANG_CORR];
+TH2I  *gg_ang_corr_110_hist[N_GE_ANG_CORR];
+TH2I  *gg_ang_corr_145_hist[N_GE_ANG_CORR];
 #define N_GRG_ART_ANG_CORR 114
 TH2I  *grg_art_ang_corr_hist[N_GRG_ART_ANG_CORR];
 #define N_DSW_DSW_ANG_CORR 42
