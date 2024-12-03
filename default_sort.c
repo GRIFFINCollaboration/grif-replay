@@ -970,8 +970,11 @@ int fill_singles_histos(Grif_event *ptr)
    // Save LBL channel number into ptr->q2 or q3 or q4
    // Save LBL energy ecal into TAC ptr-ecal2 or ecal3 or ecal4
    if(ptr->e4cal>0){ break; } // more than two LaBr3 in coincidence with this TAC event so reject
-   c1 = crystal_table[ptr->q2]-1; // c1 runs from 0 to 7
-   c2 = crystal_table[ptr->q3]-1; // c2 runs from 0 to 7
+   if( ptr->q2 >=          0 && ptr->q3 >=           0 &&
+       ptr->q2 < MAX_DAQSIZE && ptr->q3  < MAX_DAQSIZE ){
+      c1 = crystal_table[ptr->q2]-1; // c1 runs from 0 to 7
+      c2 = crystal_table[ptr->q3]-1; // c2 runs from 0 to 7
+   } else { c1 = c2 = -1; }
    if(c1>=0 && c1<N_LABR && c2>=0 && c2<N_LABR){
      index = tac_labr_hist_index[c1][c2];
      if(index>=0 && index<(int)((N_LABR)*(N_LABR-1)/2)+1){
