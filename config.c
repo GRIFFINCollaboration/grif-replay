@@ -2869,6 +2869,7 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
                   strcat(coordString, tmp );
 
                   // Add this value to the string
+                  listIndex = floor((16*m+l)/64);
                   valCount = list_valueSize[listIndex];
                   while(valCount>=0){
                     val1 = ((val & bitMask[valCount])>>bitShift[valCount]) + 64;
@@ -2906,7 +2907,7 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
               // Value of 92 will be made 92-32=60 instead of 92 to avoid the requirement for a preceeding character.
 
               // Add this value to the string
-              valCount = list_valueSize[0];
+              valCount = submatrix_type[pos]-5;
               while(valCount>=0){
                 val1 = ((val & bitMask[valCount])>>bitShift[valCount]) + 64;
                 if(val1 < 64 || val1 > 127){ fprintf(stdout,"Loop Array type %d: Illegal character ASCII code, %d\n",submatrix_type[pos],val1); }
