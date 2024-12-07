@@ -659,13 +659,19 @@ int write_th1I(FILE *fp, void *ptr)
 
 int sum_th1I(Config *dst_cfg, TH1I *dst, TH1I *src)
 {
-   int i, bins;
+   int i, bins, ybins;
    if( dst == NULL ){
       memcpy(dst_cfg->current_path, src->path, HISTO_FOLDER_LENGTH);
       if( src->type == INT_1D ){
          dst = H1_BOOK(dst_cfg, src->handle, src->title, src->xbins, src->xmin, src->xmax);
       } else {
-         dst = (TH1I *)H2_BOOK(dst_cfg, src->handle, src->title, src->xbins, src->xmin, src->xmax, src->ybins, src->ymin, src->ymax);
+        // Handle symmetrized and non-symmetrized matrices
+        if( src->symm == 1 ){
+          ybins = 0;
+        }else{
+          ybins = src->xbins;
+        }
+         dst = (TH1I *)H2_BOOK(dst_cfg, src->handle, src->title, src->xbins, src->xmin, src->xmax, ybins, src->ymin, src->ymax);
       }
       if( dst == NULL ){ return(-1); }
       if( dst->data == NULL ){
