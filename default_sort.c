@@ -30,6 +30,7 @@ static short *chan_address = addr_table;
 extern Grif_event grif_event[MAX_COINC_EVENTS];
 
 // Default sort function declarations
+extern int init_time_diff_gates(Config *cfg);
 extern int init_chan_histos(Config *cfg);
 extern int init_singles_histos(Config *cfg);
 extern int init_coinc_histos(Config *cfg);
@@ -60,6 +61,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
          offsets[i]=cal->offset; gains[i]=cal->gain;  quads[i]=cal->quad;
       }
    }
+   init_time_diff_gates(cfg);
    init_chan_histos(cfg);
    init_singles_histos(cfg);
    init_coinc_histos(cfg);
@@ -74,21 +76,60 @@ int init_default_histos(Config *cfg, Sort_status *arg)
 float spread(int val){ return( val + rand()/(1.0*RAND_MAX) ); }
 int GetIDfromAddress(unsigned short addr){ // address must be an unsigned short
   return(address_chan[addr]);
-  /*
-// These checks are very slow. I have never seen any of these errors reported
- int chan=-1;
-  if(addr<0){ // Comparison of "|| addr>MAX_ADDRESS" is not needed because always false (unsigned short)addr < constant 65536
-    fprintf(stderr,"Invalid address [%04X,%d] requested during unpacking\n",addr,addr);
-    return(-1);
+}
+
+int init_time_diff_gates(Config *cfg){
+  int i,j,k;
+  Global *global;
+  char tmp[32];
+
+  // Initialize all time differences between subsystems to be the default 250ns
+  for(i=0; i<MAX_SUBSYS; i++){
+    for(j=0; j<MAX_SUBSYS; j++){
+      time_diff_gate_min[i][j] = 0;  // default is 0 nanoseconds
+      time_diff_gate_max[i][j] = 25; // default is 250 nanoseconds
+    }
   }
-  chan = address_chan[addr];
-  if( chan<0 || chan>odb_daqsize ){
-      fprintf(stderr,"Invalid channel number [%d] found for address [%04X,%d] requested during unpacking\n",chan,addr,addr);
-      return(-1);
-  }else{
-    return( chan );
+
+  // Search the globals for time difference settings and overwrite their values
+  for(i=0; i<cfg->nglobal; i++){
+    global = cfg->globals[i];
+    sprintf(tmp,"%s",global->name);
+    if(strncmp(tmp,"time_diff_",10) == 0){
+      //fprintf(stdout,"Process %s\n",global->name);
+      // This global is a time difference value
+      // Identify the subsystem types and then save the value in the correct place
+      for(j=0; j<MAX_SUBSYS; j++){
+        if(strlen(subsys_handle[j])<2){ continue; }
+        if(strstr(tmp,subsys_handle[j]) > 0){
+          // Identiy the second subsystem type
+          //  fprintf(stdout,"Found %s in %s\n",subsys_handle[j],global->name);
+          for(k=0; k<MAX_SUBSYS; k++){
+            if(strlen(subsys_handle[k])<2){ continue; }
+            if(strstr(tmp,subsys_handle[k]) > 0 && (strstr(tmp,subsys_handle[k]) != strstr(tmp,subsys_handle[j]))){
+              // save the value in the correct place
+              fprintf(stdout,"time_diff_%s_%s set to %d,%d\n",subsys_handle[j],subsys_handle[k],global->min,global->max);
+              time_diff_gate_min[j][k] = global->min;
+              time_diff_gate_max[j][k] = global->max;
+              time_diff_gate_min[k][j] = global->min;
+              time_diff_gate_max[k][j] = global->max;
+            }
+          }
+        }
+      }
+    }
   }
-  */
+
+/*
+  for(i=0; i<MAX_SUBSYS; i++){
+    for(j=0; j<MAX_SUBSYS; j++){
+      fprintf(stdout,"%d %d time_diff_%s_%s = [%d,%d]\n",i,j,subsys_handle[i],subsys_handle[j],
+                      time_diff_gate_min[i][j],time_diff_gate_max[i][j]);
+    }
+  }
+*/
+
+  return(0);
 }
 
 int apply_gains(Grif_event *ptr)

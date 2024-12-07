@@ -85,6 +85,17 @@ TH1I  *hit_hist[N_HITPAT], *mult_hist[MAX_SUBSYS];
 
 
 //#######################################################################
+//########                Coincidence Time Gates               ##########
+//#######################################################################
+
+// The definition of the time difference gate in 10 nanosecond units.
+// First and second index are the subsystem index numbers
+// The value is the maximum time difference in 10 nanosecond units.
+// Default is 250 nanoseconds, replaced by the Global value at start of sorting
+static int time_diff_gate_min[MAX_SUBSYS][MAX_SUBSYS];
+static int time_diff_gate_max[MAX_SUBSYS][MAX_SUBSYS];
+
+//#######################################################################
 //########          Sums and coincidence  HISTOGRAMS           ##########
 //#######################################################################
 
