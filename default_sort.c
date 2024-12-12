@@ -1170,6 +1170,7 @@ int fill_coinc_histos(int win_idx, int frag_idx)
               if( c1 >= 1 && c1 <= 64 ){
                 c2 = crystal_table[alt->chan];
                 if( c2 >= 1 && c2 <= 64 ){
+                  c1--; c2--;
                   gg_hit->Fill(gg_hit, c1, c2, 1);
 
                   // Ge-Ge with 180 degrees between Ge1 and Ge2 used for summing corrections
@@ -1180,7 +1181,6 @@ int fill_coinc_histos(int win_idx, int frag_idx)
                   // Ge-Ge angular correlations
                   // Fill the appropriate angular bin spectrum
                   // c1 and c2 run from 0 to 63 for ge_angles_145mm.
-                  c1--; c2--;
                   index = ge_angles_110mm[c1][c2];
                   gg_ang_corr_110_hist[index]->Fill(gg_ang_corr_110_hist[index], (int)ptr->ecal, (int)alt->ecal, 1);
                   index = ge_angles_145mm[c1][c2];
