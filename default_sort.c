@@ -1160,17 +1160,16 @@ int fill_coinc_histos(int win_idx, int frag_idx)
 
             dt_hist[0]->Fill(dt_hist[0], (int)(abs_dt+DT_SPEC_LENGTH/2), 1); // ge-ge
             // Ge-Ge matrices
-            if( alt->dtype == 0 && abs_dt < gg_gate ){ // ge-ge (and addback)
+            if( abs_dt < gg_gate ){ // ge-ge (and addback)
               gg->Fill(gg, (int)ptr->ecal, (int)alt->ecal, 1);
               if( ptr->esum >= 0 &&  alt->esum >= 0 ){
                 gg_ab->Fill(gg_ab, (int)ptr->esum, (int)alt->esum, 1);
               }
 
               c1 = crystal_table[ptr->chan];
-              if( c1 >= 1 && c1 <= 64 ){
+              if( c1 >= 0 && c1 <= 63 ){
                 c2 = crystal_table[alt->chan];
-                if( c2 >= 1 && c2 <= 64 ){
-                  c1--; c2--;
+                if( c2 >= 0 && c2 <= 63 ){
                   gg_hit->Fill(gg_hit, c1, c2, 1);
 
                   // Ge-Ge with 180 degrees between Ge1 and Ge2 used for summing corrections
@@ -1185,7 +1184,6 @@ int fill_coinc_histos(int win_idx, int frag_idx)
                   gg_ang_corr_110_hist[index]->Fill(gg_ang_corr_110_hist[index], (int)ptr->ecal, (int)alt->ecal, 1);
                   index = ge_angles_145mm[c1][c2];
                   gg_ang_corr_145_hist[index]->Fill(gg_ang_corr_145_hist[index], (int)ptr->ecal, (int)alt->ecal, 1);
-
                 }
               }
             }
