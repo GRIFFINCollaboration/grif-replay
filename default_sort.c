@@ -773,6 +773,9 @@ labr_zds   = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
    sprintf(title, "GGoppo"); sprintf(handle, "GGoppo");
    gg_opp    = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
 		                                       SYMMETERIZE, 0, E_2D_SPEC_LENGTH);
+  sprintf(title, "Addback_GGoppo"); sprintf(handle, "AB_GGoppo");
+  gg_ab_opp    = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
+                                          SYMMETERIZE, 0, E_2D_SPEC_LENGTH);
    close_folder(cfg);
    open_folder(cfg, "Hits");
    sprintf(title, "GeGeHit"); sprintf(handle, "GGHit");
@@ -1175,6 +1178,7 @@ int fill_coinc_histos(int win_idx, int frag_idx)
                   // Ge-Ge with 180 degrees between Ge1 and Ge2 used for summing corrections
                   if( c2 == grif_opposite[c1] ){
                     gg_opp->Fill(gg_opp, (int)ptr->ecal, (int)alt->ecal, 1);
+                    gg_ab_opp->Fill(gg_ab_opp, (int)ptr->esum, (int)alt->esum, 1);
                   }
 
                   // Ge-Ge angular correlations
