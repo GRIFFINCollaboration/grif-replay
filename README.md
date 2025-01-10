@@ -76,6 +76,18 @@ run the command
 
 The runXXXX.root histogram file can now be opened and viewed in Root or GRSISort.
 
+### Running without an internet connection
+
+An internet connection is required to run the web interface and spectrumViewer codes from the GitHub servers. You can alternatively run completely offline if you launch a second server for the web codes (the first server being the grif-replay one). First download (clone) the spectrumViewer repository from GitHub into a suitable working directory. Navigate to the spectrumViewer working directory and launch a web server with a port number which is different from 9093 because that one is already in use by grif-replay. Port 9000 is used as the example here. Open a web browser and navigate to the following URL:
+
+`localhost:9000/analyzerInterface.html?backend=localhost&port=9093`
+
+In this example the `localhost:9000` is the spectrumViewer server available on port number 9000. The `backend=localhost&port=9093` is the grif-replay server available on port 9093.
+
+There are a number of options for how to launch a local server, for more details (https://developer.mozilla.org/en-US/docs/Learn_web_development/Howto/Tools_and_setup/set_up_a_local_testing_server#running_a_simple_local_http_server). An easy one which is available by default on most linux distributions is to use python:
+
+`python3 -m http.server 9000`
+
 ## Development
 
 Grif-Replay was originally developed by Chris Pearson (data-sorting engine and server) and Adam Garnsworthy (browser tools) at TRIUMF Inc. during the 2023-2024 time period. The browser tools use much of the infrastructure originally developed by Bill Mills during the 2013-2016 time period.
