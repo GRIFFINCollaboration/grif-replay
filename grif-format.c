@@ -65,30 +65,22 @@ void grif_status(int current_time)
 
 void grif_main(Sort_status *arg)
 {
-   int i, wrpos, len, rd_avail, wr_avail, wcnt, wrap, reorder = arg->reorder;
+   int i, wrpos, len, rd_avail, wr_avail, wcnt, wrap;
    unsigned bufsize, *bufstart, *bufend, *evstart, *evptr;
    unsigned int usecs=100;
    Grif_event *ptr;
 
    memset(grif_err, 0, GRIF_ERR_TYPES*sizeof(int));
-   if( reorder ){
-      bufsize = EVENTBUFSIZE;
-      evptr = evstart = bufstart = event_buffer;
-      bufend = event_buffer + bufsize;
-   } else {
-      bufsize = BANK_BUFSIZE;
-      evptr = evstart = bufstart = bankbuf;
-      bufend = bankbuf + bufsize;
-   }
+   bufsize = EVENTBUFSIZE;
+   evptr = evstart = bufstart = event_buffer;
+   bufend = event_buffer + bufsize;
    grif_evcount = grifevent_wrpos = wrpos = wcnt = wrap = 0;
    printf("starting grif thread ...\n");
    while(1){ ptr = &grif_event[wrpos];
       // if( arg->shutdown_midas != 0 ){  break; }
-      rd_avail = ( reorder ) ? eventbuf_wrpos - eventbuf_rdpos :
-                                bankbuf_wrpos -  bankbuf_rdpos;
+      rd_avail =eventbuf_wrpos - eventbuf_rdpos;
       if( rd_avail < 10 ){  // leave some margin
-         if(  reorder && arg->reorder_out_done ||
-             !reorder && arg->end_of_data ){ break; }
+         if( arg->reorder_out_done ){ break; }
           usleep(usecs); continue;
       }
       if( (( (*evptr)>>28 )&0xf) != 0xE ){
@@ -117,21 +109,19 @@ void grif_main(Sort_status *arg)
          usleep(usecs);
       }
       if( unpack_grif3_event(evstart, len, ptr, waveforms) == 0 ){
-         if( !arg->sort_thread ){ process_event(ptr, wrpos); }
+         //if( !arg->sort_thread ){ process_event(ptr, wrpos); }
          //if( ( ++grif_evcount % 1000000) == 0 ){
          //   fprintf(stderr, "%10d events ...\n", grif_evcount);
          //}
       } else { --grifevent_wrpos; } // dump this event
       if( ++evptr >= bufend ){ evptr -= bufsize; }
       ++wcnt; evstart = evptr;  ++grifevent_wrpos;
-      if(  reorder ){ eventbuf_rdpos += wcnt; // consume input data here
-      } else {              bankbuf_rdpos += wcnt; } //   or here
+      eventbuf_rdpos += wcnt; // consume input data here
       wcnt = 0;  wrpos = grifevent_wrpos %  MAX_COINC_EVENTS;  ++grif_evcount;
    }
    arg->grif_sort_done = 1;
    printf("grif_ordered thread finished rd:%ld wr:%ld\n",
-          ( reorder ) ? eventbuf_rdpos : bankbuf_rdpos,
-          ( reorder ) ? eventbuf_wrpos : bankbuf_wrpos );
+          eventbuf_rdpos, eventbuf_wrpos );
    return;
 }
 

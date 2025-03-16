@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
    Sort_status *sort = &sort_status;
    int web_arg=1;  Config *cfg;
 
-   sort->reorder = 1;  sort->single_thread = 0;  sort->sort_thread = 1;
+   sort->single_thread = 0;
    pthread_create(&web_thread, NULL,(void* (*)(void*))web_main, &web_arg);
    while( !shutdown_server ){ // monitor file queue and sort any added files
 
@@ -74,10 +74,8 @@ void show_coinc_stats()
 static int presort_window_start, sort_window_start;
 static int done_events;
 extern void grif_main(Sort_status *arg);
-extern void reorder_a_main(Sort_status *arg);
-extern void reorder_a_out(Sort_status *arg);
-extern void reorder_b_main(Sort_status *arg);
-extern void reorder_b_out(Sort_status *arg);
+extern void reorder_main(Sort_status *arg);
+extern void reorder_out(Sort_status *arg);
 extern void sort_main(Sort_status *arg);
 static pthread_t midas_thread, grif_thread, ordthrd, ordthr2;
 static int reorder_save, singlethread_save, sortthread_save;
@@ -108,36 +106,24 @@ int sort_next_file(Config *cfg, Sort_status *sort)
       } else {
          pthread_create(&midas_thread, NULL, (void* (*)(void*))midas_module_main, sort);
       }
-      if( reorder_save ){
-        printf("creating reorder threads\n");
-        if( reorder_save == 1 ){
-           pthread_create(&ordthrd,NULL,(void* (*)(void*))reorder_a_main,sort);
-           pthread_create(&ordthr2,NULL,(void* (*)(void*))reorder_a_out, sort);
-        } else {
-           pthread_create(&ordthrd,NULL,(void* (*)(void*))reorder_b_main,sort);
-           pthread_create(&ordthr2,NULL,(void* (*)(void*))reorder_b_out, sort);
-        }
-      }
+      printf("creating reorder threads\n");
+      pthread_create(&ordthrd,NULL,(void* (*)(void*))reorder_main,sort);
+      pthread_create(&ordthr2,NULL,(void* (*)(void*))reorder_out, sort);
+
       while( !sort->odb_ready ){     // wait for midas thread to read odb event
          usleep(1);
       }
-      //user_sort_init();
-      init_default_histos(configs[1], sort); // user histos already defined
-      if( sortthread_save ){       // but defaults depend on odb in datafile
-         pthread_create(&grif_thread, NULL,(void* (*)(void*))grif_main, sort);
-         sort_main(sort);
-      } else {
-         grif_main(sort);
-      }
+      //user_sort_init();   // user histos already defined, but defaul histos
+      init_default_histos(configs[1], sort);     // depend on odb in datafile
+      pthread_create(&grif_thread, NULL,(void* (*)(void*))grif_main, sort);
+
+      sort_main(sort); // this exits when sort is done
+
       sort->shutdown_midas = 1;
       pthread_join(midas_thread, NULL);
-      if( reorder_save ){
-         pthread_join(ordthrd, NULL);
-         pthread_join(ordthr2, NULL);
-      }
-      if( sortthread_save ){
-         pthread_join(grif_thread, NULL);
-      }
+      pthread_join(ordthrd, NULL);
+      pthread_join(ordthr2, NULL);
+      pthread_join(grif_thread, NULL);
    }
    end=time(NULL);
    cfg->midas_start_time = diagnostics.midas_run_start;
@@ -175,36 +161,25 @@ static void online_loop(Config *cfg, Sort_status *sort)
       sortthread_save = sort->sort_thread;
       presort_window_start = sort_window_start = 0;
 
-      if( reorder_save ){
-        printf("creating reorder threads\n");
-        if( reorder_save == 1 ){
-           pthread_create(&ordthrd,NULL,(void* (*)(void*))reorder_a_main,sort);
-           pthread_create(&ordthr2,NULL,(void* (*)(void*))reorder_a_out, sort);
-        } else {
-           pthread_create(&ordthrd,NULL,(void* (*)(void*))reorder_b_main,sort);
-           pthread_create(&ordthr2,NULL,(void* (*)(void*))reorder_b_out, sort);
-        }
-      }
+      printf("creating reorder threads\n");
+      pthread_create(&ordthrd,NULL,(void* (*)(void*))reorder_main,sort);
+      pthread_create(&ordthr2,NULL,(void* (*)(void*))reorder_out, sort);
+
       while( !sort->odb_ready ){     // wait for midas thread to read odb event
          usleep(1);
       }
-      //user_sort_init();
-      init_default_histos(configs[1], sort); // user histos already defined
-      if( sortthread_save ){       // but defaults depend on odb in datafile
-         pthread_create(&grif_thread, NULL,(void* (*)(void*))grif_main, sort);
-         sort_main(sort);
-      } else {
-         grif_main(sort);
-      }
-      // DO NOT SHTUDOWN MIDAS THREAD
+      //user_sort_init();   // user histos already defined, but defaul histos
+      init_default_histos(configs[1], sort);     // depend on odb in datafile
+      pthread_create(&grif_thread, NULL,(void* (*)(void*))grif_main, sort);
+
+      sort_main(sort); // this exits when sort is done
+
       sort->shutdown_midas = 1;
-      if( reorder_save ){
-         pthread_join(ordthrd, NULL);
-         pthread_join(ordthr2, NULL);
-      }
-      if( sortthread_save ){
-         pthread_join(grif_thread, NULL);
-      }
+      // DO NOT SHTUDOWN MIDAS THREAD
+      pthread_join(ordthrd, NULL);
+      pthread_join(ordthr2, NULL);
+      pthread_join(grif_thread, NULL);
+
       end=time(NULL);
       cfg->midas_start_time = diagnostics.midas_run_start;
       cfg->midas_runtime    = diagnostics.midas_last_timestamp+1;
@@ -342,7 +317,7 @@ extern char chan_name[MAX_DAQSIZE][CHAN_NAMELEN];
 // => final win of run won't be sorted, as these events will not leave window
 int insert_presort_win(Grif_event *ptr, int slot)
 {
-   int window_width = 200; // 2us - MAXIMUM (indiv. gates can be smaller)
+   int window_width = 500; // 5us to capture all pileup events - MAXIMUM (indiv. gates can be smaller)
    int win_count, win_end;
    Grif_event *alt;
    long dt;

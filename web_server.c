@@ -17,8 +17,8 @@
 #include "histogram.h"
 #include "web_server.h"
 
-#define MAX_QUEUE_LEN    4
-#define REQUEST_TIMEOUT 10 // 10 seconds
+#define MAX_QUEUE_LEN    6
+#define REQUEST_TIMEOUT 30 // 30 seconds (was 10 seconds)
 #define URLLEN        2048 //      maximum url and other string lengths
 #define WEBPORT       9093 //    http standard recommends ~8000bytes BUT
                            // windows browsers will not handle more than 2000

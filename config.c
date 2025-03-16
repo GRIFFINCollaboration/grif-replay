@@ -472,6 +472,9 @@ int handle_command(int fd, int narg, char url_args[][STRING_LEN])
    if( strcmp(ptr, "setCalibration") == 0 ){ /* -------------------- */
       set_calibration(configs[0], narg, url_args, fd);
    } else
+   if( strcmp(ptr, "setPileupCorrection") == 0 ){ /* -------------------- */
+      set_pileup_correction(configs[0], narg, url_args, fd);
+   } else
    if( strcmp(ptr, "setDataDirectory") == 0 ){ /* -------------------- */
       set_directory(configs[0], "Data", url_args[3]);
    } else
@@ -618,6 +621,15 @@ int write_config(Config *cfg, FILE *fp)
    fprintf(fp,"      {\"Calibrations\" : [\n");
    for(i=0; i<cfg->ncal; i++){ calib = cfg->calib[i];
       fprintf(fp,"%9s{\"name\" : \"%s\" , \"address\" : %d , \"datatype\" : %d , \"offset\" : %f , \"gain\" : %f , \"quad\" : %e ", "", calib->name, calib->address, calib->datatype, calib->offset, calib->gain, calib->quad );
+      if(calib->pileupk1[0] != -1 && !isnan(calib->pileupk1[0])){
+        fprintf(fp,", \"pileupk1\" : [ %f , %f , %e , %e , %e , %e , %e ]",calib->pileupk1[0],calib->pileupk1[1],calib->pileupk1[2],calib->pileupk1[3],calib->pileupk1[4],calib->pileupk1[5],calib->pileupk1[6]);
+        fprintf(fp,", \"pileupk2\" : [ %f , %f , %e , %e , %e , %e , %e ]",calib->pileupk2[0],calib->pileupk2[1],calib->pileupk2[2],calib->pileupk2[3],calib->pileupk2[4],calib->pileupk2[5],calib->pileupk2[6]);
+        fprintf(fp,", \"pileupE1\" : [ %f , %f , %e , %e , %e , %e , %e ]",calib->pileupE1[0],calib->pileupE1[1],calib->pileupE1[2],calib->pileupE1[3],calib->pileupE1[4],calib->pileupE1[5],calib->pileupE1[6]);
+      }else{
+        fprintf(fp,", \"pileupk1\" : [ %d , %d , %d , %d , %d , %d , %d ]",1,0,0,0,0,0,0);
+        fprintf(fp,", \"pileupk2\" : [ %d , %d , %d , %d , %d , %d , %d ]",1,0,0,0,0,0,0);
+        fprintf(fp,", \"pileupE1\" : [ %d , %d , %d , %d , %d , %d , %d ]",0,0,0,0,0,0,0);
+      }
       fprintf(fp, "%s", ( i<cfg->ncal-1 ) ? "},\n" : "}\n" );
    }
    fprintf(fp,"      ]},\n");
@@ -651,6 +663,7 @@ int load_config(Config *cfg, char *filename, char *buffer)
    int i,j, len, value, val2, val3, val4, val5, val6, address, type, instring;
    char *ptr, *name, *valstr, *title, *path, *var, *var2, op[8], tmp[80];
    float gain, offset, quad;
+   float puk1[7], puk2[7], puE1[7];
    Histogram *histo;
    Config *tmp_cfg;
    Cond *cond;
@@ -923,7 +936,7 @@ int load_config(Config *cfg, char *filename, char *buffer)
       return(-1);
    } ptr += 17;
    while( 1 ){ // Calibrations
-      if( strncmp(ptr,"]},", 3) == 0 ){ ptr+=3; break; }// empty section
+      if( strncmp(ptr,"]},", 3) == 0 ){ ptr+=3; fprintf(stdout,"Calibrations section empty so breaking here.\n"); break; }// empty section
       if( strncmp(ptr,"{\"name\":\"", 9) != 0 ){
          fprintf(stderr,"load_config: errS byte %ld\n", ptr-config_data);
          return(-1);
@@ -944,41 +957,78 @@ int load_config(Config *cfg, char *filename, char *buffer)
       } ptr += 11; valstr = ptr;
       while( isdigit(*ptr) || *ptr=='-' || *ptr=='.' ){++ptr;} *ptr++ = 0;
       if( sscanf( valstr, "%d", &type) < 1 ){
-         fprintf(stderr,"load_config:errX byte %ld\n", ptr-config_data);
-         return(-1);
+        fprintf(stderr,"load_config:errX byte %ld\n", ptr-config_data);
+        return(-1);
       }
       if( strncmp(ptr,"\"offset\":",9) != 0 ){
-         fprintf(stderr,"load_config: errT byte %ld\n", ptr-config_data);
-         return(-1);
+        fprintf(stderr,"load_config: errT byte %ld\n", ptr-config_data);
+        return(-1);
       } ptr += 9; valstr = ptr;
       while( isdigit(*ptr) || *ptr=='-' || *ptr=='.' ){++ptr;} *ptr++ = 0;
       if( sscanf( valstr, "%f", &offset) < 1 ){
-         fprintf(stderr,"load_config:errU byte %ld\n", ptr-config_data);
-         return(-1);
+        fprintf(stderr,"load_config:errU byte %ld\n", ptr-config_data);
+        return(-1);
       }
       if( strncmp(ptr,"\"gain\":",7) != 0 ){
-         fprintf(stderr,"load_config: errV byte %ld\n", ptr-config_data);
-         return(-1);
+        fprintf(stderr,"load_config: errV byte %ld\n", ptr-config_data);
+        return(-1);
       } ptr += 7; valstr = ptr;
       while( isdigit(*ptr) || *ptr=='-' || *ptr=='.' ){++ptr;} *ptr++ = 0;
       if( sscanf( valstr, "%f", &gain) < 1 ){
-         fprintf(stderr,"load_config:errX byte %ld\n", ptr-config_data);
-         return(-1);
+        fprintf(stderr,"load_config:errX byte %ld\n", ptr-config_data);
+        return(-1);
       }
       if( strncmp(ptr,"\"quad\":",7) != 0 ){
-         fprintf(stderr,"load_config: errY byte %ld\n", ptr-config_data);
-         return(-1);
+        fprintf(stderr,"load_config: errY byte %ld\n", ptr-config_data);
+        return(-1);
       } ptr += 7; valstr = ptr;
       while(isdigit(*ptr)||*ptr=='.'||*ptr=='-'||*ptr=='+'||*ptr=='e'){++ptr;}
       *ptr++ = 0; // last char written over with 0 was '}'
       if( sscanf( valstr, "%f", &quad) < 1 ){
-         fprintf(stderr,"load_config:errZ byte %ld\n", ptr-config_data);
-         return(-1);
+        fprintf(stderr,"load_config:errZ byte %ld\n", ptr-config_data);
+        return(-1);
       }
-      cfg->lock=1; edit_calibration(cfg,name,offset,gain,quad,address,type,1); cfg->lock=0;
+      // The pileup correction parameters were introduced in Feb 2025.
+      // Config files before this date will not have pileup correcitons, and after this they are optional
+      if( strncmp(ptr,"\"pileupk1\":",11) == 0 ){
+        ptr += 11; valstr = ptr;
+        if( sscanf(valstr, "[%f,%f,%e,%e,%e,%e,%e], ", &puk1[0],&puk1[1],&puk1[2],&puk1[3],&puk1[4],&puk1[5],&puk1[6]) != 7 ){
+          fprintf(stderr,"load_config:errPUA byte %ld\n", ptr-config_data);
+          return(-1);
+        }
+        while(*ptr!='\"'){++ptr;}
+        if( strncmp(ptr,"\"pileupk2\":",11) != 0 ){
+          fprintf(stderr,"load_config:errPUB byte %ld\n", ptr-config_data);
+          return(-1);
+        } ptr += 11; valstr = ptr;
+        if( sscanf(valstr, "[%f,%f,%e,%e,%e,%e,%e], ", &puk2[0],&puk2[1],&puk2[2],&puk2[3],&puk2[4],&puk2[5],&puk2[6]) != 7 ){
+          fprintf(stderr,"load_config:errPUC byte %ld\n", ptr-config_data);
+          return(-1);
+        }
+        //while(isdigit(*ptr)||*ptr=='.'||*ptr=='-'||*ptr=='+'||*ptr=='e'||*ptr==','||*ptr=='['||*ptr==']'){++ptr;}
+        while(*ptr!='\"'){++ptr;}
+        if( strncmp(ptr,"\"pileupE1\":",11) != 0 ){
+          fprintf(stderr,"load_config:errPUD byte %ld\n", ptr-config_data);
+          return(-1);
+        } ptr += 11; valstr = ptr;
+        if( sscanf(valstr, "[%f,%f,%e,%e,%e,%e,%e]", &puE1[0],&puE1[1],&puE1[2],&puE1[3],&puE1[4],&puE1[5],&puE1[6]) != 7 ){
+          fprintf(stderr,"load_config:errPUE byte %ld\n", ptr-config_data);
+          return(-1);
+        }
+        //while(isdigit(*ptr)||*ptr=='.'||*ptr=='-'||*ptr=='+'||*ptr=='e'||*ptr==','||*ptr=='['||*ptr==']'){++ptr;}
+        while(*ptr!='}'){++ptr;}
+        ++ptr;
+      }else{
+           // Initialize pileup parameters to default values
+           for(i=0; i<7; i++){
+             puk1[i] = puk2[i] = puE1[i] = 0;
+           }
+           puk1[0] = puk2[0] = 1; // set default factor as 1 not zero
+      }
+      cfg->lock=1; edit_calibration(cfg,name,offset,gain,quad,puk1,puk2,puE1,address,type,1); cfg->lock=0;
       if( *ptr++ == ',' ){ continue; } // have skipped ']' if not
       ptr+=2; break; // skip '},'
-   }
+    }
    if( strncmp(ptr,"{\"Directories\":[", 16) != 0 ){
       fprintf(stderr,"load_config: errZA byte %ld\n", ptr-config_data);
       return(-1);
@@ -1051,6 +1101,7 @@ int init_config()
    }
    init_default_config(cfg);  // populate default "test" config during testing
    load_config(cfg, DEFAULT_CONFIG, NULL); // attempt to load, ignore any error
+   clear_calibrations(cfg); // Clear the calibrations to default values following server restart
    tmp = gethostname(hostname, 32);
    strtok(hostname, ".");
    fprintf(stdout,"Initial setup complete :-)\n\n");
@@ -1078,6 +1129,25 @@ int clear_config(Config *cfg)
    // used_sortvars, and user histos start empty and are filled randomly
    cfg->mtime = current_time;
    return(0);
+}
+
+int clear_calibrations(Config *cfg)
+{
+  float offset=0, gain=1, quad=0;
+  float puk1[7], puk2[7], puE1[7];
+  int i, address=-1, datatype=-1;
+
+  // Initialize values to defaults
+  for(i=0; i<7; i++){
+    puk1[i] = puk2[i] = puE1[i] = 0;
+  }
+  puk1[0] = puk2[0] = 1; // set default factor as 1 not zero
+
+  // delete any calibration values
+  for(i=0; i<cfg->ncal;     i++){
+    edit_calibration(cfg, cfg->calib[i]->name, offset, gain, quad, puk1, puk2, puE1, address, datatype, 1);
+  }
+  return(0);
 }
 
 int copy_config(Config *src, Config *dst)
@@ -1784,7 +1854,13 @@ Histogram *find_histo(Config *cfg, char *name)
 int set_calibration(Config *cfg, int num, char url_args[][STRING_LEN], int fd)
 {
    float offset, gain, quad;
+   float puk1[7], puk2[7], puE1[7];
    int i, address=-1, datatype=-1;
+
+   // Initialize values to -1
+   for(i=0; i<7; i++){
+     puk1[i] = puk2[i] = puE1[i] = -1;
+   }
 
    for(i=2; i<num; i+=8){
       if( strncmp(url_args[i], "channelName", 10) != 0 ){
@@ -1831,16 +1907,78 @@ int set_calibration(Config *cfg, int num, char url_args[][STRING_LEN], int fd)
 //         fprintf(stderr,"can't read datatype: %s\n", url_args[i+11]);
 //         return(-1);
 //      }
-      edit_calibration(cfg, url_args[i+1], offset, gain, quad,
+      edit_calibration(cfg, url_args[i+1], offset, gain, quad, puk1, puk2, puE1,
                        address, datatype, 1);
    }
    return(0);
 }
 
-int edit_calibration(Config *cfg, char *name, float offset, float gain, float quad, int address, int type, int overwrite)
+int set_pileup_correction(Config *cfg, int num, char url_args[][STRING_LEN], int fd)
+{
+   float offset=-1, gain=-1, quad=-1;
+   float puk1[7], puk2[7], puE1[7];
+   int i, address=-1, datatype=-1;
+
+// Initialize values to defaults
+for(i=0; i<7; i++){
+  puk1[i] = puk2[i] = puE1[i] = 0;
+}
+puk1[0] = puk2[0] = 1; // set default factor as 1 not zero
+
+   for(i=2; i<num; i+=8){
+      if( strncmp(url_args[i], "channelName", 10) != 0 ){
+         fprintf(stderr,"expected \"channelName\" at %s\n", url_args[i]);
+         return(-1);
+      }
+      if( strncmp(url_args[i+2], "pileupk1", 8) != 0 ){
+         fprintf(stderr,"expected \"pileupk1\" at %s\n", url_args[i+2]);
+         return(-1);
+      }
+      if( sscanf(url_args[i+3], "%f,%f,%f,%f,%f,%f,%f", puk1,puk1+1,puk1+2,puk1+3,puk1+4,puk1+5,puk1+6) != 7 ){
+         fprintf(stderr,"can't read pileup k1, expected 7 values: %s\n", url_args[i+3]);
+         return(-1);
+      }
+      if( strncmp(url_args[i+4], "pileupk2", 8) != 0 ){
+         fprintf(stderr,"expected \"pileupk2\" at %s\n", url_args[i+4]);
+         return(-1);
+      }
+      if( sscanf(url_args[i+5], "%f,%f,%f,%f,%f,%f,%f", puk2,puk2+1,puk2+2,puk2+3,puk2+4,puk2+5,puk2+6) != 7 ){
+         fprintf(stderr,"can't read pileup k2, expected 7 values: %s\n", url_args[i+5]);
+         return(-1);
+      }
+      if( strncmp(url_args[i+6], "pileupE1", 8) != 0 ){
+         fprintf(stderr,"expected \"pileupE1\" at %s\n", url_args[i+6]);
+         return(-1);
+      }
+      if( sscanf(url_args[i+7], "%f,%f,%f,%f,%f,%f,%f", puE1,puE1+1,puE1+2,puE1+3,puE1+4,puE1+5,puE1+6) != 7 ){
+         fprintf(stderr,"can't read pileup E1, expected 7 values: %s\n", url_args[i+7]);
+         return(-1);
+      }
+//      if( strncmp(url_args[i+14], "address", 4) != 0 ){
+//         fprintf(stderr,"expected \"address\" at %s\n", url_args[i+14]);
+//         return(-1);
+//      }
+//      if( sscanf(url_args[i+15], "%d", &address) < 1 ){
+//         fprintf(stderr,"can't read address: %s\n", url_args[i+15]);
+//         return(-1);
+//      }
+//      if( strncmp(url_args[i+16], "datatype", 6) != 0 ){
+//         fprintf(stderr,"expected \"datatype\" at %s\n", url_args[i+16]);
+//         return(-1);
+//      }
+//      if( sscanf(url_args[i+17], "%d", &datatype) < 1 ){
+//         fprintf(stderr,"can't read datatype: %s\n", url_args[i+17]);
+//         return(-1);
+//      }
+    edit_calibration(cfg, url_args[i+1], offset, gain, quad, puk1, puk2, puE1, address, datatype, 1);
+   }
+   return(0);
+}
+
+int edit_calibration(Config *cfg, char *name, float offset, float gain, float quad, float puk1[7], float puk2[7], float puE1[7], int address, int type, int overwrite)
 {
    time_t current_time = time(NULL);
-   int i, len, arg;
+   int i,j, len, arg;
    Cal_coeff *cal;
 
    for(i=0; i<cfg->ncal; i++){ cal = cfg->calib[i];
@@ -1849,7 +1987,12 @@ int edit_calibration(Config *cfg, char *name, float offset, float gain, float qu
    }
    if( i < cfg->ncal ){ // calib already exists
       if( overwrite ){
-         cal->offset = offset; cal->gain = gain; cal->quad = quad;
+      if( offset != -1 ){ cal->offset = offset; }
+      if( gain   != -1 ){ cal->gain = gain; }
+      if( quad   != -1 ){ cal->quad = quad; }
+      if( puk1[0] != -1 ){ for(j=0; j<7; j++){cal->pileupk1[j] = puk1[j];} }
+      if( puk2[0] != -1 ){ for(j=0; j<7; j++){cal->pileupk2[j] = puk2[j];} }
+      if( puE1[0] != -1 ){ for(j=0; j<7; j++){cal->pileupE1[j] = puE1[j];} }
       }
       if( address != -1 ){
          cal->address = address;  cal->datatype = type;
@@ -1864,9 +2007,26 @@ int edit_calibration(Config *cfg, char *name, float offset, float gain, float qu
          len = 64;
       }
       memcpy(cal->name, name, len);
-      cal->offset = offset; cal->gain = gain; cal->quad = quad;
+      if( offset != -1 ){ cal->offset = offset; }else{ cal->offset = 0; }
+      if( gain   != -1 ){ cal->gain = gain; }else{ cal->gain = 1; }
+      if( quad   != -1 ){ cal->quad = quad; }else{ cal->quad = 0; }
+      if( puk1[0] != -1 ){
+        for(j=0; j<7; j++){ cal->pileupk1[j] = puk1[j]; }
+      }else{
+        cal->pileupk1[0]=1; cal->pileupk1[1]=0; cal->pileupk1[2]=0; cal->pileupk1[3]=0; cal->pileupk1[4]=0; cal->pileupk1[5]=0; cal->pileupk1[6]=0;
+      }
+      if( puk2[0] != -1 ){
+        for(j=0; j<7; j++){cal->pileupk2[j] = puk2[j]; }
+      }else{
+        cal->pileupk2[0]=1; cal->pileupk2[1]=0; cal->pileupk2[2]=0; cal->pileupk2[3]=0; cal->pileupk2[4]=0; cal->pileupk2[5]=0; cal->pileupk2[6]=0;
+      }
+      if( puE1[0] != -1 ){
+        for(j=0; j<7; j++){cal->pileupE1[j] = puE1[j]; }
+      }else{
+        cal->pileupE1[0]=0; cal->pileupE1[1]=0; cal->pileupE1[2]=0; cal->pileupE1[3]=0; cal->pileupE1[4]=0; cal->pileupE1[5]=0; cal->pileupE1[6]=0;
+      }
       cal->address = address;  cal->datatype = type;
-   }
+    }
    cfg->mtime = current_time;  save_config(cfg, DEFAULT_CONFIG, 1);
    return(0);
 }
@@ -1926,7 +2086,6 @@ extern int sum_th1I(Config *dst_cfg, TH1I *dst, TH1I *src);
 int sum_histos(Config *cfg, int num, char url_args[][STRING_LEN], int fd)
 {
    Config *sum, *tmp, *tmp_conf;
-   float offset, gain, quad;
    int i, j, arg;
    FILE *fp;
 

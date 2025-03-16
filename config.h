@@ -40,6 +40,7 @@ typedef struct global_struct {
 
 typedef struct cal_coeff_struct {
    char name[CHAN_NAMELEN]; float offset; float gain; float quad;
+   float pileupk1[7], pileupk2[7], pileupE1[7];
    short address; short datatype;
 } Cal_coeff;
 
@@ -76,7 +77,7 @@ struct th1i_struct {  long  file_data_offset;    int data_size;
    int      type;  TH1I    *next;   char     path[HISTO_FOLDER_LENGTH];
    int     xbins;  int     ybins;   char          title[TITLE_LENGTH];
    int     *data;  int valid_bins;  char        handle[HANDLE_LENGTH];
-   int underflow;  int   overflow; 
+   int underflow;  int   overflow;
    int   entries;  int  num_gates;  char  *gate_names[MAX_HISTO_GATES];
    Sortvar *xvar;  Sortvar  *yvar;  int  *gate_passed[MAX_HISTO_GATES];
    int xmin; int xmax; int ymin; int ymax; int suppress; int user;
@@ -146,11 +147,12 @@ extern int remove_config(Config *cfg);
 extern int next_condname(Config *cfg);
 extern int sum_histos(Config *cfg, int num, char url_args[][STRING_LEN], int fd);
 extern int set_calibration(Config *cfg, int num, char url_args[][STRING_LEN], int fd);
+extern int set_pileup_correction(Config *cfg, int num, char url_args[][STRING_LEN], int fd);
 
 /////////////////////////////////////////////////////////////////////////
 /////////////////////          Gains         ////////////////////////////
 /////////////////////////////////////////////////////////////////////////
-extern int edit_calibration(Config *cfg, char *name, float offset, float gain, float quad, int address, int type, int overwrite);
+extern int edit_calibration(Config *cfg, char *name, float offset, float gain, float quad, float pileupk1[7], float pileupk2[7], float pileupE1[7], int address, int type, int overwrite);
 
 /////////////////////////////////////////////////////////////////////////
 /////////////////////       Variables        ////////////////////////////
@@ -201,6 +203,7 @@ extern int init_default_config(Config *cfg);
 extern int write_config(Config *cfg, FILE *fp);
 extern int copy_config(Config *src, Config *dst);
 extern int clear_config(Config *cfg);
+extern int clear_calibrations(Config *cfg);
 extern int delete_config(Config *cfg);
 extern int load_config(Config *cfg, char *filename, char *buffer);
 extern int save_config(Config *cfg, char *filename, int overwrite);

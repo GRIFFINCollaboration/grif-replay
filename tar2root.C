@@ -50,7 +50,7 @@ int compress_buffer(char *input, int size)
    }
    strm.avail_in = size;
    strm.next_in = (Bytef *)input;
-   
+
    strm.avail_out = COMPRESS_BUFSIZ; // should never be filled
    strm.next_out = (Bytef *)compress_buf;
    deflate(&strm, Z_FINISH);
@@ -64,13 +64,13 @@ int decompress_buffer(char *input, int size)
    int status;
 
    strm.zalloc = Z_NULL;  strm.zfree = Z_NULL;  strm.opaque = Z_NULL;
-   strm.avail_in = 0;   strm.next_in = Z_NULL; 
+   strm.avail_in = 0;   strm.next_in = Z_NULL;
    if( (status = inflateInit(&strm)) != Z_OK ){
       fprintf(stderr,"zlib decompression error\n"); return(-1);
    }
    strm.avail_in = size;
    strm.next_in = (Bytef *)input;
-   
+
    strm.avail_out = COMPRESS_BUFSIZ; // should never be filled
    strm.next_out = (Bytef *)compress_buf;
    inflate(&strm, Z_NO_FLUSH);
@@ -83,7 +83,7 @@ int read_entry(FILE *fp, int *pad)
 {
    char tmp[256];
    int size;
-   
+
    if( fread( &file_head, 512, 1, fp) < 1 ){ return(-1); }
    memcpy(tmp, file_head.size, 12); tmp[12]=0;
    printf("size:%s\n", tmp);
@@ -118,7 +118,7 @@ int tar2root(char *tarfile, char *rootfile)
    if( (tmp_fp=fopen("dbgout","w")) == NULL){ // can't open
       fprintf(stderr,"can't open debug file to write\n");
       return(-1);
-   }   
+   }
    count1 = count2 = 0;
    while( 1 ){
       //if( fread( &file_head, 512, 1, fp) < 1 ){ break; }
@@ -167,7 +167,7 @@ int tar2root(char *tarfile, char *rootfile)
                      spec2d[count2]->SetBinContent(i,j,comp_ptr[i+j*xbins]);
                }}
             } else {
- 	       if( file_head.type == 'C' ){ // symmetric matrix
+ 	       if( file_head.type[0] == 'C' ){ // symmetric matrix
                for(j=0; j<ybins; j++){ for(i=0; i<xbins; i++){
                      spec2d[count2]->SetBinContent(i,j,file_body[i+j*xbins]+
 						       file_body[j+i*xbins]);
