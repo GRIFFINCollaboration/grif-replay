@@ -97,19 +97,15 @@ void web_main(int *arg)
 ///////////////////////////////////////////////////////////////////////////
 
 #define MORE_FOLLOWS 1
+#define OPTIONS_REQUEST 2
 #define MAXURLARGS 128
 #define ROOTDIR "/home/griffin/daq/analyser"
-#define TEXT_HTML 0
-#define TEXT_CSS  1
-#define TEXT_JS   2
-#define APP_JSON  3
 static char buf[URLLEN], url[URLLEN], filename[URLLEN];
 static char url_args[MAXURLARGS][STRING_LEN];
 char *histo_list[MAXURLARGS];
 
 int get_request(int fd);
 int parse_url(int fd, int *cmd, int *narg);
-int send_header(int fd, int type);          // "HTTP 200\nSvr\nCntntTypeX\n\n"
 int send_file(char *filename, int fd);
 
 int handle_connection(int fd)
@@ -124,7 +120,8 @@ int handle_connection(int fd)
    while( *ptr != '\0' ){ if(*(ptr++) == '?'){break;} } // skip any "GET /?"
    if( strncmp(ptr, "cmd=", 4)     != 0 ){ return(-1); }
    if( (narg=split_cmdurl(ptr+4))  <= 0 ){ return(-1); }
-   if( send_header(fd, APP_JSON)    < 0 ){ return(-1); }
+   //if( send_header(fd, APP_JSON)    < 0 ){ return(-1); }
+  // if( send_http_error_response(fd, 1,(char*)"My custom message here")    < 0 ){ return(-1); } // Test this here but will move
    fprintf(stderr,"URL:%s\n", ptr);
    return( handle_command(fd, narg, url_args) );
 }
@@ -187,6 +184,21 @@ int send_header(int fd, int type)
    return 0;
 }
 
+int send_http_error_response(int fd, int type, char *error_message)
+{
+   char temp[512], tmp[32];
+   sprintf(temp,"\"%s\"\r\n", error_content_bodys[type]);
+   put_line(fd, (char*)"HTTP/1.0 ", 9); put_line(fd, error_content_titles[type], strlen(error_content_titles[type]) );
+   put_line(fd, (char*)"\r\nAccess-Control-Allow-Origin: *\r\n", 34);
+   put_line(fd, (char*)"Content-Type: ", 13); put_line(fd, (char*)"text/html;", 10 ); // Error responses are always just text
+   sprintf(tmp, "\r\nContent-Length: %lu", strlen(error_message) );
+   put_line(fd, tmp, strlen(tmp) );
+   put_line(fd, (char*)"\r\n\r\n", 4); // Empty line to separate header and body
+   put_line(fd, error_message, strlen(error_message) );
+   put_line(fd, (char*)"\r\n", 2);
+   return(-1); // Always quit after an error response
+}
+
 int send_file(char *filename, int fd)
 {
    char temp[256];
@@ -199,7 +211,7 @@ int send_file(char *filename, int fd)
       put_line(fd, temp, strlen(temp) );
    }
    fclose(fp);
-   return(0);
+   return 0;
 }
 
 /* HTTP/1.0: GET HEAD POST - GET and HEAD must be implemented */
@@ -215,6 +227,8 @@ int parse_line(char *buf, int first)
    if( first ){
       if(        ! strncmp(buf, "GET ",  4) ){ buf += 4;
       } else if( ! strncmp(buf, "HEAD ", 5) ){ buf += 5;
+    //  } else if( ! strncmp(buf, "OPTIONS ", 8) ){ return(OPTIONS_REQUEST);
+    } else if( ! strncmp(buf, "OPTIONS ", 8) ){ buf += 8; return(OPTIONS_REQUEST);
       } else {
          fprintf(stdout,"Unimplemented"); return(-1);
       }
@@ -302,8 +316,22 @@ int get_request(int fd)
       if( (status = parse_line(buf, (line_count==0) )) < 0 ){
          fprintf(stderr,"parse error [%s]\n", buf);  return(-1);
       }
+
+      if( status == OPTIONS_REQUEST ){
+       // This is a preflight CORS request. We just need to send the success header.
+       // Send special header
+          put_line(fd, "HTTP/1.0 200 OK\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, OPTIONS\r\n", 93);
+          put_line(fd, "Access-Control-Max-Age: 86400\r\n", 31); // Allows the response to be cached for 24 hrs.
+          put_line(fd, HDRB, 35);
+          put_line(fd, content_types[APP_JSON], strlen(content_types[APP_JSON]) );
+          put_line(fd, (char*)"\r\n\r\n", 4);
+       return(-1); // Do not allow this request to go any further
+      }
+
       ++line_count;
-      if( status != MORE_FOLLOWS ){ break; }
+      if( status != MORE_FOLLOWS ){
+        break;
+      }
    }
    return(line_count);
 }

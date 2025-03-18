@@ -123,6 +123,8 @@ int handle_command(int fd, int narg, char url_args[][STRING_LEN])
       if( strcmp(url_args[2], "dir") == 0 ){
          send_datafile_list(url_args[3], fd, 0);
       } else {
+         sprintf(tmp,"bad argument:%s in getdatafileList\n",url_args[2]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"bad arg:%s in getdatafileList\n", url_args[2]);
       }
    } else
@@ -130,6 +132,8 @@ int handle_command(int fd, int narg, char url_args[][STRING_LEN])
       if( strcmp(url_args[2], "dir") == 0 ){
          send_datafile_list(url_args[3], fd, 1);
       } else {
+         sprintf(tmp,"bad argument:%s in getdatafileList\n",url_args[2]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"bad arg:%s in getdatafileList\n", url_args[2]);
       }
    } else
@@ -137,6 +141,8 @@ int handle_command(int fd, int narg, char url_args[][STRING_LEN])
       if( strcmp(url_args[2], "dir") == 0 ){
          send_histofile_list(url_args[3], fd);
       } else {
+         sprintf(tmp,"bad argument:%s in gethistofileList\n",url_args[2]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"bad arg:%s in gethistofileList\n", url_args[2]);
       }
    } else
@@ -144,16 +150,22 @@ int handle_command(int fd, int narg, char url_args[][STRING_LEN])
       send_sort_status(fd);
    } else
    if( strcmp(ptr, "terminateServer") == 0 ){ /* -----------------------*/
+      send_header(fd, APP_JSON);
       shutdown_server = 1; return(0);
    } else
    if( strcmp(ptr, "setSortStatus") == 0 ){ /* -----------------------*/
       if( strcmp(url_args[2], "status") != 0 ){
+         sprintf(tmp,"bad argument:%s in setSortStatus\n",url_args[2]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"bad arg:%s in setSortStatus\n", url_args[2]);
       }
       if( sscanf(url_args[3],"%d", &value) < 1 ){
+         sprintf(tmp,"setSortStatus:cant Read value: %s\n",url_args[3]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"setSortStatus:cantRead val:%s\n",url_args[3]);
          return(-1);
       }
+      send_header(fd, APP_JSON);
       sort_stat = get_sort_status();
       sort_stat->reorder       =  value     & 3;
       sort_stat->single_thread = (value>>2) & 1;
@@ -162,28 +174,39 @@ int handle_command(int fd, int narg, char url_args[][STRING_LEN])
    } else
    if( strcmp(ptr, "setCoincLimit") == 0 ){ /* -----------------------*/
       if( strcmp(url_args[2], "limit") != 0 ){
+         sprintf(tmp,"bad argument:%s in setCoincLimit\n",url_args[2]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"bad arg:%s in setCoincLimit\n", url_args[2]);
       }
       if( sscanf(url_args[3],"%d", &value) < 1 ){
+         sprintf(tmp,"setCoincLimit:cant Read value: %s\n",url_args[3]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"setCoincLimit:cantRead val:%s\n",url_args[3]);
          return(-1);
       }
+      send_header(fd, APP_JSON);
       coinc_events_cutoff = value;
       return(0);
    } else
    if( strcmp(ptr, "endCurrentFile") == 0 ){ /* -----------------------*/
+      send_header(fd, APP_JSON);
       end_current_sortfile(fd);
    } else
    if( strcmp(ptr, "openHistofile") == 0 ){ /* ---------------------- */
       if( strncmp(url_args[2],"filename",8) == 0 ){
+         send_header(fd, APP_JSON);
          read_histofile(url_args[3], 0);
       } else {
+         sprintf(tmp,"bad argument:%s in openHistoFile\n",url_args[2]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"bad arg:%s in openHistoFile\n", url_args[2]);
       }
    } else
    if( strcmp(ptr, "addDatafile") == 0 ){ /* ---- sort file ---------*/
       histodir = configdir = calsrc = host = expt = NULL;
       if( strcmp(url_args[2], "filename") != 0 ){
+         sprintf(tmp,"bad argument:%s in addDataFile\n",url_args[2]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"bad arg:%s in addDataFile\n", url_args[2]);
       }
       if( strcmp(url_args[3],"ONLINE") == 0 ){
@@ -195,6 +218,8 @@ int handle_command(int fd, int narg, char url_args[][STRING_LEN])
             } else if( strcmp(url_args[4], "histodir") == 0 ){
                histodir = url_args[5];
             } else {
+               sprintf(tmp,"bad argument:%s in addDataFile\n",url_args[4]);
+               send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
                fprintf(stderr,"bad arg:%s in addDataFile\n", url_args[4]);
             }
          }
@@ -206,6 +231,8 @@ int handle_command(int fd, int narg, char url_args[][STRING_LEN])
             } else if( strcmp(url_args[6], "histodir") == 0 ){
                histodir = url_args[7];
             } else {
+               sprintf(tmp,"bad argument:%s in addDataFile\n",url_args[6]);
+               send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
                fprintf(stderr,"bad arg:%s in addDataFile\n", url_args[6]);
             }
          }
@@ -217,9 +244,12 @@ int handle_command(int fd, int narg, char url_args[][STRING_LEN])
             } else if( strcmp(url_args[8], "histodir") == 0 ){
                histodir = url_args[9];
             } else {
+               sprintf(tmp,"bad argument:%s in addDataFile\n",url_args[8]);
+               send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
                fprintf(stderr,"bad arg:%s in addDataFile\n", url_args[8]);
             }
          }
+         send_header(fd, APP_JSON); // This header indicates success to the client
          add_sortfile(url_args[3], histodir, host, expt);
       } else {
          if( narg > 4 ){
@@ -230,6 +260,8 @@ int handle_command(int fd, int narg, char url_args[][STRING_LEN])
             } else if( strcmp(url_args[4], "calibrationSource") == 0 ){
                calsrc = url_args[5];
             } else {
+               sprintf(tmp,"bad argument:%s in addDataFile\n",url_args[4]);
+               send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
                fprintf(stderr,"bad arg:%s in addDataFile\n", url_args[4]);
             }
          }
@@ -241,6 +273,8 @@ int handle_command(int fd, int narg, char url_args[][STRING_LEN])
             } else if( strcmp(url_args[6], "calibrationSource") == 0 ){
                calsrc = url_args[7];
             } else {
+               sprintf(tmp,"bad argument:%s in addDataFile\n",url_args[6]);
+               send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
                fprintf(stderr,"bad arg:%s in addDataFile\n", url_args[6]);
             }
          }
@@ -252,100 +286,153 @@ int handle_command(int fd, int narg, char url_args[][STRING_LEN])
             } else if( strcmp(url_args[8], "calibrationSource") == 0 ){
                calsrc = url_args[9];
             } else {
+               sprintf(tmp,"bad argument:%s in addDataFile\n",url_args[8]);
+               send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
                fprintf(stderr,"bad arg:%s in addDataFile\n", url_args[8]);
             }
          }
+         send_header(fd, APP_JSON); // This header indicates success to the client
          add_sortfile(url_args[3], histodir, configdir, calsrc);
       }
    } else
    if( strcmp(ptr, "getDatainfo") == 0 ){ /* ---- file info ---------*/
       if( strcmp(url_args[2], "filename") != 0 ){
+         sprintf(tmp,"bad argument:%s in getDatainfo\n",url_args[2]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"bad arg:%s in getDatainfo\n", url_args[2]);
       }
       send_file_details(url_args[3], fd);
    } else
    if( strcmp(ptr, "addGlobal") == 0 ){ /* ---------------------- */
       if( narg != 8 ){
+         sprintf(tmp,"wrong number of arguments[%d] in addGlobal\n",narg);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"wrong #arg[%d] in addGlobal\n", narg); return(-1);
       }
       if( strcmp(url_args[2],"globalname") != 0 ){
+         sprintf(tmp,"Bad argument2[%s] in addGlobal\n",url_args[2]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"bad arg2[%s] in addGlobal\n",url_args[2]); return(-1);
       }
       if( strcmp(url_args[4],"globalmin") != 0 ){
+         sprintf(tmp,"Bad argument3[%s] in addGlobal\n",url_args[4]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"bad arg3[%s] in addGlobal\n",url_args[4]); return(-1);
       }
       if( sscanf(url_args[5],"%d", &value) < 1 ){
+         sprintf(tmp,"addGlobal: cant Read value: %s\n",url_args[5]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"addGlobal:cantRead val:%s\n",url_args[5]);return(-1);
       }
       if( strcmp(url_args[6],"globalmax") != 0 ){
+         sprintf(tmp,"Bad argument4[%s] in addGlobal\n",url_args[6]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"bad arg4[%s] in addGlobal\n",url_args[6]); return(-1);
       }
       if( sscanf(url_args[7],"%d", &val2) < 1 ){
+         sprintf(tmp,"addGlobal: cant Read value: %s\n",url_args[7]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"addGlobal:cantRead val:%s\n",url_args[7]);return(-1);
       }
+      send_header(fd, APP_JSON);
       add_global(configs[0], url_args[3], value, val2);
    } else
    if( strcmp(ptr, "removeGlobal") == 0 ){ /* -------------------- */
       if( narg != 4 ){
+         sprintf(tmp,"wrong number of arguments[%d] in removeGlobal\n",narg);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"wrong #arg[%d] in removeGlobal\n", narg); return(-1);
       }
       if( strcmp(url_args[2],"globalname") != 0 ){
+         sprintf(tmp,"Bad argument2[%s] in removeGlobal\n",url_args[2]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"bad arg2[%s] in removeGlobal\n",url_args[2]);return(-1);
       }
+      send_header(fd, APP_JSON);
       remove_global(configs[0], url_args[3]);
    } else
    if( strcmp(ptr, "addCond") == 0 ){ /* ---------------------- */
       if( narg != 10 ){
+         sprintf(tmp,"wrong number of arguments[%d] in addCond\n",narg);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"wrong #arg[%d] in addCond\n", narg); return(-1);
       }
       if( strcmp(url_args[2],"condname") != 0 ){
+         sprintf(tmp,"Bad argument2[%s] in addCond\n",url_args[2]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"bad arg2[%s] in addCond\n", url_args[2]); return(-1);
       }
       if( strcmp(url_args[4],"varname0") != 0 ){
+         sprintf(tmp,"Bad argument3[%s] in addCond\n",url_args[4]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"bad arg3[%s] in addCond\n", url_args[4]); return(-1);
       }
       if( strcmp(url_args[6],"op0") != 0 ){
+         sprintf(tmp,"Bad argument4[%s] in addCond\n",url_args[6]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"bad arg4[%s] in addCond\n", url_args[6]); return(-1);
       }
       if( strcmp(url_args[8],"value0") != 0 ){
+         sprintf(tmp,"Bad argument5[%s] in addCond\n",url_args[8]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"bad arg5[%s] in addCond\n", url_args[8]); return(-1);
       }
       if( sscanf(url_args[9],"%d", &value) < 1 ){
+         sprintf(tmp,"addCond: cant Read value: %s\n",url_args[9]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"addCond:cantRead value:%s\n",url_args[9]);return(-1);
       }
+      send_header(fd, APP_JSON);
       add_cond(configs[0], url_args[3], url_args[5], url_args[7], value);
    } else
    if( strcmp(ptr, "removeCond") == 0 ){ /* -------------------- */
       if( narg != 4 ){
+         sprintf(tmp,"wrong number of arguments[%d] in removeCond\n",narg);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"wrong #arg[%d] in removeCond\n", narg); return(-1);
       }
       if( strcmp(url_args[2],"condname") != 0 ){
+         sprintf(tmp,"Bad argument2[%s] in removeCond\n",url_args[2]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"bad arg2[%s] in removeCond\n",url_args[2]);return(-1);
       }
+      send_header(fd, APP_JSON);
       remove_cond(configs[0], url_args[3]);
    } else
    if( strcmp(ptr, "addGate") == 0 ){ /* ---------------------- */
       if( narg < 10 ){
+         sprintf(tmp,"wrong number of arguments[%d] in addGate\n",narg);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"wrong #arg[%d] in addGate\n", narg); return(-1);
       }
       if( strcmp(url_args[2],"gatename") != 0 ){
+         sprintf(tmp,"Bad argument2[%s] in addGate\n",url_args[2]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"bad arg2[%s] in addGate\n", url_args[2]); return(-1);
       }
       add_gate(configs[0], url_args[3]);
       i = 4; while( i < narg ){
          if( strncmp(url_args[i],"varname", 7) != 0 ){
+            sprintf(tmp,"Bad argument%d[%s] in addGate\n",i,url_args[2]);
+            send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
             fprintf(stderr,"bad arg%d[%s] in addGate\n", i, url_args[i]);
             return(-1);
          }
          if( strncmp(url_args[i+2],"op", 2) != 0 ){
+            sprintf(tmp,"Bad argument%d[%s] in addGate\n",i+2,url_args[i+2]);
+            send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
             fprintf(stderr,"bad arg%d[%s] in addGate\n", i+2, url_args[i+2]);
             return(-1);
          }
          if( strncmp(url_args[i+4],"value", 5) != 0 ){
+            sprintf(tmp,"Bad argument%d[%s] in addGate\n",i+4,url_args[i+4]);
+            send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
             fprintf(stderr,"bad arg%d[%s] in addGate\n", i+4, url_args[i+4]);
             return(-1);
          }
          if( sscanf(url_args[i+5],"%d", &value) < 1 ){
+            sprintf(tmp,"addGate: cant Read value: %s\n",url_args[i+5]);
+            send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
             fprintf(stderr,"addGate:cantRead value:%s\n", url_args[i+5]);
             return(-1);
          }
@@ -355,92 +442,146 @@ int handle_command(int fd, int narg, char url_args[][STRING_LEN])
          add_cond_to_gate(configs[0], url_args[3], tmp);
          i += 6;
      }
+     send_header(fd, APP_JSON);
    } else
    if( strcmp(ptr, "removeGate") == 0 ){ /* -------------------- */
       if( narg != 4 ){
+         sprintf(tmp,"wrong number of arguments[%d] in removeGate\n",narg);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"wrong #arg[%d] in removeGate\n", narg); return(-1);
       }
       if( strcmp(url_args[2],"gatename") != 0 ){
+         sprintf(tmp,"Bad argument2[%s] in removeGate\n",url_args[2]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"bad arg2[%s] in removeGate\n",url_args[2]);return(-1);
       }
+      send_header(fd, APP_JSON);
       remove_gate(configs[0], url_args[3]);
    } else
    if( strcmp(ptr, "applyGate") == 0 ){ /* ---------------------- */
       if( narg != 6 ){
+         sprintf(tmp,"wrong number of arguments[%d] in applyGate\n",narg);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"wrong #arg[%d] in applyGate\n", narg); return(-1);
       }
       if( strcmp(url_args[2],"gatename") != 0 ){
+         sprintf(tmp,"Bad argument2[%s] in applyGate\n",url_args[2]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"bad arg2[%s] in applyGate\n",url_args[2]);return(-1);
       }
       if( strcmp(url_args[4],"histoname") != 0 ){
+         sprintf(tmp,"Bad argument3[%s] in applyGate\n",url_args[4]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"bad arg3[%s] in applyGate\n",url_args[4]);return(-1);
       }
+      send_header(fd, APP_JSON);
       apply_gate(configs[0], url_args[3], url_args[5]);
    } else
    if( strcmp(ptr, "unapplyGate") == 0 ){ /* -------------------- */
       if( narg != 6 ){
+         sprintf(tmp,"wrong number of arguments[%d] in unapplyGate\n",narg);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"wrong #arg[%d] in unapplyGate\n", narg); return(-1);
       }
       if( strcmp(url_args[2],"gatename") != 0 ){
+         sprintf(tmp,"Bad argument2[%s] in unapplyGate\n",url_args[2]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"unapplyGate:bad arg2[%s]\n",url_args[2]);return(-1);
       }
       if( strcmp(url_args[4],"histoname") != 0 ){
+         sprintf(tmp,"Bad argument3[%s] in applyGate\n",url_args[4]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"unapplyGate:bad arg3[%s]\n",url_args[4]);return(-1);
       }
+      send_header(fd, APP_JSON);
       unapply_gate(configs[0], url_args[3], url_args[5]);
    } else
    if( strcmp(ptr, "addHistogram") == 0 ){ /* ---------------------- */
       if( narg < 15 ){
+         sprintf(tmp,"wrong number of arguments[%d] in addHistogram\n",narg);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"too few #arg[%d] in addHistogram\n",narg);return(-1);
       }
       if( strcmp(url_args[2],"name") != 0 ){
+         sprintf(tmp,"Bad argument2[%s] in addHistogram\n",url_args[2]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"bad arg2[%s] in addHisto\n",url_args[2]); return(-1);
       }
       if( strcmp(url_args[4],"title") != 0 ){
-         fprintf(stderr,"bad arg2[%s] in addHisto\n",url_args[4]); return(-1);
+         sprintf(tmp,"Bad argument3[%s] in addHistogram\n",url_args[4]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
+         fprintf(stderr,"bad arg3[%s] in addHisto\n",url_args[4]); return(-1);
       }
       if( strcmp(url_args[6],"path") != 0 ){
+         sprintf(tmp,"Bad argument4[%s] in addHistogram\n",url_args[6]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"bad arg4[%s] in addHisto\n",url_args[6]); return(-1);
       }
       if( strcmp(url_args[8],"xvarname") != 0 ){
+         sprintf(tmp,"Bad argument6[%s] in addHistogram\n",url_args[8]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"bad arg6[%s] in addHisto\n",url_args[8]); return(-1);
       }
       if( strcmp(url_args[10],"xbins") != 0 ){
+         sprintf(tmp,"Bad argument8[%s] in addHistogram\n",url_args[10]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"bad arg8[%s] in addHisto\n",url_args[10]); return(-1);
       }
       if( sscanf(url_args[11],"%d", &xbins) < 1 ){
+         sprintf(tmp,"addHistogram: cant Read xbins[%s]\n",url_args[11]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"addHisto:cantRd xbins[%s]\n",url_args[11]);return(-1);
       }
       if( strcmp(url_args[12],"xmin") != 0 ){
+         sprintf(tmp,"Bad argument10[%s] in addHistogram\n",url_args[12]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"bad arg10[%s] in addHisto\n",url_args[12]);return(-1);
       }
       if( sscanf(url_args[13],"%d", &xmin) < 1 ){
+         sprintf(tmp,"addHistogram: cant Read xmin[%s]\n",url_args[13]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"addHisto:cantRd xmin[%s]\n",url_args[13]);return(-1);
       }
       if( strcmp(url_args[14],"xmax") != 0 ){
+         sprintf(tmp,"Bad argument12[%s] in addHistogram\n",url_args[14]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"bad arg12[%s] in addHisto\n",url_args[14]);return(-1);
       }
       if( sscanf(url_args[15],"%d", &xmax) < 1 ){
+         sprintf(tmp,"addHistogram: cant Read xmax[%s]\n",url_args[15]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"addHisto:cantRd xmax[%s]\n",url_args[15]);return(-1);
       }
       ybins = 0;
       if( strcmp(url_args[16],"yvarname") == 0 ){
          if( strcmp(url_args[18],"ybins") != 0 ){
+            sprintf(tmp,"Bad argument16[%s] in addHistogram\n",url_args[18]);
+            send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
             fprintf(stderr,"addHisto:bad arg16[%s]\n",url_args[18]);return(-1);
          }
          if( sscanf(url_args[19],"%d", &ybins) < 1 ){
+            sprintf(tmp,"addHistogram: cant Read y bins[%s]\n",url_args[19]);
+            send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
             fprintf(stderr,"addHisto: ?ybins?[%s]\n",url_args[19]);return(-1);
          }
          if( strcmp(url_args[20],"ymin") != 0 ){
+            sprintf(tmp,"Bad argument18[%s] in addHistogram\n",url_args[20]);
+            send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
             fprintf(stderr,"addHisto:bad arg18[%s]\n",url_args[20]);return(-1);
          }
          if( sscanf(url_args[21],"%d", &ymin) < 1 ){
+            sprintf(tmp,"addHistogram: cant Read ymin[%s]\n",url_args[21]);
+            send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
             fprintf(stderr,"addHisto: ?ymin?[%s]\n",url_args[21]);return(-1);
          }
          if( strcmp(url_args[22],"ymax") != 0 ){
+            sprintf(tmp,"Bad argument20[%s] in addHistogram\n",url_args[22]);
+            send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
             fprintf(stderr,"addHisto:bad arg20[%s]\n",url_args[22]);return(-1);
          }
          if( sscanf(url_args[23],"%d", &ymax) < 1 ){
+            sprintf(tmp,"addHistogram: cant Read ymax[%s]\n",url_args[23]);
+            send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
             fprintf(stderr,"addHisto: ?ymax?[%s]\n",url_args[23]);return(-1);
          }
          add_histo(configs[0], url_args[3], url_args[5], url_args[7], xbins, url_args[9], xmin, xmax, ybins, url_args[17], ymin, ymax);
@@ -451,19 +592,27 @@ int handle_command(int fd, int narg, char url_args[][STRING_LEN])
       }
       for(;i<narg; i+=2){
          if( sscanf(url_args[i], "gate%d", &j) < 1 ){
+             sprintf(tmp,"addHistogram: bad arg%d[%s]\n",i,url_args[i]);
+             send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
              fprintf(stderr,"addHisto: bad arg%d[%s]\n", i, url_args[i]);
              return(-1);
          }
          apply_gate(configs[0], url_args[3], url_args[i+1]);
       }
+      send_header(fd, APP_JSON);
    } else
    if( strcmp(ptr, "removeHistogram") == 0 ){ /* -------------------- */
       if( narg != 4 ){
+         sprintf(tmp,"wrong number of arguments[%d] in removeHistogram\n",narg);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"wrong #arg[%d] in removeHisto\n", narg); return(-1);
       }
       if( strcmp(url_args[2],"histoname") != 0 ){
+         sprintf(tmp,"Bad argument2[%s] in removeHistogram\n",url_args[2]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"bad arg2[%s] in removeHist\n",url_args[2]);return(-1);
       }
+      send_header(fd, APP_JSON);
       remove_histo(configs[0], url_args[3]);
    } else
    if( strcmp(ptr, "sumHistos") == 0 ){ /* -------------------- */
@@ -476,45 +625,65 @@ int handle_command(int fd, int narg, char url_args[][STRING_LEN])
       set_pileup_correction(configs[0], narg, url_args, fd);
    } else
    if( strcmp(ptr, "setDataDirectory") == 0 ){ /* -------------------- */
+      send_header(fd, APP_JSON);
       set_directory(configs[0], "Data", url_args[3]);
    } else
    if( strcmp(ptr, "setHistoDirectory") == 0 ){ /* -------------------- */
+      send_header(fd, APP_JSON);
       set_directory(configs[0], "Histo", url_args[3]);
    } else
    if( strcmp(ptr, "setConfigDirectory") == 0 ){ /* -------------------- */
+      send_header(fd, APP_JSON);
       set_directory(configs[0], "Config", url_args[3]);
    } else
    if( strcmp(ptr, "saveConfig") == 0 ){ /* -------------------- */
       if( narg != 4 ){
+         sprintf(tmp,"wrong number of arguments[%d] in saveConfig\n",narg);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"wrong #arg[%d] in saveConfig\n", narg); return(-1);
       }
       if( strcmp(url_args[2],"filename") != 0 ){
+         sprintf(tmp,"Bad argument2[%s] in saveConfig\n",url_args[2]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"bad arg2[%s] in saveConfig\n",url_args[2]);return(-1);
       }
+      send_header(fd, APP_JSON);
       save_config(configs[0], url_args[3], 1); // 1 => overwrite
    } else
    if( strcmp(ptr, "loadConfig") == 0 ){ /* -------------------- */
       if( narg != 4 ){
+         sprintf(tmp,"wrong number of arguments[%d] in loadConfig\n",narg);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"wrong #arg[%d] in loadConfig\n", narg); return(-1);
       }
       if( strcmp(url_args[2],"filename") != 0 ){
+         sprintf(tmp,"Bad argument2[%s] in loadConfig\n",url_args[2]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"bad arg2[%s] in loadConfig\n",url_args[2]);return(-1);
       }
+      send_header(fd, APP_JSON);
       load_config(configs[0], url_args[3], NULL);
    } else
    if( strcmp(ptr, "viewConfig") == 0 ){ /* -------------------- */
       if( web_fp == NULL ){
          if( (web_fp=fdopen(fd,"r+")) == NULL ){
+            send_http_error_response(fd, STATUS_CODE_422,(char*)"viewConfig can't fdopen web fd");
             fprintf(stderr,"viewConfig can't fdopen web fd\n"); return(-1);
          }
       }
       if( strcmp(url_args[2],"filename") == 0 ){
-         if( (cfg=read_histofile(url_args[3], 1)) == NULL ){return(-1);}
-         //write_config(cfg, web_fp); fflush(web_fp);
+         if( (cfg=read_histofile(url_args[3], 1)) == NULL ){
+            send_http_error_response(fd, STATUS_CODE_404,(char*)"viewConfig can't read requested filename");
+            fprintf(stderr,"viewConfig can't read requested filename, %s\n",url_args[3]);
+           return(-1);
+         }
          sprintf(tmp,"/tmp/tmp.json");
          if( (tmp_fp = fopen(tmp,"w+")) == NULL ){ // create if needed, truncate to zero
+            send_http_error_response(fd, STATUS_CODE_500,(char*)"viewConfig can't open tmp file to write");
             fprintf(stderr,"can't open tmp file:%s to write\n", tmp);
+           //return(-1);
          }
+         send_header(fd, APP_JSON);
          write_config(cfg, tmp_fp); fseek(tmp_fp, 0, SEEK_SET);
          while( fgets(tmp, 128, tmp_fp) != NULL ){
             put_line(fd, tmp, strlen(tmp) );
@@ -527,8 +696,11 @@ int handle_command(int fd, int narg, char url_args[][STRING_LEN])
          // hack workaround for now ...
          sprintf(tmp,"/tmp/tmp.json");
          if( (tmp_fp = fopen(tmp,"w+")) == NULL ){ // create if needed, truncate to zero
+            send_http_error_response(fd, STATUS_CODE_500,(char*)"viewConfig can't open tmp file to write");
             fprintf(stderr,"can't open tmp file:%s to write\n", tmp);
+           //return(-1);
          }
+         send_header(fd, APP_JSON);
          write_config(configs[0], tmp_fp); fseek(tmp_fp, 0, SEEK_SET);
          while( fgets(tmp, 128, tmp_fp) != NULL ){
             put_line(fd, tmp, strlen(tmp) );
@@ -543,9 +715,8 @@ int handle_command(int fd, int narg, char url_args[][STRING_LEN])
          send_spectrum( (narg-2)/2, url_args, NULL, fd);
       }
    } else {
-      //if( strcmp(ptr, "jset") == 0 ){
-      //   jset_cmd( narg, url_args, fd);
-      //} else {
+         sprintf(tmp,"Unknown Command: %s\n",ptr);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
       fprintf(stderr,"Unknown Command:%s\n", ptr);
    }
    return(0);
@@ -1856,6 +2027,7 @@ int set_calibration(Config *cfg, int num, char url_args[][STRING_LEN], int fd)
    float offset, gain, quad;
    float puk1[7], puk2[7], puE1[7];
    int i, address=-1, datatype=-1;
+   char tmp[128];
 
    // Initialize values to -1
    for(i=0; i<7; i++){
@@ -1864,30 +2036,44 @@ int set_calibration(Config *cfg, int num, char url_args[][STRING_LEN], int fd)
 
    for(i=2; i<num; i+=8){
       if( strncmp(url_args[i], "channelName", 10) != 0 ){
+         sprintf(tmp,"set_calibration: expected \"channelName\" at %s\n",url_args[i]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"expected \"channelName\" at %s\n", url_args[i]);
          return(-1);
       }
       if( strncmp(url_args[i+2], "quad", 4) != 0 ){
+         sprintf(tmp,"set_calibration: expected \"quad\" at %s\n",url_args[i+2]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"expected \"quad\" at %s\n", url_args[i+2]);
          return(-1);
       }
       if( sscanf(url_args[i+3], "%f", &quad) < 1 ){
+         sprintf(tmp,"set_calibration: can't read quad value, %s\n",url_args[i+3]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"can't read quad: %s\n", url_args[i+3]);
          return(-1);
       }
       if( strncmp(url_args[i+4], "gain", 4) != 0 ){
+         sprintf(tmp,"set_calibration: expected \"gain\" at %s\n",url_args[i+4]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"expected \"gain\" at %s\n", url_args[i+4]);
          return(-1);
       }
       if( sscanf(url_args[i+5], "%f", &gain) < 1 ){
+         sprintf(tmp,"set_calibration: can't read gain value, %s\n",url_args[i+5]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"can't read gain: %s\n", url_args[i+5]);
          return(-1);
       }
       if( strncmp(url_args[i+6], "offset", 6) != 0 ){
+         sprintf(tmp,"set_calibration: expected \"offset\" at %s\n",url_args[i+6]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"expected \"offset\" at %s\n", url_args[i+6]);
          return(-1);
       }
       if( sscanf(url_args[i+7], "%f", &offset) < 1 ){
+         sprintf(tmp,"set_calibration: can't read offset value, %s\n",url_args[i+7]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"can't read offset: %s\n", url_args[i+7]);
          return(-1);
       }
@@ -1918,6 +2104,7 @@ int set_pileup_correction(Config *cfg, int num, char url_args[][STRING_LEN], int
    float offset=-1, gain=-1, quad=-1;
    float puk1[7], puk2[7], puE1[7];
    int i, address=-1, datatype=-1;
+   char tmp[128];
 
 // Initialize values to defaults
 for(i=0; i<7; i++){
@@ -1927,30 +2114,44 @@ puk1[0] = puk2[0] = 1; // set default factor as 1 not zero
 
    for(i=2; i<num; i+=8){
       if( strncmp(url_args[i], "channelName", 10) != 0 ){
+         sprintf(tmp,"set_pileup_correction: expected \"channelName\" at %s\n",url_args[i]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"expected \"channelName\" at %s\n", url_args[i]);
          return(-1);
       }
       if( strncmp(url_args[i+2], "pileupk1", 8) != 0 ){
+         sprintf(tmp,"set_pileup_correction: expected \"pileupk1\" at %s\n",url_args[i+2]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"expected \"pileupk1\" at %s\n", url_args[i+2]);
          return(-1);
       }
       if( sscanf(url_args[i+3], "%f,%f,%f,%f,%f,%f,%f", puk1,puk1+1,puk1+2,puk1+3,puk1+4,puk1+5,puk1+6) != 7 ){
+         sprintf(tmp,"set_pileup_correction: can't read pileup k1 value (expected 7 values), %s\n",url_args[i+3]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"can't read pileup k1, expected 7 values: %s\n", url_args[i+3]);
          return(-1);
       }
       if( strncmp(url_args[i+4], "pileupk2", 8) != 0 ){
+         sprintf(tmp,"set_pileup_correction: expected \"pileupk2\" at %s\n",url_args[i+4]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"expected \"pileupk2\" at %s\n", url_args[i+4]);
          return(-1);
       }
       if( sscanf(url_args[i+5], "%f,%f,%f,%f,%f,%f,%f", puk2,puk2+1,puk2+2,puk2+3,puk2+4,puk2+5,puk2+6) != 7 ){
+         sprintf(tmp,"set_pileup_correction: can't read pileup k2 value (expected 7 values), %s\n",url_args[i+5]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"can't read pileup k2, expected 7 values: %s\n", url_args[i+5]);
          return(-1);
       }
       if( strncmp(url_args[i+6], "pileupE1", 8) != 0 ){
+         sprintf(tmp,"set_pileup_correction: expected \"pileupE1\" at %s\n",url_args[i+6]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"expected \"pileupE1\" at %s\n", url_args[i+6]);
          return(-1);
       }
       if( sscanf(url_args[i+7], "%f,%f,%f,%f,%f,%f,%f", puE1,puE1+1,puE1+2,puE1+3,puE1+4,puE1+5,puE1+6) != 7 ){
+         sprintf(tmp,"set_pileup_correction: can't read pileup E1 value (expected 7 values), %s\n",url_args[i+7]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
          fprintf(stderr,"can't read pileup E1, expected 7 values: %s\n", url_args[i+7]);
          return(-1);
       }
@@ -2035,6 +2236,7 @@ int set_directory(Config *cfg, char *name, char *path)
 {
    time_t current_time = time(NULL);
    int len;
+
 
    if( (len=strlen(path)) >= SYS_PATH_LENGTH ){
       fprintf(stderr,"set_directory: path too long[%s]\n", path);
@@ -2195,6 +2397,9 @@ int send_sort_status(int fd)
    Sortfile *tmp;
    long done;
 
+   // Send the response header
+   send_header(fd, APP_JSON);
+
    arg = get_sort_status();
    if( conftime == 0 ){ conftime = time(NULL); }
    if( arg->online_mode ){
@@ -2272,9 +2477,11 @@ int send_file_details(char *path, int fd)
    char tmp2[256];
    Sortfile *tmp;
    if( (tmp = calloc(sizeof(Sortfile), 1)) == NULL){
+      send_header(fd, APP_JSON);
       fprintf(stderr,"send_file_details: failed alloc\n");
       put_line(fd, " \n \n \n \n", 8 ); return(-1);
    }
+   send_header(fd, APP_JSON);
    read_datafile_info(tmp, path);
    sprintf(tmp2,"%s\n%s\n%s\n%s\n", tmp->file_info[0], tmp->file_info[1],
                                    tmp->file_info[2], tmp->file_info[3] );
@@ -2600,6 +2807,8 @@ int send_datafile_list(char *path, int fd, int type)
    DIR *d;
 
    if( (d=opendir(path)) == NULL ){
+      sprintf(tmp,"can't open directory %s\n",path);
+      send_http_error_response(fd, STATUS_CODE_404,(char*)tmp);
       fprintf(stderr,"can't open directory %s\n", path);
       return(-1);
    }
@@ -2609,6 +2818,7 @@ int send_datafile_list(char *path, int fd, int type)
          fprintf(stderr,"send_datafile_list: failed alloc\n");
       }
    } else { tmp_srt = NULL; }
+   send_header(fd, APP_JSON);
    put_line(fd, " [ \n", 4 );
    while( (d_ent = readdir(d)) != NULL ){
       //fprintf(stdout,"File[%s] ...\n", d_ent->d_name);
@@ -2658,12 +2868,17 @@ int send_datafile_list(char *path, int fd, int type)
 int send_histofile_list(char *path, int fd)
 {
    int nlen, run, subrun, first_entry=1;
+   char tmp[128];
    struct dirent *d_ent;
    DIR *d;
    if( (d=opendir(path)) == NULL ){
+      sprintf(tmp,"can't open directory, %s\n",path);
+      send_http_error_response(fd, STATUS_CODE_404,(char*)tmp);
       fprintf(stderr,"can't open directory %s\n", path);
       return(-1);
    }
+
+   send_header(fd, APP_JSON);
    put_line(fd, " [ \n", 4 );
    while( (d_ent = readdir(d)) != NULL ){
       //fprintf(stdout,"File[%s] ...\n", d_ent->d_name);
@@ -2729,6 +2944,7 @@ int send_spectrum_list(char *cfgname, int fd)
       fprintf(stderr,"send_spectrum_list: EMPTY LIST\n");
       return(-1);
    }
+   send_header(fd, APP_JSON);
    put_line(fd, "{\n", 2 );
    while( (name = next_histotree_item(cfg, 0, &type, &ascend )) != NULL ){
       if( ascend < 0 ){
@@ -2816,8 +3032,10 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
   }
   if( cfg == NULL || cfg->nhistos == 0 ){
     sprintf(tmp,"%s %s", HIST_HDR, HIST_TRL );
+    send_header(fd, APP_JSON);
     put_line(fd, tmp, strlen(tmp) ); return(-1);
   }
+  send_header(fd, APP_JSON);
   put_line(fd, HIST_HDR, strlen(HIST_HDR) );
   j = (name == NULL) ? 0 : 1;
   for(; j<num; j++){
