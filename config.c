@@ -2291,20 +2291,29 @@ int sum_histos(Config *cfg, int num, char url_args[][STRING_LEN], int fd)
    Config *sum, *tmp, *tmp_conf;
    int i, j, arg;
    FILE *fp;
+   char temp[128];
 
    if( strncmp(url_args[2], "outputfilename", 14) != 0 ){
+      sprintf(temp,"Sum_histos: expected \"outputfilename\" at %s\n",url_args[2]);
+      send_http_error_response(fd, STATUS_CODE_400,(char*)temp);
       fprintf(stderr,"expected \"outputfilename\" at %s\n", url_args[2]);
       return(-1);
    }
    if( (fp=fopen(url_args[3],"r")) != NULL ){
+      sprintf(temp,"Sum_histos: %s already exists NOT OVERWRITING\n",url_args[3]);
+      send_http_error_response(fd, STATUS_CODE_422,(char*)temp);
       fprintf(stderr,"%s already exists NOT OVERWRITING\n", url_args[3]);
       return(-1);
    }
    if( (fp=fopen(url_args[3],"w")) == NULL ){
+      sprintf(temp,"Sum_histos: can't open %s to write\n",url_args[3]);
+      send_http_error_response(fd, STATUS_CODE_404,(char*)temp);
       fprintf(stderr,"can't open %s to write\n", url_args[3]);
       return(-1);
    }
    if( (sum=add_config(url_args[3])) == NULL ){ return(-1); }
+
+   send_header(fd, APP_JSON);
    for(i=4; i<num; i+=2){
       if( strncmp(url_args[i], "filename", 8) != 0 ){
          fprintf(stderr,"expected \"filename\" at %s\n", url_args[i]);
@@ -2315,12 +2324,12 @@ int sum_histos(Config *cfg, int num, char url_args[][STRING_LEN], int fd)
          remove_config(tmp_conf);
       }
       if( (tmp = read_histofile(url_args[i+1],0)) == NULL ){ continue; }
-      fprintf(stderr,"Adding histograms from %s ...\n", url_args[i+1]);
+      fprintf(stdout,"Adding histograms from %s ...\n", url_args[i+1]);
       for(j=0; j<tmp->nhistos; j++){
          if( tmp->histo_list[j]->data == NULL ){
             read_histo_data(tmp->histo_list[j], tmp->histo_fp );
             if( tmp->histo_list[j]->data == NULL ){
-               fprintf(stderr, "sum_histos:cant alloc data for %s:%s\n",
+               fprintf(stderr, "sum_histos: cant alloc data for %s:%s\n",
                        url_args[i+1], tmp->histo_list[j]->handle );
                return(-1);
             }

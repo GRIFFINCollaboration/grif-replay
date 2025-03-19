@@ -669,7 +669,7 @@ int sum_th1I(Config *dst_cfg, TH1I *dst, TH1I *src)
         if( src->symm == 1 ){
           ybins = 0;
         }else{
-          ybins = src->xbins;
+          ybins = src->ybins;
         }
          dst = (TH1I *)H2_BOOK(dst_cfg, src->handle, src->title, src->xbins, src->xmin, src->xmax, ybins, src->ymin, src->ymax);
       }
