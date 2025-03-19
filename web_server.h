@@ -29,7 +29,7 @@ extern int send_http_error_response(int fd, int type, char *error_message);
 // 5xx: Server Error - The server failed to fulfill an apparently valid request
 #define STATUS_CODE_400 0 // 400 Bad Request. The server cannot or will not process the request due to client error
 #define STATUS_CODE_404 1 // 404 Not Found. The server cannot find the requested resource.
-#define STATUS_CODE_422 2 // 422 Unprocessable Content. Well-formed reuqest but was unable to be followed due to semantic errors.
+#define STATUS_CODE_422 2 // 422 Unprocessable Content. Well-formed request but was unable to be followed due to semantic errors.
 #define STATUS_CODE_500 3 // 500 Generic Server Error
 static char error_content_titles[][32]={
    "400 Bad Request",
