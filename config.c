@@ -2029,6 +2029,7 @@ int set_calibration(Config *cfg, int num, char url_args[][STRING_LEN], int fd)
    int i, address=-1, datatype=-1;
    char tmp[128];
 
+
    // Initialize values to -1
    for(i=0; i<7; i++){
      puk1[i] = puk2[i] = puE1[i] = -1;
@@ -2807,9 +2808,9 @@ int send_datafile_list(char *path, int fd, int type)
    DIR *d;
 
    if( (d=opendir(path)) == NULL ){
-      sprintf(tmp,"can't open directory %s\n",path);
+      sprintf(tmp,"can't open data directory %s\n",path);
       send_http_error_response(fd, STATUS_CODE_404,(char*)tmp);
-      fprintf(stderr,"can't open directory %s\n", path);
+      fprintf(stderr,"can't open data directory %s\n", path);
       return(-1);
    }
    set_directory(configs[0], "Data", path);
@@ -2872,9 +2873,9 @@ int send_histofile_list(char *path, int fd)
    struct dirent *d_ent;
    DIR *d;
    if( (d=opendir(path)) == NULL ){
-      sprintf(tmp,"can't open directory, %s\n",path);
+      sprintf(tmp,"can't open histogram directory, %s\n",path);
       send_http_error_response(fd, STATUS_CODE_404,(char*)tmp);
-      fprintf(stderr,"can't open directory %s\n", path);
+      fprintf(stderr,"can't open histogram directory %s\n", path);
       return(-1);
    }
 
