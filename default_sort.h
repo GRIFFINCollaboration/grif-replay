@@ -6,36 +6,43 @@
 //########         Subsystem and Detector definitions          ##########
 //#######################################################################
 
-#define SUBSYS_HPGE      0
-#define SUBSYS_BGO       1
-#define SUBSYS_SCEPTAR   2
-#define SUBSYS_PACES     3
-#define SUBSYS_LABR_BGO  4
-#define SUBSYS_LABR_T    5
-#define SUBSYS_LABR_L    6
-#define SUBSYS_DESCANT   7
-#define SUBSYS_ARIES     8
-#define SUBSYS_ZDS       9
-#define SUBSYS_RCMP     10
-#define SUBSYS_DES_WALL 12
-
-#define MAX_SUBSYS 24
+// do not alter order without also changing subsys_e_vs_e, subsys_dt
+#define MAX_SUBSYS      24
+#define SUBSYS_HPGE_A    0
+#define SUBSYS_PACES     1
+#define SUBSYS_LABR_L    2
+#define SUBSYS_RCMP      3
+#define SUBSYS_ARIES_A   4
+#define SUBSYS_ZDS_A     5 // GRIF16
+#define SUBSYS_LABR_T    6
+#define SUBSYS_LABR_BGO  7
+#define SUBSYS_BGO       8
+#define SUBSYS_SCEPTAR   9
+#define SUBSYS_DESCANT  10
+#define SUBSYS_DES_WALL 11
+#define SUBSYS_DSG      12
+#define SUBSYS_IGNORE   13
+#define SUBSYS_HPGE_B   16
+#define SUBSYS_ARIES_B  17
+#define SUBSYS_ZDS_B    18
+#define SUBSYS_UNKNOWN  23
 static char subsys_handle[MAX_SUBSYS][8] = {
-  "GRG", "GRS", "SEP",  "PAC",
-  "LBS", "LBT", "LBL",  "DSC",
-  "ART", "ZDS", "RCS",  "XXX",
-  "DSW",    "",    "",    "",
-  "",    "",    "",    "",
-  "",    "",    "",    ""
+  "GRGA", "PAC",  "LBL",  "RCS",
+  "ARTA", "ZDSA", "LBT",  "LBS",
+  "BGO",  "SEP",  "DSC",  "DSW",
+  "DSG", "XXX1", "XXX2", "XXX3",
+  "GRGB", "ARTB", "ZDSB", "", // secondary names start after #16
+  "",     "",     "",     "UNK"
 };
 static char subsys_name[MAX_SUBSYS][STRING_LEN] = {
-   "Griffin",  "BGO",   "SCEPTAR",   "PACES", //  0- 3
-   "LaBrS",    "LaBrT", "LaBrX",   "Descant", //  4- 7
-   "ARIES",    "ZDS",   "RCMP",        "XXX", //  8-11
-   "DES_WALL",    "",      "",         "",    // 12-15
-   "",         "",      "",         "",
-   "",         "",       "",        "Unknown"
+   "Griffin", "PACES",   "LaBrX",   "RCMP",     //  0- 3
+   "ARIES",   "ZDSA",    "LaBrT",   "LaBrS",    //  4- 7
+   "BGO",     "Sceptar", "Descant", "DES_WALL", //  8-11
+   "Des_Ancil", "Ignore1", "Ignore2", "Ignore3",  // 12-15
+   "Grif_B",  "ARS_B",   "ZDS_B",   "",         // 16-19
+   "",        "",        "",        "Unknown"   // 20-23
 }; // final entry will be used if not found - make sure it is not empty
+// #####################################################################
 
 #define N_CLOVER 16
 #define N_HPGE 64
@@ -102,6 +109,11 @@ static int time_diff_gate_max[MAX_SUBSYS][MAX_SUBSYS];
 
 // test
 TH2I  *test_histogram;
+
+// for most pairs of subsystems, there is a
+// 1d time-difference and a 2d ecal-vs-ecal matrix
+TH2I *subsys_e_vs_e[MAX_SUBSYS][MAX_SUBSYS];
+TH1I *subsys_dt[MAX_SUBSYS][MAX_SUBSYS];
 
 // HPGe
 TH1I  *ge_ab_e[N_CLOVER];
