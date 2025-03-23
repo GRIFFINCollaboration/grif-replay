@@ -101,6 +101,7 @@ int init_time_diff_gates(Config *cfg){
   int i,j,k;
   Global *global;
   char tmp[32];
+  const char *ptr;
 
   // Initialize all time differences between subsystems to be the default 250ns
   for(i=0; i<MAX_SUBSYS; i++){
@@ -115,30 +116,29 @@ int init_time_diff_gates(Config *cfg){
     global = cfg->globals[i];
     sprintf(tmp,"%s",global->name);
     if(strncmp(tmp,"time_diff_",10) == 0){
-      //fprintf(stdout,"Process %s\n",global->name);
       // This global is a time difference value
       // Identify the subsystem types and then save the value in the correct place
       for(j=0; j<MAX_SUBSYS; j++){
         if(strlen(subsys_handle[j])<2){ continue; }
-        if(strstr(tmp,subsys_handle[j]) > 0){
-          // Identiy the second subsystem type
-          //  fprintf(stdout,"Found %s in %s\n",subsys_handle[j],global->name);
+        if((ptr = strstr(tmp,subsys_handle[j])) > 0){
+          ptr += strlen(subsys_handle[j]);
+          // Identify the second subsystem type
           for(k=0; k<MAX_SUBSYS; k++){
             if(strlen(subsys_handle[k])<2){ continue; }
-            if(strstr(tmp,subsys_handle[k]) > 0 && (strstr(tmp,subsys_handle[k]) != strstr(tmp,subsys_handle[j]))){
+            if(strstr(ptr,subsys_handle[k]) > 0){
               // save the value in the correct place
-              fprintf(stdout,"time_diff_%s_%s set to %d,%d\n",subsys_handle[j],subsys_handle[k],global->min,global->max);
+              fprintf(stdout,"time_diff_%s_%s [%d,%d] set to %d,%d\n",subsys_handle[j],subsys_handle[k],j,k,global->min,global->max);
               time_diff_gate_min[j][k] = global->min;
               time_diff_gate_max[j][k] = global->max;
               time_diff_gate_min[k][j] = global->min;
               time_diff_gate_max[k][j] = global->max;
+              break;
             }
-          }
+          } break;
         }
       }
     }
   }
-
   return(0);
 }
 
@@ -1404,7 +1404,7 @@ int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
    int gg_gate=25, c1, c2, angle_idx;
    switch(alt->subsys){
    case SUBSYS_HPGE_A:
-      if( abs_dt < gg_gate ){
+      if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_HPGE_A]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_HPGE_A]) ){
          if( ptr->esum >= 0 &&  alt->esum >= 0 ){ // addback energies
             gg_ab->Fill(gg_ab, (int)ptr->esum, (int)alt->esum, 1);
          }
@@ -1427,13 +1427,13 @@ int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
       }
       break;
    case SUBSYS_SCEPTAR:
-      if( abs_dt < gg_gate ){
+      if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_SCEPTAR]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_SCEPTAR]) ){
          ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1); // beta-gated Ge sum energy spectrum
          ge_sum_b_sep->Fill(ge_sum_b_sep, (int)ptr->ecal, 1); // Sceptar-gated Ge sum energy spectrum
       }
       break;
    case SUBSYS_ARIES_A:
-      if( abs_dt < g_aries_upper_gate ){
+      if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_ARIES_A]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_ARIES_A]) ){
          ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1);         // beta-gated Ge sum energy spectrum
          ge_sum_b_art->Fill(ge_sum_b_art, (int)ptr->ecal, 1); // Aries-gated Ge sum energy spectrum
          ge_art->Fill(ge_art, (int)ptr->ecal, (int)alt->esum, 1);
@@ -1449,7 +1449,7 @@ int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
       }
       break;
    case SUBSYS_ZDS_A:
-      if( abs_dt < gg_gate ){
+      if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_ZDS_A]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_ZDS_A]) ){
          ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1);         // beta-gated Ge sum energy spectrum
          ge_sum_b_zds->Fill(ge_sum_b_zds, (int)ptr->ecal, 1); // Zds-gated Ge sum energy spectrum
       }
@@ -1465,7 +1465,7 @@ int fill_labr_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
    int g_aries_upper_gate=25, c1, c2, corrected_tac_value;
    switch(alt->subsys){
    case SUBSYS_ARIES_A:
-      if( abs_dt < g_aries_upper_gate ){
+      if( (abs_dt >= time_diff_gate_min[SUBSYS_LABR_L][SUBSYS_ARIES_A]) && (abs_dt <= time_diff_gate_max[SUBSYS_LABR_L][SUBSYS_ARIES_A]) ){
          c1 = crystal_table[ptr->chan];
          c2 = crystal_table[alt->chan];
          if(c1 >= 1 && c1 <=8 && c2 >= 1 && c2 <=76 ){
@@ -1476,7 +1476,7 @@ int fill_labr_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
       c1=crystal_table[alt->chan]-1;  // assign c1 as TAC number
       if(c1 >= 0 && c1 < 8 ){ // 8 LBL
          dt_tacs_hist[c1]->Fill(dt_tacs_hist[c1], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
-         if(abs_dt < lbl_tac_gate && c1 == 8){ // labr-tac with the ARIES TAC
+         if(((abs_dt >= time_diff_gate_min[SUBSYS_LABR_L][SUBSYS_LABR_T]) && (abs_dt <= time_diff_gate_max[SUBSYS_LABR_L][SUBSYS_LABR_T])) && c1 == 8){ // labr-tac with the ARIES TAC
             c2 = crystal_table[ptr->chan] - 1; // assign c2 as LBL number
             if(c2 >= 0 && c2 < 8 ){ // 8 LBL detectors
                corrected_tac_value = (int)alt->ecal + tac_offset[c2];
@@ -1536,28 +1536,31 @@ int fill_coinc_histos(int win_idx, int frag_idx)
       case SUBSYS_HPGE_A: fill_ge_coinc_histos(ptr,   alt, abs_dt); break;
       case SUBSYS_LABR_L: fill_labr_coinc_histos(ptr, alt, abs_dt); break;
       case SUBSYS_BGO:
-         if(alt->subsys == SUBSYS_BGO && abs_dt < gg_gate ){
+         if(alt->subsys == SUBSYS_BGO){
+           if((abs_dt >= time_diff_gate_min[SUBSYS_BGO][SUBSYS_BGO]) && (abs_dt <= time_diff_gate_max[SUBSYS_BGO][SUBSYS_BGO]) ){
             c1 = crystal_table[ptr->chan];
             c2 = crystal_table[alt->chan];
             bgobgo_hit->Fill(bgobgo_hit, c1, c2, 1);
-         } break;
+         }} break;
       case SUBSYS_RCMP:
-         if(alt->subsys == SUBSYS_BGO && abs_dt < gg_gate &&
-            (pos = crystal_table[ptr->chan]) == crystal_table[alt->chan] &&
+         if(alt->subsys == SUBSYS_RCMP){
+           if( (abs_dt >= time_diff_gate_min[SUBSYS_RCMP][SUBSYS_RCMP]) && (abs_dt <= time_diff_gate_max[SUBSYS_RCMP][SUBSYS_RCMP]) ){
+            if((pos = crystal_table[ptr->chan]) == crystal_table[alt->chan] &&
                   polarity_table[ptr->chan] != polarity_table[alt->chan] ){ // front and back of same DSSD
             c1 = element_table[ptr->chan];
             c2 = element_table[alt->chan];
             rcmp_hit[(pos-1)]->Fill(rcmp_hit[(pos-1)], c1, c2, 1);
             rcmp_fb[(pos-1)]->Fill(rcmp_fb[(pos-1)], (int)ptr->ecal, (int)alt->ecal, 1);
-         } break;
+          }}} break;
       case SUBSYS_ARIES_A:
-         if( alt->subsys == SUBSYS_ARIES_A && abs_dt < g_aries_upper_gate && ptr->ecal>0 && alt->ecal>0 ){
+         if( alt->subsys == SUBSYS_ARIES_A && ptr->ecal>0 && alt->ecal>0 ){
+           if((abs_dt >= time_diff_gate_min[SUBSYS_ARIES_A][SUBSYS_ARIES_A]) && (abs_dt <= time_diff_gate_max[SUBSYS_ARIES_A][SUBSYS_ARIES_A])){
             c1 = crystal_table[ptr->chan];
             c2 = crystal_table[alt->chan];
             if( c1 >= 1 && c1 <=76 && c2 >= 1 && c2 <=76 ){
                aa_hit->Fill(aa_hit, c1, c2, 1);
             }
-         }
+         }}
          if( alt->subsys == SUBSYS_LABR_T && crystal_table[alt->chan] == 8 ){ // ARIES TAC
             dt_hist[14]->Fill(dt_hist[14], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
             // sum tac spectrum including all art
