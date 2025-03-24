@@ -199,8 +199,8 @@ int apply_gains(Grif_event *ptr)
 
    // DESCANT detectors
    // use psd for Pulse Shape Discrimination provides a distinction between neutron and gamma events
-   //if( ptr->subsys == SUBSYS_DESCANT || ptr->subsys == SUBSYS_DES_WALL){
-   if( ptr->subsys == SUBSYS_DES_WALL){
+   //if( ptr->subsys == SUBSYS_DESCANT || ptr->subsys == SUBSYS_DESWALL){
+   if( ptr->subsys == SUBSYS_DESWALL){
      //ptr->ts -= caen_ts_offset; // Subtract from CAEN timestamps to align coincidences
      psd = ( ptr->q != 0 ) ? (spread(ptr->cc_short) / ptr->q) : 0;
      ptr->psd = (int)(psd*1000.0); // psd = long integration divided by short integration
@@ -547,7 +547,7 @@ int pre_sort(int frag_idx, int end_idx)
       }
       break;
       case SUBSYS_ZDS_B: // CAEN Zds
-        if(alt->subsys == SUBSYS_DES_WALL){
+        if(alt->subsys == SUBSYS_DESWALL){
           if(dt < desw_beta_window){
           // Calculate time-of-flight and correct it for this DESCANT detector distance
           tof = (spread(abs(ptr->cfd - alt->cfd))*2.0) + 100; //if( tof < 0 ){ tof = -1*tof; }
@@ -729,7 +729,7 @@ int fill_chan_histos(Grif_event *ptr)
    }
    ph_hist[chan] -> Fill(ph_hist[chan],  (int)ptr->energy,     1);
    e_hist[chan]  -> Fill(e_hist[chan],   (int)ptr->ecal,       1);
-   if( ptr->subsys == SUBSYS_DES_WALL){
+   if( ptr->subsys == SUBSYS_DESWALL){
      pos  = crystal_table[chan];
      if(pos>0 && pos<=N_DES_WALL){
        desw_psd[pos]       -> Fill(desw_psd[pos],   (int)ptr->psd,       1);
@@ -1157,24 +1157,30 @@ sprintf(tmp,"TAC-ARIES-Energy");
       subsys_e_vs_e[SUBSYS_LABR_L ][SUBSYS_ARIES_A] = labr_art;
       subsys_e_vs_e[SUBSYS_LABR_L ][SUBSYS_ZDS_A  ] = labr_zds;
       subsys_e_vs_e[SUBSYS_ARIES_A][SUBSYS_ARIES_A] = art_art;
-      subsys_dt[SUBSYS_HPGE_A ][SUBSYS_HPGE_A ] = dt_hist[ 0];
-      subsys_dt[SUBSYS_HPGE_A ][SUBSYS_PACES  ] = dt_hist[ 4];
-      subsys_dt[SUBSYS_HPGE_A ][SUBSYS_LABR_L ] = dt_hist[ 5];
-      subsys_dt[SUBSYS_HPGE_A ][SUBSYS_RCMP   ] = dt_hist[ 6];
-      subsys_dt[SUBSYS_HPGE_A ][SUBSYS_ARIES_A] = dt_hist[10];
-      subsys_dt[SUBSYS_HPGE_A ][SUBSYS_BGO    ] = dt_hist[ 1];
-      subsys_dt[SUBSYS_HPGE_A ][SUBSYS_SCEPTAR] = dt_hist[ 2];
-      subsys_dt[SUBSYS_HPGE_A ][SUBSYS_DESCANT] = dt_hist[19];
-      subsys_dt[SUBSYS_PACES  ][SUBSYS_LABR_L ] = dt_hist[ 8]; // ** 8 reused **
-      subsys_dt[SUBSYS_PACES  ][SUBSYS_ARIES_A] = dt_hist[13];
-      subsys_dt[SUBSYS_PACES  ][SUBSYS_ZDS_A  ] = dt_hist[ 7];
-      subsys_dt[SUBSYS_LABR_L ][SUBSYS_LABR_L ] = dt_hist[ 8]; // ** 8 reused **
-      subsys_dt[SUBSYS_LABR_L ][SUBSYS_ARIES_A] = dt_hist[12];
-      subsys_dt[SUBSYS_LABR_L ][SUBSYS_ZDS_A  ] = dt_hist[17];
-      subsys_dt[SUBSYS_LABR_L ][SUBSYS_LABR_T ] = dt_hist[16];
-      subsys_dt[SUBSYS_RCMP   ][SUBSYS_RCMP   ] = dt_hist[ 9];
-      subsys_dt[SUBSYS_ARIES_A][SUBSYS_ARIES_A] = dt_hist[13];
-      subsys_dt[SUBSYS_ZDS_A  ][SUBSYS_LABR_T ] = dt_hist[15];
+      subsys_dt[SUBSYS_HPGE_A ][SUBSYS_HPGE_A  ] = dt_hist[ 0];
+      subsys_dt[SUBSYS_HPGE_A ][SUBSYS_PACES   ] = dt_hist[ 4];
+      subsys_dt[SUBSYS_HPGE_A ][SUBSYS_LABR_L  ] = dt_hist[ 5];
+      subsys_dt[SUBSYS_HPGE_A ][SUBSYS_RCMP    ] = dt_hist[ 6];
+      subsys_dt[SUBSYS_HPGE_A ][SUBSYS_ZDS_A   ] = dt_hist[ 3];
+      subsys_dt[SUBSYS_HPGE_A ][SUBSYS_ARIES_A ] = dt_hist[10];
+      subsys_dt[SUBSYS_HPGE_A ][SUBSYS_BGO     ] = dt_hist[ 1];
+      subsys_dt[SUBSYS_HPGE_A ][SUBSYS_SCEPTAR ] = dt_hist[ 2];
+      subsys_dt[SUBSYS_HPGE_A ][SUBSYS_DESWALL ] = dt_hist[19];
+      subsys_dt[SUBSYS_PACES  ][SUBSYS_LABR_L  ] = dt_hist[ 8];
+      subsys_dt[SUBSYS_PACES  ][SUBSYS_ARIES_A ] = dt_hist[12];
+      subsys_dt[SUBSYS_PACES  ][SUBSYS_ZDS_A   ] = dt_hist[ 7];
+      subsys_dt[SUBSYS_LABR_L ][SUBSYS_LABR_L  ] = dt_hist[26];
+      subsys_dt[SUBSYS_LABR_L ][SUBSYS_ARIES_A ] = dt_hist[11];
+      subsys_dt[SUBSYS_LABR_L ][SUBSYS_ZDS_A   ] = dt_hist[17];
+      subsys_dt[SUBSYS_LABR_L ][SUBSYS_LABR_T  ] = dt_hist[16];
+      subsys_dt[SUBSYS_RCMP   ][SUBSYS_RCMP    ] = dt_hist[ 9];
+      subsys_dt[SUBSYS_ARIES_A][SUBSYS_ARIES_A ] = dt_hist[13];
+      subsys_dt[SUBSYS_ARIES_A][SUBSYS_LABR_T  ] = dt_hist[14];
+      subsys_dt[SUBSYS_ZDS_A  ][SUBSYS_LABR_T  ] = dt_hist[15];
+      subsys_dt[SUBSYS_ZDS_A  ][SUBSYS_ZDS_B   ] = dt_hist[22];
+      subsys_dt[SUBSYS_DESWALL][SUBSYS_DESWALL ] = dt_hist[18];
+      subsys_dt[SUBSYS_DESWALL][SUBSYS_ARIES_A ] = dt_hist[20];
+      subsys_dt[SUBSYS_DESWALL][SUBSYS_ZDS_A   ] = dt_hist[21];
    return(0);
 }
 
@@ -1352,7 +1358,7 @@ int fill_singles_histos(Grif_event *ptr)
      }
    } break;
    case SUBSYS_DESCANT: break;
-   case SUBSYS_DES_WALL: // DESCANT Wall
+   case SUBSYS_DESWALL: // DESCANT Wall
     desw_sum_e->Fill(desw_sum_e, (int)ptr->ecal, 1);
     if(ptr->psd>0){ desw_sum_psd->Fill(desw_sum_psd, (int)ptr->psd, 1); }
     if(ptr->e4cal>0){ desw_sum_tof->Fill(desw_sum_tof, (int)ptr->e4cal, 1); } // e4cal = corrected time-of-flight
@@ -1454,6 +1460,9 @@ int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
          ge_sum_b_zds->Fill(ge_sum_b_zds, (int)ptr->ecal, 1); // Zds-gated Ge sum energy spectrum
       }
       break;
+   case SUBSYS_DESWALL: // ge-DSW
+      ge_dsw->Fill(ge_dsw, (int)ptr->ecal, (int)alt->e4cal, 1); // e4cal = DSW corrected time-of-flight
+      break;
    default: break;
    }
    return(0);
@@ -1530,7 +1539,9 @@ int fill_coinc_histos(int win_idx, int frag_idx)
          hist_dt->Fill(hist_dt, (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
       }
       if( (hist_ee = subsys_e_vs_e[ptr->subsys][alt->subsys]) != NULL ){
+        if((abs_dt >= time_diff_gate_min[ptr->subsys][alt->subsys]) && (abs_dt <= time_diff_gate_max[ptr->subsys][alt->subsys]) ){
          hist_ee->Fill(hist_ee, (int)ptr->ecal, (int)alt->ecal, 1);
+       }
       }
       switch(ptr->subsys){ // No Nested switch - use separate functions if needed
       case SUBSYS_HPGE_A: fill_ge_coinc_histos(ptr,   alt, abs_dt); break;
@@ -1571,7 +1582,7 @@ int fill_coinc_histos(int win_idx, int frag_idx)
             }
          } break;
       case SUBSYS_ARIES_B:// ARIES Fast Output in CAEN
-         if(alt->subsys == SUBSYS_DES_WALL){ // aries-DSW
+         if(alt->subsys == SUBSYS_DESWALL){ // aries-DSW
             dt_hist[20]->Fill(dt_hist[20], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
             art_dsw->Fill(art_dsw, (int)ptr->ecal, (int)alt->e4cal, 1);
             desw_sum_e_b->Fill(desw_sum_e_b, (int)alt->ecal, 1);
@@ -1585,14 +1596,14 @@ int fill_coinc_histos(int win_idx, int frag_idx)
             dt_hist[23]->Fill(dt_hist[23], (int)(abs(ptr->cfd - alt->cfd)+DT_SPEC_LENGTH/2), 1);
          } break;
       case SUBSYS_ZDS_B: // CAEN zds
-         if( alt->subsys == SUBSYS_DES_WALL ){ // ZDS-DSW
+         if( alt->subsys == SUBSYS_DESWALL ){ // ZDS-DSW
             dt_hist[21]->Fill(dt_hist[21], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
             dt_hist[25]->Fill(dt_hist[25], (int)(abs(ptr->cfd - alt->cfd)+DT_SPEC_LENGTH/2), 1);
             desw_sum_e_b->Fill(desw_sum_e_b, (int)alt->ecal, 1);
             desw_sum_tof_b->Fill(desw_sum_tof_b, (int)alt->e4cal, 1); // e4cal = corrected time-of-flight
          } break;
-      case SUBSYS_DES_WALL:
-         if( alt->subsys == SUBSYS_DES_WALL ){
+      case SUBSYS_DESWALL:
+         if( alt->subsys == SUBSYS_DESWALL ){
             dt_hist[18]->Fill(dt_hist[18], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
             dt_hist[24]->Fill(dt_hist[24], (int)(abs(ptr->cfd - alt->cfd)+DT_SPEC_LENGTH/2), 1);
             c1 = crystal_table[ptr->chan]-1; c2 = crystal_table[alt->chan]-1;
@@ -1868,7 +1879,7 @@ int gen_derived_odb_tables()
       case ODBHANDLE_LBL: subsys_table[i] = SUBSYS_LABR_L;    break;
       case ODBHANDLE_DSC: subsys_table[i] = SUBSYS_DESCANT;   break;
       case ODBHANDLE_RCS: subsys_table[i] = SUBSYS_RCMP;      break;
-      case ODBHANDLE_DSW: subsys_table[i] = SUBSYS_DES_WALL;  break;
+      case ODBHANDLE_DSW: subsys_table[i] = SUBSYS_DESWALL;  break;
       case ODBHANDLE_DSG: subsys_table[i] = SUBSYS_DSG;  break;
       case ODBHANDLE_GRG: subsys_table[i] = (output_type == 1) ? SUBSYS_HPGE_A :SUBSYS_HPGE_B; break;
       case ODBHANDLE_ZDS: subsys_table[i] = (output_type == 1) ? SUBSYS_ZDS_A  :SUBSYS_ZDS_B;  break;

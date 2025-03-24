@@ -19,7 +19,7 @@
 #define SUBSYS_BGO       8
 #define SUBSYS_SCEPTAR   9
 #define SUBSYS_DESCANT  10
-#define SUBSYS_DES_WALL 11
+#define SUBSYS_DESWALL  11
 #define SUBSYS_DSG      12
 #define SUBSYS_IGNORE   13
 #define SUBSYS_HPGE_B   16
@@ -212,7 +212,8 @@ char dt_handles[N_DT][32]={ "dt_ge_ge", "dt_ge_bgo", "dt_ge_sep", "dt_ge_zds",  
                             "dt_pac_labr", "dt_rcmp_rcmp", "dt_ge_art", "dt_labr_art", // 8-11
                             "dt_paces_art", "dt_art_art", "dt_art_tac", "dt_zds_tac", "dt_labr_tac", "dt_labr_zds", // 12-17
                             "dt_dsw_dsw", "dt_dsw_ge", "dt_dsw_art", "dt_dsw_zds", // 18-21
-                            "dt_zds_GRIF_CAEN_10ns", "dt_zds_GRIF_CAEN_2ns", "dt_dsw_dsw_2ns", "dt_dsw_zds_2ns"  }; // 22-25
+                            "dt_zds_GRIF_CAEN_10ns", "dt_zds_GRIF_CAEN_2ns", "dt_dsw_dsw_2ns", "dt_dsw_zds_2ns", // 22-25
+                            "dt_labr_labr"  }; // 26...
 TH1I  *dt_hist[N_DT];
 TH1I  *dt_tacs_hist[N_TACS];
 
