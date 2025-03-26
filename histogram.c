@@ -178,11 +178,11 @@ TH2I *H2_BOOK(Config *cfg, char *name, char *title, int xbins, int xmin, int xma
 	 MAX_HISTOGRAMS, name );
       return(NULL);
    }
-   if( ybins == 0 ){
+   if( ybins == SYMMETERIZE ){
      // This matrix will be symmetrized. Set the flag and the ybins to equal xbins.
      result->symm = 1; // Symmetric matrix
      result->type = INT_2D_SYMM;
-     ybins = xbins;
+     ybins = xbins; ymin = xmin; ymax = xmax;
    }else{
      result->symm = 0; // Non-symmetric matrix
      result->type = INT_2D;

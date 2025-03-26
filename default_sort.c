@@ -32,8 +32,7 @@ extern Grif_event grif_event[MAX_COINC_EVENTS];
 // Default sort function declarations
 extern int init_time_diff_gates(Config *cfg);
 extern int init_chan_histos(Config *cfg);
-extern int init_singles_histos(Config *cfg);
-extern int init_coinc_histos(Config *cfg);
+extern int init_histos(Config *cfg, int subsystem);
 extern int fill_chan_histos(Grif_event *ptr);
 extern int fill_singles_histos(Grif_event *ptr);
 extern int fill_coinc_histos(int win_idx, int frag_idx);
@@ -82,8 +81,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
 
    init_time_diff_gates(cfg);
    init_chan_histos(cfg);
-   init_singles_histos(cfg);
-   init_coinc_histos(cfg);
+   init_histos(cfg, SUBSYS_HPGE_A); // always create Ge histos
 
    return(0);
 }
@@ -571,48 +569,6 @@ int init_chan_histos(Config *cfg)
 {                      // 1d histograms for Q,E,T,Wf for each channel in odb
    char title[STRING_LEN], handle[STRING_LEN];
    int i, j, k, pos;
-   int test_matrix_data[32][32] = {
-     {2008,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,  3,0,0,3, 3,0,3,3, 3,3,0,3, 3,0,0,3},
-     {0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,  3,0,0,3, 3,0,3,3, 3,3,0,3, 3,0,0,3},
-     {0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,  3,0,0,3, 3,0,3,3, 3,3,0,3, 3,0,0,3},
-     {0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,  3,3,3,3, 3,3,3,3, 3,3,3,3, 3,3,3,3},
-
-     {0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,  3,3,3,3, 3,3,3,3, 3,3,3,3, 3,3,3,3},
-     {0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,  3,0,0,3, 3,0,0,3, 3,0,0,3, 3,0,0,3},
-     {0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,  3,0,0,3, 3,0,0,3, 3,0,0,3, 3,0,0,3},
-     {0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,2008,  3,0,0,3, 3,0,0,3, 3,0,0,3, 3,0,0,3},
-
-     {0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,  0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0},
-     {0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,  0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0},
-     {0,0,8,0, 0,0,0,8, 0,0,0,0, 8,8,0,0,  0,0,8,0, 0,0,0,0, 0,0,0,0, 0,0,0,0},
-     {0,8,2008,8, 0,0,8,0, 8,0,0,8, 0,0,0,0,  0,8,8,8, 0,0,0,0, 0,0,0,0, 0,0,0,0},
-
-     {0,0,8,0, 0,0,8,8, 8,0,0,8, 8,0,0,0,  0,0,8,0, 0,0,0,0, 0,0,0,0, 0,0,0,0},
-     {0,0,8,0, 0,0,8,0, 0,0,0,0, 0,8,0,0,  0,0,8,0, 0,0,0,0, 0,0,0,0, 0,0,0,0},
-     {0,0,8,8, 0,0,0,8, 8,0,0,8, 8,8,0,0,  0,0,8,8, 0,0,0,0, 0,0,0,0, 0,0,0,0},
-     {0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,  0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0},
-
-
-     {10,10,10,10, 10,10,10,10, 10,10,10,10, 10,10,10,10,  3,0,0,3, 3,0,3,3, 3,3,0,3, 3,0,0,3},
-     {10,10,10,10, 10,10,10,10, 10,10,10,10, 10,10,10,10,  3,0,0,3, 3,0,3,3, 3,3,0,3, 3,0,0,3},
-     {10,10,10,10, 10,10,10,10, 10,10,10,10, 10,10,10,10,  3,0,0,3, 3,0,3,3, 3,3,0,3, 3,0,0,3},
-     {10,10,10,10, 10,10,10,10, 10,10,10,10, 10,10,10,10,  3,3,3,3, 3,3,3,3, 3,3,3,3, 3,3,3,3},
-
-     {10,10,10,10, 10,10,10,10, 10,10,10,10, 10,10,10,10,  3,3,3,3, 3,3,3,3, 3,3,3,3, 3,3,3,3},
-     {10,10,10,10, 10,10,10,10, 10,10,10,10, 10,10,10,10,  3,0,0,3, 3,0,0,3, 3,0,0,3, 3,0,0,3},
-     {10,10,10,10, 10,10,10,10, 10,10,10,10, 10,10,10,10,  3,0,0,3, 3,0,0,3, 3,0,0,3, 3,0,0,3},
-     {10,10,10,10, 10,10,10,10, 10,10,10,10, 10,10,10,10,  3,0,0,3, 3,0,0,3, 3,0,0,3, 3,0,0,3},
-
-     {10,10,10,10, 10,10,10,10, 10,10,10,10, 10,10,10,10,  0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0},
-     {10,10,10,10, 10,10,10,10, 10,10,10,10, 10,10,10,10,  0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0},
-     {10,10,2008,10, 10,10,10,2008, 10,10,10,10, 2008,2008,0,0,  0,0,8,0, 0,0,0,0, 0,0,0,0, 0,0,0,0},
-     {10,2008,2008,2008, 10,10,2008,10, 2008,10,10,2008, 0,0,0,0,  0,8,8,8, 0,0,0,0, 0,0,0,0, 0,0,0,0},
-
-     {10,10,2008,10, 10,10,2008,2008, 2008,10,10,2008, 2008,10,10,10,  0,0,8,0, 0,0,0,0, 0,0,0,0, 0,0,0,0},
-     {10,10,2008,10, 10,10,2008,10, 10,10,10,10, 10,2008,10,10,  0,0,8,0, 0,0,0,0, 0,0,0,0, 0,0,0,0},
-     {10,10,2008,2008, 10,10,10,2008, 2008,10,10,2008, 2008,2008,10,10,  0,0,8,8, 0,0,0,0, 0,0,0,0, 0,0,0,0},
-     {10,10,10,10, 10,10,10,10, 10,10,10,10, 10,10,10,10,  0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0}
-   };
 
    open_folder(cfg, "Hits_and_Sums");
    open_folder(cfg, "Hits");
@@ -622,8 +578,6 @@ int init_chan_histos(Config *cfg)
    }
    ts_hist = H1_BOOK(cfg, "ts", "Timestamp", 163840, 0, 163840);
    gc_hist = H1_BOOK(cfg, "gc", "ZDS GRIF-CAEN", 16, 0, 16);
-   test_histogram = H2_BOOK(cfg, "Test", "Test matrix", 32, 0, 32, 32, 0, 32); // non symmeterized
-  // test_histogram = H2_BOOK(cfg, "Test", "Test matrix", 32, 0, 32, 0, 0, 32); // symmeterized
    close_folder(cfg);
    open_folder(cfg, "Multiplicities");
    for(i=0; i<MAX_SUBSYS; i++){ mult_hist[i] = NULL;
@@ -648,9 +602,9 @@ int init_chan_histos(Config *cfg)
       sprintf(title,  "%s_Energy",         chan_name[i] );
       sprintf(handle, "%s_E",              chan_name[i] );
       if( strcmp(subsys_handle[j],"LBT") == 0){
-        e_hist[i] = H1_BOOK(cfg, handle, title, E_TAC_SPEC_LENGTH, 0, E_TAC_SPEC_LENGTH);
+        e_hist[i] = H1_BOOK(cfg, handle, title, E_TAC_SPECLEN, 0, E_TAC_SPECLEN);
       }else{
-        e_hist[i] = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
+        e_hist[i] = H1_BOOK(cfg, handle, title, E_SPECLEN, 0, E_SPECLEN);
       }
       close_folder(cfg);
 //      open_folder(cfg, "Waveform");
@@ -662,9 +616,9 @@ int init_chan_histos(Config *cfg)
       sprintf(title,  "%s_Pulse_Height",   chan_name[i] );
       sprintf(handle, "%s_Q",              chan_name[i] );
       if( strcmp(subsys_handle[j],"LBT") == 0){
-        ph_hist[i] = H1_BOOK(cfg, handle, title, E_TAC_SPEC_LENGTH, 0, E_TAC_SPEC_LENGTH);
+        ph_hist[i] = H1_BOOK(cfg, handle, title, E_TAC_SPECLEN, 0, E_TAC_SPECLEN);
       }else{
-        ph_hist[i] = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
+        ph_hist[i] = H1_BOOK(cfg, handle, title, E_SPECLEN, 0, E_SPECLEN);
       }
       close_folder(cfg);
       if( strcmp(subsys_handle[j],"DSW") == 0){
@@ -689,21 +643,11 @@ int init_chan_histos(Config *cfg)
         }
       }
       close_folder(cfg);
-      if( strcmp(subsys_handle[j],"XXX") == 0 ){     // suppress XXX channels
+      if( strncmp(subsys_handle[j],"XXX",3) == 0 ){     // suppress XXX channels
          ph_hist[i]->suppress = e_hist[i]->suppress =
             /*  cfd_hist[i]->suppress = wave_hist[i]->suppress = */ 1;
       }
    }
-
-   // Fill the test matrix here after initialization
-   for(i=0; i<32; i++){
-     for(j=0; j<32; j++){
-       for(k=0; k<test_matrix_data[i][j]; k++){
-         test_histogram->Fill(test_histogram, j, i, 1);
-       }
-     }
-   }
-
    return(0);
 }
 
@@ -729,20 +673,6 @@ int fill_chan_histos(Grif_event *ptr)
    }
    ph_hist[chan] -> Fill(ph_hist[chan],  (int)ptr->energy,     1);
    e_hist[chan]  -> Fill(e_hist[chan],   (int)ptr->ecal,       1);
-   if( ptr->subsys == SUBSYS_DESWALL){
-     pos  = crystal_table[chan];
-     if(pos>0 && pos<=N_DES_WALL){
-       desw_psd[pos]       -> Fill(desw_psd[pos],   (int)ptr->psd,       1);
-       if(ptr->energy4>0){
-         desw_tof[pos]       -> Fill(desw_tof[pos],   (int)ptr->energy4,       1);
-         desw_tof_corr[pos]  -> Fill(desw_tof_corr[pos],   (int)ptr->e4cal,       1);
-         if(ptr->psd>10 && ptr->psd<710){
-           desw_tof_psd[pos]  -> Fill(desw_tof_psd[pos],   (int)ptr->e4cal,       1);
-         }
-       }
-     }
-   }
-
    hit_hist[0]   -> Fill(hit_hist[0],    chan,            1);
    if( ptr->ecal        >= 1 ){ hit_hist[1] -> Fill(hit_hist[1], chan, 1);
                           hit_hist[6] -> Fill(hit_hist[6], ptr->dtype, 1);
@@ -762,390 +692,269 @@ int fill_chan_histos(Grif_event *ptr)
 //########               Sums and coinc  HISTOGRAMS            ##########
 //#######################################################################
 
-int init_singles_histos(Config *cfg)
-{
-  char title[STRING_LEN], handle[STRING_LEN];
-  int i,j;
-  open_folder(cfg, "Hits_and_Sums");
-  open_folder(cfg, "Sums");
-  sprintf(title,  "Addback_Sum_Energy"); sprintf(handle, "Addback_Sum_E");
-  ge_sum_ab = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
-  sprintf(title,  "Ge_Sum_Energy"); sprintf(handle, "Ge_Sum_E");
-  ge_sum = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
-  sprintf(title,  "Ge_Sum_En_betaTagged"); sprintf(handle, "Ge_Sum_E_B");
-  ge_sum_b = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
-  sprintf(title,  "Ge_Sum_En_SceptarTagged"); sprintf(handle, "Ge_Sum_E_B_SEP");
-  ge_sum_b_sep = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
-  sprintf(title,  "Ge_Sum_En_ZdsTagged"); sprintf(handle, "Ge_Sum_E_B_ZDS");
-  ge_sum_b_zds = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
-  sprintf(title,  "Ge_Sum_En_AriesTagged"); sprintf(handle, "Ge_Sum_E_B_ART");
-  ge_sum_b_art = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
-  sprintf(title,  "PACES_Sum_Energy"); sprintf(handle, "Paces_Sum_E");
-  paces_sum = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
-  sprintf(title,  "LaBr3_Sum_Energy"); sprintf(handle, "Labr_Sum_E");
-  labr_sum = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
-  sprintf(title,  "ARIES_Sum_Energy"); sprintf(handle, "Aries_Sum_E");
-  aries_sum = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
-  sprintf(title,  "RCMP_Sum_Energy"); sprintf(handle, "RCMP_Sum_E");
-  rcmp_sum = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
-  sprintf(title,  "RCMP_Sum_FB_Energy"); sprintf(handle, "RCMP_Sum_FB_E");
-  rcmp_fb_sum = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
-  sprintf(title,  "RCMP_Sum_Energy"); sprintf(handle, "RCMP_Sum_E");
-  rcmp_sum = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
-
-  sprintf(title,  "DES_Wall_Sum_Energy"); sprintf(handle, "DESW_Sum_E");
-  desw_sum_e = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
-  sprintf(title,  "DES_Wall_Sum_TOF"); sprintf(handle, "DESW_Sum_TOF");
-  desw_sum_tof = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
-  sprintf(title,  "DES_Wall_Sum_PSD"); sprintf(handle, "DESW_Sum_PSD");
-  desw_sum_psd = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
-  sprintf(title,  "DES_Wall_Sum_En_betaTagged"); sprintf(handle, "DESW_Sum_E_B");
-  desw_sum_e_b = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
-  sprintf(title,  "DES_Wall_Sum_TOF_betaTagged"); sprintf(handle, "DESW_Sum_TOF_B");
-  desw_sum_tof_b = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
-  sprintf(title,  "DES_Wall_Sum_En_fold2"); sprintf(handle, "DESW_Sum_E_nn");
-  desw_sum_e_nn = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
-  sprintf(title,  "DES_Wall_Sum_TOF_fold2"); sprintf(handle, "DESW_Sum_TOF_nn");
-  desw_sum_tof_nn = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
-  sprintf(title,  "DES_Wall_Sum_En_fold2_ang60"); sprintf(handle, "DESW_Sum_E_nn_a");
-  desw_sum_e_nn_a = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
-  sprintf(title,  "DES_Wall_Sum_TOF_fold2_ang60"); sprintf(handle, "DESW_Sum_TOF_nn_a");
-  desw_sum_tof_nn_a = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
-
-  sprintf(title,  "Upstream_Ge_Sum_Energy"); sprintf(handle, "US_Ge_Sum_E");
-  ge_sum_us = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
-  sprintf(title,  "Downstream_Ge_Sum_Energy"); sprintf(handle, "DS_Ge_Sum_E");
-  ge_sum_ds = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
-  sprintf(title,  "Upstream_AB_Sum_Energy"); sprintf(handle, "US_AB_Sum_E");
-  ge_sum_ab_us = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
-  sprintf(title,  "Downstream_AB_Sum_Energy"); sprintf(handle, "DS_AB_Sum_E");
-  ge_sum_ab_ds = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
-  for(i=0; i<N_CLOVER; i++){
-    sprintf(title,  "Addback_%d", i );
-    sprintf(handle, "Addback_%d", i );
-    ge_ab_e[i] = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
-  }
-  close_folder(cfg);
-  open_folder(cfg, "Energy");
-  sprintf(title, "GeEnergy_CrystalNum"); sprintf(handle, "GeEnergy_Xtal");
-  ge_xtal     = H2_BOOK(cfg, handle, title, 64, 0, 64,
-			                                    E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-  sprintf(title, "BgoEnergy_CrystalNum"); sprintf(handle, "BgoEnergy_Xtal");
-  bgo_xtal     = H2_BOOK(cfg, handle, title, 320, 0, 320,
-			                                      E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-  sprintf(title, "BgoFrontEnergy_CrystalNum"); sprintf(handle, "BgoFrontEnergy_Xtal");
-  bgof_xtal     = H2_BOOK(cfg, handle, title, 128, 0, 128,
-			                                       E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-  sprintf(title, "BgoSideEnergy_CrystalNum"); sprintf(handle, "BgoSideEnergy_Xtal");
-  bgos_xtal     = H2_BOOK(cfg, handle, title, 128, 0, 128,
-			                                       E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-  sprintf(title, "BgoBackEnergy_CrystalNum"); sprintf(handle, "BgoBackEnergy_Xtal");
-  bgob_xtal     = H2_BOOK(cfg, handle, title, 64, 0, 64,
-			                                      E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-  sprintf(title, "BgoAncilEnergy_CrystalNum"); sprintf(handle, "BgoAncilEnergy_Xtal");
-  bgoa_xtal     = H2_BOOK(cfg, handle, title, 32, 0, 32,
-			                                      E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-  sprintf(title, "LaBr3Energy_CrystalNum"); sprintf(handle, "LabrEnergy_Xtal");
-  labr_xtal     = H2_BOOK(cfg, handle, title, 16, 0, 16,
-			                                      E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-  sprintf(title, "PACESEnergy_CrystalNum"); sprintf(handle, "PacesEnergy_Xtal");
-  paces_xtal     = H2_BOOK(cfg, handle, title, 16, 0, 16,
-                                            E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-  sprintf(title, "ARIESEnergy_CrystalNum"); sprintf(handle, "AriesEnergy_Xtal");
-  aries_xtal     = H2_BOOK(cfg, handle, title, 80, 0, 80,
-                                            E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-  sprintf(title, "TAC_LBL_ART_vs_LBL_Num"); sprintf(handle, "TAC_ART_LBL_LBL_Xtal");
-  labr_tac_xtal     = H2_BOOK(cfg, handle, title, 16, 0, 16,
-			                                      E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-  sprintf(title, "TAC_LBL_ART_vs_ART_Num"); sprintf(handle, "TAC_ART_LBL_ART_Xtal");
-  art_tac_xtal     = H2_BOOK(cfg, handle, title, 80, 0, 80,
-			                                      E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-  sprintf(title, "DES_Wall_En_DetNum"); sprintf(handle, "DSW_En_Xtal");
-  desw_e_xtal     = H2_BOOK(cfg, handle, title, 64, 0, 64,
-                                            E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-  sprintf(title, "DES_Wall_TOF_DetNum"); sprintf(handle, "DSW_TOF_Xtal");
-  desw_tof_xtal     = H2_BOOK(cfg, handle, title, 64, 0, 64,
-                                            E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-  sprintf(title, "DES_Wall_PSD_En"); sprintf(handle, "DES_Wall_PSD_En");
-  desw_psd_e     = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
-                                            E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-  sprintf(title, "DES_Wall_PSD_TOF"); sprintf(handle, "DES_Wall_PSD_TOF");
-  desw_psd_tof     = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
-                                            E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-    for(i=0; i<N_RCMP_POS; i++){ // Create RCMP DSSD strip spectra
-      rcmp_strips[i] = H2_BOOK(cfg, rcmp_strips_handles[i], rcmp_strips_handles[i], 2*N_RCMP_STRIPS, 0, 2*N_RCMP_STRIPS,
-                                            E_2D_RCMP_SPEC_LENGTH, 0, E_2D_RCMP_SPEC_LENGTH);
-    }
-  close_folder(cfg);
-  open_folder(cfg, "Pile-up");
-  sprintf(title,  "Pile-up_type"); sprintf(handle, "PU_type");
-  ge_pu_type = H1_BOOK(cfg, handle, title, 64, 0, 64);
-  sprintf(title,  "nhits_type"); sprintf(handle, "nhits_type");
-  ge_nhits_type = H1_BOOK(cfg, handle, title, 64, 0, 64);
-  sprintf(title,  "Pile-up_class"); sprintf(handle, "PU_class");
-  ge_pu_class = H1_BOOK(cfg, handle, title, 64, 0, 64);
-  for(i=0; i<NUM_PILEUP_CLASSES; i++){
-    sprintf( title, "%s", ge_pu_class_titles[i]);
-    sprintf(handle, "%s", ge_pu_class_handles[i]);
-    ge_sum_class[i] = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
-  }
-  for(i=0; i<NUM_PILEUP_CLASSES; i++){
-    sprintf( title, "E_vs_k_%s", ge_pu_class_titles[i]);
-    sprintf(handle, "E_vs_k_%s", ge_pu_class_handles[i]);
-    ge_e_vs_k_class[i] = H2_BOOK(cfg, handle, title, 2048, 0, 2048,
-                                                      512, 0,  512);
-  }
-  sprintf(title, "GeEnergy_CrystalNum_single_hit"); sprintf(handle, "GeEnergy_Xtal_single_hit");
-  ge_xtal_1hit     = H2_BOOK(cfg, handle, title, 64, 0, 64,
-			                                    E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-  sprintf(title, "GeEnergy_CrystalNum_2_hit"); sprintf(handle, "GeEnergy_Xtal_2_hit");
-  ge_xtal_2hit     = H2_BOOK(cfg, handle, title, 64, 0, 64,
-			                                    E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-  sprintf(title, "GeEnergy_CrystalNum_3_hit"); sprintf(handle, "GeEnergy_Xtal_3_hit");
-  ge_xtal_3hit     = H2_BOOK(cfg, handle, title, 64, 0, 64,
-			                                    E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
+// Only create histograms when that subsystem is seen in the data
+// Do not create unused histos -> need to store subsystem types along with definitions ...
+// NOTE: only store one subsystem (even for 2d) - choose the most likely to save space/time
+typedef struct histo_def_struct {
+   void **ptr; char title[80]; void *handle;
+   int subsys; int xchan; int ychan; int count;
+} Histogram_definition;
+// histo folders have ptr=NULL and xchan=0
+// count != 0 is an array of histos
+//    either - array title will contain %d
+//    or     - title is NULL and handle is pointer to array of handles
+// --------------------
+// default handles derived from title with the following substitutions
+//    "Energy"->"E", "CrystalNum"->"Xtal", "Des_Wall"->"DESW"
+//    "Upstream"->"US", "Downstream"->"DS", ""->"", ""->"",
+#define HISTO_DEF_SIZE 256
+Histogram_definition histodef_array[HISTO_DEF_SIZE] = {
+   // Singles
+   {NULL,                   "Hits_and_Sums/Sums",                                   },
+   {(void **)&ge_sum_ab,    "Addback_Sum_Energy",      "",                          SUBSYS_HPGE_A,  E_SPECLEN},
+   {(void **)&ge_sum,       "Ge_Sum_Energy",           "",                          SUBSYS_HPGE_A,  E_SPECLEN},
+   {(void **)&ge_sum_b,     "Ge_Sum_En_betaTagged",    "",                          SUBSYS_HPGE_A,  E_SPECLEN},
+   {(void **)&ge_sum_b_sep, "Ge_Sum_En_SceptarTagged", "Ge_Sum_E_B_SEP",            SUBSYS_HPGE_A,  E_SPECLEN},
+   {(void **)&ge_sum_b_zds, "Ge_Sum_En_ZdsTagged",     "Ge_Sum_E_B_ZDS",            SUBSYS_HPGE_A,  E_SPECLEN},
+   {(void **)&ge_sum_b_art, "Ge_Sum_En_AriesTagged",   "Ge_Sum_E_B_ART",            SUBSYS_HPGE_A,  E_SPECLEN},
+//   {(void **)&ge_pu_type,   "Pile-up_type",            "",                          SUBSYS_HPGE_A,         64},
+//   {(void **)&ge_nhits_type,"nhits_type",              "",                          SUBSYS_HPGE_A,         64},
+//   {(void **)&ge_pu_class,  "Pile-up_class",           "",                          SUBSYS_HPGE_A,         64},
+//   {(void **)&ge_sum_class, "",     ge_pu_class_titles[0],                          SUBSYS_HPGE_A,  E_SPECLEN, 0, N_PU_CLASSES},
+//   {(void **)&ge_e_vs_k_class, "E_vs_k_%s",     ge_pu_class_titles[0],              SUBSYS_HPGE_A,  2048, 512, N_PU_CLASSES},
+/*
+//  These definitions of pileup spectra need to be converted to the new method.
+// Filling of these spectra is currently disabled.
+for(i=0; i<NUM_PILEUP_CLASSES; i++){
+  sprintf( title, "%s", ge_pu_class_titles[i]);
+  sprintf(handle, "%s", ge_pu_class_handles[i]);
+  ge_sum_class[i] = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
+}
+for(i=0; i<NUM_PILEUP_CLASSES; i++){
+  sprintf( title, "E_vs_k_%s", ge_pu_class_titles[i]);
+  sprintf(handle, "E_vs_k_%s", ge_pu_class_handles[i]);
+  ge_e_vs_k_class[i] = H2_BOOK(cfg, handle, title, 2048, 0, 2048,
+                                                    512, 0,  512);
+}
+sprintf(title, "GeEnergy_CrystalNum_single_hit"); sprintf(handle, "GeEnergy_Xtal_single_hit");
+ge_xtal_1hit     = H2_BOOK(cfg, handle, title, 64, 0, 64,
+                                        E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
+sprintf(title, "GeEnergy_CrystalNum_2_hit"); sprintf(handle, "GeEnergy_Xtal_2_hit");
+ge_xtal_2hit     = H2_BOOK(cfg, handle, title, 64, 0, 64,
+                                        E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
+sprintf(title, "GeEnergy_CrystalNum_3_hit"); sprintf(handle, "GeEnergy_Xtal_3_hit");
+ge_xtal_3hit     = H2_BOOK(cfg, handle, title, 64, 0, 64,
+                                        E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
 
 for(i=0; i<N_HPGE; i++){
-    sprintf( title, "Ge%02d_single_hit", i); sprintf(handle, "Ge%02d_single_hit", i);
-    ge_1hit[i] = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
-    sprintf( title, "Ge%02d_2hit_pileup", i); sprintf(handle, "Ge%02d_2hit_pileup", i);
-    ge_2hit[i] = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
-    sprintf( title, "Ge%02d_3hit_pileup", i); sprintf(handle, "Ge%02d_3hit_pileup", i);
-    ge_3hit[i] = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
+  sprintf( title, "Ge%02d_single_hit", i); sprintf(handle, "Ge%02d_single_hit", i);
+  ge_1hit[i] = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
+  sprintf( title, "Ge%02d_2hit_pileup", i); sprintf(handle, "Ge%02d_2hit_pileup", i);
+  ge_2hit[i] = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
+  sprintf( title, "Ge%02d_3hit_pileup", i); sprintf(handle, "Ge%02d_3hit_pileup", i);
+  ge_3hit[i] = H1_BOOK(cfg, handle, title, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
 }
 
-    sprintf(title,  "Pile-up_3Hits_detlaT_1_2"); sprintf(handle, "PU_dt12");
-    ge_pu_dt12 = H1_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-    sprintf(title,  "Pile-up_3Hits_detlaT_1_3"); sprintf(handle, "PU_dt13");
-    ge_pu_dt13 = H1_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
+  sprintf(title,  "Pile-up_3Hits_detlaT_1_2"); sprintf(handle, "PU_dt12");
+  ge_pu_dt12 = H1_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
+  sprintf(title,  "Pile-up_3Hits_detlaT_1_3"); sprintf(handle, "PU_dt13");
+  ge_pu_dt13 = H1_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
 
-  close_folder(cfg);
-  open_folder(cfg, "Pile-up Corrections");
-                  // 2d energy1 vs k1 matrix for pileup corrections
-                  // Use for mapping k1 dependence of E1
-  for(i=0; i<N_HPGE; i++){
-    sprintf( title, "Ge%02d_E_vs_k_1st_of_2hit", i);
-    sprintf(handle, "Ge%02d_E_vs_k_1st_of_2hit", i);
-    ge_e_vs_k_2hit_first[i] = H2_BOOK(cfg, handle, title, 2048, 0, 2048,
-                                                    512, 0,  512);
-  }
+close_folder(cfg);
+open_folder(cfg, "Pile-up Corrections");
+                // 2d energy1 vs k1 matrix for pileup corrections
+                // Use for mapping k1 dependence of E1
+for(i=0; i<N_HPGE; i++){
+  sprintf( title, "Ge%02d_E_vs_k_1st_of_2hit", i);
+  sprintf(handle, "Ge%02d_E_vs_k_1st_of_2hit", i);
+  ge_e_vs_k_2hit_first[i] = H2_BOOK(cfg, handle, title, 2048, 0, 2048,
+                                                  512, 0,  512);
+}
 
-                  // 2d energy2 vs k2 matrix for pileup corrections
-                  // Not actually used for mapping corrections, but useful diagnostic
-  for(i=0; i<N_HPGE; i++){
-    sprintf( title, "Ge%02d_E_vs_k_2nd_of_2hit", i);
-    sprintf(handle, "Ge%02d_E_vs_k_2nd_of_2hit", i);
-    ge_e_vs_k_2hit_second[i] = H2_BOOK(cfg, handle, title, 2048, 0, 2048,
-                                                    512, 0,  512);
-  }
+                // 2d energy2 vs k2 matrix for pileup corrections
+                // Not actually used for mapping corrections, but useful diagnostic
+for(i=0; i<N_HPGE; i++){
+  sprintf( title, "Ge%02d_E_vs_k_2nd_of_2hit", i);
+  sprintf(handle, "Ge%02d_E_vs_k_2nd_of_2hit", i);
+  ge_e_vs_k_2hit_second[i] = H2_BOOK(cfg, handle, title, 2048, 0, 2048,
+                                                  512, 0,  512);
+}
 
-                // 2d energy2 vs k2 matrix for pileup corrections (will be gated on E1 = x rays)
-                // Use for mapping k2 dependence of E2
+              // 2d energy2 vs k2 matrix for pileup corrections (will be gated on E1 = x rays)
+              // Use for mapping k2 dependence of E2
+      for(i=0; i<N_HPGE; i++){
+                  sprintf( title, "Ge%02d_PU2_E2_vs_k2_E1gated_on_Xrays", i);
+                  sprintf( handle, "Ge%02d_PU2_E2_vs_k2_E1gated_on_Xrays", i);
+                  ge_PU2_e2_v_k_gatedxrays[i] = H2_BOOK(cfg, handle, title, 2048, 0, 2048,
+                                                                          512, 0, 512);
+        }
+
+        // 2d energy1 vs energy2 matrix for pileup corrections
+        // Use for mapping E1 dependence of E2
         for(i=0; i<N_HPGE; i++){
-                    sprintf( title, "Ge%02d_PU2_E2_vs_k2_E1gated_on_Xrays", i);
-                    sprintf( handle, "Ge%02d_PU2_E2_vs_k2_E1gated_on_Xrays", i);
-                    ge_PU2_e2_v_k_gatedxrays[i] = H2_BOOK(cfg, handle, title, 2048, 0, 2048,
-                                                                            512, 0, 512);
+          sprintf( title, "Ge%02d_PU2_E2_vs_k2_E1gated_on_1408keV", i);
+          sprintf( handle, "Ge%02d_PU2_E2_vs_k2_E1gated_on_1408keV", i);
+          ge_PU2_e2_v_k_gated1408[i] = H2_BOOK(cfg, handle, title, 512, 0, 512,
+                                                                   512, 0, 512);
           }
+*/
+   {(void **)&paces_sum,    "PACES_Sum_Energy",        "",                          SUBSYS_PACES,   E_SPECLEN},
+   {(void **)&labr_sum,     "LaBr3_Sum_Energy",        "",                          SUBSYS_LABR_L,  E_SPECLEN},
+   {(void **)&aries_sum,    "ARIES_Sum_Energy",        "",                          SUBSYS_ARIES_A, E_SPECLEN},
+   {(void **)&rcmp_sum,     "RCMP_Sum_Energy",         "",                          SUBSYS_RCMP,    E_SPECLEN},
+   {(void **)&rcmp_fb_sum,  "RCMP_Sum_FB_Energy",      "",                          SUBSYS_RCMP,    E_SPECLEN},
+   {(void **)&desw_sum_e,   "DES_Wall_Sum_Energy",     "",                          SUBSYS_DESWALL, E_SPECLEN},
+   {(void **)&desw_sum_tof, "DES_Wall_Sum_TOF",        "",                          SUBSYS_DESWALL, E_SPECLEN},
+   {(void **)&desw_sum_psd, "DES_Wall_Sum_PSD",        "",                          SUBSYS_DESWALL, E_SPECLEN},
+   {(void **)&desw_sum_e_b,      "DES_Wall_Sum_En_betaTagged",  "DESW_Sum_E_B",     SUBSYS_DESWALL, E_SPECLEN},
+   {(void **)&desw_sum_tof_b,    "DES_Wall_Sum_TOF_betaTagged", "DESW_Sum_TOF_B",   SUBSYS_DESWALL, E_SPECLEN},
+   {(void **)&desw_sum_e_nn,     "DES_Wall_Sum_En_fold2",       "DESW_Sum_E_nn",    SUBSYS_DESWALL, E_SPECLEN},
+   {(void **)&desw_sum_tof_nn,   "DES_Wall_Sum_TOF_fold2",      "DESW_Sum_TOF_nn",  SUBSYS_DESWALL, E_SPECLEN},
+   {(void **)&desw_sum_e_nn_a,   "DES_Wall_Sum_En_fold2_ang60", "DESW_Sum_E_nn_a",  SUBSYS_DESWALL, E_SPECLEN},
+   {(void **)&desw_sum_tof_nn_a, "DES_Wall_Sum_TOF_fold2_ang60","DESW_Sum_TOF_nn_a",SUBSYS_DESWALL, E_SPECLEN},
+   {(void **)&ge_sum_us,    "Upstream_Ge_Sum_Energy",  "",                          SUBSYS_HPGE_A,  E_SPECLEN},
+   {(void **)&ge_sum_ds,    "Downstream_Ge_Sum_Energy","",                          SUBSYS_HPGE_A,  E_SPECLEN},
+   {(void **)&ge_sum_ab_us, "Upstream_AB_Sum_Energy",  "",                          SUBSYS_HPGE_A,  E_SPECLEN},
+   {(void **)&ge_sum_ab_ds, "Downstream_AB_Sum_Energy","",                          SUBSYS_HPGE_A,  E_SPECLEN},
+   {(void **) ge_ab_e,      "Addback_%d",               "",                         SUBSYS_HPGE_A,  E_SPECLEN, 0, N_CLOVER},
+   {NULL,                   "Hits_and_Sums/Energy",     "",                         },
+   {(void **)&ge_xtal,      "GeEnergy_CrystalNum",      "",                         SUBSYS_HPGE_A,   64, E_2D_SPECLEN},
+   {(void **)&bgo_xtal,     "BgoEnergy_CrystalNum",     "",                         SUBSYS_BGO,     320, E_2D_SPECLEN},
+   {(void **)&bgof_xtal,    "BgoFrontEnergy_CrystalNum","",                         SUBSYS_BGO,     128, E_2D_SPECLEN},
+   {(void **)&bgos_xtal,    "BgoSideEnergy_CrystalNum", "",                         SUBSYS_BGO,      64, E_2D_SPECLEN},
+   {(void **)&bgob_xtal,    "BgoBackEnergy_CrystalNum", "",                         SUBSYS_BGO,      32, E_2D_SPECLEN},
+   {(void **)&bgoa_xtal,    "BgoAncilEnergy_CrystalNum","",                         SUBSYS_BGO,      16, E_2D_SPECLEN},
+   {(void **)&labr_xtal,    "Labr3Energy_CrystalNum",   "LabrE_Xtal",               SUBSYS_LABR_L,   16, E_2D_SPECLEN},
+   {(void **)&paces_xtal,   "PacesEnergy_CrystalNum",   "PacesE_Xtal",              SUBSYS_PACES,    16, E_2D_SPECLEN},
+   {(void **)&aries_xtal,   "AriesEnergy_CrystalNum",   "AriesE_Xtal",              SUBSYS_ARIES_A,  80, E_2D_SPECLEN},
+   {(void **)&labr_tac_xtal,"TAC_LBL_ART_vs_LBL_Num", "TAC_ART_LBL_LBL_Xtal",       SUBSYS_LABR_T,   16,  E_2D_SPECLEN},
+   {(void **)&art_tac_xtal, "TAC_LBL_ART_vs_ART_Num", "TAC_ART_LBL_ART_Xtal",       SUBSYS_ARIES_A,  80,  E_2D_SPECLEN},
+   {(void **)&desw_e_xtal,  "DES_Wall_En_DetNum",    "DSW_En_Xtal",                 SUBSYS_DESWALL, 64,  E_2D_SPECLEN},
+   {(void **)&desw_tof_xtal,"DES_Wall_TOF_DetNum",   "DSW_TOF_Xtal",                SUBSYS_DESWALL, 64,  E_2D_SPECLEN},
+   {(void **)&desw_psd_e,   "DES_Wall_PSD_En",       "DES_Wall_PSD_En",             SUBSYS_DESWALL, E_2D_SPECLEN, E_2D_SPECLEN},
+   {(void **)&desw_psd_tof, "DES_Wall_PSD_TOF",      "DES_Wall_PSD_TOF",            SUBSYS_DESWALL, E_2D_SPECLEN, E_2D_SPECLEN},
+   {(void **) rcmp_strips,  "RCS%02d_E_strips",         "",                         SUBSYS_RCMP,   2*N_RCMP_STRIPS, E_2D_RCMP_SPECLEN, N_RCMP_POS},
+   // Coinc
+   {NULL,                  "Hits_and_Sums/Delta_t"," "},
+   {(void **) dt_hist,     "",                   dt_handles[0], SUBSYS_HPGE_A,  DT_SPEC_LENGTH, 0, N_DT }, // leave subsys as GE -> all always defined
+   {(void **) dt_tacs_hist,"dt_labr_tac%d",      "",  SUBSYS_LABR_T,  DT_SPEC_LENGTH, 0, N_TACS },
+   {NULL,                  "Coinc/Coinc",        ""},
+   {(void **)&gg_ab,       "Addback_GG",         "",  SUBSYS_HPGE_A,  E_2D_SPECLEN, E_2D_SPECLEN},
+   {(void **)&gg,          "GG",                 "",  SUBSYS_HPGE_A,  E_2D_SPECLEN, E_2D_SPECLEN},
+   {(void **)&ge_paces,    "GePaces",            "",  SUBSYS_PACES,   E_2D_SPECLEN, E_2D_SPECLEN},
+   {(void **)&ge_labr,     "GeLabr",             "",  SUBSYS_LABR_L,  E_2D_SPECLEN, E_2D_SPECLEN},
+   {(void **)&ge_zds,      "GeZds",              "",  SUBSYS_ZDS_A,   E_2D_SPECLEN, E_2D_SPECLEN},
+   {(void **)&ge_art,      "GeAries",            "",  SUBSYS_ARIES_A, E_2D_SPECLEN, E_2D_SPECLEN},
+   {(void **)&labr_art,    "LaBrAries",          "",  SUBSYS_LABR_L,  E_2D_SPECLEN, E_2D_SPECLEN},
+   {(void **)&paces_art,   "PacesAries",         "",  SUBSYS_PACES,   E_2D_SPECLEN, E_2D_SPECLEN},
+   {(void **)&art_art,     "AriesAries",         "",  SUBSYS_ARIES_A, E_2D_SPECLEN, E_2D_SPECLEN},
+   {(void **)&labr_labr,   "LaBrLabr",           "",  SUBSYS_LABR_L,  E_2D_SPECLEN, E_2D_SPECLEN},
+   {(void **)&labr_zds,    "LaBrZds",            "",  SUBSYS_LABR_L,  E_2D_SPECLEN, E_2D_SPECLEN},
+   {(void **)&dsw_dsw,     "DSWDSW",             "",  SUBSYS_DESWALL,E_2D_SPECLEN, E_2D_SPECLEN},
+   {(void **)&ge_dsw,      "GeDSW",              "",  SUBSYS_DESWALL,E_2D_SPECLEN, E_2D_SPECLEN},
+   {(void **)&art_dsw,     "ARTDSW",             "",  SUBSYS_DESWALL,E_2D_SPECLEN, E_2D_SPECLEN},
+   {(void **)&ge_rcmp,     "GeRCMP",             "",  SUBSYS_RCMP,    E_2D_SPECLEN, E_2D_SPECLEN},
+   {(void **)&labr_rcmp,   "LaBrRCMP",           "",  SUBSYS_RCMP,    E_2D_SPECLEN, E_2D_SPECLEN},
+   {(void **)&gg_opp,      "GGoppo",             "",  SUBSYS_HPGE_A,  E_2D_SPECLEN, E_2D_SPECLEN},
+   {NULL,                  "Coinc/Hits",         ""},
+   {(void **)&gg_hit,      "GeGeHit",            "",  SUBSYS_HPGE_A,  64,  64},
+   {(void **)&bgobgo_hit,  "BgoBgoHit",          "",  SUBSYS_BGO,    512, 512},
+   {(void **)&gea_hit,     "GeAriesHit",         "",  SUBSYS_HPGE_A,  64,  80},
+   {(void **)&lba_hit,     "LaBrAriesHit",       "",  SUBSYS_LABR_L,  16,  80},
+   {(void **)&aa_hit,      "AriesAriesHit",      "",  SUBSYS_ARIES_A, 80,  80},
+   {(void **)&dsw_hit,     "DSWDSWHit",          "",  SUBSYS_DESWALL,64,  64},
+   {(void **)&rcmp_hit,    "RCS%d_PN_hit",       "",  SUBSYS_RCMP, N_RCMP_STRIPS,     N_RCMP_STRIPS,     N_RCMP_POS},
+   {(void **)&rcmp_fb,     "RCS%d__Front_Back",  "",  SUBSYS_RCMP, E_2D_RCMP_SPECLEN, E_2D_RCMP_SPECLEN, N_RCMP_POS},
+   {NULL,                  "Ang_Corr/GG_Ang_Corr"     , ""},
+   {(void **) gg_angcor_110,"Ge-Ge_110mm_angular_bin%d","", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  SYMMETERIZE, N_GE_ANG_CORR},
+   {(void **) gg_angcor_145,"Ge-Ge_145mm_angular_bin%d","", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  SYMMETERIZE, N_GE_ANG_CORR},
+   {NULL,                   "Ang_Corr/DSW_DSW_Ang_Corr",""},
+   {(void **) dsw_angcor,   "DSW-DSW_angular_bin%d",    "", SUBSYS_DESWALL,DSW_ANGCOR_SPECLEN, SYMMETERIZE, N_DSW_DSW_ANG_CORR },
+   {NULL,                   "Ang_Corr/GG_ART_Ang_Corr", ""},
+   {(void **) ge_art_angcor,"Ge-ART_angular_bin%d",     "", SUBSYS_ARIES_A,  GE_ANGCOR_SPECLEN, GE_ANGCOR_SPECLEN, N_GRG_ART_ANG_CORR },
+   {NULL,                   "Fast-Timing/LBL_Walk",     ""},
+   {(void **)&tac_labr_CompWalk,"TAC_%d_CompWalk",      "", SUBSYS_LABR_T, 2048, 2048},
+   {NULL,                   "Fast-Timing/ART_TACs",     ""},
+   {(void **)&tac_aries_lbl_sum, "TAC_ART_LBL_LBLSUM",     "", SUBSYS_ARIES_A, E_TAC_SPECLEN  },
+   {(void **)&tac_aries_art_sum, "TAC_ART_LBL_ARTSUM",     "", SUBSYS_ARIES_A, E_TAC_SPECLEN  },
+   {(void **)&aries_tac,         "TAC-ARIES-LaBr3-1275keV","", SUBSYS_ARIES_A, E_TAC_SPECLEN  },
+   {(void **)&aries_tac_Egate,   "TAC-ARTE-LaBr3-1275keV", "", SUBSYS_ARIES_A, E_TAC_SPECLEN  },
+   {(void **)&aries_tac_artEn,   "TAC-ARIES-Energy",       "", SUBSYS_ARIES_A, E_SPECLEN      },
+   {(void **) tac_aries_lbl,    "TAC_ART_LBL%d",           "", SUBSYS_ARIES_A, E_TAC_SPECLEN, E_TAC_SPECLEN, N_LABR  },
+   {(void **) tac_aries_art,    "TAC_LBL_ART%d",           "", SUBSYS_ARIES_A, E_TAC_SPECLEN, E_TAC_SPECLEN, N_ARIES }
+}; // Note initialized array variable is CONST (not same as double-pointer)
+// TH1I *hist;  hist = (TH1I *) 0;   ptr = &hist = (TH1I **)addr;  *ptr =
 
-          // 2d energy1 vs energy2 matrix for pileup corrections
-          // Use for mapping E1 dependence of E2
-          for(i=0; i<N_HPGE; i++){
-            sprintf( title, "Ge%02d_PU2_E2_vs_k2_E1gated_on_1408keV", i);
-            sprintf( handle, "Ge%02d_PU2_E2_vs_k2_E1gated_on_1408keV", i);
-            ge_PU2_e2_v_k_gated1408[i] = H2_BOOK(cfg, handle, title, 512, 0, 512,
-                                                                     512, 0, 512);
-            }
-  close_folder(cfg);
-  close_folder(cfg);
-  return(0);
-}
-
-int init_coinc_histos(Config *cfg)
+void get_histo_handle(char *result, char *title, char *handle )
 {
-  char title[STRING_LEN], handle[STRING_LEN];
-  char tmp[STRING_LEN];
-  int i,j,k;
-
-  // Set the ybins as SYMMETERIZE to create a symmeterized 2d histogram.
-
-  open_folder(cfg, "Hits_and_Sums");
-  open_folder(cfg, "Delta_t");
-  for(i=0; i<N_DT; i++){ // Create delta-t spectra
-    dt_hist[i] = H1_BOOK(cfg, dt_handles[i], dt_handles[i], DT_SPEC_LENGTH, 0, DT_SPEC_LENGTH);
-  }
-  for(i=0; i<N_TACS; i++){ // Create delta-t spectra separately for each TAC
-  sprintf(title, "dt_labr_tac%d",i+1);
-    dt_tacs_hist[i] = H1_BOOK(cfg, title, title, DT_SPEC_LENGTH, 0, DT_SPEC_LENGTH);
-  }
-  close_folder(cfg);
-  close_folder(cfg);
-  open_folder(cfg, "Coinc");
-  open_folder(cfg, "Coinc");
-  sprintf(title, "Addback_GG"); sprintf(handle, "Addback_GG");
-  gg_ab     = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
-		                                      SYMMETERIZE, 0, E_2D_SPEC_LENGTH);
-  sprintf(title, "GG"); sprintf(handle, "GG");
-  gg        = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
-		                                      SYMMETERIZE, 0, E_2D_SPEC_LENGTH);
-  sprintf(title, "GePaces"); sprintf(handle, "GePaces");
-  ge_paces  = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
-		                                      E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-  sprintf(title, "GeLabr"); sprintf(handle, "GeLabr");
-   ge_labr   = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
-		                                       E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-   sprintf(title, "GeZds"); sprintf(handle, "GeZds");
-    ge_zds   = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
- 		                                         E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-     sprintf(title, "GeAries"); sprintf(handle, "GeAries");
-      ge_art   = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
-   		                                         E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-   sprintf(title, "LaBrAries"); sprintf(handle, "LaBrAries");
-    labr_art   = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
-   		                                         E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-   sprintf(title, "PacesAries"); sprintf(handle, "PacesAries");
-    paces_art   = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
-     		                                         E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-   sprintf(title, "AriesAries"); sprintf(handle, "AriesAries");
-    art_art   = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
-     		                                        SYMMETERIZE, 0, E_2D_SPEC_LENGTH);
-   sprintf(title, "LaBrLabr"); sprintf(handle, "LaBrLabr");
-   labr_labr   = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
- 		                                         SYMMETERIZE, 0, E_2D_SPEC_LENGTH);
-sprintf(title, "LaBrZds"); sprintf(handle, "LaBrZds");
-labr_zds   = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
-                                          E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-     sprintf(title, "DSWDSW"); sprintf(handle, "DSWDSW");
-     dsw_dsw        = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
-   		                                      E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-    sprintf(title, "GeDSW"); sprintf(handle, "GeDSW");
-    ge_dsw        = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
-                                           E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-   sprintf(title, "ARTDSW"); sprintf(handle, "ARTDSW");
-   art_dsw        = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
-                                          E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-   sprintf(title, "GeRCMP"); sprintf(handle, "GeRCMP");
-   ge_rcmp  = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
- 		                                      E_2D_RCMP_SPEC_LENGTH, 0, E_2D_RCMP_SPEC_LENGTH);
-   sprintf(title, "LaBrRCMP"); sprintf(handle, "LaBrRCMP");
-   labr_rcmp  = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
-                                            E_2D_RCMP_SPEC_LENGTH, 0, E_2D_RCMP_SPEC_LENGTH);
-   sprintf(title, "GGoppo"); sprintf(handle, "GGoppo");
-   gg_opp    = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
-		                                       SYMMETERIZE, 0, E_2D_SPEC_LENGTH);
-  sprintf(title, "Addback_GGoppo"); sprintf(handle, "AB_GGoppo");
-  gg_ab_opp    = H2_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH,
-                                          SYMMETERIZE, 0, E_2D_SPEC_LENGTH);
-   close_folder(cfg);
-   open_folder(cfg, "Hits");
-   sprintf(title, "GeGeHit"); sprintf(handle, "GGHit");
-   gg_hit    = H2_BOOK(cfg, handle, title, 64, 0, 64,
-		                                       64, 0, 64);
-   sprintf(title, "BgoBgoHit"); sprintf(handle, "BgoBgoHit");
-   bgobgo_hit  = H2_BOOK(cfg, handle, title, 512, 0, 512,
-		                     	                   512, 0, 512);
-   sprintf(title, "GeAriesHit"); sprintf(handle, "GAHit");
-   gea_hit    = H2_BOOK(cfg, handle, title, 64, 0, 64,
-                                            80, 0, 80);
-  sprintf(title, "LaBrAriesHit"); sprintf(handle, "LAHit");
-  lba_hit    = H2_BOOK(cfg, handle, title, 16, 0, 16,
-                                           80, 0, 80);
-   sprintf(title, "AriesAriesHit"); sprintf(handle, "AAHit");
-   aa_hit    = H2_BOOK(cfg, handle, title, 80, 0, 80,
-                                           80, 0, 80);
-   sprintf(title, "DSWDSWHit"); sprintf(handle, "DSWDSWHit");
-   dsw_hit    = H2_BOOK(cfg, handle, title, 64, 0, 64,
-                                           64, 0, 64);
-     for(i=0; i<N_RCMP_POS; i++){ // Create RCMP DSSD hitpatterns
-       rcmp_hit[i] = H2_BOOK(cfg, rcmp_hit_handles[i], rcmp_hit_handles[i], N_RCMP_STRIPS, 0, N_RCMP_STRIPS,
-                                                                            N_RCMP_STRIPS, 0, N_RCMP_STRIPS);
-     }
-for(i=0; i<N_RCMP_POS; i++){ // Create RCMP DSSD front energy vs back energy heatmaps
-rcmp_fb[i] = H2_BOOK(cfg, rcmp_fb_handles[i], rcmp_fb_handles[i], E_2D_RCMP_SPEC_LENGTH, 0, E_2D_RCMP_SPEC_LENGTH,
-                                    E_2D_RCMP_SPEC_LENGTH, 0, E_2D_RCMP_SPEC_LENGTH);
+   if( strlen(handle) != 0 ){ memcpy(result, handle, strlen(handle)); return; }
+   while( *title != 0 ){
+      if( strcmp(title, "Energy")     == 0){ memcpy(result, "E",    1); title +=  6; result += 1; continue; }
+      if( strcmp(title, "CrystalNum") == 0){ memcpy(result, "Xtal", 4); title += 10; result += 4; continue; }
+      if( strcmp(title, "Upstream")   == 0){ memcpy(result, "US",   2); title +=  8; result += 2; continue; }
+      if( strcmp(title, "Downstream") == 0){ memcpy(result, "DS",   2); title += 10; result += 2; continue; }
+      if( strcmp(title, "Des_Wall")   == 0){ memcpy(result, "DESW", 4); title +=  7; result += 4; continue; }
+      *result = *title; ++title; ++result;
+   }
+   *result = 0; return;
 }
-   close_folder(cfg);
-   close_folder(cfg);
-   open_folder(cfg, "Ang_Corr");
-   open_folder(cfg, "GG_Ang_Corr");
-   for(i=0; i<N_GE_ANG_CORR; i++){ // Create Ge-Ge angular correlation spectra for HPGe at 110mm
-     sprintf(tmp,"Ge-Ge_110mm_angular_bin%d",i);
-     gg_ang_corr_110_hist[i] = H2_BOOK(cfg, tmp, tmp, GE_ANG_CORR_SPEC_LENGTH, 0, GE_ANG_CORR_SPEC_LENGTH,
-                                                              SYMMETERIZE, 0, GE_ANG_CORR_SPEC_LENGTH);
-   }
-   for(i=0; i<N_GE_ANG_CORR; i++){ // Create Ge-Ge angular correlation spectra for HPGe at 145mm
-     sprintf(tmp,"Ge-Ge_145mm_angular_bin%d",i);
-     gg_ang_corr_145_hist[i] = H2_BOOK(cfg, tmp, tmp, GE_ANG_CORR_SPEC_LENGTH, 0, GE_ANG_CORR_SPEC_LENGTH,
-                                                              SYMMETERIZE, 0, GE_ANG_CORR_SPEC_LENGTH);
-   }
-   close_folder(cfg);
-   open_folder(cfg, "Ge_ART_Ang_Corr");
-   for(i=0; i<N_GRG_ART_ANG_CORR; i++){ // Create Ge-ART angular correlation spectra
-     sprintf(tmp,"Ge-ART_angular_bin%d",i);
-     grg_art_ang_corr_hist[i] = H2_BOOK(cfg, tmp, tmp, GE_ANG_CORR_SPEC_LENGTH, 0, GE_ANG_CORR_SPEC_LENGTH,
-                                                       GE_ANG_CORR_SPEC_LENGTH, 0, GE_ANG_CORR_SPEC_LENGTH);
-   }
-   close_folder(cfg);
-   open_folder(cfg, "DSW_Ang_Corr");
-   for(i=0; i<N_DSW_DSW_ANG_CORR; i++){ // Create DSW-DSW angular correlation spectra
-     sprintf(tmp,"DSW-DSW_angular_bin%d",i);
-     dsw_dsw_ang_corr_hist[i] = H2_BOOK(cfg, tmp, tmp, DSW_ANG_CORR_SPEC_LENGTH, 0, DSW_ANG_CORR_SPEC_LENGTH,
-                                                                    SYMMETERIZE, 0, DSW_ANG_CORR_SPEC_LENGTH);
-   }
-   close_folder(cfg);
-   close_folder(cfg);
-   open_folder(cfg, "Fast-Timing");
-   open_folder(cfg, "LBL_TACs");
-   for(i=0; i<N_LABR; i++){ // intialize the index for the TAC coincidence pair spectra
-     for(j=0; j<N_LABR; j++){
-       tac_labr_hist_index[i][j] = -1;
-     }
-   }
-   k=-1;
-   for(i=1; i<=N_LABR; i++){ // Create TAC coincidence pair spectra
-     for(j=(i+1); j<=N_LABR; j++){
-       k++;
-     sprintf(tmp,"TAC_%d_%d",i,j);
-     tac_labr_hist[k] = H1_BOOK(cfg, tmp, tmp, E_TAC_SPEC_LENGTH, 0, E_TAC_SPEC_LENGTH);
-     tac_labr_hist_index[i-1][j-1] = k;
-     }
-   }
- sprintf(tmp,"TAC_%d_%d",2,1); // Add additional histogram (2_1) needed for Compton Walk corrections
- tac_labr_hist[++k] = H1_BOOK(cfg, tmp, tmp, E_TAC_SPEC_LENGTH, 0, E_TAC_SPEC_LENGTH);
- tac_labr_hist_index[1][0] = k;
 
-   close_folder(cfg);
-      open_folder(cfg, "LBL_Walk");
+// only create histograms when that subsystem is seen in the data
+// this function is called everytime a new sybsystem is seen
+int init_histos(Config *cfg, int subsystem)
+{
+   Histogram_definition *hptr;
+   static Config *save_cfg;
+   char tmp[STRING_LEN], **tptr;
+   int i, j, k;
 
-      for(i=1; i<=N_LABR; i++){ // Create TAC Compton Walk matrices for calibrations
-        sprintf(tmp,"TAC_%d_CompWalk",i);
-        tac_labr_CompWalk[i-1] = H2_BOOK(cfg, tmp, tmp, 2048, 0, 2048,
-      			                                            2048, 0, 2048);
+   if( cfg == NULL ){ cfg = save_cfg; } else { save_cfg = cfg; }
+   subsys_initialized[subsystem] = 1;
+   for(i=0; i<HISTO_DEF_SIZE; i++){ hptr = &histodef_array[i];
+      if( hptr->ptr == NULL ){ // new folder or empty definition
+         if( strlen(hptr->title) != 0 ){ memcpy(cfg->current_path, hptr->title, strlen(hptr->title)+1 ); }
+         continue;
       }
+      if( subsystem != hptr->subsys ){ continue; } // skip
+      if( hptr->count == 0 ){ // single histogram
+         get_histo_handle(tmp, hptr->title, (char *)hptr->handle );
+         if( hptr->ychan == 0 ){ // 1d
+            *(TH1I **)(hptr->ptr) = H1_BOOK(cfg, hptr->title, tmp, hptr->xchan, 0, hptr->xchan );
+         } else {
+            *(TH2I **)(hptr->ptr) = H2_BOOK(cfg, hptr->title, tmp, hptr->xchan, 0, hptr->xchan,
+                                                hptr->ychan, 0, hptr->ychan );
+         }
+      } else { // array of histos (title and handle both the same)
+         for(j=0; j<hptr->count; j++){
+            sprintf(tmp, (strlen(hptr->title) == 0) ? hptr->handle+j*HANDLE_LENGTH : hptr->title, j);
+            if( hptr->ychan == 0 ){ // 1d
+               *(TH1I **)(hptr->ptr+j) = H1_BOOK(cfg, tmp, tmp, hptr->xchan, 0, hptr->xchan );
+            } else {
+               *(TH2I **)(hptr->ptr+j) = H2_BOOK(cfg, tmp, tmp, hptr->xchan, 0, hptr->xchan,
+                                                 hptr->ychan, 0, hptr->ychan );
+            }
+         }
+      }
+   } *cfg->current_path=0; // empty path
+
+   // custom definitions that don't fit usual scheme
+   if( subsystem == SUBSYS_LABR_T ){ // TAC coincidence pair spectra
+      open_folder(cfg, "Fast-Timing");
+      open_folder(cfg, "LBL_TACs");
+      k=0; memset(tac_labr_hist_index, -1, N_LABR*N_LABR*sizeof(int));
+      for(i=1; i<=N_LABR; i++){
+         for(j=(i+1); j<=N_LABR; j++){
+            tac_labr_hist_index[i-1][j-1] = k++;
+            sprintf(tmp,"TAC_%d_%d", i, j);
+            tac_labr_hist[k] = H1_BOOK(cfg, tmp, tmp, E_TAC_SPECLEN, 0, E_TAC_SPECLEN);
+         }
+      }
+      sprintf(tmp,"TAC_%d_%d", 2, 1); // Add additional histogram (2_1) needed for Compton Walk corrections
+      tac_labr_hist[++k] = H1_BOOK(cfg, tmp, tmp, E_TAC_SPECLEN, 0, E_TAC_SPECLEN);
+      tac_labr_hist_index[1][0] = k;
       close_folder(cfg);
-   open_folder(cfg, "ART_TACs");
-     sprintf(tmp,"TAC_ART_LBL_LBLSUM");
-   tac_aries_lbl_sum = H1_BOOK(cfg, tmp, tmp, E_TAC_SPEC_LENGTH, 0, E_TAC_SPEC_LENGTH);
-     sprintf(tmp,"TAC_ART_LBL_ARTSUM");
-   tac_aries_art_sum = H1_BOOK(cfg, tmp, tmp, E_TAC_SPEC_LENGTH, 0, E_TAC_SPEC_LENGTH);
- sprintf(tmp,"TAC-ARIES-LaBr3-1275keV");
- aries_tac = H1_BOOK(cfg, tmp, tmp, E_TAC_SPEC_LENGTH, 0, E_TAC_SPEC_LENGTH);
-sprintf(tmp,"TAC-ARTE-LaBr3-1275keV");
- aries_tac_Egate = H1_BOOK(cfg, tmp, tmp, E_TAC_SPEC_LENGTH, 0, E_TAC_SPEC_LENGTH);
-sprintf(tmp,"TAC-ARIES-Energy");
- aries_tac_artEn = H1_BOOK(cfg, tmp, tmp, E_SPEC_LENGTH, 0, E_SPEC_LENGTH);
-   for(i=0; i<N_LABR; i++){ // Create TAC coincidence with ARIES spectra
-     sprintf(tmp,"TAC_ART_LBL%d",i+1);
-     tac_aries_lbl_hist[i] = H1_BOOK(cfg, tmp, tmp, E_TAC_SPEC_LENGTH, 0, E_TAC_SPEC_LENGTH);
+      close_folder(cfg);
    }
-     for(i=0; i<N_ARIES; i++){ // Create TAC coincidence with ARIES spectra
-       sprintf(tmp,"TAC_LBL_ART%d",i+1);
-       tac_aries_art_hist[i] = H1_BOOK(cfg, tmp, tmp, E_TAC_SPEC_LENGTH, 0, E_TAC_SPEC_LENGTH);
-     }
-
-   close_folder(cfg);
-   close_folder(cfg);
-
       // fill in subsys EvsE and Dt table pointers [** [X][<=Y]
       subsys_e_vs_e[SUBSYS_HPGE_A ][SUBSYS_HPGE_A ] = gg;
       subsys_e_vs_e[SUBSYS_HPGE_A ][SUBSYS_PACES  ] = ge_paces;
@@ -1217,7 +1026,7 @@ int fill_singles_histos(Grif_event *ptr)
          }else{
            ge_sum_ds->Fill(ge_sum_ds, (int)ptr->ecal, 1);
          }
-
+/*
          // Pile-up
          pu = ptr->pileup;
          ge_pu_type->Fill(ge_pu_type, (int)pu, 1);
@@ -1265,6 +1074,7 @@ int fill_singles_histos(Grif_event *ptr)
 
          if(ptr->psd==7){ ge_pu_dt12->Fill(ge_pu_dt12, (int)(ptr->ts_int+DT_SPEC_LENGTH/2), 1); }
          if(ptr->psd==8){ ge_pu_dt13->Fill(ge_pu_dt13, (int)(ptr->ts_int+DT_SPEC_LENGTH/2), 1); }
+*/
 
          clover = (int)(pos/16)+1;
          if( clover >= 0 && clover < N_CLOVER && ptr->esum >= 0 ){   // ge addback
@@ -1359,6 +1169,17 @@ int fill_singles_histos(Grif_event *ptr)
    } break;
    case SUBSYS_DESCANT: break;
    case SUBSYS_DESWALL: // DESCANT Wall
+    pos  = crystal_table[chan];
+    if(pos>0 && pos<=N_DES_WALL){
+       desw_psd[pos]       -> Fill(desw_psd[pos],   (int)ptr->psd,       1);
+       if(ptr->energy4>0){
+          desw_tof[pos]       -> Fill(desw_tof[pos],   (int)ptr->energy4,       1);
+          desw_tof_corr[pos]  -> Fill(desw_tof_corr[pos],   (int)ptr->e4cal,       1);
+          if(ptr->psd>10 && ptr->psd<710){
+             desw_tof_psd[pos]  -> Fill(desw_tof_psd[pos],   (int)ptr->e4cal,       1);
+          }
+       }
+    }
     desw_sum_e->Fill(desw_sum_e, (int)ptr->ecal, 1);
     if(ptr->psd>0){ desw_sum_psd->Fill(desw_sum_psd, (int)ptr->psd, 1); }
     if(ptr->e4cal>0){ desw_sum_tof->Fill(desw_sum_tof, (int)ptr->e4cal, 1); } // e4cal = corrected time-of-flight
@@ -1426,9 +1247,9 @@ int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
             // Fill the appropriate angular bin spectrum
             // c1 and c2 run from 0 to 63 for ge_angles_145mm.
             angle_idx = ge_angles_110mm[c1][c2];
-            gg_ang_corr_110_hist[angle_idx]->Fill(gg_ang_corr_110_hist[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
+            gg_angcor_110[angle_idx]->Fill(gg_angcor_110[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
             angle_idx = ge_angles_145mm[c1][c2];
-            gg_ang_corr_145_hist[angle_idx]->Fill(gg_ang_corr_145_hist[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
+            gg_angcor_145[angle_idx]->Fill(gg_angcor_145[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
          }
       }
       break;
@@ -1450,7 +1271,7 @@ int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
             // Ge-ARIES angular correlations
             // Fill the appropriate angular bin spectrum
             angle_idx = GRG_ART_angles_110mm[c1][c2];
-            grg_art_ang_corr_hist[angle_idx]->Fill(grg_art_ang_corr_hist[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
+            ge_art_angcor[angle_idx]->Fill(ge_art_angcor[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
          }
       }
       break;
@@ -1489,7 +1310,7 @@ int fill_labr_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
             c2 = crystal_table[ptr->chan] - 1; // assign c2 as LBL number
             if(c2 >= 0 && c2 < 8 ){ // 8 LBL detectors
                corrected_tac_value = (int)alt->ecal + tac_offset[c2];
-               tac_aries_lbl_hist[c2]->Fill(tac_aries_lbl_hist[c2], corrected_tac_value, 1); // tac spectrum per LBL
+               tac_aries_lbl[c2]->Fill(tac_aries_lbl[c2], corrected_tac_value, 1); // tac spectrum per LBL
                tac_aries_lbl_sum->Fill(tac_aries_lbl_sum, corrected_tac_value, 1); // sum tac spectrum including all LBL
                if(ptr->ecal >1225 && ptr->ecal <1315){ // gate on LaBr3 energy 1275keV
                   aries_tac->Fill(aries_tac, (int)corrected_tac_value, 1); // tac spectrum gated on 1275keV
@@ -1578,7 +1399,8 @@ int fill_coinc_histos(int win_idx, int frag_idx)
             tac_aries_art_sum->Fill(tac_aries_art_sum, (int)alt->ecal, 1);
             c2 = crystal_table[ptr->chan]-1;
             if( c2>=0 && c2<N_ARIES ){ // tac spectrum per ART tiles
-               tac_aries_art_hist[c2]->Fill(tac_aries_art_hist[c2], (int)alt->ecal, 1);
+               tac_aries_art[c2]->Fill(tac_aries_art
+                 [c2], (int)alt->ecal, 1);
             }
          } break;
       case SUBSYS_ARIES_B:// ARIES Fast Output in CAEN
@@ -1616,7 +1438,8 @@ int fill_coinc_histos(int win_idx, int frag_idx)
                // DSW-DSW angular correlations
                // Fill the appropriate angular bin spectrum with the corrected time-of-flight value
                index = DSW_DSW_angles[c1][c2];
-               dsw_dsw_ang_corr_hist[index]->Fill(dsw_dsw_ang_corr_hist[index],(int)ptr->e4cal,(int)alt->e4cal, 1);
+               dsw_angcor[index]->Fill(dsw_angcor
+                 [index],(int)ptr->e4cal,(int)alt->e4cal, 1);
                // Fold 2, angle greater than 60 degrees, sum spectra
                // index 13 = 58.555, index 14 = 61.535
                if( index > 13 ){                                         // e4cal = corrected time-of-flight
