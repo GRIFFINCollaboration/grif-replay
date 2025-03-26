@@ -72,6 +72,8 @@ typedef struct histo_folder_struct {
 typedef struct th1i_struct TH1I;
 typedef struct th2i_struct TH2I;
 
+#define SYMMETERIZE -1 // When the ybins are set to this for a 2D histogram it will be symmeterized
+
 // float has around 24bits integer precision
 struct th1i_struct {  long  file_data_offset;    int data_size;
    int      type;  TH1I    *next;   char     path[HISTO_FOLDER_LENGTH];
