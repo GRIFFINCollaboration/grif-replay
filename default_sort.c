@@ -176,7 +176,8 @@ int apply_gains(Grif_event *ptr)
       // Assign the subsys type
          if( (ptr->subsys = subsys_table[chan]) == -1 ){ return(-1); }
          if( subsys_initialized[ptr->subsys] == 0 ){
-            // init_subsys_histos(ptr->subsys);
+            //init_histos(configs[1], ptr->subsys);
+	      init_histos(NULL, ptr->subsys);
          }
 
    // HPGe pileup
