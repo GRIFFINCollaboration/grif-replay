@@ -568,7 +568,7 @@ Config *read_histofile(char *filename, int config_only)
       if( ybins == 0 ){
          histo = (TH1I *)H1_BOOK(cfg, file_head.name,file_head.link,xbins,0,xbins);
       } else {
-        if(file_head.type[0] == 'C'){  ybins=0; } // set ybins to 0 for H2_BOOK to handle as symmetric
+        if(file_head.type[0] == 'C'){  ybins=SYMMETERIZE; } // set ybins to 0 for H2_BOOK to handle as symmetric
          histo = (TH1I *)H2_BOOK(cfg, file_head.name,file_head.link,xbins,0,xbins,ybins,0,ybins);
       }
       if( bins <= SMALL_HISTO_BINS ){
@@ -667,7 +667,7 @@ int sum_th1I(Config *dst_cfg, TH1I *dst, TH1I *src)
       } else {
         // Handle symmetrized and non-symmetrized matrices
         if( src->symm == 1 ){
-          ybins = 0;
+          ybins = SYMMETERIZE;
         }else{
           ybins = src->ybins;
         }
