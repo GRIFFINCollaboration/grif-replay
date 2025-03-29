@@ -244,7 +244,7 @@ int copy_bank(unsigned *ptr, int size)
          memcpy((char *)(bankbuf+wrpos), ptr, 4*size);
       } else { // write at end and wrap to start of bankbuf
          memcpy((char *)(bankbuf+wrpos), ptr,  4*words_to_end);
-         memcpy((char *)(bankbuf),       ptr + 4*words_to_end,
+         memcpy((char *)(bankbuf),       ptr + words_to_end,
                                                     4*(size - words_to_end));
       }
       bankbuf_wrpos += size; return(0);
