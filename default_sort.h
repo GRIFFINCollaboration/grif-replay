@@ -113,7 +113,7 @@ static int time_diff_gate_max[MAX_SUBSYS][MAX_SUBSYS];
 
 // HPGe pileup
 #define N_PU_CLASSES 15
-static char ge_pu_class_handles[N_PU_CLASSES][32]={
+static char ge_pu_class_handles[N_PU_CLASSES][HANDLE_LENGTH]={
   "PU0",                          //  0    = Pu=0 error
   "PU1_NHIT1", "PU1_NHIT1_error", //  1, 2 = Single Hit, single hit error
   "PU1_NHIT2", "PU2_NHIT1",       //  3, 4 = 2Hit pile-up, corrected Hit1, corrected Hit2
@@ -123,12 +123,19 @@ static char ge_pu_class_handles[N_PU_CLASSES][32]={
   "PU1_NHIT3", "PU2_NHIT2", "PU3_NHIT1", "NHIT3_error", // 10-13, Three pile-up events, Hit1, Hit2, Hit3, error
   "Other_PU" // 14
 };
-static char ge_pu_class_titles[N_PU_CLASSES][32]={
+static char ge_pu_class_sum_titles[N_PU_CLASSES][HANDLE_LENGTH]={
   "PU_zero",
   "single_hit", "error_single_hit", // Single Hit, single hit error
   "2Hit_PU_Type_A_1stHit", "2Hit_PU_Type_A_2ndHit", "2Hit_PU_Type_B_1stHit", "2Hit_PU_Type_B_2ndHit", "2Hit_PU_Type_C_1stHit", "2Hit_PU_Type_C_2ndHit", "2Hit_PU_error", // Two pile-up events, corrected Hit1, corrected Hit2, separate Hit1, separate Hit2, error
   "3Hit_PU_1stHit", "3Hit_PU_2ndHit", "3Hit_PU_3rdHit", "3Hit_PU_error", // 3 pile-up events, Hit1, Hit2, Hit3, error
   "Other_PU"
+};
+static char ge_pu_class_2d_titles[N_PU_CLASSES][HANDLE_LENGTH]={
+  "E_vs_k_PU_zero",
+  "E_vs_k_single_hit", "E_vs_k_error_single_hit", // Single Hit, single hit error
+  "E_vs_k_2Hit_PU_Type_A_1stHit", "E_vs_k_2Hit_PU_Type_A_2ndHit", "E_vs_k_2Hit_PU_Type_B_1stHit", "E_vs_k_2Hit_PU_Type_B_2ndHit", "E_vs_k_2Hit_PU_Type_C_1stHit", "E_vs_k_2Hit_PU_Type_C_2ndHit", "E_vs_k_2Hit_PU_error", // Two pile-up events, corrected Hit1, corrected Hit2, separate Hit1, separate Hit2, error
+  "E_vs_k_3Hit_PU_1stHit", "E_vs_k_3Hit_PU_2ndHit", "E_vs_k_3Hit_PU_3rdHit", "E_vs_k_3Hit_PU_error", // 3 pile-up events, Hit1, Hit2, Hit3, error
+  "E_vs_k_Other_PU"
 };
 TH1I  *ge_pu_type; // The value of pile-up type
 TH1I  *ge_nhits_type; // The value of nhits type
