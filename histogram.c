@@ -142,8 +142,13 @@ int TH1I_Reset(TH1I *this)
 
 int TH1I_Fill(TH1I *this, int xval, int count)
 {
-   float bin = (1.0*xval-this->xmin) * this->xbins/(1.0*this->xrange);
-   (this->entries)++;
+  float bin;
+  if(this->xmin != 0 || this->xbins != this->xrange){
+    bin = (1.0*xval-this->xmin) * this->xbins/(1.0*this->xrange);
+  }else{
+    bin = xval;
+  }
+//   (this->entries)++; // entries is not actually used for anything
    if( bin <            0 ){ (this->underflow)++; return(0); }
    if( bin >= this->xbins ){ (this-> overflow)++; return(0); }
    (this->data[(int)bin])+=count;
@@ -239,15 +244,20 @@ int TH2I_Reset(TH2I *this)
 
 int TH2I_Fill(TH2I *this, int xval, int yval, int count)
 {
-   float xbin = (1.0*xval-this->xmin) * this->xbins/(1.0*this->xrange);
-   float ybin = (1.0*yval-this->ymin) * this->ybins/(1.0*this->yrange);
-   (this->entries)++;
-   if( xbin <            0 ){ (this->underflow)++; return(0); }
-   if( xbin >= this->xbins ){ (this-> overflow)++; return(0); }
-   if( ybin <            0 ){ (this->underflow)++; return(0); }
-   if( ybin >= this->ybins ){ (this-> overflow)++; return(0); }
-   (this->data[(int)xbin + (int)(ybin)*this->xbins])+=count;
-   return(0);
+  float xbin, ybin;
+  if(this->xmin != 0 || this->xbins != this->xrange){
+    xbin = (1.0*xval-this->xmin) * this->xbins/(1.0*this->xrange);
+  }else{ xbin = xval; }
+  if(this->ymin != 0 || this->ybins != this->yrange){
+    ybin = (1.0*yval-this->ymin) * this->ybins/(1.0*this->yrange);
+  }else{ ybin = yval; }
+  // (this->entries)++; // entries is not actually used for anything
+  if( xbin <            0 ){ (this->underflow)++; return(0); }
+  if( xbin >= this->xbins ){ (this-> overflow)++; return(0); }
+  if( ybin <            0 ){ (this->underflow)++; return(0); }
+  if( ybin >= this->ybins ){ (this-> overflow)++; return(0); }
+  (this->data[(int)xbin + (int)(ybin)*this->xbins])+=count;
+  return(0);
 }
 
 int TH2I_SetBinContent(TH2I *this, int xbin, int ybin, int value)
