@@ -96,6 +96,28 @@ TH1I  *desw_tof_corr[N_DES_WALL];           // corrected Time-Of-Flight
 TH1I  *desw_tof_psd[N_DES_WALL];            // corrected Time-Of-Flight, PSD gated
 TH1I  *desw_psd[N_DES_WALL];                // Pulse Shape Discrimination
 
+
+
+//#######################################################################
+//########                PRESORT Time Gates                   ##########
+//#######################################################################
+
+// The definition of the time difference gate in 10 nanosecond units.
+// The value is the maximum time difference in 10 nanosecond units.
+// The default values set here are replaced by the Global value at start of sorting.
+static int bgo_window_min = 0;
+static int addback_window_min = 0;
+static int rcmp_fb_window_min = 0;
+static int lbl_tac_window_min = 0;
+static int art_tac_window_min = 0;
+static int desw_beta_window_min = 0;
+static int bgo_window_max = 20;
+static int addback_window_max = 20;
+static int rcmp_fb_window_max = 10;
+static int lbl_tac_window_max = 25;
+static int art_tac_window_max = 25;
+static int desw_beta_window_max = 80;
+
 //#######################################################################
 //########                Coincidence Time Gates               ##########
 //#######################################################################

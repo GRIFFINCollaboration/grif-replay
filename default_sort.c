@@ -109,6 +109,15 @@ int init_time_diff_gates(Config *cfg){
     }
   }
 
+  // Intialize all PRESORT timing windows to their defaults
+  bgo_window_min = addback_window_min = rcmp_fb_window_min = lbl_tac_window_min = art_tac_window_min = desw_beta_window_min = 0;
+  bgo_window_max = 20;
+  addback_window_max = 20;
+  rcmp_fb_window_max = 10;
+  lbl_tac_window_max = 25;
+  art_tac_window_max = 25;
+  desw_beta_window_max = 80;
+
   // Search the globals for time difference settings and overwrite their values
   for(i=0; i<cfg->nglobal; i++){
     global = cfg->globals[i];
@@ -135,8 +144,20 @@ int init_time_diff_gates(Config *cfg){
           } break;
         }
       }
+    }else if(strncmp(tmp,"presort_time_diff_addback",25) == 0){
+      addback_window_min = global->min; addback_window_max = global->max;
+    }else if(strncmp(tmp,"presort_time_diff_art_tac",25) == 0){
+      art_tac_window_min = global->min; art_tac_window_max = global->max;
+    }else if(strncmp(tmp,"presort_time_diff_lbl_tac",25) == 0){
+      lbl_tac_window_min = global->min; lbl_tac_window_max = global->max;
+    }else if(strncmp(tmp,"presort_time_diff_desw_beta",27) == 0){
+      desw_beta_window_min = global->min; desw_beta_window_max = global->max;
+    }else if(strncmp(tmp,"presort_time_diff_suppression",29) == 0){
+      bgo_window_min = global->min; bgo_window_max = global->max;
+    }else if(strncmp(tmp,"presort_time_diff_rcmp_front-back",33) == 0){
+      rcmp_fb_window_min = global->min; rcmp_fb_window_max = global->max;
     }
-  }
+  }// end of for(i=0; i<cfg->nglobal; i++){
   return(0);
 }
 
@@ -240,11 +261,6 @@ int default_sort(int win_idx, int frag_idx, int flag)
 int pre_sort(int frag_idx, int end_idx)
 {
   Grif_event *alt2, *alt, *ptr = &grif_event[frag_idx];
-  int bgo_window = 20, addback_window = 20;
-  int rcmp_fb_window = 10;
-  int lbl_tac_window = 25;
-  int art_tac_window = 25;
-  int desw_beta_window = 80;
   float desw_median_distance = 1681.8328; // descant wall median source-to-detector distance in mm
   int i, j, dt, dt13, tof;
   float q1,q2,q12,k1,k2,k12,e1,e2,e12,m,c;
@@ -450,7 +466,7 @@ int pre_sort(int frag_idx, int end_idx)
       } // end of if(alt->subsys == SUBSYS_HPGE_A && alt->chan == ptr->chan)
 
       // BGO suppression of HPGe
-      if( dt < bgo_window && alt->subsys == SUBSYS_BGO && !ptr->suppress ){
+      if( (dt >= bgo_window_min && dt <= bgo_window_max) && alt->subsys == SUBSYS_BGO && !ptr->suppress ){
         // could alternatively use crystal numbers rather than clover#
         //    (don't currently have this for BGO)
         if( crystal_table[ptr->chan]/16 == crystal_table[alt->chan]/16 ){ ptr->suppress = 1; }
@@ -458,7 +474,7 @@ int pre_sort(int frag_idx, int end_idx)
       // Germanium addback -
       //    earliest fragment has the sum energy, others are marked -1
       // Remember the other crystal channel number in ab_alt_chan for use in Compton Polarimetry
-      if( dt < addback_window && alt->subsys == SUBSYS_HPGE_A ){
+      if( (dt >= addback_window_min && dt <= addback_window_max) && alt->subsys == SUBSYS_HPGE_A ){
         if( alt->esum >= 0 && crystal_table[alt->chan]/16 == crystal_table[ptr->chan]/16 ){
           ptr->esum += alt->esum; alt->esum = -1; ptr->ab_alt_chan = alt->chan;
         }
@@ -470,7 +486,7 @@ int pre_sort(int frag_idx, int end_idx)
       // The charged particles enter the P side and this has superior energy resolution
       // Ensure the energy collected in the front and back is similar
       ptr->esum = -1; // Need to exclude any noise and random coincidences.
-      if( dt < rcmp_fb_window && alt->subsys == SUBSYS_RCMP && (ptr->ecal>0 && ptr->ecal<32768)){
+      if( (dt >= rcmp_fb_window_min && dt <= rcmp_fb_window_max) && alt->subsys == SUBSYS_RCMP && (ptr->ecal>0 && ptr->ecal<32768)){
         if((crystal_table[ptr->chan] == crystal_table[alt->chan]) && (polarity_table[ptr->chan] != polarity_table[alt->chan]) && (alt->ecal > 0  && ptr->ecal<32768)){
           if( ((ptr->ecal / alt->ecal)<=1.1 && (ptr->ecal / alt->ecal)>=0.9)){
             // Ensure esum comes from P side, but use this timestamp
@@ -485,14 +501,14 @@ int pre_sort(int frag_idx, int end_idx)
       // Here in the presort we will remember the ARIES tile that is in coincidence with the TAC.
       // In the TAC event we save the tile chan as ab_alt_chan, and the tile energy as e4cal.
       // So later in the main coincidence loop we only need to examine LBL and TAC.
-      if(dt < art_tac_window && alt->subsys == SUBSYS_ARIES_A && crystal_table[ptr->chan] == 8){
+      if( (dt >= art_tac_window_min && dt <= art_tac_window_max) && alt->subsys == SUBSYS_ARIES_A && crystal_table[ptr->chan] == 8){
         ptr->ab_alt_chan = alt->chan; ptr->e4cal = alt->ecal;
       }
       // For TAC01-07 we have a LBL-LBL coincidence
       // Here save the LBL Id number and the LBL energy in the TAC event
       // Save LBL channel number into ptr->q2 or q3 or q4
       // Save LBL energy ecal into TAC ptr-ecal2 or ecal3 or ecal4
-      if(dt < lbl_tac_window && alt->subsys == SUBSYS_LABR_L && crystal_table[ptr->chan] < 8){
+      if( (dt >= lbl_tac_window_min && dt <= lbl_tac_window_max) && alt->subsys == SUBSYS_LABR_L && crystal_table[ptr->chan] < 8){
         if(ptr->e2cal<1){
           ptr->q2 = alt->chan; ptr->e2cal = alt->ecal;
         }else if(ptr->e3cal<1){
@@ -504,7 +520,7 @@ int pre_sort(int frag_idx, int end_idx)
       break;
       case SUBSYS_ZDS_B: // CAEN Zds
       if(alt->subsys == SUBSYS_DESWALL){
-        if(dt < desw_beta_window){
+        if(dt >= desw_beta_window_min && dt <= desw_beta_window_max){
           // Calculate time-of-flight and correct it for this DESCANT detector distance
           tof = (spread(abs(ptr->cfd - alt->cfd))*2.0) + 100; //if( tof < 0 ){ tof = -1*tof; }
           //  fprintf(stdout,"tof: %d - %d = %f\n",ptr->cfd, alt->cfd, tof);
@@ -712,9 +728,9 @@ Histogram_definition histodef_array[HISTO_DEF_SIZE] = {
    {(void **)&aries_xtal,   "AriesEnergy_CrystalNum",   "AriesE_Xtal",              SUBSYS_ARIES_A,  80, E_2D_SPECLEN},
   // {(void **)&labr_tac_xtal,"TAC_LBL_ART_vs_LBL_Num", "TAC_ART_LBL_LBL_Xtal",       SUBSYS_LABR_T,   16,  E_2D_SPECLEN},
    {(void **)&art_tac_xtal, "TAC_LBL_ART_vs_ART_Num", "TAC_ART_LBL_ART_Xtal",       SUBSYS_ARIES_A,  80,  E_2D_SPECLEN},
-   {(void **)&desw_e_xtal,  "DES_Wall_En_DetNum",    "DSW_En_Xtal",                 SUBSYS_DESWALL, 64,  E_2D_SPECLEN},
-   {(void **)&desw_tof_xtal,"DES_Wall_TOF_DetNum",   "DSW_TOF_Xtal",                SUBSYS_DESWALL, 64,  E_2D_SPECLEN},
-   {(void **)&desw_psd_e,   "DES_Wall_PSD_En",       "DES_Wall_PSD_En",             SUBSYS_DESWALL, E_2D_SPECLEN, E_2D_SPECLEN},
+   {(void **)&desw_e_xtal,  "DESWall_En_DetNum",    "DSW_En_Xtal",                 SUBSYS_DESWALL, 64,  E_2D_SPECLEN},
+   {(void **)&desw_tof_xtal,"DESWall_TOF_DetNum",   "DSW_TOF_Xtal",                SUBSYS_DESWALL, 64,  E_2D_SPECLEN},
+   {(void **)&desw_psd_e,   "DESWall_PSD_En",       "DES_Wall_PSD_En",             SUBSYS_DESWALL, E_2D_SPECLEN, E_2D_SPECLEN},
    {(void **)&desw_psd_tof, "DES_Wall_PSD_TOF",      "DES_Wall_PSD_TOF",            SUBSYS_DESWALL, E_2D_SPECLEN, E_2D_SPECLEN},
    {(void **) rcmp_strips,  "RCS%02d_E_strips",         "",                         SUBSYS_RCMP,   2*N_RCMP_STRIPS, E_2D_RCMP_SPECLEN, N_RCMP_POS},
    {NULL,                   "Hits_and_Sums/Pileup",     "",                         },
@@ -801,7 +817,7 @@ void get_histo_handle(char *result, char *title, char *handle )
       if( strcmp(title, "CrystalNum") == 0){ memcpy(result, "Xtal", 4); title += 10; result += 4; continue; }
       if( strcmp(title, "Upstream")   == 0){ memcpy(result, "US",   2); title +=  8; result += 2; continue; }
       if( strcmp(title, "Downstream") == 0){ memcpy(result, "DS",   2); title += 10; result += 2; continue; }
-      if( strcmp(title, "Des_Wall")   == 0){ memcpy(result, "DESW", 4); title +=  7; result += 4; continue; }
+      if( strcmp(title, "Des_Wall")   == 0){ memcpy(result, "DESW", 4); title +=  8; result += 4; continue; }
       *result = *title; ++title; ++result;
    }
    *result = 0; return;
