@@ -184,7 +184,7 @@ TH1I *subsys_dt[MAX_SUBSYS][MAX_SUBSYS];
 // HPGe (ge_sum is sum of crystal energies, ge_sum_b is beta-gated)
 TH1I  *ge_ab_e[N_CLOVER], *ge_sum_ab;
 TH1I  *ge_sum, *ge_sum_us, *ge_sum_ds, *ge_sum_ab_us, *ge_sum_ab_ds;
-TH1I  *ge_sum_b, *ge_sum_b, *ge_sum_b_sep, *ge_sum_b_zds, *ge_sum_b_art;
+TH1I  *ge_sum_b, *ge_sum_b, *ge_sum_b_sep, *ge_sum_b_zds, *ge_sum_b_art, *ge_sum_b_art_brems;
 
 // ARIES, PACES and LaBr3
 TH1I  *aries_sum;  // aries_sum is sum of tile energies

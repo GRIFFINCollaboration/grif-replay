@@ -677,7 +677,7 @@ typedef struct histo_def_struct {
 // count != 0 is an array of histos
 //    either - array title will contain %d (padding such as %02d is allowed). The index will run from 0 to (count-1)
 //    or     - title is "" (a blank string) and handle is pointer to array of handles.
-// NOTE that is %d or handles are used then the **ptr should be a pointer and not an address (ie. do not include the leading &)
+// NOTE that if %d or an array of handles are used then the **ptr should be a pointer and not an address (ie. do not include the leading &)
 // --------------------
 // Set ychan to "SYMMETERIZE" to create a fully symmeterized 2d histogram
 // --------------------
@@ -694,6 +694,7 @@ Histogram_definition histodef_array[HISTO_DEF_SIZE] = {
    {(void **)&ge_sum_b_sep, "Ge_Sum_En_SceptarTagged", "Ge_Sum_E_B_SEP",            SUBSYS_HPGE_A,  E_SPECLEN},
    {(void **)&ge_sum_b_zds, "Ge_Sum_En_ZdsTagged",     "Ge_Sum_E_B_ZDS",            SUBSYS_HPGE_A,  E_SPECLEN},
    {(void **)&ge_sum_b_art, "Ge_Sum_En_AriesTagged",   "Ge_Sum_E_B_ART",            SUBSYS_HPGE_A,  E_SPECLEN},
+   {(void **)&ge_sum_b_art_brems, "Ge_Sum_En_AriesTagged_Brems",   "Ge_Sum_E_B_ART_Brems",SUBSYS_HPGE_A,  E_SPECLEN},
    {(void **)&paces_sum,    "PACES_Sum_Energy",        "",                          SUBSYS_PACES,   E_SPECLEN},
    {(void **)&labr_sum,     "LaBr3_Sum_Energy",        "",                          SUBSYS_LABR_L,  E_SPECLEN},
    {(void **)&aries_sum,    "ARIES_Sum_Energy",        "",                          SUBSYS_ARIES_A, E_SPECLEN},
@@ -783,7 +784,7 @@ close_folder(cfg);
    {NULL,                  "Coinc/Hits",         ""},
    {(void **)&gg_hit,      "GeGeHit",            "",  SUBSYS_HPGE_A,  64,  64},
    {(void **)&bgobgo_hit,  "BgoBgoHit",          "",  SUBSYS_BGO,    512, 512},
-   {(void **)&gea_hit,     "GeAriesHit",         "",  SUBSYS_HPGE_A,  64,  80},
+   {(void **)&gea_hit,     "GeAriesHit",         "",  SUBSYS_HPGE_A,  80,  64},
    {(void **)&lba_hit,     "LaBrAriesHit",       "",  SUBSYS_LABR_L,  16,  80},
    {(void **)&aa_hit,      "AriesAriesHit",      "",  SUBSYS_ARIES_A, 80,  80},
    {(void **)&dsw_hit,     "DSWDSWHit",          "",  SUBSYS_DESWALL,64,  64},
@@ -843,10 +844,10 @@ int init_histos(Config *cfg, int subsystem)
       if( hptr->count == 0 ){ // single histogram
          get_histo_handle(tmp, hptr->title, (char *)hptr->handle );
          if( hptr->ychan == 0 ){ // 1d
-            *(TH1I **)(hptr->ptr) = H1_BOOK(cfg, hptr->title, tmp, hptr->xchan, 0, hptr->xchan );
+            *(TH1I **)(hptr->ptr) = H1_BOOK(cfg, tmp, hptr->title, hptr->xchan, 0, hptr->xchan );
          } else {
-            *(TH2I **)(hptr->ptr) = H2_BOOK(cfg, hptr->title, tmp, hptr->xchan, 0, hptr->xchan,
-                                                hptr->ychan, 0, hptr->ychan );
+            *(TH2I **)(hptr->ptr) = H2_BOOK(cfg, tmp, hptr->title, hptr->xchan, 0, hptr->xchan,
+                                                                   hptr->ychan, 0, hptr->ychan );
          }
       } else { // array of histos (title and handle both the same)
          for(j=0; j<hptr->count; j++){
@@ -855,7 +856,7 @@ int init_histos(Config *cfg, int subsystem)
                *(TH1I **)(hptr->ptr+j) = H1_BOOK(cfg, tmp, tmp, hptr->xchan, 0, hptr->xchan );
             } else {
                *(TH2I **)(hptr->ptr+j) = H2_BOOK(cfg, tmp, tmp, hptr->xchan, 0, hptr->xchan,
-                                                 hptr->ychan, 0, hptr->ychan );
+                                                                hptr->ychan, 0, hptr->ychan );
             }
          }
       }
@@ -946,9 +947,9 @@ int fill_singles_histos(Grif_event *ptr)
 
          // Separate sum spectra for upstream and downstream
          if(pos<32){
-           ge_sum_us->Fill(ge_sum_us, (int)ptr->ecal, 1);
-         }else{
            ge_sum_ds->Fill(ge_sum_ds, (int)ptr->ecal, 1);
+         }else{
+           ge_sum_us->Fill(ge_sum_us, (int)ptr->ecal, 1);
          }
 
          // Pile-up
@@ -1183,20 +1184,27 @@ int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
          ge_sum_b_sep->Fill(ge_sum_b_sep, (int)ptr->ecal, 1); // Sceptar-gated Ge sum energy spectrum
       }
       break;
-   case SUBSYS_ARIES_A:
+      case SUBSYS_ARIES_A:
       if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_ARIES_A]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_ARIES_A]) ){
-         ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1);         // beta-gated Ge sum energy spectrum
-         ge_sum_b_art->Fill(ge_sum_b_art, (int)ptr->ecal, 1); // Aries-gated Ge sum energy spectrum
-         ge_art->Fill(ge_art, (int)ptr->ecal, (int)alt->esum, 1);
-         c1 = crystal_table[ptr->chan]-1;
-         c2 = crystal_table[alt->chan]-1;
-         if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 < 76 ){
-            gea_hit->Fill(gea_hit, c1, c2, 1); // c's start at zero
+        if(ptr->ecal > 10 && alt->ecal > 10){
+          ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1);         // beta-gated Ge sum energy spectrum
+          ge_sum_b_art->Fill(ge_sum_b_art, (int)ptr->ecal, 1); // Aries-gated Ge sum energy spectrum
+          ge_art->Fill(ge_art, (int)ptr->ecal, (int)alt->esum, 1);
+          c1 = crystal_table[ptr->chan];
+          c2 = crystal_table[alt->chan];
+          if( c1 >= 0 && c1 < 64 && c2 >= 1 && c2 <= 76 ){
+            gea_hit->Fill(gea_hit, c2, c1, 1); // c's start at zero
             // Ge-ARIES angular correlations
             // Fill the appropriate angular bin spectrum
-            angle_idx = GRG_ART_angles_110mm[c1][c2];
+            angle_idx = GRG_ART_angles_110mm[c1][c2-1];
             ge_art_angcor[angle_idx]->Fill(ge_art_angcor[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
-         }
+
+            // Angle veto method for Bremmstrahlung veto. Angle >30 degrees
+            if(angle_idx>8){
+              ge_sum_b_art_brems->Fill(ge_sum_b_art_brems, (int)ptr->ecal, 1); // Aries-gated Ge sum energy spectrum with Bremmstrahlung veto
+            }
+          }
+        }
       }
       break;
    case SUBSYS_ZDS_A:
@@ -1630,7 +1638,7 @@ int gen_derived_odb_tables()
       case ODBHANDLE_DSG: subsys_table[i] = SUBSYS_DSG;  break;
       case ODBHANDLE_GRG: subsys_table[i] = (output_type == 1) ? SUBSYS_HPGE_A :SUBSYS_HPGE_B; break;
       case ODBHANDLE_ZDS: subsys_table[i] = (output_type == 1) ? SUBSYS_ZDS_A  :SUBSYS_ZDS_B;  break;
-      case ODBHANDLE_ART: subsys_table[i] = (output_type == 1) ? SUBSYS_ARIES_A:SUBSYS_ARIES_B;break;
+      case ODBHANDLE_ART: subsys_table[i] = (polarity_table[i] == 1) ? SUBSYS_ARIES_A:SUBSYS_ARIES_B;break;
       case ODBHANDLE_XXX: subsys_table[i] = SUBSYS_IGNORE;    break;
       case ODBHANDLE_UNK: subsys_table[i] = SUBSYS_UNKNOWN;   break;
       }
