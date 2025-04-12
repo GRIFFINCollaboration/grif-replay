@@ -2264,13 +2264,22 @@ int set_midas_param(Config *cfg, char *name, char *value)
 {
    time_t current_time = time(NULL);
    int len;
+   char clean_string[128], *tmp;
 
    if( (len=strlen(value)) >= SYS_PATH_LENGTH ){
       fprintf(stderr,"set_midas_param: value too long[%s]\n", value);
       return(-1);
-   }
-   if(        strncmp(name, "Title",   5) == 0 ){
+    }
+    if(        strncmp(name, "Title",   5) == 0 ){
+      sprintf(clean_string, "%s", value);
+    if( (tmp = strstr(clean_string, "\t"))>0 ){ // This illegal character cannot be handled in the browser
+      while( (tmp = strstr(clean_string, "\t"))>0 ){
+        strncpy(tmp, " ", 1); // keep the length the same, and make use of the terminating character already in clean_string
+      }
+      memcpy(cfg->midas_title, clean_string, len+1);
+    }else{
       memcpy(cfg->midas_title, value, len+1);
+    }
    } else if( strncmp(name, "StartTime",  9) == 0 ){
       if( sscanf(value, "%d", &cfg->midas_start_time) < 1 ){
          fprintf(stderr,"set_midas_param: can't read starttime: %s\n", value);

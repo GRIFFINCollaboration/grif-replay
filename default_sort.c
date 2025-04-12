@@ -110,12 +110,13 @@ int init_time_diff_gates(Config *cfg){
   }
 
   // Intialize all PRESORT timing windows to their defaults
-  bgo_window_min = addback_window_min = rcmp_fb_window_min = lbl_tac_window_min = art_tac_window_min = desw_beta_window_min = 0;
+  bgo_window_min = addback_window_min = rcmp_fb_window_min = lbl_tac_window_min = zds_tac_window_min = art_tac_window_min = desw_beta_window_min = 0;
   bgo_window_max = 20;
   addback_window_max = 20;
   rcmp_fb_window_max = 10;
   lbl_tac_window_max = 25;
   art_tac_window_max = 25;
+  zds_tac_window_max = 25;
   desw_beta_window_max = 80;
 
   // Search the globals for time difference settings and overwrite their values
@@ -146,6 +147,8 @@ int init_time_diff_gates(Config *cfg){
       }
     }else if(strncmp(tmp,"presort_time_diff_addback",25) == 0){
       addback_window_min = global->min; addback_window_max = global->max;
+    }else if(strncmp(tmp,"presort_time_diff_zds_tac",25) == 0){
+      zds_tac_window_min = global->min; zds_tac_window_max = global->max;
     }else if(strncmp(tmp,"presort_time_diff_art_tac",25) == 0){
       art_tac_window_min = global->min; art_tac_window_max = global->max;
     }else if(strncmp(tmp,"presort_time_diff_lbl_tac",25) == 0){
@@ -213,7 +216,7 @@ int apply_gains(Grif_event *ptr)
 
    // The TAC module produces its output signal around 2 microseconds later
    // than the start and stop detector signals are processed.
-   if( ptr->subsys == SUBSYS_LABR_T){
+   if( ptr->subsys == SUBSYS_TAC_LABR || ptr->subsys == SUBSYS_TAC_ZDS || ptr->subsys == SUBSYS_TAC_ART){
     ptr->ts -= tac_ts_offset[crystal_table[ptr->chan]-1]; // Subtract 2 microseconds from TAC timestamps plus a more precise offset
    }
 
@@ -495,26 +498,45 @@ int pre_sort(int frag_idx, int end_idx)
         }
       }
       break;
-      case SUBSYS_LABR_T:
-      // TAC spectra
-      // For TAC08 the start is ARIES and the stop is any of the LaBr3. So this is three detector types.
-      // Here in the presort we will remember the ARIES tile that is in coincidence with the TAC.
-      // In the TAC event we save the tile chan as ab_alt_chan, and the tile energy as e4cal.
-      // So later in the main coincidence loop we only need to examine LBL and TAC.
-      if( (dt >= art_tac_window_min && dt <= art_tac_window_max) && alt->subsys == SUBSYS_ARIES_A && crystal_table[ptr->chan] == 8){
-        ptr->ab_alt_chan = alt->chan; ptr->e4cal = alt->ecal;
+      case SUBSYS_TAC_ZDS:
+      // ZDS TAC spectra
+      if( alt->subsys == SUBSYS_ZDS_A ){
+        // For TAC08 the start is ZDS and the stop is any of the LaBr3. So this is three detector types.
+        // Here in the presort we will remember the ZDS information that is in coincidence with the TAC.
+        // In the TAC event we save the ZDS chan as ab_alt_chan, and the ZDS energy as e4cal.
+        // So later in the main coincidence loop we only need to examine LBL and TAC.
+        if( dt >= zds_tac_window_min && dt <= zds_tac_window_max ){
+          ptr->ab_alt_chan = alt->chan; ptr->e4cal = alt->ecal;
+        }
       }
-      // For TAC01-07 we have a LBL-LBL coincidence
-      // Here save the LBL Id number and the LBL energy in the TAC event
-      // Save LBL channel number into ptr->q2 or q3 or q4
-      // Save LBL energy ecal into TAC ptr-ecal2 or ecal3 or ecal4
-      if( (dt >= lbl_tac_window_min && dt <= lbl_tac_window_max) && alt->subsys == SUBSYS_LABR_L && crystal_table[ptr->chan] < 8){
-        if(ptr->e2cal<1){
-          ptr->q2 = alt->chan; ptr->e2cal = alt->ecal;
-        }else if(ptr->e3cal<1){
-          ptr->q3 = alt->chan; ptr->e3cal = alt->ecal;
-        }else{
-          ptr->q4 = alt->chan; ptr->e4cal = alt->ecal; // If this is set then we have LBL multiplicity >2 for this TAC
+      break;
+      case SUBSYS_TAC_ART:
+      // ARIES TAC spectra
+      if( alt->subsys == SUBSYS_ARIES_A ){
+        // For TAC08 the start is ARIES and the stop is any of the LaBr3. So this is three detector types.
+        // Here in the presort we will remember the ARIES tile that is in coincidence with the TAC.
+        // In the TAC event we save the tile chan as ab_alt_chan, and the tile energy as e4cal.
+        // So later in the main coincidence loop we only need to examine LBL and TAC.
+        if( dt >= art_tac_window_min && dt <= art_tac_window_max ){
+          ptr->ab_alt_chan = alt->chan; ptr->e4cal = alt->ecal;
+        }
+      }
+      break;
+      case SUBSYS_TAC_LABR:
+      // LaBr3 TAC spectra
+      if( alt->subsys == SUBSYS_LABR_L ){
+        // For TAC01-07 we have a LBL-LBL coincidence
+        // Here save the LBL Id number and the LBL energy in the TAC event
+        // Save LBL channel number into ptr->q2 or q3 or q4
+        // Save LBL energy ecal into TAC ptr-ecal2 or ecal3 or ecal4
+        if( dt >= lbl_tac_window_min && dt <= lbl_tac_window_max ){
+          if(ptr->e2cal<1){
+            ptr->q2 = alt->chan; ptr->e2cal = alt->ecal;
+          }else if(ptr->e3cal<1){
+            ptr->q3 = alt->chan; ptr->e3cal = alt->ecal;
+          }else{
+            ptr->q4 = alt->chan; ptr->e4cal = alt->ecal; // If this is set then we have LBL multiplicity >2 for this TAC
+          }
         }
       }
       break;
@@ -727,7 +749,7 @@ Histogram_definition histodef_array[HISTO_DEF_SIZE] = {
    {(void **)&labr_xtal,    "Labr3Energy_CrystalNum",   "LabrE_Xtal",               SUBSYS_LABR_L,   16, E_2D_SPECLEN},
    {(void **)&paces_xtal,   "PacesEnergy_CrystalNum",   "PacesE_Xtal",              SUBSYS_PACES,    16, E_2D_SPECLEN},
    {(void **)&aries_xtal,   "AriesEnergy_CrystalNum",   "AriesE_Xtal",              SUBSYS_ARIES_A,  80, E_2D_SPECLEN},
-  // {(void **)&labr_tac_xtal,"TAC_LBL_ART_vs_LBL_Num", "TAC_ART_LBL_LBL_Xtal",       SUBSYS_LABR_T,   16,  E_2D_SPECLEN},
+  // {(void **)&labr_tac_xtal,"TAC_LBL_ART_vs_LBL_Num", "TAC_ART_LBL_LBL_Xtal",       SUBSYS_TAC_ART,   16,  E_2D_SPECLEN},
    {(void **)&art_tac_xtal, "TAC_LBL_ART_vs_ART_Num", "TAC_ART_LBL_ART_Xtal",       SUBSYS_ARIES_A,  80,  E_2D_SPECLEN},
    {(void **)&desw_e_xtal,  "DESWall_En_DetNum",    "DSW_En_Xtal",                 SUBSYS_DESWALL, 64,  E_2D_SPECLEN},
    {(void **)&desw_tof_xtal,"DESWall_TOF_DetNum",   "DSW_TOF_Xtal",                SUBSYS_DESWALL, 64,  E_2D_SPECLEN},
@@ -762,7 +784,7 @@ close_folder(cfg);
    // Coinc
    {NULL,                  "Hits_and_Sums/Delta_t"," "},
    {(void **) dt_hist,     "",                   dt_handles[0], SUBSYS_HPGE_A,  DT_SPEC_LENGTH, 0, N_DT }, // leave subsys as GE -> all always defined
-   {(void **) dt_tacs_hist,"dt_labr_tac%d",      "",  SUBSYS_LABR_T,  DT_SPEC_LENGTH, 0, N_TACS },
+   {(void **) dt_tacs_hist,"dt_labr_tac%d",      "",  SUBSYS_TAC_LABR,  DT_SPEC_LENGTH, 0, N_TACS },
    {NULL,                  "Coinc/Coinc",        ""},
    {(void **)&gg_ab,       "Addback_GG",         "",  SUBSYS_HPGE_A,  E_2D_SPECLEN, SYMMETERIZE},
    {(void **)&gg,          "GG",                 "",  SUBSYS_HPGE_A,  E_2D_SPECLEN, SYMMETERIZE},
@@ -789,17 +811,17 @@ close_folder(cfg);
    {(void **)&aa_hit,      "AriesAriesHit",      "",  SUBSYS_ARIES_A, 80,  80},
    {(void **)&dsw_hit,     "DSWDSWHit",          "",  SUBSYS_DESWALL,64,  64},
    {(void **) rcmp_hit,    "RCS%d_PN_hit",       "",  SUBSYS_RCMP, N_RCMP_STRIPS,     N_RCMP_STRIPS,     N_RCMP_POS},
-   {(void **) rcmp_fb,     "RCS%d__Front_Back",  "",  SUBSYS_RCMP, E_2D_RCMP_SPECLEN, E_2D_RCMP_SPECLEN, N_RCMP_POS},
-   {NULL,                  "Ang_Corr/GG_Ang_Corr"     , ""},
-   {(void **) gg_angcor_110,"Ge-Ge_110mm_angular_bin%d","", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  SYMMETERIZE, N_GE_ANG_CORR},
-   {(void **) gg_angcor_145,"Ge-Ge_145mm_angular_bin%d","", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  SYMMETERIZE, N_GE_ANG_CORR},
-   {NULL,                   "Ang_Corr/DSW_DSW_Ang_Corr",""},
-   {(void **) dsw_angcor,   "DSW-DSW_angular_bin%d",    "", SUBSYS_DESWALL,DSW_ANGCOR_SPECLEN, SYMMETERIZE, N_DSW_DSW_ANG_CORR },
-   {NULL,                   "Ang_Corr/GG_ART_Ang_Corr", ""},
-   {(void **) ge_art_angcor,"Ge-ART_angular_bin%d",     "", SUBSYS_ARIES_A,  GE_ANGCOR_SPECLEN, GE_ANGCOR_SPECLEN, N_GRG_ART_ANG_CORR },
-   {NULL,                   "Fast-Timing/LBL_Walk",     ""},
-   {(void **) tac_labr_CompWalk,"TAC_%d_CompWalk",      "", SUBSYS_LABR_T, 2048, 2048},
-   {NULL,                   "Fast-Timing/ART_TACs",     ""},
+   {(void **) rcmp_fb,     "RCS%d_Front_Back",  "",  SUBSYS_RCMP, E_2D_RCMP_SPECLEN, E_2D_RCMP_SPECLEN, N_RCMP_POS},
+   {NULL,                  "Ang_Corr/GG_Ang_Corr",         ""},
+   {(void **) gg_angcor_110,"Ge-Ge_110mm_angular_bin%02d", "", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  SYMMETERIZE, N_GE_ANG_CORR},
+   {(void **) gg_angcor_145,"Ge-Ge_145mm_angular_bin%02d", "", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  SYMMETERIZE, N_GE_ANG_CORR},
+   {NULL,                   "Ang_Corr/DSW_DSW_Ang_Corr",   ""},
+   {(void **) dsw_angcor,   "DSW-DSW_angular_bin%03d",     "", SUBSYS_DESWALL,DSW_ANGCOR_SPECLEN, SYMMETERIZE, N_DSW_DSW_ANG_CORR },
+   {NULL,                   "Ang_Corr/GG_ART_Ang_Corr",    ""},
+   {(void **) ge_art_angcor,"Ge-ART_angular_bin%03d",      "", SUBSYS_ARIES_A,  GE_ANGCOR_SPECLEN, GE_ANGCOR_SPECLEN, N_GRG_ART_ANG_CORR },
+   {NULL,                   "Fast-Timing/LBL_Walk",        ""},
+   {(void **) tac_labr_CompWalk,"TAC_%02d_CompWalk",       "", SUBSYS_TAC_LABR, 2048, 2048, N_TACS },
+   {NULL,                   "Fast-Timing/ART_TACs",        ""},
    {(void **)&tac_aries_lbl_sum, "TAC_ART_LBL_LBLSUM",     "", SUBSYS_ARIES_A, E_TAC_SPECLEN  },
    {(void **)&tac_aries_art_sum, "TAC_ART_LBL_ARTSUM",     "", SUBSYS_ARIES_A, E_TAC_SPECLEN  },
    {(void **)&aries_tac,         "TAC-ARIES-LaBr3-1275keV","", SUBSYS_ARIES_A, E_TAC_SPECLEN  },
@@ -863,7 +885,7 @@ int init_histos(Config *cfg, int subsystem)
    } *cfg->current_path=0; // empty path
 
    // custom definitions that don't fit usual scheme
-   if( subsystem == SUBSYS_LABR_T ){ // TAC coincidence pair spectra
+   if( subsystem == SUBSYS_TAC_LABR ){ // TAC coincidence pair spectra
       open_folder(cfg, "Fast-Timing");
       open_folder(cfg, "LBL_TACs");
       k=0; memset(tac_labr_hist_index, -1, N_LABR*N_LABR*sizeof(int));
@@ -906,11 +928,11 @@ int init_histos(Config *cfg, int subsystem)
       subsys_dt[SUBSYS_LABR_L ][SUBSYS_LABR_L  ] = dt_hist[26];
       subsys_dt[SUBSYS_LABR_L ][SUBSYS_ARIES_A ] = dt_hist[11];
       subsys_dt[SUBSYS_LABR_L ][SUBSYS_ZDS_A   ] = dt_hist[17];
-      subsys_dt[SUBSYS_LABR_L ][SUBSYS_LABR_T  ] = dt_hist[16];
+      subsys_dt[SUBSYS_LABR_L ][SUBSYS_TAC_LABR  ] = dt_hist[16];
       subsys_dt[SUBSYS_RCMP   ][SUBSYS_RCMP    ] = dt_hist[ 9];
       subsys_dt[SUBSYS_ARIES_A][SUBSYS_ARIES_A ] = dt_hist[13];
-      subsys_dt[SUBSYS_ARIES_A][SUBSYS_LABR_T  ] = dt_hist[14];
-      subsys_dt[SUBSYS_ZDS_A  ][SUBSYS_LABR_T  ] = dt_hist[15];
+      subsys_dt[SUBSYS_ARIES_A][SUBSYS_TAC_ART ] = dt_hist[14];
+      subsys_dt[SUBSYS_ZDS_A  ][SUBSYS_TAC_ZDS ] = dt_hist[15];
       subsys_dt[SUBSYS_ZDS_A  ][SUBSYS_ZDS_B   ] = dt_hist[22];
       subsys_dt[SUBSYS_DESWALL][SUBSYS_DESWALL ] = dt_hist[18];
       subsys_dt[SUBSYS_DESWALL][SUBSYS_ARIES_A ] = dt_hist[20];
@@ -1066,7 +1088,7 @@ int fill_singles_histos(Grif_event *ptr)
          labr_xtal->Fill(labr_xtal, pos, (int)ptr->ecal, 1);
       } break;
    case SUBSYS_SCEPTAR: break;
-   case SUBSYS_LABR_T:
+   case SUBSYS_TAC_LABR:
 
    // Save LBL channel number into ptr->q2 or q3 or q4
    // Save LBL energy ecal into TAC ptr-ecal2 or ecal3 or ecal4
@@ -1234,11 +1256,11 @@ int fill_labr_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
             lba_hit->Fill(lba_hit, c1, c2, 1);
          }
       } break;
-   case SUBSYS_LABR_T:
+   case SUBSYS_TAC_LABR:
       c1=crystal_table[alt->chan]-1;  // assign c1 as TAC number
       if(c1 >= 0 && c1 < 8 ){ // 8 LBL
          dt_tacs_hist[c1]->Fill(dt_tacs_hist[c1], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
-         if(((abs_dt >= time_diff_gate_min[SUBSYS_LABR_L][SUBSYS_LABR_T]) && (abs_dt <= time_diff_gate_max[SUBSYS_LABR_L][SUBSYS_LABR_T])) && c1 == 8){ // labr-tac with the ARIES TAC
+         if(((abs_dt >= time_diff_gate_min[SUBSYS_LABR_L][SUBSYS_TAC_LABR]) && (abs_dt <= time_diff_gate_max[SUBSYS_LABR_L][SUBSYS_TAC_LABR])) && c1 == 8){ // labr-tac with the ARIES TAC
             c2 = crystal_table[ptr->chan] - 1; // assign c2 as LBL number
             if(c2 >= 0 && c2 < 8 ){ // 8 LBL detectors
                corrected_tac_value = (int)alt->ecal + tac_offset[c2];
@@ -1325,7 +1347,7 @@ int fill_coinc_histos(int win_idx, int frag_idx)
                aa_hit->Fill(aa_hit, c1, c2, 1);
             }
          }}
-         if( alt->subsys == SUBSYS_LABR_T && crystal_table[alt->chan] == 8 ){ // ARIES TAC
+         if( alt->subsys == SUBSYS_TAC_LABR && crystal_table[alt->chan] == 8 ){ // ARIES TAC
             dt_hist[14]->Fill(dt_hist[14], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
             // sum tac spectrum including all art
             tac_aries_art_sum->Fill(tac_aries_art_sum, (int)alt->ecal, 1);
@@ -1630,7 +1652,6 @@ int gen_derived_odb_tables()
       case ODBHANDLE_SEP: subsys_table[i] = SUBSYS_SCEPTAR;   break;
       case ODBHANDLE_PAC: subsys_table[i] = SUBSYS_PACES;     break;
       case ODBHANDLE_LBS: subsys_table[i] = SUBSYS_LABR_BGO;  break;
-      case ODBHANDLE_LBT: subsys_table[i] = SUBSYS_LABR_T;    break;
       case ODBHANDLE_LBL: subsys_table[i] = SUBSYS_LABR_L;    break;
       case ODBHANDLE_DSC: subsys_table[i] = SUBSYS_DESCANT;   break;
       case ODBHANDLE_RCS: subsys_table[i] = SUBSYS_RCMP;      break;
@@ -1641,6 +1662,10 @@ int gen_derived_odb_tables()
       case ODBHANDLE_ART: subsys_table[i] = (polarity_table[i] == 1) ? SUBSYS_ARIES_A:SUBSYS_ARIES_B;break;
       case ODBHANDLE_XXX: subsys_table[i] = SUBSYS_IGNORE;    break;
       case ODBHANDLE_UNK: subsys_table[i] = SUBSYS_UNKNOWN;   break;
+      case ODBHANDLE_LBT: if(crystal_table[i]<8){ subsys_table[i] = SUBSYS_TAC_LABR;
+                          }else if(crystal_table[i]>8){ subsys_table[i] = SUBSYS_TAC_ART;
+                          }else{ subsys_table[i] = SUBSYS_TAC_ZDS; }
+                          break;
       }
    }
    memset(subsys_initialized, 0, sizeof(int)*MAX_SUBSYS );

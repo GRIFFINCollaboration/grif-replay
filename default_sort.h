@@ -14,7 +14,7 @@
 #define SUBSYS_RCMP      3
 #define SUBSYS_ARIES_A   4
 #define SUBSYS_ZDS_A     5 // GRIF16
-#define SUBSYS_LABR_T    6
+#define SUBSYS_TAC_LABR  6
 #define SUBSYS_LABR_BGO  7
 #define SUBSYS_BGO       8
 #define SUBSYS_SCEPTAR   9
@@ -23,8 +23,10 @@
 #define SUBSYS_DSG      12
 #define SUBSYS_IGNORE   13
 #define SUBSYS_HPGE_B   16
-#define SUBSYS_ARIES_B  17
-#define SUBSYS_ZDS_B    18
+#define SUBSYS_ARIES_B  17 // CAEN
+#define SUBSYS_ZDS_B    18 // CAEN
+#define SUBSYS_TAC_ZDS  19
+#define SUBSYS_TAC_ART  20
 #define SUBSYS_UNKNOWN  23
 static char subsys_handle[MAX_SUBSYS][8] = {
   "GRGA", "PAC",  "LBL",  "RCS",
@@ -36,11 +38,11 @@ static char subsys_handle[MAX_SUBSYS][8] = {
 };
 static char subsys_name[MAX_SUBSYS][STRING_LEN] = {
    "Griffin", "PACES",   "LaBrX",   "RCMP",     //  0- 3
-   "ARIES",   "ZDSA",    "LaBrT",   "LaBrS",    //  4- 7
+   "ARIES",   "ZDSA",    "TAC_LBL",   "LaBrS",    //  4- 7
    "BGO",     "Sceptar", "Descant", "DES_WALL", //  8-11
    "Des_Ancil", "Ignore1", "Ignore2", "Ignore3",  // 12-15
-   "Grif_B",  "ARS_B",   "ZDS_B",   "",         // 16-19
-   "",        "",        "",        "Unknown"   // 20-23
+   "Grif_B",  "ARS_B",   "ZDS_B",   "TAC_ZDS",      // 16-19
+   "TAC_ART",      "",        "",        "Unknown"   // 20-23
 }; // final entry will be used if not found - make sure it is not empty
 // #####################################################################
 
@@ -110,12 +112,14 @@ static int addback_window_min = 0;
 static int rcmp_fb_window_min = 0;
 static int lbl_tac_window_min = 0;
 static int art_tac_window_min = 0;
+static int zds_tac_window_min = 0;
 static int desw_beta_window_min = 0;
 static int bgo_window_max = 20;
 static int addback_window_max = 20;
 static int rcmp_fb_window_max = 10;
 static int lbl_tac_window_max = 25;
 static int art_tac_window_max = 25;
+static int zds_tac_window_max = 25;
 static int desw_beta_window_max = 80;
 
 //#######################################################################
