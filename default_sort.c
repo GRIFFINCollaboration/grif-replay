@@ -824,7 +824,7 @@ close_folder(cfg);
    {NULL,                   "Ang_Corr/GG_ART_Ang_Corr",    ""},
    {(void **) ge_art_angcor,"Ge-ART_angular_bin%03d",      "", SUBSYS_ARIES_A,  GE_ANGCOR_SPECLEN, GE_ANGCOR_SPECLEN, N_GRG_ART_ANG_CORR },
    {NULL,                   "Fast-Timing/LBL_Walk",        ""},
-   {(void **) tac_labr_CompWalk,"TAC_%02d_CompWalk",       "", SUBSYS_TAC_LABR, ECAL_TAC_SPECLEN, 1440, N_TACS },
+   {(void **) tac_labr_CompWalk,"TAC_%02d_CompWalk",       "", SUBSYS_TAC_LABR, ECAL_TAC_SPECLEN, 1440, N_LABR },
    {NULL,                   "Fast-Timing/TAC-Gated-LBL-Energy", ""},
    {(void **) tac_gated_lbl,"TAC_gated_LBL%02d",           "", SUBSYS_TAC_LABR, E_SPECLEN, 0, N_LABR },
    {NULL,                   "Fast-Timing/Calibrated-TACs", ""},
@@ -896,26 +896,18 @@ int init_histos(Config *cfg, int subsystem)
    // custom definitions that don't fit usual scheme
    if( subsystem == SUBSYS_TAC_LABR ){ // TAC coincidence pair spectra
       open_folder(cfg, "Fast-Timing");
-      /*
-      open_folder(cfg, "TAC-Gated-LBL-Energy");
-         for(i=0; i<N_LABR; i++){
-            sprintf(tmp,"TAC_gated_LBL%02d", i+1);
-            tac_gated_lbl[i] = H1_BOOK(cfg, tmp, tmp, E_SPECLEN, 0, E_SPECLEN);
-         }
-      close_folder(cfg);
-      */
       open_folder(cfg, "LBL_TAC_Combos");
       k=0; memset(tac_labr_hist_index, -1, N_LABR*N_LABR*sizeof(int));
       for(i=0; i<N_LABR; i++){
          for(j=(i+1); j<N_LABR; j++){
-            tac_labr_hist_index[i][j] = k++;
+            tac_labr_hist_index[i][j] = k;
             sprintf(tmp,"TAC_%02d_%02d", i, j);
-            tac_labr_hist[k] = H1_BOOK(cfg, tmp, tmp, ECAL_TAC_SPECLEN, 0, ECAL_TAC_SPECLEN);
+            tac_labr_hist[k++] = H1_BOOK(cfg, tmp, tmp, ECAL_TAC_SPECLEN, 0, ECAL_TAC_SPECLEN);
          }
       }
       sprintf(tmp,"TAC_%02d_%02d", 1, 0); // Add additional histogram (2_1) needed for Compton Walk corrections
-      tac_labr_hist[++k] = H1_BOOK(cfg, tmp, tmp, ECAL_TAC_SPECLEN, 0, ECAL_TAC_SPECLEN);
       tac_labr_hist_index[1][0] = k;
+      tac_labr_hist[k] = H1_BOOK(cfg, tmp, tmp, ECAL_TAC_SPECLEN, 0, ECAL_TAC_SPECLEN);
       close_folder(cfg);
       close_folder(cfg);
    }
@@ -1133,7 +1125,7 @@ int fill_singles_histos(Grif_event *ptr)
              tac_labr_CompWalk[c2]->Fill(tac_labr_CompWalk[c2], (int)(ptr->ecal)+offset, (int)ptr->e3cal, 1); // TAC01 and other LBL energy
            }
            if(c1 == 1 && c2==0 && ptr->e3cal>1252 && ptr->e3cal<1412){ // LBL02 gated on 1332keV
-             tac_labr_CompWalk[c1]->Fill(tac_labr_CompWalk[c1], (int)(ptr->ecal)+offset, (int)ptr->e2cal, 1); // TAC01 and other LBL energy
+             tac_labr_CompWalk[c2]->Fill(tac_labr_CompWalk[c1], (int)(ptr->ecal)+offset, (int)ptr->e2cal, 1); // TAC01 and other LBL energy
            }
          }
        }

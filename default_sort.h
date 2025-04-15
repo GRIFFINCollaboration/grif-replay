@@ -211,7 +211,7 @@ TH1I  *desw_sum_e_nn_a, *desw_sum_tof_nn_a; // fold>2, angle>60 Sums of energies
 TH2I  *desw_psd_e, *desw_psd_tof;           // PSD vs energies or corrected-TOF
 
 // TAC spectra
-TH1I *tac_labr_hist[(int)((N_LABR)*(N_LABR-1)/2)+1]; // this index numbers are the LaBr-LaBr position numbers
+TH1I *tac_labr_hist[(int)((N_LABR)*(N_LABR-1)/2)+2]; // this index numbers are the LaBr-LaBr position numbers
                                                // One additional histogram (2_1) needed for Compton Walk corrections
 TH2I *tac_labr_CompWalk[N_LABR];         // First LBL gated on 1332keV, this matrix is second LBL E vs TAC
 int tac_labr_hist_index[N_LABR][N_LABR]; // index for filling tac_labr_hist from LBL id numbers
@@ -273,7 +273,8 @@ int tac_lbl_combo_offset[N_LABR][N_LABR] = {
 {  0,  0,  0,  0,  0,  0,  0,   0}};
 */
 int tac_lbl_combo_offset[(int)((N_LABR)*(N_LABR-1)/2)+2] = {
-  0,-805,
+  0,
+  -1120,
 -880,
 -1070,
 -790,
@@ -300,6 +301,6 @@ int tac_lbl_combo_offset[(int)((N_LABR)*(N_LABR-1)/2)+2] = {
 -1950,
 -1850,
 -2100,
--1120,
+-805,
 -780
 };
