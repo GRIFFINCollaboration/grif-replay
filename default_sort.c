@@ -168,7 +168,8 @@ int init_time_diff_gates(Config *cfg){
 // before any presort/singles/coinc-sorting
 int apply_gains(Grif_event *ptr)
 {
-  int tac_ts_offset[12] = {60,60,60,60,60,60,60,60,60,60,60,60}; // From Dec 2024
+  //int tac_ts_offset[12] = {60,60,60,60,60,60,60,60,60,60,60,60}; // From Dec 2024
+    int tac_ts_offset[12] = {54,64,406,137,77,404,114,158,0,0,0,0}; // S2231_S2196_Nov2024
   int caen_ts_offset = -60; // this value (-60) aligns the timestamps of HPGe with ZDS(CAEN)
    float energy,psd;
    int chan = ptr->chan;
@@ -214,11 +215,13 @@ int apply_gains(Grif_event *ptr)
      }
    }
 
+
    // The TAC module produces its output signal around 2 microseconds later
    // than the start and stop detector signals are processed.
    if( ptr->subsys == SUBSYS_TAC_LABR || ptr->subsys == SUBSYS_TAC_ZDS || ptr->subsys == SUBSYS_TAC_ART){
     ptr->ts -= tac_ts_offset[crystal_table[ptr->chan]-1]; // Subtract 2 microseconds from TAC timestamps plus a more precise offset
    }
+
 
    // DESCANT detectors
    // use psd for Pulse Shape Discrimination provides a distinction between neutron and gamma events
@@ -522,20 +525,20 @@ int pre_sort(int frag_idx, int end_idx)
         }
       }
       break;
-      case SUBSYS_TAC_LABR:
+      case SUBSYS_LABR_L:
       // LaBr3 TAC spectra
-      if( alt->subsys == SUBSYS_LABR_L ){
+      if( alt->subsys == SUBSYS_TAC_LABR ){
         // For TAC01-07 we have a LBL-LBL coincidence
         // Here save the LBL Id number and the LBL energy in the TAC event
         // Save LBL channel number into ptr->q2 or q3 or q4
         // Save LBL energy ecal into TAC ptr-ecal2 or ecal3 or ecal4
         if( dt >= lbl_tac_window_min && dt <= lbl_tac_window_max ){
-          if(ptr->e2cal<1){
-            ptr->q2 = alt->chan; ptr->e2cal = alt->ecal;
+          if(alt->e2cal<1){
+            alt->q2 = ptr->chan; alt->e2cal = ptr->ecal;
           }else if(ptr->e3cal<1){
-            ptr->q3 = alt->chan; ptr->e3cal = alt->ecal;
+            alt->q3 = ptr->chan; alt->e3cal = ptr->ecal;
           }else{
-            ptr->q4 = alt->chan; ptr->e4cal = alt->ecal; // If this is set then we have LBL multiplicity >2 for this TAC
+            alt->q4 = ptr->chan; alt->e4cal = ptr->ecal; // If this is set then we have LBL multiplicity >2 for this TAC
           }
         }
       }
@@ -783,8 +786,9 @@ close_folder(cfg);
    {(void **) ge_PU2_e2_v_k_gated1408,   "Ge%02d_PU2_E2_vs_k2_E1gated_on_1408keV", "", SUBSYS_HPGE_A,   512, 512, 64},
    // Coinc
    {NULL,                  "Hits_and_Sums/Delta_t"," "},
-   {(void **) dt_hist,     "",                   dt_handles[0], SUBSYS_HPGE_A,  DT_SPEC_LENGTH, 0, N_DT }, // leave subsys as GE -> all always defined
+   {(void **) dt_hist,     "",        dt_handles[0],  SUBSYS_HPGE_A,  DT_SPEC_LENGTH, 0, N_DT }, // leave subsys as GE -> all always defined
    {(void **) dt_tacs_hist,"dt_labr_tac%d",      "",  SUBSYS_TAC_LABR,  DT_SPEC_LENGTH, 0, N_TACS },
+   {(void **) tac_lbl_ts_diff,"TAC%02d timestamp offset", "",  SUBSYS_TAC_LABR,  DT_SPEC_LENGTH, 0, N_TACS },
    {NULL,                  "Coinc/Coinc",        ""},
    {(void **)&gg_ab,       "Addback_GG",         "",  SUBSYS_HPGE_A,  E_2D_SPECLEN, SYMMETERIZE},
    {(void **)&gg,          "GG",                 "",  SUBSYS_HPGE_A,  E_2D_SPECLEN, SYMMETERIZE},
@@ -811,7 +815,7 @@ close_folder(cfg);
    {(void **)&aa_hit,      "AriesAriesHit",      "",  SUBSYS_ARIES_A, 80,  80},
    {(void **)&dsw_hit,     "DSWDSWHit",          "",  SUBSYS_DESWALL,64,  64},
    {(void **) rcmp_hit,    "RCS%d_PN_hit",       "",  SUBSYS_RCMP, N_RCMP_STRIPS,     N_RCMP_STRIPS,     N_RCMP_POS},
-   {(void **) rcmp_fb,     "RCS%d_Front_Back",  "",  SUBSYS_RCMP, E_2D_RCMP_SPECLEN, E_2D_RCMP_SPECLEN, N_RCMP_POS},
+   {(void **) rcmp_fb,     "RCS%d_Front_Back",  "",   SUBSYS_RCMP, E_2D_RCMP_SPECLEN, E_2D_RCMP_SPECLEN, N_RCMP_POS},
    {NULL,                  "Ang_Corr/GG_Ang_Corr",         ""},
    {(void **) gg_angcor_110,"Ge-Ge_110mm_angular_bin%02d", "", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  SYMMETERIZE, N_GE_ANG_CORR},
    {(void **) gg_angcor_145,"Ge-Ge_145mm_angular_bin%02d", "", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  SYMMETERIZE, N_GE_ANG_CORR},
@@ -820,7 +824,12 @@ close_folder(cfg);
    {NULL,                   "Ang_Corr/GG_ART_Ang_Corr",    ""},
    {(void **) ge_art_angcor,"Ge-ART_angular_bin%03d",      "", SUBSYS_ARIES_A,  GE_ANGCOR_SPECLEN, GE_ANGCOR_SPECLEN, N_GRG_ART_ANG_CORR },
    {NULL,                   "Fast-Timing/LBL_Walk",        ""},
-   {(void **) tac_labr_CompWalk,"TAC_%02d_CompWalk",       "", SUBSYS_TAC_LABR, 2048, 2048, N_TACS },
+   {(void **) tac_labr_CompWalk,"TAC_%02d_CompWalk",       "", SUBSYS_TAC_LABR, ECAL_TAC_SPECLEN, 1440, N_TACS },
+   {NULL,                   "Fast-Timing/TAC-Gated-LBL-Energy", ""},
+   {(void **) tac_gated_lbl,"TAC_gated_LBL%02d",           "", SUBSYS_TAC_LABR, E_SPECLEN, 0, N_LABR },
+   {NULL,                   "Fast-Timing/Calibrated-TACs", ""},
+   {(void **)&final_tac_sum,    "Calibrated-TAC-Sum",      "", SUBSYS_TAC_LABR, E_SPECLEN },
+   {(void **) final_tac,    "Calibrated-TAC%02d",          "", SUBSYS_TAC_LABR, E_SPECLEN, 0, N_LABR },
    {NULL,                   "Fast-Timing/ART_TACs",        ""},
    {(void **)&tac_aries_lbl_sum, "TAC_ART_LBL_LBLSUM",     "", SUBSYS_ARIES_A, E_TAC_SPECLEN  },
    {(void **)&tac_aries_art_sum, "TAC_ART_LBL_ARTSUM",     "", SUBSYS_ARIES_A, E_TAC_SPECLEN  },
@@ -887,17 +896,25 @@ int init_histos(Config *cfg, int subsystem)
    // custom definitions that don't fit usual scheme
    if( subsystem == SUBSYS_TAC_LABR ){ // TAC coincidence pair spectra
       open_folder(cfg, "Fast-Timing");
-      open_folder(cfg, "LBL_TACs");
+      /*
+      open_folder(cfg, "TAC-Gated-LBL-Energy");
+         for(i=0; i<N_LABR; i++){
+            sprintf(tmp,"TAC_gated_LBL%02d", i+1);
+            tac_gated_lbl[i] = H1_BOOK(cfg, tmp, tmp, E_SPECLEN, 0, E_SPECLEN);
+         }
+      close_folder(cfg);
+      */
+      open_folder(cfg, "LBL_TAC_Combos");
       k=0; memset(tac_labr_hist_index, -1, N_LABR*N_LABR*sizeof(int));
-      for(i=1; i<=N_LABR; i++){
-         for(j=(i+1); j<=N_LABR; j++){
-            tac_labr_hist_index[i-1][j-1] = k++;
-            sprintf(tmp,"TAC_%d_%d", i, j);
-            tac_labr_hist[k] = H1_BOOK(cfg, tmp, tmp, E_TAC_SPECLEN, 0, E_TAC_SPECLEN);
+      for(i=0; i<N_LABR; i++){
+         for(j=(i+1); j<N_LABR; j++){
+            tac_labr_hist_index[i][j] = k++;
+            sprintf(tmp,"TAC_%02d_%02d", i, j);
+            tac_labr_hist[k] = H1_BOOK(cfg, tmp, tmp, ECAL_TAC_SPECLEN, 0, ECAL_TAC_SPECLEN);
          }
       }
-      sprintf(tmp,"TAC_%d_%d", 2, 1); // Add additional histogram (2_1) needed for Compton Walk corrections
-      tac_labr_hist[++k] = H1_BOOK(cfg, tmp, tmp, E_TAC_SPECLEN, 0, E_TAC_SPECLEN);
+      sprintf(tmp,"TAC_%02d_%02d", 1, 0); // Add additional histogram (2_1) needed for Compton Walk corrections
+      tac_labr_hist[++k] = H1_BOOK(cfg, tmp, tmp, ECAL_TAC_SPECLEN, 0, ECAL_TAC_SPECLEN);
       tac_labr_hist_index[1][0] = k;
       close_folder(cfg);
       close_folder(cfg);
@@ -942,7 +959,7 @@ int init_histos(Config *cfg, int subsystem)
 
 int fill_singles_histos(Grif_event *ptr)
 {
-  int i, j, dt, pu, nhits, chan, pos, sys, elem, clover, c1,c2, index, ge_addback_gate = 25, ge_sum_gate = 25;
+  int i, j, dt, pu, nhits, chan, pos, sys, elem, clover, c1,c2, index, offset;
   char *name, c;
   long ts;
 
@@ -1094,26 +1111,33 @@ int fill_singles_histos(Grif_event *ptr)
    // Save LBL energy ecal into TAC ptr-ecal2 or ecal3 or ecal4
    if(ptr->e4cal>0){ break; } // more than two LaBr3 in coincidence with this TAC event so reject
    if( ptr->q2 >=          0 && ptr->q3 >=           0 &&
-       ptr->q2 < MAX_DAQSIZE && ptr->q3  < MAX_DAQSIZE ){
-      c1 = crystal_table[ptr->q2]-1; // c1 runs from 0 to 7
-      c2 = crystal_table[ptr->q3]-1; // c2 runs from 0 to 7
-   } else { c1 = c2 = -1; }
-   if(c1>=0 && c1<N_LABR && c2>=0 && c2<N_LABR){
-     index = tac_labr_hist_index[c1][c2];
-     if(index>=0 && index<(int)((N_LABR)*(N_LABR-1)/2)+1){
-       tac_labr_hist[index]->Fill(tac_labr_hist[index], (int)(ptr->ecal), 1);
-     }
-     // Compton Walk matrix for calibrations
-     // First LBL gated on 1332keV, this matrix is second LBL E vs TAC
-     if(crystal_table[ptr->chan] == 1){ // Use TAC01
-       if(c1 == 0 && c2>0 && ptr->e2cal>1252 && ptr->e2cal<1412){ // LBL01 gated on 1332keV
-         tac_labr_CompWalk[c2]->Fill(tac_labr_CompWalk[c2], (int)(ptr->ecal/4), (int)ptr->e3cal, 1); // TAC01 and other LBL energy
+     ptr->q2 < MAX_DAQSIZE && ptr->q3  < MAX_DAQSIZE ){
+       c1 = crystal_table[ptr->q2]-1; // c1 runs from 0 to 7. c1 is position of first LBL in coincidence with this TAC.
+       c2 = crystal_table[ptr->q3]-1; // c2 runs from 0 to 7. c2 is position of second LBL in coincidence with this TAC.
+     } else { c1 = c2 = -1; }
+     if(c1>=0 && c1<N_LABR){
+       tac_gated_lbl[c1]->Fill(tac_gated_lbl[c1], (int)(ptr->e2cal), 1); // First LBL energy spectrum, requiring a TAC coincidence
+       if(c2>=0 && c2<N_LABR){
+         index = tac_labr_hist_index[c1][c2];
+         if(index>=0 && index<(int)((N_LABR)*(N_LABR-1)/2)+2){
+           offset = tac_lbl_combo_offset[index];
+           tac_labr_hist[index]->Fill(tac_labr_hist[index], (int)(ptr->ecal)+offset, 1);
+         }
+         // Calibrated TAC spectra
+         final_tac[crystal_table[ptr->chan]-1]->Fill(final_tac[crystal_table[ptr->chan]-1], (int)(ptr->ecal)+offset, 1);
+         final_tac_sum->Fill(final_tac_sum, (int)(ptr->ecal)+offset, 1);
+         // Compton Walk matrix for calibrations
+         // First LBL gated on 1332keV, this matrix is second LBL E vs TAC
+         if(crystal_table[ptr->chan] == 1){ // Use the First TAC (TAC01)
+           if(c1 == 0 && c2>0 && ptr->e2cal>1252 && ptr->e2cal<1412){ // LBL01 gated on 1332keV
+             tac_labr_CompWalk[c2]->Fill(tac_labr_CompWalk[c2], (int)(ptr->ecal)+offset, (int)ptr->e3cal, 1); // TAC01 and other LBL energy
+           }
+           if(c1 == 1 && c2==0 && ptr->e3cal>1252 && ptr->e3cal<1412){ // LBL02 gated on 1332keV
+             tac_labr_CompWalk[c1]->Fill(tac_labr_CompWalk[c1], (int)(ptr->ecal)+offset, (int)ptr->e2cal, 1); // TAC01 and other LBL energy
+           }
+         }
        }
-       if(c1 == 0 && c2==1 && ptr->e3cal>1252 && ptr->e3cal<1412){ // LBL02 gated on 1332keV
-         tac_labr_CompWalk[c1]->Fill(tac_labr_CompWalk[c1], (int)(ptr->ecal/4), (int)ptr->e2cal, 1); // TAC01 and other LBL energy
-       }
-     }
-   } break;
+     } break;
    case SUBSYS_DESCANT: break;
    case SUBSYS_DESWALL: // DESCANT Wall
     pos  = crystal_table[chan];
@@ -1246,7 +1270,7 @@ int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
 int fill_labr_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
 {
    int lbl_tac_gate=15, tac_offset[8] = {-7300,-5585,-6804,0,-6488,-5682,-5416,0};
-   int g_aries_upper_gate=25, c1, c2, corrected_tac_value;
+   int g_aries_upper_gate=25, c1, c2, dt, corrected_tac_value;
    switch(alt->subsys){
    case SUBSYS_ARIES_A:
       if( (abs_dt >= time_diff_gate_min[SUBSYS_LABR_L][SUBSYS_ARIES_A]) && (abs_dt <= time_diff_gate_max[SUBSYS_LABR_L][SUBSYS_ARIES_A]) ){
@@ -1258,8 +1282,9 @@ int fill_labr_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
       } break;
    case SUBSYS_TAC_LABR:
       c1=crystal_table[alt->chan]-1;  // assign c1 as TAC number
-      if(c1 >= 0 && c1 < 8 ){ // 8 LBL
+      if(c1 >= 0 && c1 < N_TACS ){ // 8 LBL + 1 ZDS + 4 ARIES
          dt_tacs_hist[c1]->Fill(dt_tacs_hist[c1], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+         tac_lbl_ts_diff[c1]->Fill(tac_lbl_ts_diff[c1], (int)((alt->ts-ptr->ts)+DT_SPEC_LENGTH/2), 1);
          if(((abs_dt >= time_diff_gate_min[SUBSYS_LABR_L][SUBSYS_TAC_LABR]) && (abs_dt <= time_diff_gate_max[SUBSYS_LABR_L][SUBSYS_TAC_LABR])) && c1 == 8){ // labr-tac with the ARIES TAC
             c2 = crystal_table[ptr->chan] - 1; // assign c2 as LBL number
             if(c2 >= 0 && c2 < 8 ){ // 8 LBL detectors
@@ -1276,6 +1301,16 @@ int fill_labr_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
             }
          }
       } break;
+   case SUBSYS_TAC_ZDS:
+      c1=crystal_table[alt->chan]-1;  // assign c1 as TAC number
+      if(c1 >= 0 && c1 < N_TACS ){ // 8 LBL + 1 ZDS + 4 ARIES
+         tac_lbl_ts_diff[c1]->Fill(tac_lbl_ts_diff[c1], (int)((alt->ts-ptr->ts)+DT_SPEC_LENGTH/2), 1);
+       } break;
+    case SUBSYS_TAC_ART:
+       c1=crystal_table[alt->chan]-1;  // assign c1 as TAC number
+       if(c1 >= 0 && c1 < N_TACS ){ // 8 LBL + 1 ZDS + 4 ARIES
+          tac_lbl_ts_diff[c1]->Fill(tac_lbl_ts_diff[c1], (int)((alt->ts-ptr->ts)+DT_SPEC_LENGTH/2), 1);
+        } break;
    }
    return(0);
 }

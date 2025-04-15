@@ -62,6 +62,7 @@ static char subsys_name[MAX_SUBSYS][STRING_LEN] = {
 #define MULT_SPEC_LENGTH         128
 #define E_SPECLEN               8192
 #define E_TAC_SPECLEN          16384
+#define ECAL_TAC_SPECLEN        1024
 #define E_TOF_SPEC_LENGTH       8192
 #define E_PSD_SPEC_LENGTH       1024
 #define E_2D_TOF_SPECLEN        1024
@@ -184,6 +185,7 @@ TH2I  *ge_PU2_e2_v_k_gated1408[N_HPGE]; // Ge e2 vs k2 for fixed e1 energy gates
 // a 1d time-difference and a 2d ecal-vs-ecal matrix
 TH2I *subsys_e_vs_e[MAX_SUBSYS][MAX_SUBSYS];
 TH1I *subsys_dt[MAX_SUBSYS][MAX_SUBSYS];
+TH1I *tac_lbl_ts_diff[N_TACS];
 
 // HPGe (ge_sum is sum of crystal energies, ge_sum_b is beta-gated)
 TH1I  *ge_ab_e[N_CLOVER], *ge_sum_ab;
@@ -213,6 +215,8 @@ TH1I *tac_labr_hist[(int)((N_LABR)*(N_LABR-1)/2)+1]; // this index numbers are t
                                                // One additional histogram (2_1) needed for Compton Walk corrections
 TH2I *tac_labr_CompWalk[N_LABR];         // First LBL gated on 1332keV, this matrix is second LBL E vs TAC
 int tac_labr_hist_index[N_LABR][N_LABR]; // index for filling tac_labr_hist from LBL id numbers
+TH1I *tac_gated_lbl[N_LABR];             // TAC-gated LBL energy spectrum to check anode threshold in analogue CFD
+TH1I *final_tac[N_TACS], *final_tac_sum; // Final TAC spectra after all calibration and alignment
 TH1I *tac_aries_lbl[N_LABR];             // this index number is the LaBr position number
 TH1I *tac_aries_art[N_ARIES];            // this index number is the Aries position number
 TH1I *tac_aries_lbl_sum;                 // ARIES TAC sum spectrum of all LBLs
@@ -252,3 +256,50 @@ TH2I  *gg_angcor_110[N_GE_ANG_CORR];
 TH2I  *gg_angcor_145[N_GE_ANG_CORR];
 TH2I  *ge_art_angcor[N_GRG_ART_ANG_CORR];
 TH2I  *dsw_angcor[N_DSW_DSW_ANG_CORR];
+
+////////////////////////////////////
+////////////////////////////////////
+// TAC coincidence combination offsets.
+// These should not be here, they are a calibration and should be settable by the user.
+/*
+int tac_lbl_combo_offset[N_LABR][N_LABR] = {
+{  0, 88,112, 93,121,130,130, -62},  // 0
+{  0,122,-41,-56,-26,-18,-19,   9},
+{  0,  0,  0, -7, 24, 26, 34, -29},
+{  0,  0,  0,  0, -1,  6, 15,  17},
+{  0,  0,  0,  0,  0, 24, 29,   5},
+{  0,  0,  0,  0,  0,  0, 15, -10},
+{  0,  0,  0,  0,  0,  0,  0, 250},
+{  0,  0,  0,  0,  0,  0,  0,   0}};
+*/
+int tac_lbl_combo_offset[(int)((N_LABR)*(N_LABR-1)/2)+2] = {
+  0,-805,
+-880,
+-1070,
+-790,
+-700,
+-700,
+-2620,
+-2410,
+-2560,
+-2260,
+-2180,
+-2190,
+-1910,
+-2070,
+-1760,
+-1740,
+-1660,
+-2290,
+-2010,
+-1940,
+-1850,
+-1830,
+-1760,
+-1710,
+-1950,
+-1850,
+-2100,
+-1120,
+-780
+};
