@@ -272,6 +272,18 @@ int tac_lbl_combo_offset[N_LABR][N_LABR] = {
 {  0,  0,  0,  0,  0,  0,  0, 250},
 {  0,  0,  0,  0,  0,  0,  0,   0}};
 */
+
+// These are the offsets for aligning the TAC calibrated energy based on the two LaBr3 energies in coincidence
+// 30 values
+// They are set from Globals
+int tac_lbl_combo_offset[(int)((N_LABR)*(N_LABR-1)/2)+2] = {
+0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0,
+0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0
+};
+/*
+int tac_lbl_combo_offset[(int)((N_LABR)*(N_LABR-1)/2)+2] = {-661,-944,-731,-898,-652,-569,-570,-2319,-2123,-2259,-2001,-1924,-1929,-1621,-1762,-1484,-1464,-1396,-1987,-1740,-1675,-1604,-1568,-1498,-1463,-1667,-1575,-1814,-660};
+*/
+/*
 int tac_lbl_combo_offset[(int)((N_LABR)*(N_LABR-1)/2)+2] = {
   0,
   -1120,
@@ -304,3 +316,4 @@ int tac_lbl_combo_offset[(int)((N_LABR)*(N_LABR-1)/2)+2] = {
 -805,
 -780
 };
+*/

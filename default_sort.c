@@ -30,7 +30,7 @@ static int subsys_initialized[MAX_SUBSYS];
 extern Grif_event grif_event[MAX_COINC_EVENTS];
 
 // Default sort function declarations
-extern int init_time_diff_gates(Config *cfg);
+extern int init_parameters_from_globals(Config *cfg);
 extern int init_chan_histos(Config *cfg);
 extern int init_histos(Config *cfg, int subsystem);
 extern int fill_chan_histos(Grif_event *ptr);
@@ -79,7 +79,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
        }
      }
 
-   init_time_diff_gates(cfg);
+   init_parameters_from_globals(cfg);
    init_chan_histos(cfg);
    init_histos(cfg, SUBSYS_HPGE_A); // always create Ge histos
 
@@ -95,8 +95,12 @@ int GetIDfromAddress(unsigned short addr){ // address must be an unsigned short
   return(address_chan[addr]);
 }
 
-int init_time_diff_gates(Config *cfg){
-  int i,j,k;
+int init_parameters_from_globals(Config *cfg){
+  // Here set parameters from the Globals
+  // time-difference conditions for subsys-subsys coincidences
+  // PRESORT time-difference Conditions
+  // TAC energy offset parameters based on each LBL-LBL combination
+  int i,j,k,c1,c2,index;
   Global *global;
   char tmp[32];
   const char *ptr;
@@ -144,6 +148,18 @@ int init_time_diff_gates(Config *cfg){
             }
           } break;
         }
+      }
+    }else if(strncmp(tmp,"TAC-Offset-",11) == 0){
+      // TAC energy offset parameters based on each LBL-LBL combination
+      // Only use the maximum value, ignore the minimum
+      // Derive the index from the name
+      sscanf(tmp,"TAC-Offset-%02d-%02d",&c1,&c2);
+      c1--; c2--;
+      if(c1>=0 && c1<N_LABR && c2>=0 && c2<N_LABR){
+        index = tac_labr_hist_index[c1][c2];
+        tac_lbl_combo_offset[index] = global->max;
+      }else{
+        fprintf(stderr,"Problem decoding TAC Offset from Global, %s\n",tmp);
       }
     }else if(strncmp(tmp,"presort_time_diff_addback",25) == 0){
       addback_window_min = global->min; addback_window_max = global->max;
@@ -902,12 +918,12 @@ int init_histos(Config *cfg, int subsystem)
          for(j=(i+1); j<N_LABR; j++){
             tac_labr_hist_index[i][j] = k;
             sprintf(tmp,"TAC_%02d_%02d", i, j);
-            tac_labr_hist[k++] = H1_BOOK(cfg, tmp, tmp, ECAL_TAC_SPECLEN, 0, ECAL_TAC_SPECLEN);
+            tac_labr_hist[k++] = H1_BOOK(cfg, tmp, tmp, E_TAC_SPECLEN, 0, E_TAC_SPECLEN);
          }
       }
       sprintf(tmp,"TAC_%02d_%02d", 1, 0); // Add additional histogram (2_1) needed for Compton Walk corrections
       tac_labr_hist_index[1][0] = k;
-      tac_labr_hist[k] = H1_BOOK(cfg, tmp, tmp, ECAL_TAC_SPECLEN, 0, ECAL_TAC_SPECLEN);
+      tac_labr_hist[k] = H1_BOOK(cfg, tmp, tmp, E_TAC_SPECLEN, 0, E_TAC_SPECLEN);
       close_folder(cfg);
       close_folder(cfg);
    }
