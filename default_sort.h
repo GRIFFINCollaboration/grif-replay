@@ -37,12 +37,12 @@ static char subsys_handle[MAX_SUBSYS][8] = {
   "",     "",     "",     "UNK"
 };
 static char subsys_name[MAX_SUBSYS][STRING_LEN] = {
-   "Griffin", "PACES",   "LaBrX",   "RCMP",     //  0- 3
-   "ARIES",   "ZDSA",    "TAC_LBL",   "LaBrS",    //  4- 7
-   "BGO",     "Sceptar", "Descant", "DES_WALL", //  8-11
-   "Des_Ancil", "Ignore1", "Ignore2", "Ignore3",  // 12-15
-   "Grif_B",  "ARS_B",   "ZDS_B",   "TAC_ZDS",      // 16-19
-   "TAC_ART",      "",        "",        "Unknown"   // 20-23
+  "Griffin", "PACES",   "LaBrX",   "RCMP",     //  0- 3
+  "ARIES",   "ZDSA",    "TAC_LBL",   "LaBrS",    //  4- 7
+  "BGO",     "Sceptar", "Descant", "DES_WALL", //  8-11
+  "Des_Ancil", "Ignore1", "Ignore2", "Ignore3",  // 12-15
+  "Grif_B",  "ARS_B",   "ZDS_B",   "TAC_ZDS",      // 16-19
+  "TAC_ART",      "",        "",        "Unknown"   // 20-23
 }; // final entry will be used if not found - make sure it is not empty
 // #####################################################################
 
@@ -89,7 +89,7 @@ TH1I    *e_hist[MAX_DAQSIZE];
 #define N_HITPAT  7
 char hit_handles[N_HITPAT][32]={ "q_hit","e_hit","t_hit","w_hit","r_hit", "s_hit", "d_hit" };
 char   hit_names[N_HITPAT][32]={
-   "Pulse_Height", "Energy", "Time", "Waveform", "Rate", "Subsys", "DetType",
+  "Pulse_Height", "Energy", "Time", "Waveform", "Rate", "Subsys", "DetType",
 };
 TH1I  *hit_hist[N_HITPAT], *mult_hist[MAX_SUBSYS];
 
@@ -212,7 +212,8 @@ TH2I  *desw_psd_e, *desw_psd_tof;           // PSD vs energies or corrected-TOF
 
 // TAC spectra
 TH1I *tac_labr_hist[(int)((N_LABR)*(N_LABR-1)/2)+2]; // this index numbers are the LaBr-LaBr position numbers
-                                               // One additional histogram (2_1) needed for Compton Walk corrections
+TH1I *tac_labr_hist_uncal[(int)((N_LABR)*(N_LABR-1)/2)+2]; // this index numbers are the LaBr-LaBr position numbers
+// One additional histogram (2_1) needed for Compton Walk corrections
 TH2I *tac_labr_CompWalk[N_LABR];         // First LBL gated on 1332keV, this matrix is second LBL E vs TAC
 int tac_labr_hist_index[N_LABR][N_LABR]; // index for filling tac_labr_hist from LBL id numbers
 TH1I *tac_gated_lbl[N_LABR];             // TAC-gated LBL energy spectrum to check anode threshold in analogue CFD
@@ -232,88 +233,49 @@ TH2I *labr_tac_xtal, *paces_xtal, *aries_xtal, *art_tac_xtal, *desw_e_xtal, *des
 
 #define N_DT 27   // Time difference
 char dt_handles[N_DT][HANDLE_LENGTH]={
-   "dt_ge_ge",      "dt_ge_bgo",     "dt_ge_sep",             "dt_ge_zds",     // 0-3
-   "dt_ge_pac",     "dt_ge_labr",    "dt_ge_rcmp",            "dt_pac_zds",    // 4-7
-   "dt_pac_labr",   "dt_rcmp_rcmp",  "dt_ge_art",             "dt_labr_art",   // 8-11
-   "dt_paces_art",  "dt_art_art",    "dt_art_tac",            "dt_zds_tac",    // 12-15
-   "dt_labr_tac",   "dt_labr_zds",   "dt_dsw_dsw",            "dt_dsw_ge",     // 16-19
-   "dt_dsw_art",    "dt_dsw_zds",    "dt_zds_GRIF_CAEN_10ns", "dt_zds_GRIF_CAEN_2ns", // 20-23
-   "dt_dsw_dsw_2ns","dt_dsw_zds_2ns", "dt_labr_labr"  };                                      // 24-26
-TH1I  *dt_hist[N_DT], *dt_tacs_hist[N_TACS];
+  "dt_ge_ge",      "dt_ge_bgo",     "dt_ge_sep",             "dt_ge_zds",     // 0-3
+  "dt_ge_pac",     "dt_ge_labr",    "dt_ge_rcmp",            "dt_pac_zds",    // 4-7
+  "dt_pac_labr",   "dt_rcmp_rcmp",  "dt_ge_art",             "dt_labr_art",   // 8-11
+  "dt_paces_art",  "dt_art_art",    "dt_art_tac",            "dt_zds_tac",    // 12-15
+  "dt_labr_tac",   "dt_labr_zds",   "dt_dsw_dsw",            "dt_dsw_ge",     // 16-19
+  "dt_dsw_art",    "dt_dsw_zds",    "dt_zds_GRIF_CAEN_10ns", "dt_zds_GRIF_CAEN_2ns", // 20-23
+  "dt_dsw_dsw_2ns","dt_dsw_zds_2ns", "dt_labr_labr"  };                                      // 24-26
+  TH1I  *dt_hist[N_DT], *dt_tacs_hist[N_TACS];
 
-// 2D hitpatterns
-TH2I *gg_hit, *bgobgo_hit, *aa_hit, *gea_hit, *lba_hit, *dsw_hit;
+  // 2D hitpatterns
+  TH2I *gg_hit, *bgobgo_hit, *aa_hit, *gea_hit, *lba_hit, *dsw_hit;
 
-// 2d Energy vs Energy Coincidence matrices
-TH2I *gg, *gg_ab, *gg_opp, *ge_paces, *ge_labr, *ge_rcmp, *labr_labr, *labr_zds, *labr_rcmp;
-TH2I *ge_art, *ge_zds, *paces_art, *labr_art, *art_art, *dsw_dsw, *ge_dsw, *art_dsw;
+  // 2d Energy vs Energy Coincidence matrices
+  TH2I *gg, *gg_ab, *gg_opp, *ge_paces, *ge_labr, *ge_rcmp, *labr_labr, *labr_zds, *labr_rcmp;
+  TH2I *ge_art, *ge_zds, *paces_art, *labr_art, *art_art, *dsw_dsw, *ge_dsw, *art_dsw;
 
-// Angular Correlation histograms
-#define N_GE_ANG_CORR       52
-#define N_GRG_ART_ANG_CORR 114
-#define N_DSW_DSW_ANG_CORR  42
-TH2I  *gg_angcor_110[N_GE_ANG_CORR];
-TH2I  *gg_angcor_145[N_GE_ANG_CORR];
-TH2I  *ge_art_angcor[N_GRG_ART_ANG_CORR];
-TH2I  *dsw_angcor[N_DSW_DSW_ANG_CORR];
+  // Angular Correlation histograms
+  #define N_GE_ANG_CORR       52
+  #define N_GRG_ART_ANG_CORR 114
+  #define N_DSW_DSW_ANG_CORR  42
+  TH2I  *gg_angcor_110[N_GE_ANG_CORR];
+  TH2I  *gg_angcor_145[N_GE_ANG_CORR];
+  TH2I  *ge_art_angcor[N_GRG_ART_ANG_CORR];
+  TH2I  *dsw_angcor[N_DSW_DSW_ANG_CORR];
 
-////////////////////////////////////
-////////////////////////////////////
-// TAC coincidence combination offsets.
-// These should not be here, they are a calibration and should be settable by the user.
-/*
-int tac_lbl_combo_offset[N_LABR][N_LABR] = {
-{  0, 88,112, 93,121,130,130, -62},  // 0
-{  0,122,-41,-56,-26,-18,-19,   9},
-{  0,  0,  0, -7, 24, 26, 34, -29},
-{  0,  0,  0,  0, -1,  6, 15,  17},
-{  0,  0,  0,  0,  0, 24, 29,   5},
-{  0,  0,  0,  0,  0,  0, 15, -10},
-{  0,  0,  0,  0,  0,  0,  0, 250},
-{  0,  0,  0,  0,  0,  0,  0,   0}};
-*/
+  ////////////////////////////////////
+  ////////////////////////////////////
 
-// These are the offsets for aligning the TAC calibrated energy based on the two LaBr3 energies in coincidence
-// 30 values
-// They are set from Globals
-int tac_lbl_combo_offset[(int)((N_LABR)*(N_LABR-1)/2)+2] = {
-0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0,
-0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0
-};
-/*
-int tac_lbl_combo_offset[(int)((N_LABR)*(N_LABR-1)/2)+2] = {-661,-944,-731,-898,-652,-569,-570,-2319,-2123,-2259,-2001,-1924,-1929,-1621,-1762,-1484,-1464,-1396,-1987,-1740,-1675,-1604,-1568,-1498,-1463,-1667,-1575,-1814,-660};
-*/
-/*
-int tac_lbl_combo_offset[(int)((N_LABR)*(N_LABR-1)/2)+2] = {
-  0,
-  -1120,
--880,
--1070,
--790,
--700,
--700,
--2620,
--2410,
--2560,
--2260,
--2180,
--2190,
--1910,
--2070,
--1760,
--1740,
--1660,
--2290,
--2010,
--1940,
--1850,
--1830,
--1760,
--1710,
--1950,
--1850,
--2100,
--805,
--780
-};
-*/
+  // LBT (TAC) timestamp offset values.
+  // These are subtracted in the apply_gains function
+  //int tac_ts_offset[12] = {60,60,60,60,60,60,60,60,60,60,60,60}; // From Dec 2024
+  //  int tac_ts_offset[12] = { 54, 64,406,137, 77,404,114,158, 0, 0, 0, 0}; // S2231_S2196_Nov2024
+  // int tac_ts_offset[12] = {134, 48, 74, 59, 48,400,395,  0, 0, 0, 0, 0}; // S1723, Aug 2021
+  int tac_ts_offset[12] = {60,60,60,60,60,60,60,60,60,60,60,60}; // Default 60 for Dec 2024 onwards. Set as Globals otherwise
+
+
+  // TAC coincidence combination offsets.
+  // These should not be here, they are a calibration and should be settable by the user.
+
+  // These are the offsets for aligning the TAC calibrated energy based on the two LaBr3 energies in coincidence
+  // 30 values
+  // They are set from Globals
+  int tac_lbl_combo_offset[(int)((N_LABR)*(N_LABR-1)/2)+2] = {
+    0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0,
+    0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0
+  };

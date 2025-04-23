@@ -161,6 +161,16 @@ int init_parameters_from_globals(Config *cfg){
       }else{
         fprintf(stderr,"Problem decoding TAC Offset from Global, %s\n",tmp);
       }
+    }else if(strncmp(tmp,"Timestamp-offset-LBT",20) == 0){
+      // LBT timestamp offset value
+      // Derive the index from the name
+      sscanf(tmp,"Timestamp-offset-LBT%02d",&c1);
+      c1--;
+      if(c1>=0 && c1<N_TACS){
+        tac_ts_offset[c1] = global->max;
+      }else{
+        fprintf(stderr,"Problem decoding LBT timestamp offset from Global, %s\n",tmp);
+      }
     }else if(strncmp(tmp,"presort_time_diff_addback",25) == 0){
       addback_window_min = global->min; addback_window_max = global->max;
     }else if(strncmp(tmp,"presort_time_diff_zds_tac",25) == 0){
@@ -184,11 +194,9 @@ int init_parameters_from_globals(Config *cfg){
 // before any presort/singles/coinc-sorting
 int apply_gains(Grif_event *ptr)
 {
-  //int tac_ts_offset[12] = {60,60,60,60,60,60,60,60,60,60,60,60}; // From Dec 2024
-    int tac_ts_offset[12] = {54,64,406,137,77,404,114,158,0,0,0,0}; // S2231_S2196_Nov2024
-  int caen_ts_offset = -60; // this value (-60) aligns the timestamps of HPGe with ZDS(CAEN)
-   float energy,psd;
-   int chan = ptr->chan;
+    int caen_ts_offset = -60; // this value (-60) aligns the timestamps of HPGe with ZDS(CAEN)
+    float energy,psd;
+    int chan = ptr->chan;
 
     // Protect against invalid channel numbers
     if( chan < 0 || chan >= odb_daqsize ){
@@ -235,7 +243,7 @@ int apply_gains(Grif_event *ptr)
    // The TAC module produces its output signal around 2 microseconds later
    // than the start and stop detector signals are processed.
    if( ptr->subsys == SUBSYS_TAC_LABR || ptr->subsys == SUBSYS_TAC_ZDS || ptr->subsys == SUBSYS_TAC_ART){
-    ptr->ts -= tac_ts_offset[crystal_table[ptr->chan]-1]; // Subtract 2 microseconds from TAC timestamps plus a more precise offset
+    ptr->ts -= tac_ts_offset[crystal_table[ptr->chan]-1]; // Subtract some amount from TAC timestamps
    }
 
 
@@ -924,6 +932,16 @@ int init_histos(Config *cfg, int subsystem)
       sprintf(tmp,"TAC_%02d_%02d", 1, 0); // Add additional histogram (2_1) needed for Compton Walk corrections
       tac_labr_hist_index[1][0] = k;
       tac_labr_hist[k] = H1_BOOK(cfg, tmp, tmp, E_TAC_SPECLEN, 0, E_TAC_SPECLEN);
+      // and the uncalibrated versions
+      k=0;
+      for(i=0; i<N_LABR; i++){
+         for(j=(i+1); j<N_LABR; j++){
+            sprintf(tmp,"uncalibrated_TAC_%02d_%02d", i, j);
+            tac_labr_hist_uncal[k++] = H1_BOOK(cfg, tmp, tmp, E_TAC_SPECLEN, 0, E_TAC_SPECLEN);
+         }
+      }
+      sprintf(tmp,"uncalibrated_TAC_%02d_%02d", 1, 0); // Add additional histogram (2_1) needed for Compton Walk corrections
+      tac_labr_hist_uncal[k] = H1_BOOK(cfg, tmp, tmp, E_TAC_SPECLEN, 0, E_TAC_SPECLEN);
       close_folder(cfg);
       close_folder(cfg);
    }
@@ -1130,6 +1148,7 @@ int fill_singles_histos(Grif_event *ptr)
          if(index>=0 && index<(int)((N_LABR)*(N_LABR-1)/2)+2){
            offset = tac_lbl_combo_offset[index];
            tac_labr_hist[index]->Fill(tac_labr_hist[index], (int)(ptr->ecal)+offset, 1);
+           tac_labr_hist_uncal[index]->Fill(tac_labr_hist_uncal[index], (int)(ptr->energy), 1);
          }
          // Calibrated TAC spectra
          final_tac[crystal_table[ptr->chan]-1]->Fill(final_tac[crystal_table[ptr->chan]-1], (int)(ptr->ecal)+offset, 1);
