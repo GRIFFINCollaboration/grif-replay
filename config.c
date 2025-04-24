@@ -2034,7 +2034,7 @@ int set_calibration(Config *cfg, int num, char url_args[][STRING_LEN], int fd)
    for(i=0; i<7; i++){
      puk1[i] = puk2[i] = puE1[i] = -1;
    }
-   
+
    if(num<3){
       sprintf(tmp,"set_calibration: expected more arguments\n");
       send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);

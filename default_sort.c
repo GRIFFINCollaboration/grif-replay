@@ -1493,12 +1493,14 @@ int fill_coinc_histos(int win_idx, int frag_idx)
 #define ODBHANDLE_XXX  11
 #define ODBHANDLE_DSW  12
 #define ODBHANDLE_DSG  13
+#define ODBHANDLE_DAL  14
+#define ODBHANDLE_DAT  15
 #define ODBHANDLE_UNK  23
 static char odb_handle[MAX_ODB_SUBSYS][8] = {
    "GRG", "GRS", "SEP", "PAC",  //  0- 3
    "LBS", "LBT", "LBL", "DSC",  //  4- 7
    "ART", "ZDS", "RCS", "XXX",  //  8-11
-   "DSW", "DSG",    "",    "",
+   "DSW", "DSG", "DAL", "DAT",  //  12-15
    "",    "",    "",    "",
    "",    "",    "",    "UNK"
 };
@@ -1681,6 +1683,7 @@ int gen_derived_odb_tables()
       switch(subsys){
       case ODBHANDLE_LBL: case ODBHANDLE_LBS: // LaBr,Paces, Ares and Zds
       case ODBHANDLE_LBT: case ODBHANDLE_ART:
+      case ODBHANDLE_DAL: case ODBHANDLE_DAT:
       case ODBHANDLE_PAC: case ODBHANDLE_ZDS: case ODBHANDLE_DSW:
          crystal_table[i] = pos;
          if(        crystal == 'A' ){ element_table[i] = 1;
@@ -1715,6 +1718,7 @@ int gen_derived_odb_tables()
       case ODBHANDLE_PAC: subsys_table[i] = SUBSYS_PACES;     break;
       case ODBHANDLE_LBS: subsys_table[i] = SUBSYS_LABR_BGO;  break;
       case ODBHANDLE_LBL: subsys_table[i] = SUBSYS_LABR_L;    break;
+      case ODBHANDLE_DAL: subsys_table[i] = SUBSYS_LABR_L;    break;
       case ODBHANDLE_DSC: subsys_table[i] = SUBSYS_DESCANT;   break;
       case ODBHANDLE_RCS: subsys_table[i] = SUBSYS_RCMP;      break;
       case ODBHANDLE_DSW: subsys_table[i] = SUBSYS_DESWALL;  break;
@@ -1724,6 +1728,9 @@ int gen_derived_odb_tables()
       case ODBHANDLE_ART: subsys_table[i] = (polarity_table[i] == 1) ? SUBSYS_ARIES_A:SUBSYS_ARIES_B;break;
       case ODBHANDLE_XXX: subsys_table[i] = SUBSYS_IGNORE;    break;
       case ODBHANDLE_UNK: subsys_table[i] = SUBSYS_UNKNOWN;   break;
+      case ODBHANDLE_DAT: if(crystal_table[i]<8){ subsys_table[i] = SUBSYS_TAC_LABR;
+                          }else{ subsys_table[i] = SUBSYS_TAC_ZDS; }
+                          break;
       case ODBHANDLE_LBT: if(crystal_table[i]<8){ subsys_table[i] = SUBSYS_TAC_LABR;
                           }else if(crystal_table[i]>8){ subsys_table[i] = SUBSYS_TAC_ART;
                           }else{ subsys_table[i] = SUBSYS_TAC_ZDS; }
