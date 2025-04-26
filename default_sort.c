@@ -194,70 +194,67 @@ int init_parameters_from_globals(Config *cfg){
 // before any presort/singles/coinc-sorting
 int apply_gains(Grif_event *ptr)
 {
-    int caen_ts_offset = -60; // this value (-60) aligns the timestamps of HPGe with ZDS(CAEN)
-    float energy,psd;
-    int chan = ptr->chan;
+  int caen_ts_offset = -60; // this value (-60) aligns the timestamps of HPGe with ZDS(CAEN)
+  float energy,psd;
+  int chan = ptr->chan;
 
-    // Protect against invalid channel numbers
-    if( chan < 0 || chan >= odb_daqsize ){
-       fprintf(stderr,"unpack_event: ignored event in chan:%d [0x%04x]\n", chan, ptr->address );
-       return(-1);
+  // Protect against invalid channel numbers
+  if( chan < 0 || chan >= odb_daqsize ){
+    fprintf(stderr,"unpack_event: ignored event in chan:%d [0x%04x]\n", chan, ptr->address );
+    return(-1);
+  }
+
+  // Calculate the energy and calibrated energies
+  ptr->energy = energy = ( ptr->integ == 0 ) ? ptr->q : spread(ptr->q)/ptr->integ;
+  ptr->ecal=ptr->esum = offsets[chan]+energy*(gains[chan]+energy*quads[chan]);
+
+  // NOBODY CURRENTLY USES e2,e3,e4 ...
+  if( ptr->integ2 != 0 ){
+    energy = ptr->energy2 = spread(ptr->q2)/ptr->integ2;
+    ptr->e2cal = offsets[chan]+energy*(gains[chan]+energy*quads[chan]);
+  }
+  if( ptr->integ3 != 0 ){
+    energy = ptr->energy3 = spread(ptr->q3)/ptr->integ3;
+    ptr->e3cal = offsets[chan]+energy*(gains[chan]+energy*quads[chan]);
+  }
+  if( ptr->integ4 != 0 ){
+    energy = ptr->energy4 = spread(ptr->q4)/ptr->integ4;
+    ptr->e4cal = offsets[chan]+energy*(gains[chan]+energy*quads[chan]);
+  }
+
+  // Assign the subsys type
+  if( (ptr->subsys = subsys_table[chan]) == -1 ){ return(-1); }
+  if( subsys_initialized[ptr->subsys] == 0 ){
+    //init_histos(configs[1], ptr->subsys);
+    init_histos(NULL, ptr->subsys);
+  }
+
+  // HPGe pileup
+  if( ptr->subsys == SUBSYS_HPGE_A){
+    ptr->psd = 14; // Pileup class - default value of 12 for all HPGe events
+    if(ptr->pileup==1 && ptr->nhit ==1){
+      // Single hit events
+      // no pileup, this is the most common type of HPGe event
+      ptr->psd = 1; // Pileup class, default for single hit events
     }
+  }
 
-   // Calculate the energy and calibrated energies
-   ptr->energy = energy = ( ptr->integ == 0 ) ? ptr->q : spread(ptr->q)/ptr->integ;
-   ptr->ecal=ptr->esum = offsets[chan]+energy*(gains[chan]+energy*quads[chan]);
-
-      // NOBODY CURRENTLY USES e2,e3,e4 ...
-      if( ptr->integ2 != 0 ){
-         energy = ptr->energy2 = spread(ptr->q2)/ptr->integ2;
-         ptr->e2cal = offsets[chan]+energy*(gains[chan]+energy*quads[chan]);
-      }
-      if( ptr->integ3 != 0 ){
-         energy = ptr->energy3 = spread(ptr->q3)/ptr->integ3;
-         ptr->e3cal = offsets[chan]+energy*(gains[chan]+energy*quads[chan]);
-      }
-      if( ptr->integ4 != 0 ){
-         energy = ptr->energy4 = spread(ptr->q4)/ptr->integ4;
-         ptr->e4cal = offsets[chan]+energy*(gains[chan]+energy*quads[chan]);
-      }
-
-      // Assign the subsys type
-         if( (ptr->subsys = subsys_table[chan]) == -1 ){ return(-1); }
-         if( subsys_initialized[ptr->subsys] == 0 ){
-            //init_histos(configs[1], ptr->subsys);
-	      init_histos(NULL, ptr->subsys);
-         }
-
-   // HPGe pileup
-   if( ptr->subsys == SUBSYS_HPGE_A){
-     ptr->psd = 14; // Pileup class - default value of 12 for all HPGe events
-     if(ptr->pileup==1 && ptr->nhit ==1){
-       // Single hit events
-       // no pileup, this is the most common type of HPGe event
-       ptr->psd = 1; // Pileup class, default for single hit events
-     }
-   }
-
-
-   // The TAC module produces its output signal around 2 microseconds later
-   // than the start and stop detector signals are processed.
-   if( ptr->subsys == SUBSYS_TAC_LABR || ptr->subsys == SUBSYS_TAC_ZDS || ptr->subsys == SUBSYS_TAC_ART){
+  // The TAC module produces its output signal around 2 microseconds later
+  // than the start and stop detector signals are processed.
+  if( ptr->subsys == SUBSYS_TAC_LABR || ptr->subsys == SUBSYS_TAC_ZDS || ptr->subsys == SUBSYS_TAC_ART){
     ptr->ts -= tac_ts_offset[crystal_table[ptr->chan]-1]; // Subtract some amount from TAC timestamps
-   }
+  }
 
+  // DESCANT detectors
+  // use psd for Pulse Shape Discrimination provides a distinction between neutron and gamma events
+  //if( ptr->subsys == SUBSYS_DESCANT || ptr->subsys == SUBSYS_DESWALL){
+  if( ptr->subsys == SUBSYS_DESWALL){
+    //ptr->ts -= caen_ts_offset; // Subtract from CAEN timestamps to align coincidences
+    psd = ( ptr->q != 0 ) ? (spread(ptr->cc_short) / ptr->q) : 0;
+    ptr->psd = (int)(psd*1000.0); // psd = long integration divided by short integration
+  }
 
-   // DESCANT detectors
-   // use psd for Pulse Shape Discrimination provides a distinction between neutron and gamma events
-   //if( ptr->subsys == SUBSYS_DESCANT || ptr->subsys == SUBSYS_DESWALL){
-   if( ptr->subsys == SUBSYS_DESWALL){
-     //ptr->ts -= caen_ts_offset; // Subtract from CAEN timestamps to align coincidences
-     psd = ( ptr->q != 0 ) ? (spread(ptr->cc_short) / ptr->q) : 0;
-     ptr->psd = (int)(psd*1000.0); // psd = long integration divided by short integration
-   }
-
-
-   return(0);
+  return(0);
 }
 
 int default_sort(int win_idx, int frag_idx, int flag)
@@ -852,8 +849,9 @@ close_folder(cfg);
    {NULL,                   "Fast-Timing/TAC-Gated-LBL-Energy", ""},
    {(void **) tac_gated_lbl,"TAC_gated_LBL%02d",           "", SUBSYS_TAC_LABR, E_SPECLEN, 0, N_LABR },
    {NULL,                   "Fast-Timing/Calibrated-TACs", ""},
-   {(void **)&final_tac_sum,    "Calibrated-TAC-Sum",      "", SUBSYS_TAC_LABR, E_SPECLEN },
+   {(void **)&final_tac_sum,"Calibrated-TAC-Sum",          "", SUBSYS_TAC_LABR, E_SPECLEN },
    {(void **) final_tac,    "Calibrated-TAC%02d",          "", SUBSYS_TAC_LABR, E_SPECLEN, 0, N_LABR },
+   {(void **)&lbl_lbl_tac,  "LBL-LBL_vs_TAC",              "", SUBSYS_TAC_LABR, E_3D_TAC_SPECLEN, E_3D_LBL_SPECLEN},
    {NULL,                   "Fast-Timing/ART_TACs",        ""},
    {(void **)&tac_aries_lbl_sum, "TAC_ART_LBL_LBLSUM",     "", SUBSYS_ARIES_A, E_TAC_SPECLEN  },
    {(void **)&tac_aries_art_sum, "TAC_ART_LBL_ARTSUM",     "", SUBSYS_ARIES_A, E_TAC_SPECLEN  },
@@ -985,7 +983,7 @@ int init_histos(Config *cfg, int subsystem)
 
 int fill_singles_histos(Grif_event *ptr)
 {
-  int i, j, dt, pu, nhits, chan, pos, sys, elem, clover, c1,c2, index, offset;
+  int i, j, dt, pu, nhits, chan, pos, sys, elem, clover, c1,c2, index, offset,bin;
   char *name, c;
   long ts;
 
@@ -1153,6 +1151,14 @@ int fill_singles_histos(Grif_event *ptr)
          // Calibrated TAC spectra
          final_tac[crystal_table[ptr->chan]-1]->Fill(final_tac[crystal_table[ptr->chan]-1], (int)(ptr->ecal)+offset, 1);
          final_tac_sum->Fill(final_tac_sum, (int)(ptr->ecal)+offset, 1);
+
+         // A 3d histogram of first LBL energy vs second LBL energy vs TAC
+         // lbl_lbl_tac->Fill(lbl_lbl_tac, (int)((ptr->e2cal/10)*(ptr->e3cal/10)), (int)(ptr->ecal)+offset, 1); // LBL energy vs LBL energy vs TAC
+         if(ptr->e2cal>5 && ptr->e3cal>5){
+           bin = (int)(((ptr->e2cal/10)*400)+(ptr->e3cal/10));
+           lbl_lbl_tac->Fill(lbl_lbl_tac, (int)(ptr->ecal)+offset, bin, 1); // LBL energy vs LBL energy vs TAC
+         }
+
          // Compton Walk matrix for calibrations
          // First LBL gated on 1332keV, this matrix is second LBL E vs TAC
          if(crystal_table[ptr->chan] == 1){ // Use the First TAC (TAC01)

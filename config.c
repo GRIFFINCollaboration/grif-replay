@@ -3086,8 +3086,8 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
       }
       put_line(fd, "]", 1 );
     } else if( hist->type == INT_2D || hist->type == INT_2D_SYMM ){
-      xbins = hist->xbins; if( xbins > 8192 ){ xbins = 8192; }
-      ybins = hist->ybins; if( ybins > 8192 ){ ybins = 8192; }
+      xbins = hist->xbins; //if( xbins > 8192 ){ xbins = 8192; }
+      ybins = hist->ybins; //if( ybins > 8192 ){ ybins = 8192; }
       if( (hist_data = malloc( xbins*ybins*sizeof(int) )) == NULL){
          fprintf(stderr,"can't alloc memory for sending 2d histo\n");
          continue;

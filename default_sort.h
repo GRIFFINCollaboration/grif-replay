@@ -68,6 +68,8 @@ static char subsys_name[MAX_SUBSYS][STRING_LEN] = {
 #define E_2D_TOF_SPECLEN        1024
 #define E_2D_SPECLEN            4096
 #define E_2D_RCMP_SPECLEN       6400
+#define E_3D_LBL_SPECLEN      160000  // 400*400
+#define E_3D_TAC_SPECLEN        1024
 //#define T_SPEC_LENGTH     8192
 //#define WV_SPEC_LENGTH    4096
 #define DT_SPEC_LENGTH          1024
@@ -226,6 +228,7 @@ TH1I *aries_tac;                         // aries_tac gated on 1275keV peak
 TH1I *aries_tac_Egate;                   // aries_tac gated on 1275keV peak
 TH1I *aries_tac_artEn;                   // aries energy in coincidence with TAC
 TH2I *lblE_tac, *zdsE_tac, *ariesE_tac;  // lbl or zds or aries energy vs TAC
+TH2I *lbl_lbl_tac;                       // A special 3d histogram disguised as a 2d histogram
 
 // 2D Energy vs detector number
 TH2I *ge_xtal, *bgo_xtal, *bgof_xtal, *bgos_xtal, *bgob_xtal, *bgoa_xtal, *labr_xtal;

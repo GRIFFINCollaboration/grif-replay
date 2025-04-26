@@ -207,6 +207,10 @@ TH2I *H2_BOOK(Config *cfg, char *name, char *title, int xbins, int xmin, int xma
    if( (tlen=strlen(title)) >= TITLE_LENGTH  ){ tlen = TITLE_LENGTH-1; }
    if( (hlen=strlen(name))  >= HANDLE_LENGTH ){ hlen = HANDLE_LENGTH-1; }
 
+if(strncmp(title,"LBL-LBL_vs_TAC",14)==0){
+fprintf(stdout,"create %s\n",title);
+}
+
    memcpy(result->path, cfg->current_path, strlen(cfg->current_path)+1 );
    memcpy(result->handle, name, hlen+1);
    memcpy(result->title, title, tlen+1);
