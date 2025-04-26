@@ -13,6 +13,7 @@
 int send_spectrum_list(char *name, int fd);
 int send_spectrum(int num, char urlarg[][STRING_LEN], char *, int fd);
 int send_sort_status(int fd);
+int most_recent_calib_file(char *data_dir, int data_run, char *result);
 int send_datafile_list(char *path, int fd, int type);
 int send_histofile_list(char *path, int fd);
 int send_file_details(char *path, int fd);
@@ -76,7 +77,7 @@ typedef struct th2i_struct TH2I;
 
 // float has around 24bits integer precision
 struct th1i_struct {  long  file_data_offset;    int data_size;
-   int      type;  TH1I    *next;   char     path[HISTO_FOLDER_LENGTH];
+   int      type;  TH1I    *next;   char    path[HISTO_FOLDER_LENGTH];
    int     xbins;  int     ybins;   char          title[TITLE_LENGTH];
    int     *data;  int valid_bins;  char        handle[HANDLE_LENGTH];
    int underflow;  int   overflow;
@@ -147,10 +148,11 @@ extern int read_histo_data(Histogram *histo, FILE *fp);
 extern Config *add_config(char *name);
 extern int remove_config(Config *cfg);
 extern int next_condname(Config *cfg);
-extern int sum_histos(Config *cfg, int num, char url_args[][STRING_LEN], int fd);
+extern int queue_sum_histos(Config *cfg, int num, char url_args[][STRING_LEN], int fd);
 extern int set_calibration(Config *cfg, int num, char url_args[][STRING_LEN], int fd);
 extern int set_pileup_correction(Config *cfg, int num, char url_args[][STRING_LEN], int fd);
 
+extern int sum_histos(Config *cfg, Sortfile *sort);
 /////////////////////////////////////////////////////////////////////////
 /////////////////////          Gains         ////////////////////////////
 /////////////////////////////////////////////////////////////////////////

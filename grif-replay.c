@@ -32,7 +32,6 @@ int main(int argc, char *argv[])
    sort->single_thread = 0;
    pthread_create(&web_thread, NULL,(void* (*)(void*))web_main, &web_arg);
    while( !shutdown_server ){ // monitor file queue and sort any added files
-
       if( sort->current_filenum == sort->final_filenum ){ sleep(1); continue; }
       copy_config(configs[0], configs[1]); // copy config0 to cfg1 for sorting
       cfg = configs[1];

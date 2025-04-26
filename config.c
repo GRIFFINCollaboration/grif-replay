@@ -616,7 +616,7 @@ int handle_command(int fd, int narg, char url_args[][STRING_LEN])
       remove_histo(configs[0], url_args[3]);
    } else
    if( strcmp(ptr, "sumHistos") == 0 ){ /* -------------------- */
-      sum_histos(configs[0], narg, url_args, fd);
+      queue_sum_histos(configs[0], narg, url_args, fd);
    } else
    if( strcmp(ptr, "setCalibration") == 0 ){ /* -------------------- */
       set_calibration(configs[0], narg, url_args, fd);
@@ -2029,16 +2029,11 @@ int set_calibration(Config *cfg, int num, char url_args[][STRING_LEN], int fd)
    int i, address=-1, datatype=-1;
    char tmp[128];
 
-
    // Initialize values to -1
    for(i=0; i<7; i++){
      puk1[i] = puk2[i] = puE1[i] = -1;
    }
 
-   if(num<3){
-      sprintf(tmp,"set_calibration: expected more arguments\n");
-      send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
-   }
    for(i=2; i<num; i+=8){
       if( strncmp(url_args[i], "channelName", 10) != 0 ){
          sprintf(tmp,"set_calibration: expected \"channelName\" at %s\n",url_args[i]);
@@ -2098,7 +2093,6 @@ int set_calibration(Config *cfg, int num, char url_args[][STRING_LEN], int fd)
 //         fprintf(stderr,"can't read datatype: %s\n", url_args[i+11]);
 //         return(-1);
 //      }
-      send_header(fd, APP_JSON);
       edit_calibration(cfg, url_args[i+1], offset, gain, quad, puk1, puk2, puE1,
                        address, datatype, 1);
    }
@@ -2177,8 +2171,6 @@ puk1[0] = puk2[0] = 1; // set default factor as 1 not zero
 //         fprintf(stderr,"can't read datatype: %s\n", url_args[i+17]);
 //         return(-1);
 //      }
-
-    send_header(fd, APP_JSON);
     edit_calibration(cfg, url_args[i+1], offset, gain, quad, puk1, puk2, puE1, address, datatype, 1);
    }
    return(0);
@@ -2268,22 +2260,13 @@ int set_midas_param(Config *cfg, char *name, char *value)
 {
    time_t current_time = time(NULL);
    int len;
-   char clean_string[128], *tmp;
 
    if( (len=strlen(value)) >= SYS_PATH_LENGTH ){
       fprintf(stderr,"set_midas_param: value too long[%s]\n", value);
       return(-1);
-    }
-    if(        strncmp(name, "Title",   5) == 0 ){
-      sprintf(clean_string, "%s", value);
-    if( (tmp = strstr(clean_string, "\t"))>0 ){ // This illegal character cannot be handled in the browser
-      while( (tmp = strstr(clean_string, "\t"))>0 ){
-        strncpy(tmp, " ", 1); // keep the length the same, and make use of the terminating character already in clean_string
-      }
-      memcpy(cfg->midas_title, clean_string, len+1);
-    }else{
+   }
+   if(        strncmp(name, "Title",   5) == 0 ){
       memcpy(cfg->midas_title, value, len+1);
-    }
    } else if( strncmp(name, "StartTime",  9) == 0 ){
       if( sscanf(value, "%d", &cfg->midas_start_time) < 1 ){
          fprintf(stderr,"set_midas_param: can't read starttime: %s\n", value);
@@ -2301,52 +2284,90 @@ int set_midas_param(Config *cfg, char *name, char *value)
 }
 
 ///////////////////////////// MISC SCRIPTS ETC ////////////////////////////
+static Sortfile filelist[FILE_QLEN];
 extern int sum_th1I(Config *dst_cfg, TH1I *dst, TH1I *src);
-int sum_histos(Config *cfg, int num, char url_args[][STRING_LEN], int fd)
+int queue_sum_histos(Config *cfg, int num, char url_args[][STRING_LEN], int fd)
 {
-   Config *sum, *tmp, *tmp_conf;
-   int i, j, arg;
+   int i, j, len, next, narg;
+   Sort_status *arg;
+   Sortfile *sort;
    FILE *fp;
-   char temp[128];
 
    if( strncmp(url_args[2], "outputfilename", 14) != 0 ){
-      sprintf(temp,"Sum_histos: expected \"outputfilename\" at %s\n",url_args[2]);
-      send_http_error_response(fd, STATUS_CODE_400,(char*)temp);
       fprintf(stderr,"expected \"outputfilename\" at %s\n", url_args[2]);
       return(-1);
    }
    if( (fp=fopen(url_args[3],"r")) != NULL ){
-      sprintf(temp,"Sum_histos: %s already exists NOT OVERWRITING\n",url_args[3]);
-      send_http_error_response(fd, STATUS_CODE_422,(char*)temp);
       fprintf(stderr,"%s already exists NOT OVERWRITING\n", url_args[3]);
       return(-1);
    }
    if( (fp=fopen(url_args[3],"w")) == NULL ){
-      sprintf(temp,"Sum_histos: can't open %s to write\n",url_args[3]);
-      send_http_error_response(fd, STATUS_CODE_404,(char*)temp);
       fprintf(stderr,"can't open %s to write\n", url_args[3]);
       return(-1);
    }
-   if( (sum=add_config(url_args[3])) == NULL ){ return(-1); }
+   fclose(fp);
 
-   send_header(fd, APP_JSON);
+   arg = get_sort_status();
+   sort = &filelist[arg->final_filenum]; next = arg->final_filenum + 1;
+   if( next >= FILE_QLEN ){ next = 0; }
+   if( next == arg->current_filenum ){
+      fprintf(stderr,"FILE QUEUE FULL"); return(-1);
+   }
+   sort->narg = num/2 - 1;
+   if( (sort->arg = calloc(sort->narg, sizeof(char *))) == NULL ){
+      fprintf(stderr,"sum_histos: can't alloc memory for histo-list\n");
+      return(-1);
+   }
+   if( (sort->arg[0] = malloc( strlen(url_args[3])+1 )) == NULL){
+      fprintf(stderr,"sum_histos: can't alloc memory for histo-list\n");
+      free_sortfile(sort); return(-1);
+   }
+   memcpy(sort->arg[0], url_args[3], strlen(url_args[3])+1);
    for(i=4; i<num; i+=2){
       if( strncmp(url_args[i], "filename", 8) != 0 ){
          fprintf(stderr,"expected \"filename\" at %s\n", url_args[i]);
-         return(-1);
+         free_sortfile(sort); return(-1);
       }
-      if( i == 4 ){
-         tmp_conf=read_histofile(url_args[5], 1); copy_config(tmp_conf, sum);
+      if( (fp=fopen(url_args[i+1],"r")) == NULL ){
+         fprintf(stderr,"cant open histofile:%s to read\n", url_args[i+1]);
+      }
+      j = (i-2)/2; len = strlen(url_args[i+1])+1;
+      if( (sort->arg[j] = malloc(len)) == NULL){
+         fprintf(stderr,"sum_histos: can't alloc memory for histo-list\n");
+         free_sortfile(sort); return(-1);
+      }
+      memcpy(sort->arg[j], url_args[i+1], len);
+   }
+   if( ++arg->final_filenum == FILE_QLEN ){ arg->final_filenum = 0; } //wrap
+   return(0);
+}
+   
+int sum_histos(Config *cfg, Sortfile *sort)  // cfg -> configs[0]
+{
+   Config *sum, *tmp, *tmp_conf;
+   int i, j, arg;
+   FILE *fp;
+   if( sort->narg < 2 || sort->arg == NULL ){
+      fprintf(stderr,"sum_histos: bad args\n"); return(-1);
+   }
+   if( (fp=fopen(sort->arg[0],"w")) == NULL ){
+      fprintf(stderr,"can't open %s to write\n", sort->arg[0]);
+      return(-1);
+   }
+   if( (sum=add_config(sort->arg[0])) == NULL ){ return(-1); }
+   for(i=1; i<sort->narg; i++){
+      if( i == 1 ){
+         tmp_conf=read_histofile(sort->arg[1], 1); copy_config(tmp_conf, sum);
          remove_config(tmp_conf);
       }
-      if( (tmp = read_histofile(url_args[i+1],0)) == NULL ){ continue; }
-      fprintf(stdout,"Adding histograms from %s ...\n", url_args[i+1]);
+      if( (tmp = read_histofile(sort->arg[i],0)) == NULL ){ continue; }
+      fprintf(stderr,"Adding histograms from %s ...\n", sort->arg[i]);
       for(j=0; j<tmp->nhistos; j++){
          if( tmp->histo_list[j]->data == NULL ){
             read_histo_data(tmp->histo_list[j], tmp->histo_fp );
             if( tmp->histo_list[j]->data == NULL ){
-               fprintf(stderr, "sum_histos: cant alloc data for %s:%s\n",
-                       url_args[i+1], tmp->histo_list[j]->handle );
+               fprintf(stderr, "sum_histos:cant alloc data for %s:%s\n",
+                       sort->arg[i], tmp->histo_list[j]->handle );
                return(-1);
             }
             sum_th1I(sum,(TH1I *)sum->histo_list[j],(TH1I *)tmp->histo_list[j]);
@@ -2355,8 +2376,8 @@ int sum_histos(Config *cfg, int num, char url_args[][STRING_LEN], int fd)
             sum_th1I(sum,(TH1I *)sum->histo_list[j],(TH1I *)tmp->histo_list[j]);
          }
       }
-      if( i != 4 ){ // update start time and duration for subsequent files
-         tmp_conf=read_histofile(url_args[i+1], 1);
+      if( i != 1 ){ // update start time and duration for subsequent files
+         tmp_conf=read_histofile(sort->arg[i], 1);
          if( tmp_conf->midas_start_time < sum->midas_start_time ){
             sum->midas_start_time = tmp_conf->midas_start_time;
          }
@@ -2412,7 +2433,6 @@ void unload_midas_module()
    dlclose(midas_module_handle); midas_module_handle = NULL;
 }
 
-static Sortfile filelist[FILE_QLEN];
 static struct stat statbuf;
 int send_sort_status(int fd)
 {
@@ -2435,6 +2455,11 @@ int send_sort_status(int fd)
    }
    if( arg->final_filenum == arg->current_filenum ){
       sprintf(tmpstr,"IDLE %d", configs[0]->mtime);
+      put_line(fd, tmpstr, strlen(tmpstr) );
+      return(0);
+   }
+   if( arg->sum_mode == 1 ){
+      sprintf(tmpstr,"SUMMING HISTOS %d", configs[0]->mtime);
       put_line(fd, tmpstr, strlen(tmpstr) );
       return(0);
    }
@@ -2522,7 +2547,7 @@ int run_number(Sort_status *arg, Sortfile *sort, char *name);
 char *subrun_filename(Sortfile *sort, int subrun);
 int add_sortfile(char *path, char *histodir, char *confdir, char *calsrc)
 {
-   int i, plen, dlen, ext_len, hlen, clen;
+   int i, next, plen, dlen, ext_len, hlen, clen;
    char ptr, tmp[256], *fname;
    Sort_status *arg, tmp_stat;
    Config *cfg = configs[0];
@@ -2536,8 +2561,9 @@ int add_sortfile(char *path, char *histodir, char *confdir, char *calsrc)
       return(0);
    }
    memset(&tmp_stat, 0, sizeof(Sort_status) );
-   sort = &filelist[arg->final_filenum];
-   if( arg->final_filenum + 1 == arg->current_filenum ){
+   sort = &filelist[arg->final_filenum]; next = arg->final_filenum + 1;
+   if( next >= FILE_QLEN ){ next = 0; }
+   if( next == arg->current_filenum ){
       fprintf(stderr,"FILE QUEUE FULL"); return(-1);
    }
    plen=strlen(path);
@@ -2561,6 +2587,7 @@ int add_sortfile(char *path, char *histodir, char *confdir, char *calsrc)
    memcpy((char *)sort->data_name, path+dlen, plen-dlen);
    *(sort->data_name+plen-dlen) = 0;
    if( run_number(&tmp_stat, sort, sort->data_name) ){ return(-1); }
+   most_recent_calib_file(sort->data_dir, sort->run, sort->recent_cal);
    memset(&statbuf, 0, sizeof(struct stat)); sort->data_size = 0;
    if( sort->subrun != -1 ){ // just single subrun
       fname = subrun_filename(sort, sort->subrun);
@@ -2646,6 +2673,12 @@ int open_next_sortfiles(Sort_status *arg)
    Sortfile *sort = &filelist[arg->current_filenum];
    char ptr, tmp[256];
    if( arg->online_mode ){ return(0); } // no files in this mode
+   
+   if( sort->data_name == NULL ){ // this is a histogram summing command
+      arg->sum_mode = 1;
+      sum_histos(configs[0], sort); return(1); // return non-zero => dont try to sort 
+   } else { arg->sum_mode = 0; }
+
    if( sort->histo_dir == NULL ){
       sprintf(tmp, "%s/%s", sort->data_dir, sort->histo_name);
    } else {
@@ -2676,6 +2709,17 @@ int open_next_sortfiles(Sort_status *arg)
       fprintf(stderr,"can't open %s to read\n", tmp);  return(-1);
    }
    fprintf(stdout,"sorting file %d %s\n", arg->current_filenum, tmp);
+   // first subrun - open cal file or most recent
+   memcpy(tmp+strlen(tmp)-3, "json", 5);
+   if( (arg->cal_fp=fopen(tmp,"r")) == NULL ){
+      fprintf(stdout,"No BOR calib file - ");
+      sprintf(tmp, "%s/%s", sort->data_dir, sort->recent_cal);
+      if( strlen(sort->recent_cal) != 0 && (arg->cal_fp=fopen(tmp,"r")) != NULL ){
+         fprintf(stdout,"using most recent: %s\n", sort->recent_cal);
+      } else {
+         fprintf(stdout,"No recent calib file found either\n");
+      }
+   }
    arg->midas_bytes = 0;
    if( strcmp(sort->cal_src, "config") == 0 ){
       arg->cal_overwrite = 0; // cal src == "config"
@@ -2715,7 +2759,7 @@ char *subrun_filename(Sortfile *sort, int subrun)
 
    sprintf(tmp,"%d", sort->run); digits = strlen(tmp);
    len = strlen(name);
-   while( digits++ < sort->run_digits ){ name[len] = '0'; name[1+len++] = 0; }
+   while( digits++ < sort->run_digits ){ name[len] = '0'; name[++len+1] = 0; }
    sprintf(name+strlen(name),"%d_", sort->run);
 
    sprintf(tmp,"%d", subrun);  digits = strlen(tmp);
@@ -2745,6 +2789,11 @@ int free_sortfile(Sortfile *sort)
    if( sort->data_name  != NULL ){ free(sort->data_name);  }
    if( sort->conf_dir   != NULL ){ free(sort->conf_dir);   }
    if( sort->conf_name  != NULL ){ free(sort->conf_name);  }
+   while( sort->narg > 0 && sort->arg != NULL ){
+      if( sort->arg[sort->narg-1] != NULL ){ free(sort->arg[sort->narg-1]); }
+      --sort->narg;
+   }
+   free(sort->arg);
    memset((char *)sort, 0, sizeof(Sortfile));
    return(0);
 }
@@ -2825,6 +2874,36 @@ int end_current_sortfile(int fd)
 ///////////////////////////////////////////////////////////////////////////
 #include <dirent.h>
 
+int most_recent_calib_file(char *data_dir, int data_run, char *result)
+{
+   int run, subrun, closest_run=-1, last_subrun=-1;
+   struct dirent *d_ent;
+   DIR *d;
+
+   result[0]=0;
+   if( (d=opendir(data_dir)) == NULL ){
+      return(-1);
+   }
+   while( (d_ent = readdir(d)) != NULL ){
+      if( strncmp(d_ent->d_name, ".", 1) == 0 ){ continue; } // Ignore
+      if( sscanf(d_ent->d_name, "run%d_%d.json", &run, &subrun) != 2 ){
+         if( sscanf(d_ent->d_name, "run%d.json", &run) != 1 ){
+            continue; // Not Calibration File
+         }
+         subrun=-1;
+      }
+      if( run >= data_run ){ continue; } // after current file
+      if( run < closest_run ){ continue; } // already seen more recent
+      if( run > closest_run ){ last_subrun=-1; }
+      closest_run = run;
+      if( subrun >= last_subrun ){
+         sprintf(result, "%s", d_ent->d_name );
+         last_subrun = subrun;
+      }
+   }
+   return( closest_run == -1 );
+}
+
 int send_datafile_list(char *path, int fd, int type)
 {
    char tmp[256];  Sortfile *tmp_srt;
@@ -2833,9 +2912,9 @@ int send_datafile_list(char *path, int fd, int type)
    DIR *d;
 
    if( (d=opendir(path)) == NULL ){
-      sprintf(tmp,"can't open data directory %s\n",path);
+      sprintf(tmp,"can't open directory %s\n",path);
       send_http_error_response(fd, STATUS_CODE_404,(char*)tmp);
-      fprintf(stderr,"can't open data directory %s\n", path);
+      fprintf(stderr,"can't open directory %s\n", path);
       return(-1);
    }
    set_directory(configs[0], "Data", path);
@@ -2898,9 +2977,9 @@ int send_histofile_list(char *path, int fd)
    struct dirent *d_ent;
    DIR *d;
    if( (d=opendir(path)) == NULL ){
-      sprintf(tmp,"can't open histogram directory, %s\n",path);
+      sprintf(tmp,"can't open directory, %s\n",path);
       send_http_error_response(fd, STATUS_CODE_404,(char*)tmp);
-      fprintf(stderr,"can't open histogram directory %s\n", path);
+      fprintf(stderr,"can't open directory %s\n", path);
       return(-1);
    }
 
@@ -3086,8 +3165,8 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
       }
       put_line(fd, "]", 1 );
     } else if( hist->type == INT_2D || hist->type == INT_2D_SYMM ){
-      xbins = hist->xbins; //if( xbins > 8192 ){ xbins = 8192; }
-      ybins = hist->ybins; //if( ybins > 8192 ){ ybins = 8192; }
+      xbins = hist->xbins; if( xbins > 8192 ){ xbins = 8192; }
+      ybins = hist->ybins; if( ybins > 8192 ){ ybins = 8192; }
       if( (hist_data = malloc( xbins*ybins*sizeof(int) )) == NULL){
          fprintf(stderr,"can't alloc memory for sending 2d histo\n");
          continue;
