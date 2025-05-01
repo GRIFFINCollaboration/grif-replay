@@ -39,7 +39,7 @@ typedef struct sortfile_struct {
    long data_size; int run; int subrun;
    int run_digits; int subrun_digits;
    int num_subruns;  char  *cal_src;
-   char file_info[4][256]; char **arg;  int narg;
+   char file_info[4][256]; char **arg;  int narg;  int carg;
    char recent_cal[256]; // others attempted on open-subrun
 } Sortfile;
 

@@ -146,6 +146,15 @@ int handle_command(int fd, int narg, char url_args[][STRING_LEN])
          fprintf(stderr,"bad arg:%s in gethistofileList\n", url_args[2]);
       }
    } else
+   if( strcmp(ptr, "getConfigfileList") == 0 ){ /* ----list configs---- */
+      if( strcmp(url_args[2], "dir") == 0 ){
+         send_configfile_list(url_args[3], fd);
+      } else {
+         sprintf(tmp,"bad argument:%s in getConfigfileList\n",url_args[2]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
+         fprintf(stderr,"bad arg:%s in getConfigfileList\n", url_args[2]);
+      }
+   } else
    if( strcmp(ptr, "getSortStatus") == 0 ){ /* -----------------------*/
       send_sort_status(fd);
    } else
@@ -672,11 +681,21 @@ int handle_command(int fd, int narg, char url_args[][STRING_LEN])
          }
       }
       if( strcmp(url_args[2],"filename") == 0 ){
+         i = strlen(url_args[3]);
+         if( strncmp(url_args[3]+i-5, ".json", 5) == 0 ){
+            if( (cfg=add_config(url_args[3])) == NULL ){
+               fprintf(stderr,"viewConfig: cant create config:%s\n", url_args[3]);
+            }
+            if( load_config(cfg, url_args[3], NULL) != 0 ){
+               fprintf(stderr,"viewConfig: cant load config:%s\n", url_args[3]);
+            }
+         } else
          if( (cfg=read_histofile(url_args[3], 1)) == NULL ){
             send_http_error_response(fd, STATUS_CODE_404,(char*)"viewConfig can't read requested filename");
             fprintf(stderr,"viewConfig can't read requested filename, %s\n",url_args[3]);
            return(-1);
          }
+         // web_fp did not work under certain conditions (see below)
          sprintf(tmp,"/tmp/tmp.json");
          if( (tmp_fp = fopen(tmp,"w+")) == NULL ){ // create if needed, truncate to zero
             send_http_error_response(fd, STATUS_CODE_500,(char*)"viewConfig can't open tmp file to write");
@@ -2260,13 +2279,13 @@ int set_midas_param(Config *cfg, char *name, char *value)
 {
    time_t current_time = time(NULL);
    int len;
-    char clean_string[128], *tmp;
+   char clean_string[128], *tmp;
 
    if( (len=strlen(value)) >= SYS_PATH_LENGTH ){
       fprintf(stderr,"set_midas_param: value too long[%s]\n", value);
       return(-1);
-    }
-    if(        strncmp(name, "Title",   5) == 0 ){
+   }
+   if(        strncmp(name, "Title",   5) == 0 ){
       sprintf(clean_string, "%s", value);
       if( (tmp = strstr(clean_string, "\t"))>0 ){ // This illegal character cannot be handled in the browser
         while( (tmp = strstr(clean_string, "\t"))>0 ){
@@ -2276,11 +2295,11 @@ int set_midas_param(Config *cfg, char *name, char *value)
       }else{
         memcpy(cfg->midas_title, value, len+1);
       }
-    } else if( strncmp(name, "StartTime",  9) == 0 ){
+   } else if( strncmp(name, "StartTime",  9) == 0 ){
       if( sscanf(value, "%d", &cfg->midas_start_time) < 1 ){
-        fprintf(stderr,"set_midas_param: can't read starttime: %s\n", value);
+         fprintf(stderr,"set_midas_param: can't read starttime: %s\n", value);
       }
-    } else if( strncmp(name, "Duration", 8) == 0 ){
+   } else if( strncmp(name, "Duration", 8) == 0 ){
       if( sscanf(value, "%d", &cfg->midas_runtime) < 1 ){
          fprintf(stderr,"set_midas_param: can't read runtime: %s\n", value);
       }
@@ -2301,20 +2320,30 @@ int queue_sum_histos(Config *cfg, int num, char url_args[][STRING_LEN], int fd)
    Sort_status *arg;
    Sortfile *sort;
    FILE *fp;
+   char tmp[128];
 
    if( strncmp(url_args[2], "outputfilename", 14) != 0 ){
+      sprintf(tmp,"Sum histos: expected \"outputfilename\" at %s\n",url_args[2]);
+      send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
       fprintf(stderr,"expected \"outputfilename\" at %s\n", url_args[2]);
       return(-1);
    }
    if( (fp=fopen(url_args[3],"r")) != NULL ){
+      sprintf(tmp,"Sum histos: %s already exists NOT OVERWRITING. Histos will not be summed.\n",url_args[3]);
+      send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
       fprintf(stderr,"%s already exists NOT OVERWRITING\n", url_args[3]);
       return(-1);
    }
    if( (fp=fopen(url_args[3],"w")) == NULL ){
+      sprintf(tmp,"Sum histos: can't open %s to write\n",url_args[3]);
+      send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
       fprintf(stderr,"can't open %s to write\n", url_args[3]);
       return(-1);
    }
    fclose(fp);
+
+   // Send the response header
+   send_header(fd, APP_JSON);
 
    arg = get_sort_status();
    sort = &filelist[arg->final_filenum]; next = arg->final_filenum + 1;
@@ -2364,7 +2393,7 @@ int sum_histos(Config *cfg, Sortfile *sort)  // cfg -> configs[0]
       return(-1);
    }
    if( (sum=add_config(sort->arg[0])) == NULL ){ return(-1); }
-   for(i=1; i<sort->narg; i++){
+   for(i=1; i<sort->narg; i++){ sort->carg = i;
       if( i == 1 ){
          tmp_conf=read_histofile(sort->arg[1], 1); copy_config(tmp_conf, sum);
          remove_config(tmp_conf);
@@ -2468,7 +2497,9 @@ int send_sort_status(int fd)
       return(0);
    }
    if( arg->sum_mode == 1 ){
-      sprintf(tmpstr,"SUMMING HISTOS %d", configs[0]->mtime);
+      i = arg->current_filenum; tmp = &filelist[i];
+      sprintf(tmpstr,"SUMMING HISTOS %d %d %d", configs[0]->mtime,
+                                        tmp->carg-1, tmp->narg-1);
       put_line(fd, tmpstr, strlen(tmpstr) );
       return(0);
    }
@@ -3006,6 +3037,39 @@ int send_histofile_list(char *path, int fd)
       nlen = strlen(d_ent->d_name);
       if( strncmp(d_ent->d_name+nlen-4, ".tar", 4)     != 0 ){
          continue; // Not Midas HistoFilename Extension
+      }
+      if( first_entry == 1 ){
+         first_entry = 0;
+      } else {
+         put_line(fd, " , \n ", 5 );
+      }
+      put_line(fd, d_ent->d_name, strlen(d_ent->d_name) );
+   }
+   put_line(fd, " ]\n", 3 );
+   return(0);
+}
+
+int send_configfile_list(char *path, int fd)
+{
+   int nlen, run, subrun, first_entry=1;
+   char tmp[128];
+   struct dirent *d_ent;
+   DIR *d;
+   if( (d=opendir(path)) == NULL ){
+      sprintf(tmp,"can't open directory, %s\n",path);
+      send_http_error_response(fd, STATUS_CODE_404,(char*)tmp);
+      fprintf(stderr,"can't open directory %s\n", path);
+      return(-1);
+   }
+
+   send_header(fd, APP_JSON);
+   put_line(fd, " [ \n", 4 );
+   while( (d_ent = readdir(d)) != NULL ){
+      //fprintf(stdout,"File[%s] ...\n", d_ent->d_name);
+      if( strncmp(d_ent->d_name, ".", 1) == 0 ){ continue; } // Ignore
+      nlen = strlen(d_ent->d_name);
+      if( strncmp(d_ent->d_name+nlen-5, ".json", 5) != 0 ){
+         continue; // Not Configfile Extension
       }
       if( first_entry == 1 ){
          first_entry = 0;

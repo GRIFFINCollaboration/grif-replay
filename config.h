@@ -16,6 +16,7 @@ int send_sort_status(int fd);
 int most_recent_calib_file(char *data_dir, int data_run, char *result);
 int send_datafile_list(char *path, int fd, int type);
 int send_histofile_list(char *path, int fd);
+int send_configfile_list(char *path, int fd);
 int send_file_details(char *path, int fd);
 int add_sortfile(char *path, char *histodir, char *confdir, char *calsrc);
 int open_next_sortfiles(Sort_status *arg);
