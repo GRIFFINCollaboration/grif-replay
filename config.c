@@ -2260,18 +2260,27 @@ int set_midas_param(Config *cfg, char *name, char *value)
 {
    time_t current_time = time(NULL);
    int len;
+    char clean_string[128], *tmp;
 
    if( (len=strlen(value)) >= SYS_PATH_LENGTH ){
       fprintf(stderr,"set_midas_param: value too long[%s]\n", value);
       return(-1);
-   }
-   if(        strncmp(name, "Title",   5) == 0 ){
-      memcpy(cfg->midas_title, value, len+1);
-   } else if( strncmp(name, "StartTime",  9) == 0 ){
-      if( sscanf(value, "%d", &cfg->midas_start_time) < 1 ){
-         fprintf(stderr,"set_midas_param: can't read starttime: %s\n", value);
+    }
+    if(        strncmp(name, "Title",   5) == 0 ){
+      sprintf(clean_string, "%s", value);
+      if( (tmp = strstr(clean_string, "\t"))>0 ){ // This illegal character cannot be handled in the browser
+        while( (tmp = strstr(clean_string, "\t"))>0 ){
+          strncpy(tmp, " ", 1); // keep the length the same, and make use of the terminating character already in clean_string
+        }
+        memcpy(cfg->midas_title, clean_string, len+1);
+      }else{
+        memcpy(cfg->midas_title, value, len+1);
       }
-   } else if( strncmp(name, "Duration", 8) == 0 ){
+    } else if( strncmp(name, "StartTime",  9) == 0 ){
+      if( sscanf(value, "%d", &cfg->midas_start_time) < 1 ){
+        fprintf(stderr,"set_midas_param: can't read starttime: %s\n", value);
+      }
+    } else if( strncmp(name, "Duration", 8) == 0 ){
       if( sscanf(value, "%d", &cfg->midas_runtime) < 1 ){
          fprintf(stderr,"set_midas_param: can't read runtime: %s\n", value);
       }
@@ -2341,7 +2350,7 @@ int queue_sum_histos(Config *cfg, int num, char url_args[][STRING_LEN], int fd)
    if( ++arg->final_filenum == FILE_QLEN ){ arg->final_filenum = 0; } //wrap
    return(0);
 }
-   
+
 int sum_histos(Config *cfg, Sortfile *sort)  // cfg -> configs[0]
 {
    Config *sum, *tmp, *tmp_conf;
@@ -2673,10 +2682,10 @@ int open_next_sortfiles(Sort_status *arg)
    Sortfile *sort = &filelist[arg->current_filenum];
    char ptr, tmp[256];
    if( arg->online_mode ){ return(0); } // no files in this mode
-   
+
    if( sort->data_name == NULL ){ // this is a histogram summing command
       arg->sum_mode = 1;
-      sum_histos(configs[0], sort); return(1); // return non-zero => dont try to sort 
+      sum_histos(configs[0], sort); return(1); // return non-zero => dont try to sort
    } else { arg->sum_mode = 0; }
 
    if( sort->histo_dir == NULL ){
