@@ -1154,14 +1154,14 @@ int fill_singles_histos(Grif_event *ptr)
 
          // A 3d histogram of first LBL energy vs second LBL energy vs TAC
          // lbl_lbl_tac->Fill(lbl_lbl_tac, (int)((ptr->e2cal/10)*(ptr->e3cal/10)), (int)(ptr->ecal)+offset, 1); // LBL energy vs LBL energy vs TAC
-         if(ptr->e2cal>5 && ptr->e3cal>5){
+         if(ptr->ecal>5 && ptr->e2cal>5 && ptr->e3cal>5){
            bin = (int)(((ptr->e2cal/10)*400)+(ptr->e3cal/10));
            lbl_lbl_tac->Fill(lbl_lbl_tac, (int)(ptr->ecal)+offset, bin, 1); // LBL energy vs LBL energy vs TAC
          }
 
          // Compton Walk matrix for calibrations
          // First LBL gated on 1332keV, this matrix is second LBL E vs TAC
-         if(crystal_table[ptr->chan] == 1){ // Use the First TAC (TAC01)
+         if(ptr->ecal>5 && crystal_table[ptr->chan] == 1){ // Use the First TAC (TAC01)
            if(c1 == 0 && c2>0 && ptr->e2cal>1252 && ptr->e2cal<1412){ // LBL01 gated on 1332keV
              tac_labr_CompWalk[c2]->Fill(tac_labr_CompWalk[c2], (int)(ptr->ecal)+offset, (int)ptr->e3cal, 1); // TAC01 and other LBL energy
            }
