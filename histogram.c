@@ -671,7 +671,40 @@ int write_th1I(FILE *fp, void *ptr)
    return(0);
 }
 
-int sum_th1I(Config *dst_cfg, TH1I *dst, TH1I *src)
+int sum_th1I(Config *dst_cfg, Config *src_cfg, TH1I *src)
+{
+   int i, bins, ybins;
+   TH1I *dst;
+
+   if( (dst=find_histo(dst_cfg, src->handle)) == NULL ){
+      memcpy(dst_cfg->current_path, src->path, HISTO_FOLDER_LENGTH);
+      if( src->type == INT_1D ){
+         dst = H1_BOOK(dst_cfg, src->handle, src->title, src->xbins, src->xmin, src->xmax);
+      } else {
+        // Handle symmetrized and non-symmetrized matrices
+        if( src->symm == 1 ){
+          ybins = SYMMETERIZE;
+        }else{
+          ybins = src->ybins;
+        }
+         dst = (TH1I *)H2_BOOK(dst_cfg, src->handle, src->title, src->xbins, src->xmin, src->xmax, ybins, src->ymin, src->ymax);
+      }
+      if( dst == NULL ){ return(-1); }
+      if( dst->data == NULL ){
+         bins = (dst->ybins != 0) ? dst->xbins*dst->ybins : dst->xbins;
+         if( (dst->data = (int *)malloc(bins*sizeof(int))) == NULL){
+            fprintf(stderr,"sum_TH1I: data malloc failed\n");
+            return(-1);
+         }
+      }
+      memcmp(dst->data, src->data, dst->valid_bins*sizeof(int) );
+      return(0);
+   }
+   for(i=0; i<dst->valid_bins && i<src->valid_bins; i++){ dst->data[i] += src->data[i]; }
+   return(0);
+}
+
+int old_sum_th1I(Config *dst_cfg, TH1I *dst, TH1I *src)
 {
    int i, bins, ybins;
    if( dst == NULL ){

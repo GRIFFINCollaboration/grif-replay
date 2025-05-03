@@ -1434,6 +1434,24 @@ int copy_config(Config *src, Config *dst)
    src->lock = 0; return(0);
 }
 
+// needed to update calibrations during sort
+// dst is "sort" config, src is new stuff to merge
+int merge_configs(Config *src, Config *dst)
+{
+   Cal_coeff *cal;
+   Global *global;
+   int i;
+
+   dst->lock = 1;  src->lock = 1;
+   for(i=0; i<src->ncal;     i++){ cal = src->calib[i];
+      edit_calibration(dst, cal->name, cal->offset, cal->gain, cal->quad, cal->pileupk1, cal->pileupk2, cal->pileupE1, cal->address, cal->datatype, 1);
+   }
+   for(i=0; i<src->nglobal;   i++){ global = src->globals[i];
+      add_global(dst, global->name, global->min, global->max);
+   }
+   src->lock = 0; dst->lock = 0; return(0);
+}
+
 Config *add_config(char *name)
 {
    Config *cfg;
@@ -2313,7 +2331,7 @@ int set_midas_param(Config *cfg, char *name, char *value)
 
 ///////////////////////////// MISC SCRIPTS ETC ////////////////////////////
 static Sortfile filelist[FILE_QLEN];
-extern int sum_th1I(Config *dst_cfg, TH1I *dst, TH1I *src);
+extern int sum_th1I(Config *dst_cfg, Config *src_cfg, TH1I *src);
 int queue_sum_histos(Config *cfg, int num, char url_args[][STRING_LEN], int fd)
 {
    int i, j, len, next, narg;
@@ -2342,8 +2360,8 @@ int queue_sum_histos(Config *cfg, int num, char url_args[][STRING_LEN], int fd)
    }
    fclose(fp);
 
-   // Send the response header
-   send_header(fd, APP_JSON);
+      // Send the response header
+      send_header(fd, APP_JSON);
 
    arg = get_sort_status();
    sort = &filelist[arg->final_filenum]; next = arg->final_filenum + 1;
@@ -2408,10 +2426,11 @@ int sum_histos(Config *cfg, Sortfile *sort)  // cfg -> configs[0]
                        sort->arg[i], tmp->histo_list[j]->handle );
                return(-1);
             }
-            sum_th1I(sum,(TH1I *)sum->histo_list[j],(TH1I *)tmp->histo_list[j]);
+            sum_th1I(sum, tmp, tmp->histo_list[j] );
             free(tmp->histo_list[j]->data); tmp->histo_list[j]->data = NULL;
          } else {
-            sum_th1I(sum,(TH1I *)sum->histo_list[j],(TH1I *)tmp->histo_list[j]);
+            //sum_th1I(sum,(TH1I *)sum->histo_list[j],(TH1I *)tmp->histo_list[j]);
+            sum_th1I(sum, tmp, tmp->histo_list[j] );
          }
       }
       if( i != 1 ){ // update start time and duration for subsequent files
@@ -2711,6 +2730,7 @@ int add_sortfile(char *path, char *histodir, char *confdir, char *calsrc)
 int open_next_sortfiles(Sort_status *arg)
 {
    Sortfile *sort = &filelist[arg->current_filenum];
+   Config *tmp_cfg;
    char ptr, tmp[256];
    if( arg->online_mode ){ return(0); } // no files in this mode
 
@@ -2749,22 +2769,36 @@ int open_next_sortfiles(Sort_status *arg)
       fprintf(stderr,"can't open %s to read\n", tmp);  return(-1);
    }
    fprintf(stdout,"sorting file %d %s\n", arg->current_filenum, tmp);
-   // first subrun - open cal file or most recent
-   memcpy(tmp+strlen(tmp)-3, "json", 5);
-   if( (arg->cal_fp=fopen(tmp,"r")) == NULL ){
-      fprintf(stdout,"No BOR calib file - ");
-      sprintf(tmp, "%s/%s", sort->data_dir, sort->recent_cal);
-      if( strlen(sort->recent_cal) != 0 && (arg->cal_fp=fopen(tmp,"r")) != NULL ){
-         fprintf(stdout,"using most recent: %s\n", sort->recent_cal);
-      } else {
-         fprintf(stdout,"No recent calib file found either\n");
+   if( strcmp(sort->cal_src, "file") == 0 ){
+      // first subrun - open cal file or most recent
+      memcpy(tmp+strlen(tmp)-3, "json", 5);
+      if( (arg->cal_fp=fopen(tmp,"r")) == NULL ){
+         fprintf(stdout,"No BOR calib file - ");
+         sprintf(tmp, "%s/%s", sort->data_dir, sort->recent_cal);
+         if( strlen(sort->recent_cal) != 0 && (arg->cal_fp=fopen(tmp,"r")) != NULL ){
+            fprintf(stdout,"using most recent: %s\n", sort->recent_cal);
+         } else {
+            fprintf(stdout,"No recent calib file found either\n");
+         }
+      }
+      if( arg->cal_fp != NULL ){ fclose(arg->cal_fp);
+         if( (tmp_cfg=add_config(tmp)) != NULL ){
+            if( load_config(tmp_cfg, tmp, NULL) == 0 ){
+               merge_configs(configs[1], tmp_cfg);
+            } else {
+               fprintf(stderr,"open sortifles: cant load config:%s\n", tmp);
+            }
+            remove_config(tmp_cfg);
+         } else {
+            fprintf(stderr,"open sortifles: cant create config:%s\n", tmp);
+         }
       }
    }
    arg->midas_bytes = 0;
-   if( strcmp(sort->cal_src, "config") == 0 ){
-      arg->cal_overwrite = 0; // cal src == "config"
-   } else {
+   if( strcmp(sort->cal_src, "midas") == 0 ){
       arg->cal_overwrite = 1;
+   } else {
+      arg->cal_overwrite = 0;  // cal src == "config" or "file"
    }
    return(0);
 }
