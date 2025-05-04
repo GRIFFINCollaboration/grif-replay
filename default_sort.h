@@ -69,7 +69,7 @@ static char subsys_name[MAX_SUBSYS][STRING_LEN] = {
 #define E_2D_SPECLEN            4096
 #define E_2D_RCMP_SPECLEN       6400
 #define E_3D_LBL_SPECLEN      160000  // 400*400
-#define E_3D_TAC_SPECLEN        1024
+#define E_3D_TAC_SPECLEN         512
 //#define T_SPEC_LENGTH     8192
 //#define WV_SPEC_LENGTH    4096
 #define DT_SPEC_LENGTH          1024
@@ -260,6 +260,10 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
   TH2I  *gg_angcor_145[N_GE_ANG_CORR];
   TH2I  *ge_art_angcor[N_GRG_ART_ANG_CORR];
   TH2I  *dsw_angcor[N_DSW_DSW_ANG_CORR];
+
+  // Isomer Spectroscopy
+  TH2I  *gg_dt, *gb_dt, gg_delayed;
+  TH1I  *ge_feed, *ge_drain;
 
   ////////////////////////////////////
   ////////////////////////////////////

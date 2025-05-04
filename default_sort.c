@@ -859,7 +859,13 @@ close_folder(cfg);
    {(void **)&aries_tac_Egate,   "TAC-ARTE-LaBr3-1275keV", "", SUBSYS_ARIES_A, E_TAC_SPECLEN  },
    {(void **)&aries_tac_artEn,   "TAC-ARIES-Energy",       "", SUBSYS_ARIES_A, E_SPECLEN      },
    {(void **) tac_aries_lbl,    "TAC_ART_LBL%d",           "", SUBSYS_ARIES_A, E_TAC_SPECLEN, E_TAC_SPECLEN, N_LABR  },
-   {(void **) tac_aries_art,    "TAC_LBL_ART%d",           "", SUBSYS_ARIES_A, E_TAC_SPECLEN, E_TAC_SPECLEN, N_ARIES }
+   {(void **) tac_aries_art,    "TAC_LBL_ART%d",           "", SUBSYS_ARIES_A, E_TAC_SPECLEN, E_TAC_SPECLEN, N_ARIES },
+   {NULL,                   "Analysis/Isomer-Spec",        ""},
+   {(void **)&gb_dt,      "betaG_time-diff_vs_gamma-energy","", SUBSYS_HPGE_A, DT_SPEC_LENGTH, E_2D_SPECLEN},
+   {(void **)&gg_dt,      "GG_time-diff_vs_gamma-energy",   "", SUBSYS_HPGE_A, DT_SPEC_LENGTH, E_2D_SPECLEN}
+  // {(void **)&gg_delayed, "GG_early_vs_delayed",            "", SUBSYS_HPGE_A,   E_2D_SPECLEN, E_2D_SPECLEN},
+  // {(void **)&ge_feed,    "GammaE_feeding",                 "", SUBSYS_HPGE_A,     E_SPECLEN},
+  // {(void **)&ge_drain,   "GammaE_draining",                "", SUBSYS_HPGE_A,     E_SPECLEN},
 }; // Note initialized array variable is CONST (not same as double-pointer)
 // TH1I *hist;  hist = (TH1I *) 0;   ptr = &hist = (TH1I **)addr;  *ptr =
 
@@ -1156,7 +1162,7 @@ int fill_singles_histos(Grif_event *ptr)
          // lbl_lbl_tac->Fill(lbl_lbl_tac, (int)((ptr->e2cal/10)*(ptr->e3cal/10)), (int)(ptr->ecal)+offset, 1); // LBL energy vs LBL energy vs TAC
          if(ptr->ecal>5 && ptr->e2cal>5 && ptr->e3cal>5){
            bin = (int)(((ptr->e2cal/10)*400)+(ptr->e3cal/10));
-           lbl_lbl_tac->Fill(lbl_lbl_tac, (int)(ptr->ecal)+offset, bin, 1); // LBL energy vs LBL energy vs TAC
+           lbl_lbl_tac->Fill(lbl_lbl_tac, (int)(ptr->ecal)+offset-250, bin, 1); // LBL energy vs LBL energy vs TAC
          }
 
          // Compton Walk matrix for calibrations
@@ -1235,6 +1241,7 @@ int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
    int gg_gate=25, c1, c2, angle_idx;
    switch(alt->subsys){
    case SUBSYS_HPGE_A:
+      gg_dt->Fill(gg_dt, (int)((ptr->ts - alt->ts)+DT_SPEC_LENGTH/2), (int)ptr->esum, 1);
       if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_HPGE_A]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_HPGE_A]) ){
          if( ptr->esum >= 0 &&  alt->esum >= 0 ){ // addback energies
             gg_ab->Fill(gg_ab, (int)ptr->esum, (int)alt->esum, 1);
@@ -1258,12 +1265,14 @@ int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
       }
       break;
    case SUBSYS_SCEPTAR:
+      gb_dt->Fill(gb_dt, (int)((ptr->ts - alt->ts)+DT_SPEC_LENGTH/2), (int)ptr->esum, 1);
       if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_SCEPTAR]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_SCEPTAR]) ){
          ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1); // beta-gated Ge sum energy spectrum
          ge_sum_b_sep->Fill(ge_sum_b_sep, (int)ptr->ecal, 1); // Sceptar-gated Ge sum energy spectrum
       }
       break;
       case SUBSYS_ARIES_A:
+      gb_dt->Fill(gb_dt, (int)((ptr->ts - alt->ts)+DT_SPEC_LENGTH/2), (int)ptr->esum, 1);
       if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_ARIES_A]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_ARIES_A]) ){
         if(ptr->ecal > 10 && alt->ecal > 10){
           ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1);         // beta-gated Ge sum energy spectrum
@@ -1287,6 +1296,7 @@ int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
       }
       break;
    case SUBSYS_ZDS_A:
+      gb_dt->Fill(gb_dt, (int)((ptr->ts - alt->ts)+DT_SPEC_LENGTH/2), (int)ptr->esum, 1);
       if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_ZDS_A]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_ZDS_A]) ){
          ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1);         // beta-gated Ge sum energy spectrum
          ge_sum_b_zds->Fill(ge_sum_b_zds, (int)ptr->ecal, 1); // Zds-gated Ge sum energy spectrum
