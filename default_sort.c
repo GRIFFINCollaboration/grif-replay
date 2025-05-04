@@ -862,10 +862,10 @@ close_folder(cfg);
    {(void **) tac_aries_art,    "TAC_LBL_ART%d",           "", SUBSYS_ARIES_A, E_TAC_SPECLEN, E_TAC_SPECLEN, N_ARIES },
    {NULL,                   "Analysis/Isomer-Spec",        ""},
    {(void **)&gb_dt,      "betaG_time-diff_vs_gamma-energy","", SUBSYS_HPGE_A, DT_SPEC_LENGTH, E_2D_SPECLEN},
-   {(void **)&gg_dt,      "GG_time-diff_vs_gamma-energy",   "", SUBSYS_HPGE_A, DT_SPEC_LENGTH, E_2D_SPECLEN}
-  // {(void **)&gg_delayed, "GG_early_vs_delayed",            "", SUBSYS_HPGE_A,   E_2D_SPECLEN, E_2D_SPECLEN},
-  // {(void **)&ge_feed,    "GammaE_feeding",                 "", SUBSYS_HPGE_A,     E_SPECLEN},
-  // {(void **)&ge_drain,   "GammaE_draining",                "", SUBSYS_HPGE_A,     E_SPECLEN},
+   {(void **)&gg_dt,      "GG_time-diff_vs_gamma-energy",   "", SUBSYS_HPGE_A, DT_SPEC_LENGTH, E_2D_SPECLEN},
+   {(void **)&gg_delayed, "GG_early_vs_delayed",            "", SUBSYS_HPGE_A,   E_2D_SPECLEN, E_2D_SPECLEN},
+   {(void **)&ge_isomer_popu, "GammaE_populating",          "", SUBSYS_HPGE_A,     E_SPECLEN},
+   {(void **)&ge_isomer_depop,"GammaE_depopulating",        "", SUBSYS_HPGE_A,     E_SPECLEN}
 }; // Note initialized array variable is CONST (not same as double-pointer)
 // TH1I *hist;  hist = (TH1I *) 0;   ptr = &hist = (TH1I **)addr;  *ptr =
 
@@ -1235,13 +1235,11 @@ int fill_singles_histos(Grif_event *ptr)
 
 int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
 {
-   int g_aries_upper_gate=25;
-   int g_aries_tac_gate=60;
-   int g_rcmp_upper_gate=75;
-   int gg_gate=25, c1, c2, angle_idx;
+   int c1, c2, angle_idx;
    switch(alt->subsys){
    case SUBSYS_HPGE_A:
       gg_dt->Fill(gg_dt, (int)((ptr->ts - alt->ts)+DT_SPEC_LENGTH/2), (int)ptr->esum, 1);
+      gg_dt->Fill(gg_dt, (int)((alt->ts - ptr->ts)+DT_SPEC_LENGTH/2), (int)alt->esum, 1);
       if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_HPGE_A]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_HPGE_A]) ){
          if( ptr->esum >= 0 &&  alt->esum >= 0 ){ // addback energies
             gg_ab->Fill(gg_ab, (int)ptr->esum, (int)alt->esum, 1);
@@ -1253,17 +1251,23 @@ int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
             if( c2 == grif_opposite[c1] ){
                // 180 degree coinc matrix for summing corrections
                gg_opp->Fill(gg_opp, (int)ptr->ecal, (int)alt->ecal, 1);
-            }
-            // Ge-Ge angular correlations
-            // Fill the appropriate angular bin spectrum
-            // c1 and c2 run from 0 to 63 for ge_angles_145mm.
-            angle_idx = ge_angles_110mm[c1][c2];
-            gg_angcor_110[angle_idx]->Fill(gg_angcor_110[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
-            angle_idx = ge_angles_145mm[c1][c2];
-            gg_angcor_145[angle_idx]->Fill(gg_angcor_145[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
+             }
+             // Ge-Ge angular correlations
+             // Fill the appropriate angular bin spectrum
+             // c1 and c2 run from 0 to 63 for ge_angles_145mm.
+             angle_idx = ge_angles_110mm[c1][c2];
+             gg_angcor_110[angle_idx]->Fill(gg_angcor_110[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
+             angle_idx = ge_angles_145mm[c1][c2];
+             gg_angcor_145[angle_idx]->Fill(gg_angcor_145[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
+           }
+         }else if((ptr->ts - alt->ts) < time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_HPGE_A]){
+           ge_isomer_popu->Fill(ge_isomer_popu, (int)ptr->ecal, 1); // Early gamma rays appearing earlier in time than the prompt
+              gg_delayed->Fill(gg_delayed, (int)ptr->ecal, (int)alt->ecal, 1);
+         }else if((alt->ts - ptr->ts) > time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_HPGE_A]){
+           ge_isomer_depop->Fill(ge_isomer_depop, (int)alt->ecal, 1); // Delayed gamma rays appearing later in time than the prompt
+              gg_delayed->Fill(gg_delayed, (int)ptr->ecal, (int)alt->ecal, 1);
          }
-      }
-      break;
+         break;
    case SUBSYS_SCEPTAR:
       gb_dt->Fill(gb_dt, (int)((ptr->ts - alt->ts)+DT_SPEC_LENGTH/2), (int)ptr->esum, 1);
       if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_SCEPTAR]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_SCEPTAR]) ){

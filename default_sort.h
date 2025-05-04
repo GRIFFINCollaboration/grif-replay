@@ -262,8 +262,8 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
   TH2I  *dsw_angcor[N_DSW_DSW_ANG_CORR];
 
   // Isomer Spectroscopy
-  TH2I  *gg_dt, *gb_dt, gg_delayed;
-  TH1I  *ge_feed, *ge_drain;
+  TH2I  *gg_dt, *gb_dt, *gg_delayed;
+  TH1I  *ge_isomer_popu, *ge_isomer_depop;
 
   ////////////////////////////////////
   ////////////////////////////////////
