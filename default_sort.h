@@ -217,6 +217,7 @@ TH1I *tac_labr_hist[(int)((N_LABR)*(N_LABR-1)/2)+2]; // this index numbers are t
 TH1I *tac_labr_hist_uncal[(int)((N_LABR)*(N_LABR-1)/2)+2]; // this index numbers are the LaBr-LaBr position numbers
 // One additional histogram (2_1) needed for Compton Walk corrections
 TH2I *tac_labr_CompWalk[N_LABR];         // First LBL gated on 1332keV, this matrix is second LBL E vs TAC
+TH2I *tac_labr_CompWalk0;                // First LBL gated on 1332keV, this matrix is second LBL E vs TAC
 int tac_labr_hist_index[N_LABR][N_LABR]; // index for filling tac_labr_hist from LBL id numbers
 TH1I *tac_gated_lbl[N_LABR];             // TAC-gated LBL energy spectrum to check anode threshold in analogue CFD
 TH1I *final_tac[N_TACS], *final_tac_sum; // Final TAC spectra after all calibration and alignment

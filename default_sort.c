@@ -557,7 +557,12 @@ int pre_sort(int frag_idx, int end_idx)
           if(alt->e2cal<1){
             alt->q2 = ptr->chan; alt->e2cal = ptr->ecal;
           }else if(ptr->e3cal<1){
+            if(crystal_table[ptr->chan]<crystal_table[alt->q2]){ // Order the LBL by crystal number not timestamp
+              alt->q3 = alt->q2; alt->e3cal = alt->e2cal;
+              alt->q2 = ptr->chan; alt->e2cal = ptr->ecal;
+            }else{
             alt->q3 = ptr->chan; alt->e3cal = ptr->ecal;
+            }
           }else{
             alt->q4 = ptr->chan; alt->e4cal = ptr->ecal; // If this is set then we have LBL multiplicity >2 for this TAC
           }
@@ -845,7 +850,8 @@ close_folder(cfg);
    {NULL,                   "Ang_Corr/GG_ART_Ang_Corr",    ""},
    {(void **) ge_art_angcor,"Ge-ART_angular_bin%03d",      "", SUBSYS_ARIES_A,  GE_ANGCOR_SPECLEN, GE_ANGCOR_SPECLEN, N_GRG_ART_ANG_CORR },
    {NULL,                   "Fast-Timing/LBL_Walk",        ""},
-   {(void **) tac_labr_CompWalk,"TAC_%02d_CompWalk",       "", SUBSYS_TAC_LABR, ECAL_TAC_SPECLEN, 1440, N_LABR },
+   {(void **)&tac_labr_CompWalk0,"TAC01_LBL01-00_CompWalk",       "", SUBSYS_TAC_LABR, ECAL_TAC_SPECLEN, 1440},
+   {(void **) tac_labr_CompWalk,"TAC00_LBL00-%02d_CompWalk",       "", SUBSYS_TAC_LABR, ECAL_TAC_SPECLEN, 1440, N_LABR },
    {NULL,                   "Fast-Timing/TAC-Gated-LBL-Energy", ""},
    {(void **) tac_gated_lbl,"TAC_gated_LBL%02d",           "", SUBSYS_TAC_LABR, E_SPECLEN, 0, N_LABR },
    {NULL,                   "Fast-Timing/Calibrated-TACs", ""},
@@ -1168,11 +1174,12 @@ int fill_singles_histos(Grif_event *ptr)
          // Compton Walk matrix for calibrations
          // First LBL gated on 1332keV, this matrix is second LBL E vs TAC
          if(ptr->ecal>5 && crystal_table[ptr->chan] == 1){ // Use the First TAC (TAC01)
-           if(c1 == 0 && c2>0 && ptr->e2cal>1252 && ptr->e2cal<1412){ // LBL01 gated on 1332keV
+           if(c1 == 0 && c2>0 && ptr->e2cal>1252 && ptr->e2cal<1412 && ptr->e3cal>5){ // LBL01 gated on 1332keV
              tac_labr_CompWalk[c2]->Fill(tac_labr_CompWalk[c2], (int)(ptr->ecal)+offset, (int)ptr->e3cal, 1); // TAC01 and other LBL energy
            }
-           if(c1 == 1 && c2==0 && ptr->e3cal>1252 && ptr->e3cal<1412){ // LBL02 gated on 1332keV
-             tac_labr_CompWalk[c2]->Fill(tac_labr_CompWalk[c1], (int)(ptr->ecal)+offset, (int)ptr->e2cal, 1); // TAC01 and other LBL energy
+         }else if(ptr->ecal>5 && crystal_table[ptr->chan] == 2){
+           if(c1 == 1 && c2 == 2 && ptr->e2cal>1252 && ptr->e2cal<1412 && ptr->e3cal>5){ // LBL02 gated on 1332keV
+             tac_labr_CompWalk0->Fill(tac_labr_CompWalk0, (int)(ptr->ecal)+offset, (int)ptr->e3cal, 1); // TAC02 to check LBL01
            }
          }
        }
@@ -1238,8 +1245,8 @@ int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
    int c1, c2, angle_idx;
    switch(alt->subsys){
    case SUBSYS_HPGE_A:
-      gg_dt->Fill(gg_dt, (int)((ptr->ts - alt->ts)+DT_SPEC_LENGTH/2), (int)ptr->esum, 1);
-      gg_dt->Fill(gg_dt, (int)((alt->ts - ptr->ts)+DT_SPEC_LENGTH/2), (int)alt->esum, 1);
+      gg_dt->Fill(gg_dt, (int)((ptr->ts - alt->ts)+DT_SPEC_LENGTH/2), (int)ptr->ecal, 1);
+      gg_dt->Fill(gg_dt, (int)((alt->ts - ptr->ts)+DT_SPEC_LENGTH/2), (int)alt->ecal, 1);
       if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_HPGE_A]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_HPGE_A]) ){
          if( ptr->esum >= 0 &&  alt->esum >= 0 ){ // addback energies
             gg_ab->Fill(gg_ab, (int)ptr->esum, (int)alt->esum, 1);
@@ -1260,10 +1267,10 @@ int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
              angle_idx = ge_angles_145mm[c1][c2];
              gg_angcor_145[angle_idx]->Fill(gg_angcor_145[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
            }
-         }else if((ptr->ts - alt->ts) < time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_HPGE_A]){
+         }else if((ptr->ts - alt->ts) < time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_HPGE_A]){
            ge_isomer_popu->Fill(ge_isomer_popu, (int)ptr->ecal, 1); // Early gamma rays appearing earlier in time than the prompt
               gg_delayed->Fill(gg_delayed, (int)ptr->ecal, (int)alt->ecal, 1);
-         }else if((alt->ts - ptr->ts) > time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_HPGE_A]){
+         }else if((alt->ts - ptr->ts) > time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_HPGE_A]){
            ge_isomer_depop->Fill(ge_isomer_depop, (int)alt->ecal, 1); // Delayed gamma rays appearing later in time than the prompt
               gg_delayed->Fill(gg_delayed, (int)ptr->ecal, (int)alt->ecal, 1);
          }
