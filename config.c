@@ -2130,6 +2130,9 @@ int set_calibration(Config *cfg, int num, char url_args[][STRING_LEN], int fd)
 //         fprintf(stderr,"can't read datatype: %s\n", url_args[i+11]);
 //         return(-1);
 //      }
+      // Send the response header
+      send_header(fd, APP_JSON);
+
       edit_calibration(cfg, url_args[i+1], offset, gain, quad, puk1, puk2, puE1,
                        address, datatype, 1);
    }
@@ -2208,6 +2211,9 @@ puk1[0] = puk2[0] = 1; // set default factor as 1 not zero
 //         fprintf(stderr,"can't read datatype: %s\n", url_args[i+17]);
 //         return(-1);
 //      }
+      // Send the response header
+      send_header(fd, APP_JSON);
+      
     edit_calibration(cfg, url_args[i+1], offset, gain, quad, puk1, puk2, puE1, address, datatype, 1);
    }
    return(0);
