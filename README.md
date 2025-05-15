@@ -17,6 +17,8 @@ Download the repository from GitHub into your chosen working directory. Then in 
 
 There is a dependancy in the midas.h file for a file named git-revision.h. This is not required by grif-replay so there are two options; either comment out this line in the midas.h file (#include "git-revision.h"), or alternatively create a blank version of this file in the grif-replay directory ('touch git-revision.h').
 
+On some machines it might be necessary to instal the package libnsl-dev.
+
 Then compile the Midas shared-object file with the following command:
 
 `make midas`
