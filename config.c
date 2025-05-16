@@ -2213,7 +2213,7 @@ puk1[0] = puk2[0] = 1; // set default factor as 1 not zero
 //      }
       // Send the response header
       send_header(fd, APP_JSON);
-      
+
     edit_calibration(cfg, url_args[i+1], offset, gain, quad, puk1, puk2, puE1, address, datatype, 1);
    }
    return(0);
@@ -2777,10 +2777,11 @@ int open_next_sortfiles(Sort_status *arg)
    fprintf(stdout,"sorting file %d %s\n", arg->current_filenum, tmp);
    if( strcmp(sort->cal_src, "file") == 0 ){
       // first subrun - open cal file or most recent
-      memcpy(tmp+strlen(tmp)-3, "json", 5);
+      memcpy(tmp+strlen(tmp)-8, ".json", 6);
       if( (arg->cal_fp=fopen(tmp,"r")) == NULL ){
          fprintf(stdout,"No BOR calib file - ");
          sprintf(tmp, "%s/%s", sort->data_dir, sort->recent_cal);
+         memcpy(tmp+strlen(tmp)-4, ".json", 6);
          if( strlen(sort->recent_cal) != 0 && (arg->cal_fp=fopen(tmp,"r")) != NULL ){
             fprintf(stdout,"using most recent: %s\n", sort->recent_cal);
          } else {
@@ -2792,11 +2793,11 @@ int open_next_sortfiles(Sort_status *arg)
             if( load_config(tmp_cfg, tmp, NULL) == 0 ){
                merge_configs(configs[1], tmp_cfg);
             } else {
-               fprintf(stderr,"open sortifles: cant load config:%s\n", tmp);
+               fprintf(stderr,"open sortfiles: cant load config:%s\n", tmp);
             }
             remove_config(tmp_cfg);
          } else {
-            fprintf(stderr,"open sortifles: cant create config:%s\n", tmp);
+            fprintf(stderr,"open sortfiles: cant create config:%s\n", tmp);
          }
       }
    }
