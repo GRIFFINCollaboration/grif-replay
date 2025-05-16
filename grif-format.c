@@ -152,7 +152,7 @@ int unpack_grif3_event(unsigned *evntbuf, int evlen, Grif_event *ptr, int proces
    int i, type, value, qtcount, master_port, grifc_port, done=0;
    unsigned int val32, *evstrt = evntbuf;
    static int savelen, prevtrig, errcount;
-   int *wave_ptr = NULL;
+   int *wave_ptr = NULL;  int discard = 0;
 
    if( debug ){ printf("--CLR EVT[%4ld]\n", ptr - grif_event ); }
    memset(ptr, 0, sizeof(Grif_event) );
@@ -182,17 +182,20 @@ int unpack_grif3_event(unsigned *evntbuf, int evlen, Grif_event *ptr, int proces
 	 // ptr->address >= 0x8000 - currently this will be caen data events
 	 //   which have had their address altered to allow reordering
          //   now the address should be changed back to what it was
+         if( ptr->address == 0xFFFF ){
+            val32 -= 0x80000000;
+         }
          if( (unsigned)(ptr->address) >= 0x8000 ){
 	    extern int grifc_to_boardid[16];
 	    int board_id, grifc;
-	    grifc = (ptr->address >> 12 ) & 0xF;
-	    board_id = grifc_to_boardid[grifc];
-	    ptr->address = 0x8000 + (board_id * 0x100) + (ptr->address & 0xFF);
+            grifc = (ptr->address >> 12 ) & 0xF;
+	    if( (board_id = grifc_to_boardid[grifc]) != -1 ){
+	       ptr->address = 0x8000 + (board_id * 0x100) + (ptr->address & 0xFF);
+            }
 	 }
-
          // fprintf(stdout,"%d\n",ptr->address);
          ptr->chan = GetIDfromAddress(ptr->address);
-         if( ptr->dtype != 0xF && (ptr->chan < 0) ){
+         if( ptr->dtype != 0xF && (ptr->chan < 0) && ptr->address != 0xFFFF ){
             ++grif_err[GRIF_ERR_ADDR];
             //if( ++errcount < 100 || (errcount % 1000 == 0) ){
              fprintf(stderr,"Ignoring Event - Unknown address [0x%04x] returns chan %d\n", ptr->address, ptr->chan);
@@ -201,15 +204,6 @@ int unpack_grif3_event(unsigned *evntbuf, int evlen, Grif_event *ptr, int proces
          }
          ptr->ab_alt_chan = -1; // initialize as -1, used in addback
          wave_ptr  = &ptr->waveform_length;     /* should be zero here */
-         // if network count not present, next 2 words are [mstpat/ppg mstid]
-         // (in filtered data)
-	 if( ( *(evntbuf) >> 31 ) == 0 ){ val32 = *(evntbuf++); ++i;
-	    ptr->wf_present = (val32 & 0x8000) >> 15;
-	    ptr->pileup     = (val32 & 0x001F);
-	 }
-	 if( ( *(evntbuf) >> 31 ) == 0 ){
-            ptr->master_id   = *(evntbuf++); ++i;
-         }
  	 break;
       case 0x9:                      /* Channel Trigger Counter [AND MODE] */
          ptr->trig_req =  value & 0x0fffffff;
@@ -234,16 +228,6 @@ int unpack_grif3_event(unsigned *evntbuf, int evlen, Grif_event *ptr, int proces
 	 break;
       case 0xd:                                   /* network packet counter */
          ptr->net_id = val32;
-         // next 2 words are [mstpat/ppg mstid] in filtered data
-	 //  [in unfiltered data, first word is "fake" master_id,
-         //                 and following word is missing
-         if( ( *(evntbuf) >> 31 ) == 0 ){ val32 = *(evntbuf++); ++i;
-	    ptr->wf_present = (val32 & 0x8000) >> 15;
-	    ptr->pileup     = (val32 & 0x001F);
-	 }
-	 if( ( *(evntbuf) >> 31 ) == 0 ){
-            ptr->master_id   = *(evntbuf++); ++i;
-         }
 	 break;
       case 0xe:      // 14bit acc 14bit req                /* Event Trailer */
          if( (i+1) != evlen ){
@@ -263,74 +247,75 @@ int unpack_grif3_event(unsigned *evntbuf, int evlen, Grif_event *ptr, int proces
       case 0x0: case 0x1: case 0x2: case 0x3:
       case 0x4: case 0x5: case 0x6: case 0x7:
          if( ptr->dtype == 0xF ){ // scalar events have different format
+            if( ptr->address != 0xFFFF ){ discard = 1; } 
             ptr->scl_present = 1;
             scalar[ptr->scalar_length++]  = val32;
             break;
          }
-	 if( i < 3 ){  // header stuff (with no 0xd present)
-	    // next 2 words are [mstpat/ppg mstid] in filtered data
-	    ptr->wf_present = (val32 & 0x8000) >> 15;
-	    ptr->pileup     = (val32 & 0x001F);
-	    if( ( *(evntbuf) >> 31 ) == 0 ){
-               ptr->master_id   = *(evntbuf++);
-               ++i;
+	 if( i < 3 ){ // header words - either [mstpat/ppg mstid] or ppg
+            if( ptr->address == 0xFFFF ){
+               ptr->master_pattern = val32;
+            } else {
+ 	       ptr->wf_present = (val32 & 0x8000) >> 15;
+	       ptr->pileup     = (val32 & 0x001F);
+	       if( ( *(evntbuf) >> 31 ) == 0 ){
+                  ptr->master_id   = *(evntbuf++);
+                  ++i;
+               }
             }
 	    break;
 	 } else { // if dtype=6, maybe RF - extend sign from 30 to 32bits
 	    if( ptr->dtype == 6 && (val32 & (1<<29)) ){ val32 |= 0xC0000000; }
-
-      switch(++qtcount){
-        case 1:  /* Energy */
-        ptr->q  = (ptr->dtype==6) ? val32 : val32 & 0x01ffffff;
-        ptr->e_bad   = (value >> 25) & 0x1;
-        ptr-> integ |= ((val32 & 0x7c000000) >> 17); ptr->nhit = 1;
-        break;
-        case 2: /* CFD Time */
-	  if(ptr->dtype==6){
-	    ptr->cfd      = val32 & 0x3ff;
-	    ptr->cc_short = ((val32>>10) & 0x7fff);
-	  }else{
-	    ptr->cfd = val32 & 0x003fffff;
-	  }
-        ptr-> integ |= ((val32 & 0x7FC00000) >> 22);
-        break;
-        case 3:  /* descant long*/
-        if(ptr->dtype==6){
-          //ptr->cc_long  = val32; // Not used? cc_long was changed to psd in grif-format.h
-        } else { ptr->integ2 =   val32 & 0x003FFF;
-          ptr->nhit   = ((val32 & 0xFF0000) >> 16);
-        }
-        break;
-        case 4:  /* descant short*/
-        if(ptr->dtype==6){ ptr->cc_short  = val32; }
-        else { ptr->q2 =  val32 & 0x3FFFFF;
-          ptr->e2_bad  = (val32 >> 25) & 0x1;
-        }
-        break;
-        case 5:
-        ptr->integ3 =   val32 & 0x00003FFF;
-        ptr->integ4 = ((val32 & 0x3FFF0000) >> 16);
-        break;
-        case 6: ptr->q3 =  val32 & 0x3FFFFF;
-        ptr->e4_bad  = (val32 >> 25) & 0x1;
-        break;
-        case 7: ptr->q4 =  val32 & 0x3FFFFF;
-        ptr->e4_bad  = (val32 >> 25) & 0x1;
-        break;
-
-          default:
-          ++grif_err[GRIF_ERR_PHWORDS];
-          //fprintf(stderr,"Event %d(chan%d) excess PH words\n",
-          //   grif_evcount, ptr->chan );
-          break;
-        }
-
+            switch(++qtcount){
+            case 1:  /* Energy */
+            ptr->q  = (ptr->dtype==6) ? val32 : val32 & 0x01ffffff;
+            ptr->e_bad   = (value >> 25) & 0x1;
+            ptr-> integ |= ((val32 & 0x7c000000) >> 17); ptr->nhit = 1;
             break;
+            case 2: /* CFD Time */
+	       if(ptr->dtype==6){
+	          ptr->cfd      = val32 & 0x3ff;
+	          ptr->cc_short = ((val32>>10) & 0x7fff);
+	       } else {
+	          ptr->cfd = val32 & 0x003fffff;
+	       }
+               ptr-> integ |= ((val32 & 0x7FC00000) >> 22);
+               break;
+            case 3:  /* descant long*/
+               if(ptr->dtype==6){
+                 //ptr->cc_long  = val32; // Not used? cc_long was changed to psd in grif-format.h
+               } else { ptr->integ2 =   val32 & 0x003FFF;
+                 ptr->nhit   = ((val32 & 0xFF0000) >> 16);
+               }
+               break;
+            case 4:  /* descant short*/
+               if(ptr->dtype==6){ ptr->cc_short  = val32; }
+               else { ptr->q2 =  val32 & 0x3FFFFF;
+                 ptr->e2_bad  = (val32 >> 25) & 0x1;
+               }
+               break;
+            case 5:
+               ptr->integ3 =   val32 & 0x00003FFF;
+               ptr->integ4 = ((val32 & 0x3FFF0000) >> 16);
+               break;
+            case 6: ptr->q3 =  val32 & 0x3FFFFF;
+               ptr->e4_bad  = (val32 >> 25) & 0x1;
+               break;
+            case 7: ptr->q4 =  val32 & 0x3FFFFF;
+               ptr->e4_bad  = (val32 >> 25) & 0x1;
+               break;
+            default:
+               ++grif_err[GRIF_ERR_PHWORDS];
+               //fprintf(stderr,"Event %d(chan%d) excess PH words\n",
+               //   grif_evcount, ptr->chan );
+               break;
+            }
          }
+         break;
       case 0xf: fprintf(stderr,"griffin_decode: 0xF.......\n");
                 /* Unassigned packet identifier */ return(-1);
       default:  fprintf(stderr,"griffin_decode: default case\n"); return(-1);
       }
    }
-   return( (ptr->dtype == 15) ); // return true if scalar, so they are discarded
+   return( discard ); // discard scalars other than ppg-"scalar"
 }

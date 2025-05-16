@@ -200,7 +200,11 @@ int apply_gains(Grif_event *ptr)
 
   // Protect against invalid channel numbers
   if( chan < 0 || chan >= odb_daqsize ){
-    fprintf(stderr,"unpack_event: ignored event in chan:%d [0x%04x]\n", chan, ptr->address );
+     if( ptr->address == 0xFFFF ){
+      //  printf("PPG PATTERN: 0x%08x at time %10.4f seconds\n", ptr->master_pattern, (double)(ptr->ts/100000000) );
+     } else {
+       fprintf(stderr,"unpack_event: ignored event in chan:%d [0x%04x]\n", chan, ptr->address );
+     }
     return(-1);
   }
 

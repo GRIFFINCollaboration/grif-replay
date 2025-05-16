@@ -194,11 +194,11 @@ TH2I *H2_BOOK(Config *cfg, char *name, char *title, int xbins, int xmin, int xma
    }
    // always allocate the data for sorting histograms
    // skip allocation for large histos read from disk (only read when needed)
-   if( xbins*ybins <= SMALL_HISTO_BINS ||
-       cfg == configs[0] || cfg == configs[1] ){
+   if( xbins*ybins <= SMALL_HISTO_BINS /* ||
+      cfg == configs[0] || cfg == configs[1]*/ ){
       if( (result->data = (int *)malloc(xbins*ybins*sizeof(int))) == NULL){
          fprintf(stderr,"H2_BOOK: data malloc failed\n");
-         free(result); return(NULL);
+         return(NULL);
       }
       memset(result->data, 0, xbins*ybins*sizeof(int) );
    } else {
@@ -239,7 +239,9 @@ fprintf(stdout,"create %s\n",title);
 int TH2I_Reset(TH2I *this)
 {
   // fprintf(stdout,"Reset TH1I histogram, %s\n",this->title);
-   memset(this->data, 0, this->xbins*this->ybins*sizeof(int)); return(0);
+   if( this->data != NULL ){
+      memset(this->data, 0, this->xbins*this->ybins*sizeof(int));
+   } return(0);
    this->valid_bins    = this->xbins*this->ybins;
    this->underflow     = 0;
    this->overflow      = 0;
@@ -260,6 +262,12 @@ int TH2I_Fill(TH2I *this, int xval, int yval, int count)
   if( xbin >= this->xbins ){ (this-> overflow)++; return(0); }
   if( ybin <            0 ){ (this->underflow)++; return(0); }
   if( ybin >= this->ybins ){ (this-> overflow)++; return(0); }
+  if( this->data == NULL ){
+     if( (this->data=(int *)malloc(this->xbins*this->ybins*sizeof(int)))==NULL){
+        fprintf(stderr,"TH2I_Fill: data malloc failed for %s\n",this->handle);
+        return(-1);
+     }
+  }
   (this->data[(int)xbin + (int)(ybin)*this->xbins])+=count;
   return(0);
 }
@@ -268,6 +276,12 @@ int TH2I_SetBinContent(TH2I *this, int xbin, int ybin, int value)
 {
    if( xbin < 0 || xbin >= this->xbins ){ return(-1); }
    if( ybin < 0 || ybin >= this->ybins ){ return(-1); }
+   if( this->data == NULL ){
+      if( (this->data=(int *)malloc(this->xbins*this->ybins*sizeof(int)))==NULL){
+         fprintf(stderr,"TH2I_Fill: data malloc failed for %s\n",this->handle);
+         return(-1);
+      }
+   }
    (this->data[xbin+ybin*this->xbins])=value; return(0);
 }
 
@@ -275,6 +289,7 @@ int TH2I_GetBinContent(TH2I *this, int xbin, int ybin)
 {
    if( xbin < 0 || xbin >= this->xbins ){ return(-1); }
    if( ybin < 0 || ybin >= this->ybins ){ return(-1); }
+   if( this->data == NULL ){ return(0); }
    return( (this->data[xbin+ybin*this->xbins]) );
 }
 
@@ -635,9 +650,11 @@ int write_th1I(FILE *fp, void *ptr)
 
    bins = (hist->type==INT_2D || hist->type==INT_2D_SYMM) ? hist->xbins*hist->ybins : hist->xbins;
    // check for empty (count non-zero at same time)
-   count = 0; for(i=0; i<bins; i++){
-      if( hist->data[i] != 0 ){
-         ++count; if( hist->type==INT_2D || hist->type==INT_2D_SYMM){ break; }
+   count = 0; if( hist->data != NULL ){
+      for(i=0; i<bins; i++){
+         if( hist->data[i] != 0 ){
+            ++count; if( hist->type==INT_2D || hist->type==INT_2D_SYMM){ break; }
+         }
       }
    }
    if( count == 0 ){ size=0; mode=0; }

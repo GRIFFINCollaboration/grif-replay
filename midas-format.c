@@ -98,7 +98,8 @@ int grifc_to_boardid[16]; // to allow translating back to original address
 int read_caen_odb_addresses(int odb_daqsize, unsigned short *addr_table)
 {
    int i, addr, board_id, curr_grifc=8;
-   memset(board_to_grifc, -1, 32*sizeof(int));
+   memset(board_to_grifc,   -1, 32*sizeof(int));
+   memset(grifc_to_boardid, -1, 16*sizeof(int));
    for(i=0; i<MAX_DAQSIZE && i<odb_daqsize; i++){
       if( ((addr = addr_table[i]) & 0x8000 ) == 0 ){ continue; }
       board_id = (addr - 0x8000) >> 8;
