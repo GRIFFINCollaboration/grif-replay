@@ -130,7 +130,7 @@ void reorder_main(Sort_status *arg)
          evstart = NULL; err_format = len = ev_done = ts_stat = 0; continue;
       }
       // now have full event without any obvious format errors
-      
+
       // events that are so late, that we have already output their timeslot
       // can no longer be made to be in order
       // - drop them for now (may include anyway - mark as just for singles?)
@@ -177,6 +177,9 @@ void reorder_main(Sort_status *arg)
          tslot[ts_slot] = newptr;
       } else {                              // insert into list IN TIME ORDER
          while( 1 ){ // at this point - bufptr is previous, nxtptr is current
+            if( nxtptr == NULL ){
+               printf("IMPOSSIBLE ERROR\n"); break;
+            }
             if( ts <= nxtptr->ts || nxtptr->in_use == 0 ){ // insert here
                if( bufptr == NULL ){
                   tslot[ts_slot] = newptr; newptr->next = nxtptr;
@@ -239,7 +242,7 @@ void reorder_out(Sort_status *arg)
       prev_ts = ts;
       // have found event to output (ts is now - or earlier)
       //    iterate over this in-use linked list
-      //    NOTE: as this list is sorted in timestamp order, this iteration 
+      //    NOTE: as this list is sorted in timestamp order, this iteration
       //    will only be over any equal timestamp events at start of list
       while(1){
          nxt = buf->next;
