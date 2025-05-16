@@ -818,7 +818,7 @@ close_folder(cfg);
    {NULL,                  "Hits_and_Sums/Delta_t"," "},
    {(void **) dt_hist,     "",        dt_handles[0],  SUBSYS_HPGE_A,  DT_SPEC_LENGTH, 0, N_DT }, // leave subsys as GE -> all always defined
    {(void **) dt_tacs_hist,"dt_labr_tac%d",      "",  SUBSYS_TAC_LABR,  DT_SPEC_LENGTH, 0, N_TACS },
-   {(void **) tac_lbl_ts_diff,"TAC%02d timestamp offset", "",  SUBSYS_TAC_LABR,  DT_SPEC_LENGTH, 0, N_TACS },
+   {(void **) tac_lbl_ts_diff,"TAC%02d timestamp offset", "",  SUBSYS_LABR_L,  DT_SPEC_LENGTH, 0, N_TACS },
    {NULL,                  "Coinc/Coinc",        ""},
    {(void **)&gg_ab,       "Addback_GG",         "",  SUBSYS_HPGE_A,  E_2D_SPECLEN, SYMMETERIZE},
    {(void **)&gg,          "GG",                 "",  SUBSYS_HPGE_A,  E_2D_SPECLEN, SYMMETERIZE},
@@ -1361,12 +1361,12 @@ int fill_labr_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
       } break;
    case SUBSYS_TAC_ZDS:
       c1=crystal_table[alt->chan]-1;  // assign c1 as TAC number
-      if(c1 >= 0 && c1 < N_TACS ){ // 8 LBL + 1 ZDS + 4 ARIES
+      if(c1 == 7){ // 8 LBL + 1 ZDS + 4 ARIES
          tac_lbl_ts_diff[c1]->Fill(tac_lbl_ts_diff[c1], (int)((alt->ts-ptr->ts)+DT_SPEC_LENGTH/2), 1);
        } break;
     case SUBSYS_TAC_ART:
        c1=crystal_table[alt->chan]-1;  // assign c1 as TAC number
-       if(c1 >= 0 && c1 < N_TACS ){ // 8 LBL + 1 ZDS + 4 ARIES
+       if(c1 >= 9 && c1 < N_TACS ){ // 8 LBL + 1 ZDS + 4 ARIES
           tac_lbl_ts_diff[c1]->Fill(tac_lbl_ts_diff[c1], (int)((alt->ts-ptr->ts)+DT_SPEC_LENGTH/2), 1);
         } break;
    }
@@ -1720,7 +1720,7 @@ int gen_derived_odb_tables()
          if(        crystal == 'A' ){ element_table[i] = 1;
          } else if( crystal == 'B' ){ element_table[i] = 2;
          } else if( crystal == 'C' ){ element_table[i] = 3;
-         } else if( crystal == 'X' ){ element_table[i] = -1; // just one crystal for LaBr3, ZDS, ART
+         } else if( crystal == 'X' ){ element_table[i] = -1; // just one crystal for LaBr3, ZDS, ART, LBT
          } else {
             fprintf(stderr,"unknown crystal for ancillary[=%c] in %s\n", crystal, chan_name[i]);
          } break;

@@ -2782,6 +2782,7 @@ int open_next_sortfiles(Sort_status *arg)
          fprintf(stdout,"No BOR calib file - ");
          sprintf(tmp, "%s/%s", sort->data_dir, sort->recent_cal);
          memcpy(tmp+strlen(tmp)-4, ".json", 6);
+         fprintf(stdout,"Trying %s\n",tmp);
          if( strlen(sort->recent_cal) != 0 && (arg->cal_fp=fopen(tmp,"r")) != NULL ){
             fprintf(stdout,"using most recent: %s\n", sort->recent_cal);
          } else {
