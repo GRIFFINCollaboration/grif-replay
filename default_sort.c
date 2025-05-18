@@ -558,13 +558,14 @@ int pre_sort(int frag_idx, int end_idx)
         // Save LBL channel number into ptr->q2 or q3 or q4
         // Save LBL energy ecal into TAC ptr-ecal2 or ecal3 or ecal4
         if( dt >= lbl_tac_window_min && dt <= lbl_tac_window_max ){
-          if(alt->e2cal<1){
+          if(alt->e2cal<1){ // First LBL in coincidence with this TAC
             alt->q2 = ptr->chan; alt->e2cal = ptr->ecal;
-          }else if(ptr->e3cal<1){
+          }else if(alt->e3cal<1){ // This is the second LBL in coincidence with this TAC
+            if( alt->q2<0 || alt->q2 >= odb_daqsize ){ break; }
             if(crystal_table[ptr->chan]<crystal_table[alt->q2]){ // Order the LBL by crystal number not timestamp
               alt->q3 = alt->q2; alt->e3cal = alt->e2cal;
               alt->q2 = ptr->chan; alt->e2cal = ptr->ecal;
-            }else{
+            }else{ // More than two LBL in coincidence with this TAC
             alt->q3 = ptr->chan; alt->e3cal = ptr->ecal;
             }
           }else{

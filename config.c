@@ -2653,6 +2653,10 @@ int add_sortfile(char *path, char *histodir, char *confdir, char *calsrc)
    *(sort->data_name+plen-dlen) = 0;
    if( run_number(&tmp_stat, sort, sort->data_name) ){ return(-1); }
    most_recent_calib_file(sort->data_dir, sort->run, sort->recent_cal);
+    if( strlen(sort->recent_cal) == 0 && strcmp(calsrc,"file") == 0 ){
+       fprintf(stdout,"No recent calib file found. Switching to ODB parameters from this .mid file instead.\n");
+       sprintf(calsrc,"midas");
+    }
    memset(&statbuf, 0, sizeof(struct stat)); sort->data_size = 0;
    if( sort->subrun != -1 ){ // just single subrun
       fname = subrun_filename(sort, sort->subrun);
@@ -2781,27 +2785,27 @@ int open_next_sortfiles(Sort_status *arg)
       if( (arg->cal_fp=fopen(tmp,"r")) == NULL ){
          fprintf(stdout,"No BOR calib file - ");
          sprintf(tmp, "%s/%s", sort->data_dir, sort->recent_cal);
-         memcpy(tmp+strlen(tmp)-4, ".json", 6);
-         fprintf(stdout,"Trying %s\n",tmp);
          if( strlen(sort->recent_cal) != 0 && (arg->cal_fp=fopen(tmp,"r")) != NULL ){
             fprintf(stdout,"using most recent: %s\n", sort->recent_cal);
          } else {
-            fprintf(stdout,"No recent calib file found either\n");
+            fprintf(stdout,"No recent calib file found either. Switching to ODB parameters from this .mid file instead.\n");
          }
-      }
-      if( arg->cal_fp != NULL ){ fclose(arg->cal_fp);
+       }
+       if( arg->cal_fp != NULL ){ fclose(arg->cal_fp);
          if( (tmp_cfg=add_config(tmp)) != NULL ){
-            if( load_config(tmp_cfg, tmp, NULL) == 0 ){
-               merge_configs(configs[1], tmp_cfg);
-            } else {
-               fprintf(stderr,"open sortfiles: cant load config:%s\n", tmp);
-            }
-            remove_config(tmp_cfg);
+           if( load_config(tmp_cfg, tmp, NULL) == 0 ){
+             merge_configs(configs[1], tmp_cfg);
+           } else {
+             fprintf(stderr,"open sortfiles: cant load config:%s\nSwitching to ODB parameters from this .mid file instead.\n", tmp);
+             sprintf(sort->cal_src,"midas");
+           }
+           remove_config(tmp_cfg);
          } else {
-            fprintf(stderr,"open sortfiles: cant create config:%s\n", tmp);
+           fprintf(stderr,"open sortfiles: cant create config:%s\nSwitching to ODB parameters from this .mid file instead.\n", tmp);
+           sprintf(sort->cal_src,"midas");
          }
-      }
-   }
+       }
+     }
    arg->midas_bytes = 0;
    if( strcmp(sort->cal_src, "midas") == 0 ){
       arg->cal_overwrite = 1;
@@ -2961,29 +2965,31 @@ int most_recent_calib_file(char *data_dir, int data_run, char *result)
    int run, subrun, closest_run=-1, last_subrun=-1;
    struct dirent *d_ent;
    DIR *d;
+   char extn[16];
 
    result[0]=0;
    if( (d=opendir(data_dir)) == NULL ){
-      return(-1);
+     return(-1);
    }
    while( (d_ent = readdir(d)) != NULL ){
-      if( strncmp(d_ent->d_name, ".", 1) == 0 ){ continue; } // Ignore
-      if( sscanf(d_ent->d_name, "run%d_%d.json", &run, &subrun) != 2 ){
-         if( sscanf(d_ent->d_name, "run%d.json", &run) != 1 ){
-            continue; // Not Calibration File
-         }
+     if( strncmp(d_ent->d_name, ".", 1) == 0 ){ continue; } // Ignore
+     if( sscanf(d_ent->d_name, "run%d_%d.%15s", &run, &subrun, extn)
+     != 3 ){
+       if( sscanf(d_ent->d_name, "run%d.%15s", &run, extn) != 2 ){
+         continue; }
          subrun=-1;
-      }
-      if( run >= data_run ){ continue; } // after current file
-      if( run < closest_run ){ continue; } // already seen more recent
-      if( run > closest_run ){ last_subrun=-1; }
-      closest_run = run;
-      if( subrun >= last_subrun ){
+       }
+       if( strcmp(extn, "json") != 0 ){ continue; }
+       if( run >= data_run ){ continue; } // after current file
+       if( run < closest_run ){ continue; } // already seen more recent
+       if( run > closest_run ){ last_subrun=-1; }
+       closest_run = run;
+       if( subrun >= last_subrun ){
          sprintf(result, "%s", d_ent->d_name );
          last_subrun = subrun;
-      }
-   }
-   return( closest_run == -1 );
+       }
+     }
+     return( closest_run == -1 );
 }
 
 int send_datafile_list(char *path, int fd, int type)
