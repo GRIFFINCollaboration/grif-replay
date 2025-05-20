@@ -838,6 +838,7 @@ close_folder(cfg);
    {(void **)&ge_rcmp,     "GeRCMP",             "",  SUBSYS_RCMP,    E_2D_SPECLEN, E_2D_SPECLEN},
    {(void **)&labr_rcmp,   "LaBrRCMP",           "",  SUBSYS_RCMP,    E_2D_SPECLEN, E_2D_SPECLEN},
    {(void **)&gg_opp,      "GGoppo",             "",  SUBSYS_HPGE_A,  E_2D_SPECLEN, SYMMETERIZE},
+   {(void **)&gg_ab_opp,   "GG_Addback_oppo",    "",  SUBSYS_HPGE_A,  E_2D_SPECLEN, SYMMETERIZE},
    {NULL,                  "Coinc/Hits",         ""},
    {(void **)&gg_hit,      "GeGeHit",            "",  SUBSYS_HPGE_A,  64,  64},
    {(void **)&bgobgo_hit,  "BgoBgoHit",          "",  SUBSYS_BGO,    512, 512},
@@ -1263,6 +1264,7 @@ int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
             if( c2 == grif_opposite[c1] ){
                // 180 degree coinc matrix for summing corrections
                gg_opp->Fill(gg_opp, (int)ptr->ecal, (int)alt->ecal, 1);
+               gg_ab_opp->Fill(gg_ab_opp, (int)ptr->esum, (int)alt->esum, 1);
              }
              // Ge-Ge angular correlations
              // Fill the appropriate angular bin spectrum
