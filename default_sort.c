@@ -1280,9 +1280,9 @@ int init_default_histos(Config *cfg, Sort_status *arg)
               if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_SCEPTAR]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_SCEPTAR]) ){
                 ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1); // beta-gated Ge sum energy spectrum
                 ge_sum_b_sep->Fill(ge_sum_b_sep, (int)ptr->ecal, 1); // Sceptar-gated Ge sum energy spectrum
-              }else if((ptr->ts - alt->ts)<0){
+              }else if((ptr->ts - alt->ts)<-15){
                 ge_isomer_popu->Fill(ge_isomer_popu, (int)ptr->ecal, 1); // Early gamma rays appearing earlier in time than the prompt
-              }else if((ptr->ts - alt->ts)>0){
+              }else if((ptr->ts - alt->ts)>15){
                 ge_isomer_depop->Fill(ge_isomer_depop, (int)ptr->ecal, 1); // Delayed gamma rays appearing later in time than the prompt
               }
               break;
