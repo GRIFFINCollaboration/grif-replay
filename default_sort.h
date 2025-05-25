@@ -65,6 +65,7 @@ static char subsys_name[MAX_SUBSYS][STRING_LEN] = {
 #define ECAL_TAC_SPECLEN        1024
 #define E_TOF_SPEC_LENGTH       8192
 #define E_PSD_SPEC_LENGTH       1024
+#define CYCLE_SPEC_LENGTH       8192  // At 10 millisecond binning this supports 13.6 minute cycles (819 seconds)
 #define E_2D_TOF_SPECLEN        1024
 #define E_2D_SPECLEN            4096
 #define E_2D_RCMP_SPECLEN       6400
@@ -77,6 +78,47 @@ static char subsys_name[MAX_SUBSYS][STRING_LEN] = {
 #define DSW_ANGCOR_SPECLEN      4096
 
 //#######################################################################
+//########             PPG variables and patterns              ##########
+//#######################################################################
+
+// PPG patterns and handles
+#define N_PPG_PATTERNS  7
+int ppg_patterns[N_PPG_PATTERNS]={ 0xC008,0xC002,0xC001,0xC004,0xC0F0,0xC009,0xC00A };
+char ppg_handles[N_PPG_PATTERNS][32]={ "0xC008","0xC002","0xC001","0xC004","0xC0F0","0xC009","0xC00A" };
+char ppg_names[N_PPG_PATTERNS][32]={
+  "Move_Tape", "Background", "Beam-on_Implant", "Beam-off_Decay", "Source_data", "Continuous_Tape_Beam-on", "Continuous_Tape_Background"
+};
+#define MAX_ODB_PPG_CYCLES 50
+typedef struct ppg_cycles_struct {
+   char name[128];  int length; int codes[16]; int durations[16];
+} ppg_cycles;
+
+// Definitions for the Current cycle of this run
+// These are derived from the ODB settings at BOR
+long ppg_cycle_duration;             // Length of one cycle in timestamp units
+char ppg_cycle_name[128];            // Name of this current cycle
+long ppg_cycle_length;               // Number of patterns/durations for this current cycle
+long ppg_cycle_pattern_duration[16]; // Length of each pattern in timestamp units
+int  ppg_cycle_pattern_code[16];     // Index of each pattern for use with the ppg_patterns array
+int  ppg_cycles_active;              // Cycles active or made inactive if set to Source/constant beam-on etc.
+
+// These variables are updated in apply_gains at each PPG pattern change
+int ppg_current_pattern;  // Index of the current PPG cycle pattern for use with the ppg_patterns array
+int ppg_cycle_number;     // Current cycle number. Cycles counted from zero at beginning of run
+long ppg_cycle_start;     // Timestamp of the start of the current cycle
+long ppg_cycle_end;       // Timestamp of the end of the current cycle
+int ppg_cycle_step;       // Current pattern number within this cycle. Patterns counted from zero at beginning of cycle
+long ppg_pattern_start;   // Timestamp of the start of the current pattern
+long ppg_pattern_end;     // Timestamp of the end of the current pattern
+
+// Spectra for cycles
+#define MAX_CYCLES 500
+char ge_cycle_code_titles[N_PPG_PATTERNS][HANDLE_LENGTH]={ "0xC008_Move_Tape","0xC002_Background","0xC001_Beam-on_Implant","0xC004_Beam-off_Decay","0xC0F0_Source_data","0xC009_Continuous_Tape_Beam-on", "0xC00A_Continuous_Tape_Background" };
+TH1I   *ge_cycle_activity, *zds_cycle_activity; // Activity over cycle time, sum of all cycles
+TH1I   *ge_cycle_code[N_PPG_PATTERNS]; // Energy spectrum for each PPG pattern
+TH1I   *ge_cycle_num[MAX_CYCLES];      // Activity over cycle time for each indivdual cycle
+
+//#######################################################################
 //########        Individual channel singles HISTOGRAMS        ##########
 //#######################################################################
 
@@ -84,7 +126,7 @@ static char subsys_name[MAX_SUBSYS][STRING_LEN] = {
 TH1I   *ts_hist; // timestamp
 TH1I   *gc_hist; // GRIF-CAEN hitpattern for checking coincidences
 TH1I   *ph_hist[MAX_DAQSIZE];
-TH1I    *e_hist[MAX_DAQSIZE];
+TH1I   *e_hist[MAX_DAQSIZE];
 //TH1I *wave_hist[MAX_DAQSIZE];
 
 // Hitpatterns
@@ -100,8 +142,6 @@ TH1I  *desw_tof[N_DES_WALL];                // Time-Of-Flight
 TH1I  *desw_tof_corr[N_DES_WALL];           // corrected Time-Of-Flight
 TH1I  *desw_tof_psd[N_DES_WALL];            // corrected Time-Of-Flight, PSD gated
 TH1I  *desw_psd[N_DES_WALL];                // Pulse Shape Discrimination
-
-
 
 //#######################################################################
 //########                PRESORT Time Gates                   ##########

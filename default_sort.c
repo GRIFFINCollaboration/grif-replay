@@ -196,16 +196,40 @@ int init_default_histos(Config *cfg, Sort_status *arg)
     {
       int caen_ts_offset = -60; // this value (-60) aligns the timestamps of HPGe with ZDS(CAEN)
       float energy,psd;
+      int i, ppg_index;
       int chan = ptr->chan;
 
       // Protect against invalid channel numbers
       if( chan < 0 || chan >= odb_daqsize ){
         if( ptr->address == 0xFFFF ){
-          //  printf("PPG PATTERN: 0x%08x at time %10.4f seconds\n", ptr->master_pattern, (double)(ptr->ts/100000000) );
+          ppg_index=-1;
+          for(i=0; i<N_PPG_PATTERNS; i++){ if( (ptr->master_pattern & 0xFFFF) == ppg_patterns[i] ){ ppg_index = i; break; } }
+          if(ppg_index<0){ fprintf(stderr,"unrecognized ppg pattern, 0x%04X\n", (ptr->master_pattern & 0xFFFF)); return(-1); }
+        //  fprintf(stdout,"PPG PATTERN: 0x%04X (%s, %s) at time %10.4f seconds\n", (ptr->master_pattern & 0xFFFF), ppg_handles[ppg_index], ppg_names[ppg_index], (double)(ptr->ts/100000000) );
         } else {
           fprintf(stderr,"unpack_event: ignored event in chan:%d [0x%04x]\n", chan, ptr->address );
         }
         return(-1);
+      }
+
+      // Check this timstamp against the cycle to see if the pattern has changed
+      if(ppg_cycles_active==1 && ptr->ts>ppg_pattern_end){
+        // Recalculate PPG cycle variables
+        // Here we update the current PPG pattern, cycle number, cycle start timestamp with the latest values.
+        // All subsequent events will use these values
+
+        ppg_pattern_start = ppg_pattern_end;                           // Timestamp of the start of the current pattern
+        ppg_cycle_step++;                                              // Current pattern number within this cycle. Patterns counted from zero at beginning of cycle
+        if(ppg_cycle_step==ppg_cycle_length){ // Move to next cycle
+          ppg_cycle_step = 0;
+          ppg_cycle_number++;                                          // Current cycle number. Cycles counted from zero at beginning of run
+          ppg_cycle_start = ppg_pattern_start;                       // Timestamp of the start of the current cycle
+          ppg_cycle_end += ppg_cycle_duration;                         // Timestamp of the end of the current cycle
+        }
+        ppg_current_pattern = ppg_cycle_pattern_code[ppg_cycle_step]; // Index of the current PPG cycle pattern for use with the ppg_patterns array
+        ppg_pattern_end = ppg_pattern_start + ppg_cycle_pattern_duration[ppg_cycle_step]; // Timestamp of the end of the current pattern
+      //  fprintf(stdout,"Cycle %04d, start/finish [%ld/%ld]: step %d, %s, start/finish [%ld/%ld]\n",
+      //  ppg_cycle_number, ppg_cycle_start, ppg_cycle_end, ppg_cycle_step, ppg_handles[ppg_current_pattern], ppg_pattern_start, ppg_pattern_end);
       }
 
       // Calculate the energy and calibrated energies
@@ -232,6 +256,13 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         //init_histos(configs[1], ptr->subsys);
         init_histos(NULL, ptr->subsys);
       }
+
+/*
+    //  if(ptr->ts>5503154397){
+      if(ptr->ts<1500000000){ // First 15 seconds of events
+     fprintf(stdout,"%015ld, chan %03d, subsys %02d Cycle %04d, start/finish [%015ld/%015ld]: step %d, %s, start/finish [%015ld/%015ld]\n",ptr->ts,chan,ptr->subsys,ppg_cycle_number, ppg_cycle_start, ppg_cycle_end, ppg_cycle_step, ppg_handles[ppg_current_pattern], ppg_pattern_start, ppg_pattern_end);
+   }
+   */
 
       // HPGe pileup
       if( ptr->subsys == SUBSYS_HPGE_A){
@@ -876,7 +907,12 @@ int init_default_histos(Config *cfg, Sort_status *arg)
       {(void **)&gb_dt,      "betaG_time-diff_vs_gamma-energy","", SUBSYS_HPGE_A, DT_SPEC_LENGTH, E_2D_SPECLEN},
       {(void **)&gg_dt,      "GG_time-diff_vs_gamma-energy",   "", SUBSYS_HPGE_A, DT_SPEC_LENGTH, E_2D_SPECLEN},
       {(void **)&ge_isomer_popu, "GammaE_populating",          "", SUBSYS_HPGE_A,     E_SPECLEN},
-      {(void **)&ge_isomer_depop,"GammaE_depopulating",        "", SUBSYS_HPGE_A,     E_SPECLEN}
+      {(void **)&ge_isomer_depop,"GammaE_depopulating",        "", SUBSYS_HPGE_A,     E_SPECLEN},
+      {NULL,                   "Analysis/Cycles",        ""},
+      {(void **)&ge_cycle_activity, "HPGe_cycle_activity",     "", SUBSYS_HPGE_A,     CYCLE_SPEC_LENGTH},
+      {(void **)&zds_cycle_activity, "ZDS_cycle_activity",     "", SUBSYS_ZDS_A,      CYCLE_SPEC_LENGTH},
+      {(void **) ge_cycle_code,    "",    ge_cycle_code_titles[0], SUBSYS_HPGE_A,     E_SPECLEN, 0, N_PPG_PATTERNS},
+      {(void **) ge_cycle_num,     "HPGe_cycle%03d",           "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
     }; // Note initialized array variable is CONST (not same as double-pointer)
     // TH1I *hist;  hist = (TH1I *) 0;   ptr = &hist = (TH1I **)addr;  *ptr =
 
@@ -1000,9 +1036,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
 
         int fill_singles_histos(Grif_event *ptr)
         {
-          int i, j, dt, pu, nhits, chan, pos, sys, elem, clover, c1,c2, index, offset,bin;
+          int i, j, dt, pu, nhits, chan, pos, sys, elem, clover, c1,c2, index, offset, bin;
           char *name, c;
-          long ts;
 
           chan = ptr->chan;
           // Check for invalid channel numbers, prossibly due to data corruption
@@ -1092,6 +1127,20 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                   ge_sum_ab_ds->Fill(ge_sum_ab_ds, (int)ptr->ecal, 1);
                 }
               }
+
+             // PPG Cycles histograms
+             if(ppg_cycles_active==1){
+               ge_cycle_code[ppg_current_pattern]->Fill(ge_cycle_code[ppg_current_pattern], (int)ptr->ecal, 1);
+               bin = (int)((ptr->ts-ppg_cycle_start)/1000000);  // convert 10ns to 10 millisecond binning
+               if(ppg_cycle_number<MAX_CYCLES){ ge_cycle_num[ppg_cycle_number]->Fill(ge_cycle_num[ppg_cycle_number], bin, 1); }
+               ge_cycle_activity->Fill(ge_cycle_activity, bin, 1);
+               /*
+               if(pos==1 && ppg_cycle_number<10){
+               fprintf(stdout,"Ge: cycle %d, start %ld, ts %ld, end %ld, pattern %d [%s], diff=%ld, bin %d\n",ppg_cycle_number,ppg_cycle_start,ptr->ts,ppg_cycle_end,ppg_current_pattern,ppg_handles[ppg_current_pattern],diff,bin);
+             }
+             */
+             }
+
             }else {
               fprintf(stderr,"bad ge crystal[%d] for chan %d\n", pos, ptr->chan);
             } break;
@@ -1223,7 +1272,15 @@ int init_default_histos(Config *cfg, Sort_status *arg)
               } else {
                 aries_xtal->Fill(aries_xtal, pos, (int)ptr->ecal, 1);
               } break;
-              case SUBSYS_ZDS_A: gc_hist->Fill(gc_hist, 2, 1); break;
+              case SUBSYS_ZDS_A:
+              gc_hist->Fill(gc_hist, 2, 1);
+
+               // PPG Cycles histograms
+               if(ppg_cycles_active==1){
+                 bin = (int)((ptr->ts-ppg_cycle_start)/1000000); // 10 millisecond binning
+                 zds_cycle_activity->Fill(zds_cycle_activity, bin, 1);
+               }
+              break;
               case SUBSYS_ZDS_B: gc_hist->Fill(gc_hist, 1, 1); break;
               case SUBSYS_RCMP:
               rcmp_sum->Fill(rcmp_sum, (int)ptr->ecal, 1);
@@ -1551,8 +1608,13 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                       static void *arrayptr;
                       int read_odb_items(int len, int *bank_data)
                       {
-                        char *path_ptr, *ptr, *str, *odb_data = (char *)bank_data, posn[2];
-                        int i, c = '<', d = '>', dtype=0, active=0, index=0;
+                        char *path_ptr, *ptr, *str, *odb_data = (char *)bank_data, posn[2], odb_ppg_current[128];
+                        int i, j, c = '<', d = '>', dtype=0, active=0, index=0, ppg_index, odb_ppg_cycle_count=-1;
+
+                        // The currently set cycle is included in the ODB dump after all cycles are defined.
+                        // So we need to unpack them all and then select the values we need.
+                        ppg_cycles odb_ppg_cycle[MAX_ODB_PPG_CYCLES];
+
                         ptr = odb_data;  path_ptr = path;
                         while(1){
                           if( (str = strchr(ptr,c)) == NULL ){ break; }
@@ -1582,6 +1644,10 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                             *path_ptr = '/'; strcpy(path_ptr+1, dirname);
                             path_ptr += strlen(dirname)+1;
                             *path_ptr = '\0';
+                              if( strncmp(path,"/PPG/Cycles/",12) == 0 ){
+                              odb_ppg_cycle_count++;
+                              strcpy(odb_ppg_cycle[odb_ppg_cycle_count].name, dirname);
+                              }
                           } else if( strncmp(ptr,"</dir>",6) == 0 ){
                             while(1){
                               if( --path_ptr < path ){ path_ptr = path;  *path_ptr = '\0';  break; }
@@ -1595,8 +1661,32 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                             memcpy( midas_runtitle, ptr, i ); midas_runtitle[i] = 0;
                             ptr += i+1;
                             if( (str = strchr(ptr,d)) == NULL ){ break; }
+                          } else if( strncasecmp(ptr,"<key name=\"Current\"", 19) == 0 &&
+                                     strncmp(path,"/PPG",4) == 0 ){
+                                     *str = ' '; if( (str = strchr(str,c)) == NULL ){ break; }
+                                     *str = ' '; if( (str = strchr(str,d)) == NULL ){ break; }
+                                       if( sscanf(ptr,"<key name=\"Current\" type=\"STRING\" size=\"%d\" %s /key>", &dtype, value) < 2 ){
+                                         fprintf(stderr,"can't read key name for Current PPG cycle\n"); ptr=str+1; continue;
+                                       }
+                                       strcpy(odb_ppg_current,value);
+                            ptr += i+1;
                           } else if( strncmp(ptr,"</keyarray>",10) == 0 ){ active = 0; arrayptr = (void *)('\0');
+                          if( strncmp(path,"/PPG/Cycles/",12) == 0 ){ odb_ppg_cycle[odb_ppg_cycle_count].length = index+1; }
                         } else if( strncmp(ptr,"<keyarray ",10) == 0 ){
+                          if( strncmp(path,"/PPG/Cycles/",12) == 0 ){
+                            if( sscanf(ptr,"<keyarray name=\"%s", value) < 1 ){
+                              fprintf(stderr,"can't read PPG keyarray entry\n"); ptr=str+1; continue;
+                            }
+                            if( value[strlen(value)-1]=='\"' ){ value[strlen(value)-1]='\0'; }
+                            if( strcmp(value,"PPGcodes") == 0 ){
+                              active = 1; arrayptr = (void *)odb_ppg_cycle[odb_ppg_cycle_count].codes; dtype=0;
+                            }
+                            if( strcmp(value,"durations") == 0 ){
+                              active = 1; arrayptr = (void *)odb_ppg_cycle[odb_ppg_cycle_count].durations; dtype=0;
+                            }
+                            ptr=str+1;
+                            continue;
+                          }
                           if( strcmp(path,"/DAQ/params/MSC") != 0 &&
                           strcmp(path,"/DAQ/MSC")        != 0 &&
                           strcmp(path,"/DAQ/PSC")        != 0 ){  ptr=str+1; continue; }
@@ -1657,6 +1747,59 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                       }
                       fprintf(stdout,"odb record: %d bytes\n", len);
 
+                      // PPG: Now all cycles were unpacked and we identified Current
+                      // Copy the relevant ODB PPG pattern into the global variables for this run
+                      index=-1;
+                      for(i=0; i<MAX_ODB_PPG_CYCLES; i++){
+                        if( strncmp(odb_ppg_cycle[i].name,odb_ppg_current,strlen(odb_ppg_current)) == 0 ){
+                          index=i;
+                          break;
+                        }
+                      }
+                      if(index<0){
+                        fprintf(stderr,"Failed to locate Current PPG Cycle in ODB Cycles\n");
+                      }else{
+                        strcpy(ppg_cycle_name,odb_ppg_cycle[index].name);
+                        fprintf(stdout,"PPG cycle for this run is named %s:\n",ppg_cycle_name);
+                        ppg_cycle_duration=0;
+                        for(i=0; i<odb_ppg_cycle[index].length; i++){
+                          ppg_index=-1;
+                          for(j=0; j<N_PPG_PATTERNS; j++){ if( (odb_ppg_cycle[index].codes[i] & 0xFFFF) == ppg_patterns[j] ){ ppg_index = j; break; } }
+                          if(ppg_index<0){ fprintf(stderr,"unrecognized ppg pattern, 0x%04X\n", (odb_ppg_cycle[index].codes[i] & 0xFFFF)); return(-1); }
+                          ppg_cycle_pattern_code[i] = ppg_index;
+
+                          if(odb_ppg_cycle[index].durations[i] == -1){
+                            // Infinte duration
+                            odb_ppg_cycle[index].length = i+1;
+                            ppg_cycle_length = odb_ppg_cycle[index].length;
+                            ppg_cycle_duration = 0;
+                            ppg_cycles_active = 0;
+                          }else{
+                            ppg_cycles_active = 1;
+                            ppg_cycle_length = odb_ppg_cycle[index].length;
+                            ppg_cycle_pattern_duration[i] = (long)odb_ppg_cycle[index].durations[i]*100; // Convert from ODB microseconds to timestamp 10 nanosecond units
+                            ppg_cycle_duration += ppg_cycle_pattern_duration[i];
+                          }
+                          fprintf(stdout,"PPG PATTERN %d: %s (%s) for %10.4f milliseconds (%015ld timestamps)\n", i,
+                          ppg_handles[ppg_cycle_pattern_code[i]], ppg_names[ppg_cycle_pattern_code[i]],(double)(ppg_cycle_pattern_duration[i]/100000),ppg_cycle_pattern_duration[i]);
+                        }
+                        if(ppg_cycle_duration == 0){
+                          fprintf(stdout,"PPG cycle duration is infinite, ie. no cycles\n");
+                        }else{
+                          fprintf(stdout,"PPG cycle duration is %10.4f seconds\n",(double)(ppg_cycle_duration/100000000));
+                        }
+                        // Set the initial cycle settings
+                        ppg_current_pattern = ppg_cycle_pattern_code[0];  // Index of the current PPG cycle pattern for use with the ppg_patterns array
+                        ppg_cycle_number = 0;                             // Current cycle number. Cycles counted from zero at beginning of run
+                        ppg_cycle_start = 0;                              // Timestamp of the start of the current cycle
+                        ppg_cycle_end = ppg_cycle_duration;               // Timestamp of the end of the current cycle
+                        ppg_cycle_step = 0;                               // Current pattern number within this cycle. Patterns counted from zero at beginning of cycle
+                        ppg_pattern_start = 0;                            // Timestamp of the start of the current pattern
+                        ppg_pattern_end = ppg_cycle_pattern_duration[0];  // Timestamp of the end of the current pattern
+                        fprintf(stdout,"Cycle %04d, start/finish [%ld/%ld]: step %d, %s, start/finish [%ld/%ld]\n",
+                        ppg_cycle_number, ppg_cycle_start, ppg_cycle_end, ppg_cycle_step, ppg_handles[ppg_current_pattern], ppg_pattern_start, ppg_pattern_end);
+                      }
+
                       // arrays typically around 500 entries [one per "chan"] each entry with ...
                       //   daq-address, name, type, gains etc.
                       //
@@ -1708,6 +1851,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                       // Some detector elements have more than one output (HPGe A and B)
                       // 1 is A, 0 is B, -1 is X or unknown
                       output_type = type=='A' ? 1 : (type=='B' ? 0 : -1);
+                      if(subsys == ODBHANDLE_ZDS){ if(type=='X'){ output_type = 1; } } // Older ZDS convention
 
                       // Polarity: 1 is N, 0 is P or T or S, -1 is anything else
                       if(        polarity == 'N' ){ polarity_table[i] = 1;
