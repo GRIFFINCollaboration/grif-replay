@@ -1443,7 +1443,7 @@ int merge_configs(Config *src, Config *dst)
    int i;
 
    dst->lock = 1;  src->lock = 1;
-   for(i=0; i<src->ncal;     i++){ cal = src->calib[i];
+   for(i=0; i<src->ncal;      i++){ cal = src->calib[i];
       edit_calibration(dst, cal->name, cal->offset, cal->gain, cal->quad, cal->pileupk1, cal->pileupk2, cal->pileupE1, cal->address, cal->datatype, 1);
    }
    for(i=0; i<src->nglobal;   i++){ global = src->globals[i];
@@ -2794,7 +2794,7 @@ int open_next_sortfiles(Sort_status *arg)
        if( arg->cal_fp != NULL ){ fclose(arg->cal_fp);
          if( (tmp_cfg=add_config(tmp)) != NULL ){
            if( load_config(tmp_cfg, tmp, NULL) == 0 ){
-             merge_configs(configs[1], tmp_cfg);
+             merge_configs(tmp_cfg, configs[1]);
            } else {
              fprintf(stderr,"open sortfiles: cant load config:%s\nSwitching to ODB parameters from this .mid file instead.\n", tmp);
              sprintf(sort->cal_src,"midas");

@@ -71,7 +71,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         offsets[i]=cal->offset; gains[i]=cal->gain;  quads[i]=cal->quad;
       }
 
-      // Pileup parameters do not exist in the MIDAS ODB so must always be copied from the config
+      // Pileup parameters do not exist in the MIDAS ODB so must always be copied from the config (file or config)
       for(j=0; j<7; j++){
         pileupk1[i][j] = (isnan(cal->pileupk1[j])) ? 0.0 : cal->pileupk1[j];
         pileupk2[i][j] = (isnan(cal->pileupk2[j])) ? 0.0 : cal->pileupk2[j];
