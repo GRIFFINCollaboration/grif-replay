@@ -1179,7 +1179,7 @@ int load_config(Config *cfg, char *filename, char *buffer)
         return(-1);
       }
       // The pileup correction parameters were introduced in Feb 2025.
-      // Config files before this date will not have pileup correcitons, and after this they are optional
+      // Config files before this date will not have pileup corrections, and after this they are optional
       if( strncmp(ptr,"\"pileupk1\":",11) == 0 ){
         ptr += 11; valstr = ptr;
         if( sscanf(valstr, "[%f,%f,%e,%e,%e,%e,%e], ", &puk1[0],&puk1[1],&puk1[2],&puk1[3],&puk1[4],&puk1[5],&puk1[6]) != 7 ){

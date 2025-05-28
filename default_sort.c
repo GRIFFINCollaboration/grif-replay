@@ -514,7 +514,6 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                 k1 = ptr->integ;
                 ptr->ecal=ptr->esum = ptr->ecal*( pileupk1[chan][0]+(k1*pileupk1[chan][1])+(k1*k1*pileupk1[chan][2])+(k1*k1*k1*pileupk1[chan][3])
                 +(k1*k1*k1*k1*pileupk1[chan][4])+(k1*k1*k1*k1*k1*pileupk1[chan][5])+(k1*k1*k1*k1*k1*k1*pileupk1[chan][6]));
-                alt->e4cal=ptr->ecal; // Remember the ecal of the first Hit in this second Hit
 
                 // Apply the E1 and k2 dependant offset correction to the energy of the second hit
                 // Apply the k2 dependant correction to the energy of the second hit
@@ -525,6 +524,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                 +(k2*k2*k2*k2*pileupk2[chan][4])+(k2*k2*k2*k2*k2*pileupk2[chan][5])+(k2*k2*k2*k2*k2*k2*pileupk2[chan][6])))+correction;
               }
             }
+            alt->e4cal=ptr->ecal; // Remember the ecal of the first Hit in this second Hit. Must be done regardless if a correction is made
           } // end of if(alt->subsys == SUBSYS_HPGE_A && alt->chan == ptr->chan)
 
           // BGO suppression of HPGe
@@ -844,8 +844,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
       {NULL,                   "Hits_and_Sums/Pileup-corrections",     "",                         },
       {(void **) ge_e_vs_k_2hit_first,      "Ge%02d_E_vs_k_1st_of_2hit",              "", SUBSYS_HPGE_A,  2048, 512, 64},
       {(void **) ge_e_vs_k_2hit_second,     "Ge%02d_E_vs_k_2nd_of_2hit",              "", SUBSYS_HPGE_A,  2048, 512, 64},
-      {(void **) ge_PU2_e2_v_k_gatedxrays,  "Ge%02d_PU2_E2_vs_k2_E1gated_on_Xrays",   "", SUBSYS_HPGE_A,  2048, 512, 64},
-      {(void **) ge_PU2_e2_v_k_gated1408,   "Ge%02d_PU2_E2_vs_k2_E1gated_on_1408keV", "", SUBSYS_HPGE_A,   512, 512, 64},
+      {(void **) ge_PU2_e2_v_k_gatedxrays,  "Ge%02d_PU2_E2_vs_k2_E1gated_on_Xrays",   "", SUBSYS_HPGE_A,   256, 512, 64},
+      {(void **) ge_PU2_e2_v_k_gated1408,   "Ge%02d_PU2_E2_vs_k2_E1gated_on_1408keV", "", SUBSYS_HPGE_A,   256, 512, 64},
       // Coinc
       {NULL,                  "Hits_and_Sums/Delta_t"," "},
       {(void **) dt_hist,     "",        dt_handles[0],  SUBSYS_HPGE_A,  DT_SPEC_LENGTH, 0, N_DT }, // leave subsys as GE -> all always defined
@@ -1106,8 +1106,9 @@ int init_default_histos(Config *cfg, Sort_status *arg)
 
                 // The following x-rays matrix used for mapping the k2 dependant correction for E2
                 // E2 vs k2 gated on fixed x-ray energies
-                // The E2 energy has 1272keV subtracted from it to put it around 136keV to allow a smaller matrix side and easier processing in the app
-                if(ptr->e4cal > 5 && ptr->e4cal < 50){ // Require 152Eu x rays as E1 for mapping the k2 dependance
+                // The E2 energy has 1272keV subtracted from it to put the 1408keV peak around 136keV to allow a smaller matrix side and easier processing in the app
+                //if(ptr->e4cal > 5 && ptr->e4cal < 50){ // Require 152Eu x rays as E1 for mapping the k2 dependance
+                if(ptr->e4cal > 5 && ptr->e4cal < 130){ // Require 152Eu x rays (or 121keV because x rays are attenuated in some channels) as E1 for mapping the k2 dependance
                   ge_PU2_e2_v_k_gatedxrays[pos]->Fill(ge_PU2_e2_v_k_gatedxrays[pos], (int)(ptr->ecal - 1272), (int)ptr->integ, 1);  // e2 vs k2 for fixed e1
                 }
               }
