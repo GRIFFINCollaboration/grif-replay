@@ -222,7 +222,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
       }
 
       // Check this timstamp against the cycle to see if the pattern has changed
-      if(ppg_cycles_active==1 && ptr->ts>ppg_pattern_end){
+      if(ppg_cycles_active==1 && ppg_last_ptr_ts>ppg_pattern_end && ptr->ts>ppg_last_ptr_ts){
         // Recalculate PPG cycle variables
         // Here we update the current PPG pattern, cycle number, cycle start timestamp with the latest values.
         // All subsequent events will use these values
@@ -240,6 +240,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         //  fprintf(stdout,"Cycle %04d, start/finish [%ld/%ld]: step %d, %s, start/finish [%ld/%ld]\n",
         //  ppg_cycle_number, ppg_cycle_start, ppg_cycle_end, ppg_cycle_step, ppg_handles[ppg_current_pattern], ppg_pattern_start, ppg_pattern_end);
       }
+      ppg_last_ptr_ts = ptr->ts; // Remember this timestamp for checking at the next event. Avoids rare bug where single events are out of order.
 
       // Calculate the energy and calibrated energies
       ptr->energy = energy = ( ptr->integ == 0 ) ? ptr->q : spread(ptr->q)/ptr->integ;

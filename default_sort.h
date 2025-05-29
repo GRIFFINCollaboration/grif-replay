@@ -103,6 +103,7 @@ int  ppg_cycle_pattern_code[16];     // Index of each pattern for use with the p
 int  ppg_cycles_active;              // Cycles active or made inactive if set to Source/constant beam-on etc.
 
 // These variables are updated in apply_gains at each PPG pattern change
+long ppg_last_ptr_ts;     // Previous event timestamp. Avoids rare bug where single events are out of order.
 int ppg_current_pattern;  // Index of the current PPG cycle pattern for use with the ppg_patterns array
 int ppg_cycle_number;     // Current cycle number. Cycles counted from zero at beginning of run
 long ppg_cycle_start;     // Timestamp of the start of the current cycle
