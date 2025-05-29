@@ -65,7 +65,7 @@ static char subsys_name[MAX_SUBSYS][STRING_LEN] = {
 #define ECAL_TAC_SPECLEN        1024
 #define E_TOF_SPEC_LENGTH       8192
 #define E_PSD_SPEC_LENGTH       1024
-#define CYCLE_SPEC_LENGTH       8192  // At 10 millisecond binning this supports 13.6 minute cycles (819 seconds)
+#define CYCLE_SPEC_LENGTH       1024  // At 100 millisecond binning this supports 17 minute cycles (1024 seconds)
 #define E_2D_TOF_SPECLEN        1024
 #define E_2D_SPECLEN            4096
 #define E_2D_RCMP_SPECLEN       6400
@@ -112,11 +112,25 @@ long ppg_pattern_start;   // Timestamp of the start of the current pattern
 long ppg_pattern_end;     // Timestamp of the end of the current pattern
 
 // Spectra for cycles
-#define MAX_CYCLES 500
+// The binning factor and gamma-energy gates will ultimately be set from a Global at BOR
+#define MAX_CYCLES 512                          // Used as an axis length for some 2d histograms so must be a multiple of 16
+long ppg_cycles_binning_factor = 10000000;      // Default of 10,000,000 converts 10ns to 100 millisecond binning
+int ppg_cycles_gamma_gate_min = 1800;           // 26Na, S1140
+int ppg_cycles_gamma_gate_max = 1820;           // 26Na, S1140
 char ge_cycle_code_titles[N_PPG_PATTERNS][HANDLE_LENGTH]={ "0xC008_Move_Tape","0xC002_Background","0xC001_Beam-on_Implant","0xC004_Beam-off_Decay","0xC0F0_Source_data","0xC009_Continuous_Tape_Beam-on", "0xC00A_Continuous_Tape_Background" };
 TH1I   *ge_cycle_activity, *zds_cycle_activity; // Activity over cycle time, sum of all cycles
-TH1I   *ge_cycle_code[N_PPG_PATTERNS]; // Energy spectrum for each PPG pattern
-TH1I   *ge_cycle_num[MAX_CYCLES];      // Activity over cycle time for each indivdual cycle
+TH1I   *ge_cycle_code[N_PPG_PATTERNS];          // Energy spectrum for each PPG pattern
+TH1I   *ge_cycle_num[MAX_CYCLES];               // Activity over cycle time for each indivdual cycle
+TH1I   *ge_cycle_num_sh[MAX_CYCLES];            // Activity over cycle time for each indivdual cycle, single_hit only
+TH1I   *ge_cycle_num_pu[MAX_CYCLES];            // Activity over cycle time for each indivdual cycle, pileup only
+TH1I   *ge_cycle_num_g[MAX_CYCLES];             // Activity over cycle time for each indivdual cycle
+TH1I   *ge_cycle_num_sh_g[MAX_CYCLES];          // Activity over cycle time for each indivdual cycle, single_hit only
+TH1I   *ge_cycle_num_pu_g[MAX_CYCLES];          // Activity over cycle time for each indivdual cycle, pileup only
+TH2I   *cycle_num_vs_ge;                        // 2D histogram of cycle # vs the cycle time.
+TH2I   *cycle_num_vs_ge_sh_g;                   // 2D histogram of cycle # vs the cycle time for 1809 gated/NP.
+TH2I   *cycle_num_vs_ge_dt;                     // 2D histogram of cycle # vs the cycle time for deadtime .
+TH2I   *cycle_num_vs_sh;                        // 2D histogram of cycle # vs the cycle time for NP.
+TH2I   *cycle_num_vs_pu;                        // 2D histogram of cycle # vs the cycle time for PU.
 
 //#######################################################################
 //########        Individual channel singles HISTOGRAMS        ##########
