@@ -17,7 +17,8 @@
 
 int sort_next_file(Config *cfg, Sort_status *sort);
 
-int coinc_events_cutoff = 25;
+int presort_events_cutoff = 250; // presort window typically much larger, and less processing is done
+int coinc_events_cutoff   =  25;
 char midas_runtitle[SYS_PATH_LENGTH];
 Sort_metrics diagnostics;
 static Sort_status sort_status;
@@ -49,7 +50,7 @@ int main(int argc, char *argv[])
    exit(0);
 }
 
-extern int frag_hist[MAX_COINC_EVENTS];
+extern int frag_hist[PTR_BUFSIZE];
 void show_coinc_stats()
 {
    char tmp[64];
@@ -66,8 +67,8 @@ void show_coinc_stats()
    printf("Coinc[100- 249]:%d\n", sum);
    sum=0; for(; i<500; i++){ sum +=  frag_hist[i]; }
    printf("Coinc[250- 499]:%d\n", sum);
-   sum=0; for(; i<MAX_COINC_EVENTS; i++){ sum +=  frag_hist[i]; }
-   printf("Coinc[500-%4d]:%d\n", MAX_COINC_EVENTS, sum);
+   sum=0; for(; i<PTR_BUFSIZE; i++){ sum +=  frag_hist[i]; }
+   printf("Coinc[500-%4d]:%d\n", PTR_BUFSIZE, sum);
 }
 
 static int presort_window_start, sort_window_start;
@@ -211,7 +212,7 @@ static void online_loop(Config *cfg, Sort_status *sort)
 
 extern volatile long grifevent_wrpos;
 volatile long grifevent_rdpos;
-extern Grif_event grif_event[MAX_COINC_EVENTS];
+extern Grif_event grif_event[PTR_BUFSIZE];
 
 extern volatile unsigned long bankbuf_wrpos;
 extern volatile unsigned long bankbuf_rdpos;
@@ -237,7 +238,7 @@ void show_sort_state()
    printf("GRIF: Unpacked:%dKevents  ", (int)(grif_evcount/1000) );
    printf("      Sorted  :%dKevents\n", done_events/1000 );
    printf("     BUF In:%dKevents Out%dKevents [=%d][Cap:%5.1f%%]\n\n",
-          v8, v9, v10, (100.0*v10)/MAX_COINC_EVENTS);
+          v8, v9, v10, (100.0*v10)/PTR_BUFSIZE);
 }
 Sort_status *get_sort_status(){ return( &sort_status ); }
 
@@ -255,7 +256,7 @@ void sort_main(Sort_status *arg)
       if( arg->grif_sort_done && rd_avail < 1 ){ break; }
       if( rd_avail < 1 ){ usleep(usecs); continue; }
       process_event(&grif_event[nxtpos], nxtpos);
-      nxtpos = ++grifevent_nxtpos % MAX_COINC_EVENTS;
+      nxtpos = ++grifevent_nxtpos % PTR_BUFSIZE;
    }
    printf("sort_main finished\n");
    return;
@@ -284,7 +285,6 @@ int process_event(Grif_event *ptr, int slot)
    if( singlethread_save == 1 && sort_status.odb_done == 0 ){ calls = 0;
       init_default_histos(configs[1], &sort_status); sort_status.odb_done = 1;
    }
-   apply_gains(ptr);
    insert_presort_win(ptr, slot);
    return(0);
 }
@@ -321,47 +321,28 @@ int insert_presort_win(Grif_event *ptr, int slot)
    Grif_event *alt;
    long dt;
 
-   /*
-   static int prv_evt[65535], count;
-   ++count;
-   i = (slot-1-window_start+2*MAX_COINC_EVENTS) % MAX_COINC_EVENTS;
-   printf("PRST:Chan[%4s:prev:%5d][%s] [win:%5d[%05d-%05d:%s]          ",
-          debug_show_chan(ptr),
-          prv_evt[ptr->address] == 0 ? -1 : count-prv_evt[ptr->address],
-          debug_show_ts(ptr->ts),
-          i, window_start, slot-1,
-          debug_show_ts(grif_event[window_start].ts) );
-   prv_evt[ptr->address] = count;
-   if( ptr->chan != -1 ){
-      printf("%s E=%6d[cal:%8.1f] id:0x%08x\n",
-             chan_name[ptr->chan],ptr->energy,ptr->esum, ptr->master_id);
-   } else {
-      printf("---------- E=%6d[cal:%8.1f] id:0x%08x\n",
-             ptr->energy, ptr->esum, ptr->master_id );
-   }
-   */
-
    ///////////////// Presort window (used for suppression/addback)
    while( presort_window_start != slot ){ alt = &grif_event[presort_window_start];
-   win_count = (slot - presort_window_start+2*MAX_COINC_EVENTS) % MAX_COINC_EVENTS;
+   win_count = (slot - presort_window_start+2*PTR_BUFSIZE) % PTR_BUFSIZE;
       dt = ptr->ts - alt->ts; if( dt < 0 ){ dt *= -1; }
 
       // should exit while-loop when no more events outside window
       //    *BUT* add error recovery - if window too full, dump events
       if( dt < window_width ){
-         //if( win_count < 0.45*MAX_COINC_EVENTS  ){ break; }
-         if( win_count < coinc_events_cutoff ){ break; } // LIMIT to ?? events
+         if( win_count < presort_events_cutoff ){ break; } // LIMIT to ?? events
          else { ++prefull; }
       }
 
       // event[win_start] is leaving window
       //    ( either because dt > coincwidth OR due to error recovery)
       // NOTE event[slot] is out of window - use slot-1 as window-end
-      if( (win_end = slot-1) < 0 ){ win_end = MAX_COINC_EVENTS-1; } // WRAP
-      pre_sort(presort_window_start, win_end);
+      if( (win_end = slot-1) < 0 ){ win_end = PTR_BUFSIZE-1; } // WRAP
+      pre_sort_exit(presort_window_start, win_end);
       insert_sort_win(alt, presort_window_start); // add event to next window
-      if( ++presort_window_start >= MAX_COINC_EVENTS ){ presort_window_start=0; } // WRAP
+      if( ++presort_window_start >= PTR_BUFSIZE ){ presort_window_start=0; } // WRAP
    }
+   // all events outside window have now been removed ...
+   pre_sort_enter(presort_window_start, slot); 
    return(0);
 }
 
@@ -373,7 +354,7 @@ int insert_sort_win(Grif_event *ptr, int slot)
    Grif_event *alt;
    long dt;
 
-   /* i = (slot-1-window_start+2*MAX_COINC_EVENTS) % MAX_COINC_EVENTS;
+   /* i = (slot-1-window_start+2*PTR_BUFSIZE) % PTR_BUFSIZE;
    printf("MAIN:Chan[%4s:    :     ][%s] [win:%5d[%05d-%05d:%s]\n",
           debug_show_chan(ptr),
 
@@ -382,13 +363,13 @@ int insert_sort_win(Grif_event *ptr, int slot)
           debug_show_ts(grif_event[window_start].ts) );
    */
    while( sort_window_start != slot ){ alt = &grif_event[sort_window_start];
-       win_count = (slot - sort_window_start+2*MAX_COINC_EVENTS) % MAX_COINC_EVENTS;
+       win_count = (slot - sort_window_start+2*PTR_BUFSIZE) % PTR_BUFSIZE;
       dt = ptr->ts - alt->ts; if( dt < 0 ){ dt *= -1; }
 
       // should exit while-loop when no more events outside window
       //    *BUT* add error recovery - if window too full, dump events
       if( dt < window_width ){
-       //if( win_count >= 0.45*MAX_COINC_EVENTS ){ ++sortfull; } else {
+       //if( win_count >= 0.45*PTR_BUFSIZE ){ ++sortfull; } else {
          if( win_count > coinc_events_cutoff ){ ++sortfull; } else {
             // now removed all events not in coinc with newly added fragment
             //   so can update coinc window counters with just-added frag
@@ -400,12 +381,12 @@ int insert_sort_win(Grif_event *ptr, int slot)
       // event[win_start] is leaving window
       //    ( either because dt > coincwidth OR due to error recovery)
       // NOTE event[slot] is out of window - use slot-1 as window-end
-      if( (win_end = slot-1) < 0 ){ win_end = MAX_COINC_EVENTS-1; } // WRAP
+      if( (win_end = slot-1) < 0 ){ win_end = PTR_BUFSIZE-1; } // WRAP
       if( alt->chan != -1 ){ ++sorted;
          default_sort(sort_window_start, win_end, SORT_ONE);
          //user_sort(window_start, win_end, SORT_ONE);
       } else { ++skipped; }
-      if( ++sort_window_start >= MAX_COINC_EVENTS ){ sort_window_start=0; } // WRAP
+      if( ++sort_window_start >= PTR_BUFSIZE ){ sort_window_start=0; } // WRAP
       ++grifevent_rdpos;  ++completed_events;
    }
    return(0);
@@ -433,11 +414,11 @@ int build_event(Grif_event *ptr, int slot)
    if( window_start == slot ){ return(0); }
 
    alt = &grif_event[window_start];
-   win_count = (slot - window_start+2*MAX_COINC_EVENTS) % MAX_COINC_EVENTS;
+   win_count = (slot - window_start+2*PTR_BUFSIZE) % PTR_BUFSIZE;
    dt = ptr->ts - alt->ts; if( dt < 0 ){ dt *= -1; }
    if( dt < window_width ){ return(0); }
 
-   if( (win_end = slot-1) < 0 ){ win_end = MAX_COINC_EVENTS-1; } // WRAP
+   if( (win_end = slot-1) < 0 ){ win_end = PTR_BUFSIZE-1; } // WRAP
    sort_built_event(window_start, win_end);
 
    window_start = slot;
@@ -446,7 +427,8 @@ int build_event(Grif_event *ptr, int slot)
 
 int sort_built_event(int window_start, int win_end)
 {
-   pre_sort(window_start, win_end); // only fold of first fragment is set
+   pre_sort_enter(window_start, win_end);
+   pre_sort_exit(window_start, win_end); // only fold of first fragment is set
    default_sort(window_start, win_end, SORT_ALL);
    //user_sort(window_start, win_end, SORT_ALL);
    return(0);

@@ -1,3 +1,7 @@
+//#######################################################################
+//#####        BASIC DEFAULT SORT (common to most experiments)      #####
+//#######################################################################
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -27,7 +31,7 @@ float  pileupk2[MAX_DAQSIZE][7];
 float  pileupE1[MAX_DAQSIZE][7];
 static short *chan_address = addr_table;
 static int subsys_initialized[MAX_SUBSYS];
-extern Grif_event grif_event[MAX_COINC_EVENTS];
+extern Grif_event grif_event[PTR_BUFSIZE];
 
 // Default sort function declarations
 extern int init_parameters_from_globals(Config *cfg);
@@ -36,6 +40,8 @@ extern int init_histos(Config *cfg, int subsystem);
 extern int fill_chan_histos(Grif_event *ptr);
 extern int fill_singles_histos(Grif_event *ptr);
 extern int fill_coinc_histos(int win_idx, int frag_idx);
+
+float spread(int val){ return( val + rand()/(1.0*RAND_MAX) ); }
 
 // odb tables need to be transferred into config, which is saved with histos
 int init_default_histos(Config *cfg, Sort_status *arg)
@@ -84,18 +90,9 @@ int init_default_histos(Config *cfg, Sort_status *arg)
     init_histos(cfg, SUBSYS_HPGE_A); // always create Ge histos
 
     return(0);
-  }
+}
 
-  //#######################################################################
-  //#####        BASIC DEFAULT SORT (common to most experiments)      #####
-  //#######################################################################
-
-  float spread(int val){ return( val + rand()/(1.0*RAND_MAX) ); }
-  int GetIDfromAddress(unsigned short addr){ // address must be an unsigned short
-    return(address_chan[addr]);
-  }
-
-  int init_parameters_from_globals(Config *cfg){
+int init_parameters_from_globals(Config *cfg){
     // Here set parameters from the Globals
     // time-difference conditions for subsys-subsys coincidences
     // PRESORT time-difference Conditions
@@ -199,12 +196,19 @@ int init_default_histos(Config *cfg, Sort_status *arg)
       return(0);
     }
 
-    // this is the first function to be called on processing an event -
-    // before any presort/singles/coinc-sorting
-    int apply_gains(Grif_event *ptr)
-    {
+//#######################################################################
+//######## PRESORT(gain corrections, addback, suppression)     ##########
+//#######################################################################
+
+// (used to be called apply_gains) this is the first function to be called
+// on processing an event - before any singles/coinc-sorting ...
+// ** the current event has just been added and is last in the window
+//      => all other window events are BEFORE the current event
+int pre_sort_enter(int start_idx, int frag_idx)
+{
+      Grif_event *ptr = &grif_event[frag_idx];
       int caen_ts_offset = -60; // this value (-60) aligns the timestamps of HPGe with ZDS(CAEN)
-      float energy,psd;
+      float energy, psd;
       int i, ppg_index;
       int chan = ptr->chan;
 
@@ -243,22 +247,9 @@ int init_default_histos(Config *cfg, Sort_status *arg)
       ppg_last_ptr_ts = ptr->ts; // Remember this timestamp for checking at the next event. Avoids rare bug where single events are out of order.
 
       // Calculate the energy and calibrated energies
-      ptr->energy = energy = ( ptr->integ == 0 ) ? ptr->q : spread(ptr->q)/ptr->integ;
-      ptr->ecal=ptr->esum = offsets[chan]+energy*(gains[chan]+energy*quads[chan]);
-
+      energy = ( ptr->integ1 == 0 ) ? ptr->q1 : spread(ptr->q1)/ptr->integ1;
+      ptr->ecal = ptr->esum=offsets[chan]+energy*(gains[chan]+energy*quads[chan]);
       // NOBODY CURRENTLY USES e2,e3,e4 ...
-      if( ptr->integ2 != 0 ){
-        energy = ptr->energy2 = spread(ptr->q2)/ptr->integ2;
-        ptr->e2cal = offsets[chan]+energy*(gains[chan]+energy*quads[chan]);
-      }
-      if( ptr->integ3 != 0 ){
-        energy = ptr->energy3 = spread(ptr->q3)/ptr->integ3;
-        ptr->e3cal = offsets[chan]+energy*(gains[chan]+energy*quads[chan]);
-      }
-      if( ptr->integ4 != 0 ){
-        energy = ptr->energy4 = spread(ptr->q4)/ptr->integ4;
-        ptr->e4cal = offsets[chan]+energy*(gains[chan]+energy*quads[chan]);
-      }
 
       // Assign the subsys type
       if( (ptr->subsys = subsys_table[chan]) == -1 ){ return(-1); }
@@ -295,47 +286,23 @@ int init_default_histos(Config *cfg, Sort_status *arg)
     //if( ptr->subsys == SUBSYS_DESCANT || ptr->subsys == SUBSYS_DESWALL){
     if( ptr->subsys == SUBSYS_DESWALL){
       //ptr->ts -= caen_ts_offset; // Subtract from CAEN timestamps to align coincidences
-      psd = ( ptr->q != 0 ) ? (spread(ptr->cc_short) / ptr->q) : 0;
+      psd = ( ptr->q1 != 0 ) ? (spread(ptr->cc_short) / ptr->q1) : 0;
       ptr->psd = (int)(psd*1000.0); // psd = long integration divided by short integration
     }
 
     return(0);
   }
 
-  int default_sort(int win_idx, int frag_idx, int flag)
-  {
-    Grif_event *ptr;
-    int i;
-
-    // sort first event, even if window only contains that event
-    // (usually require at least two)
-    for(i=win_idx; ; i++){ ptr = &grif_event[i];
-      if( i >= MAX_COINC_EVENTS ){ i=0; } // WRAP
-      if( i != win_idx && flag == SORT_ONE ){ break; }
-      if( i != win_idx && i==frag_idx ){ break; }
-      if( ptr->dtype == 15 ){ if( i==frag_idx ){ break; } continue; } // scalar
-      if( ptr->chan == -1 ){
-        printf("DefSort: UNKNOWN_CHAN type=%d\n", ptr->dtype);
-        if( i==frag_idx ){ break; } continue;
-      } //  ????
-      fill_chan_histos(ptr);
-      fill_singles_histos(ptr);
-      if( i==frag_idx ){ break; }
-    }
-    fill_coinc_histos(win_idx, frag_idx);
-    return(0);
-  }
-
-  // Presort - do Suppression and Addback here
-  //  - frag_idx is about to leave coinc window (which ends at end_idx)
-  //    check other frags in window for possible suppression and/or summing
-  //  also calculate multiplicities[store in frag_idx only]
-  int pre_sort(int frag_idx, int end_idx)
-  {
+// Presort - do Suppression and Addback here
+//  - frag_idx is about to leave coinc window (which ends at end_idx)
+//    check other frags in window for possible suppression and/or summing
+//  also calculate multiplicities[store in frag_idx only]
+int pre_sort_exit(int frag_idx, int end_idx)
+{
     Grif_event *alt2, *alt, *ptr = &grif_event[frag_idx];
     float desw_median_distance = 1681.8328; // descant wall median source-to-detector distance in mm
     int i, j, dt, dt13, tof;
-    float q1,q2,q12,k1,k2,k12,e1,e2,e12,m,c;
+    float q1,integ2,q12,k1,k2,k12,e1,e2,e12,m,c;
     int chan,found,pos;
     float energy,correction;
     float correction12, correction23;
@@ -345,16 +312,16 @@ int init_default_histos(Config *cfg, Sort_status *arg)
       fprintf(stderr,"presort error: ignored event in chan:%d\n",ptr->chan );
       return(-1);
     }
-    i = frag_idx; ptr->fold = 1;
+    i = frag_idx; ptr->multiplicity = 1;
     while( i != end_idx ){ // need at least two events in window
-      if( ++i >=  MAX_COINC_EVENTS ){ i=0; } alt = &grif_event[i]; // WRAP
+      if( ++i >=  PTR_BUFSIZE ){ i=0; } alt = &grif_event[i]; // WRAP
       if( alt->chan<0 || alt->chan >= odb_daqsize ){
         fprintf(stderr,"presort error: ignored event in chan:%d\n",alt->chan );
         return(-1);
       }
 
-      // Determine fold
-      if( alt->subsys == ptr->subsys ){ ++ptr->fold; }
+      // Determine multiplicity
+      if( alt->subsys == ptr->subsys ){ ++ptr->multiplicity; }
 
       // Determine absolute time difference between timestamps
       dt = ptr->ts - alt->ts; if( dt < 0 ){ dt = -1*dt; }
@@ -376,14 +343,14 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             ptr->psd = 0; // Pileup class, error
           }else if((ptr->pileup==1 && ptr->nhit==2) && (alt->pileup==2 && alt->nhit==1)){
             ptr->psd = alt->psd = 9; // Pileup class, error for 2Hits
-            ptr->ts_int = alt->ts_int = dt;
-            if(ptr->q>0 && ptr->integ>0 && ptr->q2>0 && ptr->integ2>0 && alt->q>0 && alt->integ>0){
+            ptr->delta_t = alt->delta_t = dt;
+            if(ptr->q1>0 && ptr->integ1>0 && ptr->q2>0 && ptr->integ2>0 && alt->q1>0 && alt->integ1>0){
               // 2 Hit, Type A
               // The (ptr) fragement is the first Hit of a two Hit pile-up event.
               // Assign the pileup class numbers to the two hits and calculate the time difference between them
               ptr->psd = 3; // Pileup class, 1st of 2Hits
               alt->psd = 4; // Pileup class, 2nd of 2Hits
-              ptr->ts_int = alt->ts_int = dt;
+              ptr->delta_t = alt->delta_t = dt;
 
             }else{
               // 2 Hit, Type B
@@ -391,7 +358,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
               // Assign the pileup class numbers to the two hits and calculate the time difference between them
               ptr->psd = 7; // Pileup class, 1st of 2Hits
               alt->psd = 8; // Pileup class, 2nd of 2Hits
-              ptr->ts_int = alt->ts_int = dt;
+              ptr->delta_t = alt->delta_t = dt;
 
             }
           }else if((ptr->pileup==1 && ptr->nhit==2) && (alt->pileup==1 && alt->nhit==1)){
@@ -400,32 +367,32 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             // Assign the pileup class numbers to the two hits and calculate the time difference between them
             ptr->psd = 5; // Pileup class, 1st of 2Hits
             alt->psd = 6; // Pileup class, 2nd of 2Hits
-            ptr->ts_int = alt->ts_int = dt; // Save the time difference between pileup hits into both hits
+            ptr->delta_t = alt->delta_t = dt; // Save the time difference between pileup hits into both hits
 
           }else if((ptr->pileup==1 && ptr->nhit==3) && (alt->pileup==2 && alt->nhit==2)){ // 3Hit pileup
             ptr->psd = alt->psd = 13; // Pileup class, error for 3Hits
-            if(ptr->q>0 && ptr->integ>0 && ptr->q2>0 && ptr->integ2>0 && alt->q>1 && alt->integ>0 && alt->q2>0 && alt->integ2>0){
+            if(ptr->q1>0 && ptr->integ1>0 && ptr->q2>0 && ptr->integ2>0 && alt->q1>1 && alt->integ1>0 && alt->q2>0 && alt->integ2>0){
               /*
               found=0;
               //  if(ptr->ecal > 1160 && ptr->ecal < 1180 && alt->ecal > 1325 && alt->ecal < 1350){
               fprintf(stdout,"Found a pileup 3 hit group for chan %d with dt %d\n",ptr->chan,dt);
-              fprintf(stdout,"ptr: %ld %d, PU=%d, nhits=%d, q: %d %d %d %d, k: %d %d %d %d, ecal: %d %d %d %d, %lf %lf %lf\n",ptr->ts,ptr->cfd,ptr->pileup,ptr->nhit,ptr->q,ptr->q2,ptr->q3,ptr->q4,ptr->integ,ptr->integ2,ptr->integ3,ptr->integ4,ptr->ecal,ptr->e2cal,ptr->e3cal,ptr->e4cal,offsets[ptr->chan],gains[ptr->chan],quads[ptr->chan]);
-              fprintf(stdout,"alt: %ld %d, PU=%d, nhits=%d, q: %d %d %d %d, k: %d %d %d %d, ecal: %d %d %d %d, %lf %lf %lf\n",alt->ts,alt->cfd,alt->pileup,alt->nhit,alt->q,alt->q2,alt->q3,alt->q4,alt->integ,alt->integ2,alt->integ3,alt->integ4,alt->ecal,alt->e2cal,alt->e3cal,alt->e4cal,offsets[alt->chan],gains[alt->chan],quads[alt->chan]);
+              fprintf(stdout,"ptr: %ld %d, PU=%d, nhits=%d, q: %d %d %d %d, k: %d %d %d %d, ecal: %d %d %d %d, %lf %lf %lf\n",ptr->ts,ptr->cfd,ptr->pileup,ptr->nhit,ptr->q,ptr->q2,ptr->q3,ptr->q4,ptr->integ,ptr->integ2,ptr->integ3,ptr->integ4,ptr->ecal,ptr->e2cal,ptr->e3cal,ptr->alt_ecal,offsets[ptr->chan],gains[ptr->chan],quads[ptr->chan]);
+              fprintf(stdout,"alt: %ld %d, PU=%d, nhits=%d, q: %d %d %d %d, k: %d %d %d %d, ecal: %d %d %d %d, %lf %lf %lf\n",alt->ts,alt->cfd,alt->pileup,alt->nhit,alt->q,alt->q2,alt->q3,alt->q4,alt->integ,alt->integ2,alt->integ3,alt->integ4,alt->ecal,alt->e2cal,alt->e3cal,alt->alt_ecal,offsets[alt->chan],gains[alt->chan],quads[alt->chan]);
               fprintf(stdout,"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",ptr->q,ptr->q2,alt->q,ptr->integ,ptr->integ2,alt->integ,ptr->energy,ptr->energy2,alt->energy,ptr->ecal,ptr->e2cal,alt->ecal);
               found=1;
               //    }
               */
               j=i+1;
               while( j != end_idx ){ // need to find the third events in window associated with this channel
-                if( ++j >=  MAX_COINC_EVENTS ){ break; } alt2 = &grif_event[j]; // WRAP
+                if( ++j >=  PTR_BUFSIZE ){ break; } alt2 = &grif_event[j]; // WRAP
 
                 if(alt2->chan == ptr->chan){ // It must also be a HPGe if the channel number is the same
                   /*
-                  fprintf(stdout,"alt2: %ld %d, PU=%d, nhits=%d, q: %d %d %d %d, k: %d %d %d %d, ecal: %d %d %d %d, %lf %lf %lf\n",alt2->ts,alt2->cfd,alt2->pileup,alt2->nhit,alt2->q,alt2->q2,alt2->q3,alt2->q4,alt2->integ,alt2->integ2,alt2->integ3,alt2->integ4,alt2->ecal,alt2->e2cal,alt2->e3cal,alt2->e4cal,offsets[alt2->chan],gains[alt2->chan],quads[alt2->chan]);
+                  fprintf(stdout,"alt2: %ld %d, PU=%d, nhits=%d, q: %d %d %d %d, k: %d %d %d %d, ecal: %d %d %d %d, %lf %lf %lf\n",alt2->ts,alt2->cfd,alt2->pileup,alt2->nhit,alt2->q,alt2->q2,alt2->q3,alt2->q4,alt2->integ,alt2->integ2,alt2->integ3,alt2->integ4,alt2->ecal,alt2->e2cal,alt2->e3cal,alt2->alt_ecal,offsets[alt2->chan],gains[alt2->chan],quads[alt2->chan]);
                   */
                   if(alt2->pileup==3 && alt2->nhit==1){
                     alt2->psd = 12; // Pileup class
-                    if(alt2->q>1 && alt2->integ>0){
+                    if(alt2->q1>1 && alt2->integ1>0){
 
                       // Determine absolute time difference between timestamps for Hit 1 and 3
                       dt13 = ptr->ts - alt2->ts; if( dt13 < 0 ){ dt13 = -1*dt13; }
@@ -466,42 +433,42 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                       if(dt13>500){
                         // Triple pileup case A ... in which the 3rd pulse occurs more than L samples after the first
                         //                          there are 5 regions, 3 of which are not piled up (1 per pulse)
-                        correction23 = (alt->q/alt->integ)-((alt->q2/alt->integ2)-(alt2->q/alt2->integ));
-                        correction12 = (ptr->q/ptr->integ)-((ptr->q2/ptr->integ2)-(alt->q/alt->integ)-correction23);
+                        correction23 = (alt->q1/alt->integ1)-((alt->q2/alt->integ2)-(alt2->q1/alt2->integ1));
+                        correction12 = (ptr->q1/ptr->integ1)-((ptr->q2/ptr->integ2)-(alt->q1/alt->integ1)-correction23);
                         // Hit 1
                         ptr->psd = 10; // Pileup class
-                        ptr->energy = energy = (spread(ptr->q)/ptr->integ) + correction12;
+                        energy = (spread(ptr->q1)/ptr->integ1) + correction12;
                         ptr->ecal=ptr->esum = offsets[ptr->chan]+energy*(gains[ptr->chan]+energy*quads[ptr->chan]);
                         // Hit 2
-                        alt->ts_int = dt;
+                        alt->delta_t = dt;
                         alt->psd = 11; // Pileup class
-                        alt->energy = energy = (spread(alt->q)/alt->integ) - correction12 + correction23;
+                        energy = (spread(alt->q1)/alt->integ1) - correction12 + correction23;
                         alt->ecal=alt->esum = offsets[alt->chan]+energy*(gains[alt->chan]+energy*quads[alt->chan]);
                         // Hit 3
-                        alt2->ts_int = dt13;
+                        alt2->delta_t = dt13;
                         alt2->psd = 12; // Pileup class
-                        alt2->energy = energy = (spread(alt2->q)/alt2->integ) - correction23;
+                        energy = (spread(alt2->q1)/alt2->integ1) - correction23;
                         alt2->ecal=alt2->esum = offsets[alt2->chan]+energy*(gains[alt2->chan]+energy*quads[alt2->chan]);
                       }else{
                         // Triple pileup case B ... in which the 3rd pulse occurs less than L samples after the first
                         //                          again 5 regions, only 2 of which are not piled up (first and last pulse)
                         //                          There is no region to obtain the height of pulse 2
                         //                          so the event contains K12, the sum of pulse 1+2, in place of pulseheight2
-                        correction23 = (alt->q/alt->integ)-((alt->q2/alt->integ2)-(alt2->q/alt2->integ));
-                        correction12 = (ptr->q/ptr->integ)-((ptr->q2/ptr->integ2)-(alt->q/alt->integ)-correction23);
+                        correction23 = (alt->q1/alt->integ1)-((alt->q2/alt->integ2)-(alt2->q1/alt2->integ1));
+                        correction12 = (ptr->q1/ptr->integ1)-((ptr->q2/ptr->integ2)-(alt->q1/alt->integ1)-correction23);
                         // Hit 1
                         ptr->psd = 10; // Pileup class
-                        ptr->energy = energy = (spread(ptr->q)/ptr->integ) + correction12;
-                        ptr->ecal=ptr->esum = offsets[ptr->chan]+ptr->energy*(gains[ptr->chan]+ptr->energy*quads[ptr->chan]);
+                        energy = (spread(ptr->q1)/ptr->integ1) + correction12;
+                        ptr->ecal=ptr->esum = offsets[ptr->chan]+energy*(gains[ptr->chan]+energy*quads[ptr->chan]);
                         // Hit 2
-                        alt->ts_int = dt;
+                        alt->delta_t = dt;
                         alt->psd = 11; // Pileup class
-                        alt->energy = energy = (spread(alt->q)/alt->integ) - correction12 + correction23;
+                        energy = (spread(alt->q1)/alt->integ1) - correction12 + correction23;
                         alt->ecal=alt->esum = offsets[alt->chan]+energy*(gains[alt->chan]+energy*quads[alt->chan]);
                         // Hit 3
-                        alt2->ts_int = dt13;
+                        alt2->delta_t = dt13;
                         alt2->psd = 12; // Pileup class
-                        alt2->energy = energy = (spread(alt2->q)/alt2->integ) - correction23;
+                        energy = (spread(alt2->q1)/alt2->integ1) - correction23;
                         alt2->ecal=alt2->esum = offsets[alt2->chan]+energy*(gains[alt2->chan]+energy*quads[alt2->chan]);
                       }
                       /*
@@ -521,20 +488,20 @@ int init_default_histos(Config *cfg, Sort_status *arg)
               // Apply the k1 dependant correction to the energy of the first hit
               // It was already checked that chan for ptr and alt are the same for pileup events
               pos  = crystal_table[ptr->chan];
-              k1 = ptr->integ;
+              k1 = ptr->integ1;
               ptr->ecal=ptr->esum = ptr->ecal*( pileupk1[chan][0]+(k1*pileupk1[chan][1])+(k1*k1*pileupk1[chan][2])+(k1*k1*k1*pileupk1[chan][3])
               +(k1*k1*k1*k1*pileupk1[chan][4])+(k1*k1*k1*k1*k1*pileupk1[chan][5])+(k1*k1*k1*k1*k1*k1*pileupk1[chan][6]));
 
               // Apply the E1 and k2 dependant offset correction to the energy of the second hit
               // Apply the k2 dependant correction to the energy of the second hit
-              k2 = alt->integ;
+              k2 = alt->integ1;
               correction = ptr->ecal*( pileupE1[chan][0]+(k2*pileupE1[chan][1])+(k2*k2*pileupE1[chan][2])+(k2*k2*k2*pileupE1[chan][3])
               +(k2*k2*k2*k2*pileupE1[chan][4])+(k2*k2*k2*k2*k2*pileupE1[chan][5])+(k2*k2*k2*k2*k2*k2*pileupE1[chan][6]));
               alt->ecal=alt->esum = (alt->ecal*( pileupk2[chan][0]+(k2*pileupk2[chan][1])+(k2*k2*pileupk2[chan][2])+(k2*k2*k2*pileupk2[chan][3])
               +(k2*k2*k2*k2*pileupk2[chan][4])+(k2*k2*k2*k2*k2*pileupk2[chan][5])+(k2*k2*k2*k2*k2*k2*pileupk2[chan][6])))+correction;
             }
           }
-          alt->e4cal=ptr->ecal; // Remember the ecal of the first Hit in this second Hit. Must be done regardless if a correction is made
+          alt->alt_ecal=ptr->ecal; // Remember the ecal of the first Hit in this second Hit. Must be done regardless if a correction is made
         } // end of if(alt->subsys == SUBSYS_HPGE_A && alt->chan == ptr->chan)
 
         // BGO suppression of HPGe
@@ -545,10 +512,10 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         }
         // Germanium addback -
         //    earliest fragment has the sum energy, others are marked -1
-        // Remember the other crystal channel number in ab_alt_chan for use in Compton Polarimetry
+        // Remember the other crystal channel number in alt_chan for use in Compton Polarimetry
         if( (dt >= addback_window_min && dt <= addback_window_max) && alt->subsys == SUBSYS_HPGE_A ){
           if( alt->esum >= 0 && crystal_table[alt->chan]/16 == crystal_table[ptr->chan]/16 ){
-            ptr->esum += alt->esum; alt->esum = -1; ptr->ab_alt_chan = alt->chan;
+            ptr->esum += alt->esum; alt->esum = -1; ptr->alt_chan = alt->chan;
           }
         }
         break;
@@ -572,10 +539,10 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         if( alt->subsys == SUBSYS_ZDS_A ){
           // For TAC08 the start is ZDS and the stop is any of the LaBr3. So this is three detector types.
           // Here in the presort we will remember the ZDS information that is in coincidence with the TAC.
-          // In the TAC event we save the ZDS chan as ab_alt_chan, and the ZDS energy as e4cal.
+          // In the TAC event we save the ZDS chan as alt_chan, and the ZDS energy as alt_ecal.
           // So later in the main coincidence loop we only need to examine LBL and TAC.
           if( dt >= zds_tac_window_min && dt <= zds_tac_window_max ){
-            ptr->ab_alt_chan = alt->chan; ptr->e4cal = alt->ecal;
+            ptr->alt_chan = alt->chan; ptr->alt_ecal = alt->ecal;
           }
         }
         break;
@@ -584,10 +551,10 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         if( alt->subsys == SUBSYS_ARIES_A ){
           // For TAC08 the start is ARIES and the stop is any of the LaBr3. So this is three detector types.
           // Here in the presort we will remember the ARIES tile that is in coincidence with the TAC.
-          // In the TAC event we save the tile chan as ab_alt_chan, and the tile energy as e4cal.
+          // In the TAC event we save the tile chan as alt_chan, and the tile energy as alt_ecal.
           // So later in the main coincidence loop we only need to examine LBL and TAC.
           if( dt >= art_tac_window_min && dt <= art_tac_window_max ){
-            ptr->ab_alt_chan = alt->chan; ptr->e4cal = alt->ecal;
+            ptr->alt_chan = alt->chan; ptr->alt_ecal = alt->ecal;
           }
         }
         break;
@@ -596,23 +563,23 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         if( alt->subsys == SUBSYS_TAC_LABR ){
           // For TAC01-07 we have a LBL-LBL coincidence
           // Here save the LBL Id number and the LBL energy in the TAC event
-          // Save LBL channel number into ptr->q2 or q3 or q4
-          // Save LBL energy ecal into TAC ptr-ecal2 or ecal3 or ecal4
+          // Save LBL channel number into ptr->integ2 or integ3 or integ4
+          // Save LBL energy ecal into TAC ptr-q2 or q3 or q4
           if( dt >= lbl_tac_window_min && dt <= lbl_tac_window_max ){
-            if(alt->e2cal<1){ // First LBL in coincidence with this TAC
-              alt->q2 = ptr->chan; alt->e2cal = ptr->ecal;
-            }else if(alt->e3cal<1){ // This is the second LBL in coincidence with this TAC
-              if( alt->q2<0 || alt->q2 >= odb_daqsize ){ break; }
-              if(crystal_table[ptr->chan]<crystal_table[alt->q2]){ // Order the LBL by crystal number not timestamp
-                alt->q3 = alt->q2; alt->e3cal = alt->e2cal;
-                alt->q2 = ptr->chan; alt->e2cal = ptr->ecal;
-              }else{ // More than two LBL in coincidence with this TAC
-                alt->q3 = ptr->chan; alt->e3cal = ptr->ecal;
-              }
-            }else{
-              alt->q4 = ptr->chan; alt->e4cal = ptr->ecal; // If this is set then we have LBL multiplicity >2 for this TAC
+             if( alt->q2 < 1 ){ // First LBL in coincidence with this TAC
+                alt->integ2 = ptr->chan; alt->q2 = ptr->ecal;
+             } else if( alt->q3 < 1 ){ // This is the second LBL in coincidence with this TAC
+                if( alt->integ2 < 0 || alt->integ2 >= odb_daqsize ){ break; }
+                   if( crystal_table[ptr->chan] < crystal_table[alt->integ2] ){ // Order the LBL by crystal number not timestamp
+                      alt->integ3 = alt->integ2;   alt->q3 = alt->q2;
+                      alt->integ2 = ptr->chan; alt->q2 = ptr->ecal;
+                   } else { // More than two LBL in coincidence with this TAC
+                      alt->integ3 = ptr->chan; alt->q3 = ptr->ecal;
+                   }
+                } else {
+                   alt->integ4 = ptr->chan; alt->q4 = ptr->ecal; // If this is set then we have LBL multiplicity >2 for this TAC
+                }
             }
-          }
         }
         break;
         case SUBSYS_ZDS_B: // CAEN Zds
@@ -621,8 +588,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             // Calculate time-of-flight and correct it for this DESCANT detector distance
             tof = (spread(abs(ptr->cfd - alt->cfd))*2.0) + 100; //if( tof < 0 ){ tof = -1*tof; }
             //  fprintf(stdout,"tof: %d - %d = %f\n",ptr->cfd, alt->cfd, tof);
-            alt->energy4 = (int)(tof); // Time of flight
-            alt->e4cal = (int)(spread(tof) * DSW_tof_corr_factor[crystal_table[alt->chan]-1]); // Corrected Time of Flight
+            alt->tof = (int)(tof); // Time of flight
+            alt->alt_ecal = (int)(spread(tof) * DSW_tof_corr_factor[crystal_table[alt->chan]-1]); // Corrected Time of Flight
           }
         }
         break;
@@ -630,14 +597,38 @@ int init_default_histos(Config *cfg, Sort_status *arg)
       }// end of switch
     }// end of while
     return(0);
-  }
+}
 
-  //#######################################################################
-  //########        Individual channel singles HISTOGRAMS        ##########
-  //#######################################################################
+int default_sort(int win_idx, int frag_idx, int flag)
+{
+    Grif_event *ptr;
+    int i;
 
-  int init_chan_histos(Config *cfg)
-  {                      // 1d histograms for Q,E,T,Wf for each channel in odb
+    // sort first event, even if window only contains that event
+    // (usually require at least two)
+    for(i=win_idx; ; i++){ ptr = &grif_event[i];
+      if( i >= PTR_BUFSIZE ){ i=0; } // WRAP
+      if( i != win_idx && flag == SORT_ONE ){ break; }
+      if( i != win_idx && i==frag_idx ){ break; }
+      if( ptr->dtype == 15 ){ if( i==frag_idx ){ break; } continue; } // scalar
+      if( ptr->chan == -1 ){
+        printf("DefSort: UNKNOWN_CHAN type=%d\n", ptr->dtype);
+        if( i==frag_idx ){ break; } continue;
+      } //  ????
+      fill_chan_histos(ptr);
+      fill_singles_histos(ptr);
+      if( i==frag_idx ){ break; }
+    }
+    fill_coinc_histos(win_idx, frag_idx);
+    return(0);
+}
+
+//#######################################################################
+//########        Individual channel singles HISTOGRAMS        ##########
+//#######################################################################
+
+int init_chan_histos(Config *cfg)
+{                      // 1d histograms for Q,E,T,Wf for each channel in odb
     char title[STRING_LEN], handle[STRING_LEN];
     int i, j, k, pos;
 
@@ -738,11 +729,12 @@ int init_default_histos(Config *cfg, Sort_status *arg)
       return(-1);
     }
     if( ++event < 16384 ){
-      ts_hist -> Fill(ts_hist, event,  (int)(ptr->timestamp/100));
+      ts_hist -> Fill(ts_hist, event,  (int)(ptr->ts/100));
     } else if( (event % 1000) == 0 ){
-      ts_hist -> Fill(ts_hist, 16367+(int)(event/1000),  (int)(ptr->timestamp/100));
+      ts_hist -> Fill(ts_hist, 16367+(int)(event/1000),  (int)(ptr->ts/100));
     }
-    ph_hist[chan] -> Fill(ph_hist[chan],  (int)ptr->energy,     1);
+    ph_hist[chan] -> Fill(ph_hist[chan],  (int)(( ptr->integ1 == 0 ) ? ptr->q1 :
+                                              spread(ptr->q1)/ptr->integ1),  1);
     e_hist[chan]  -> Fill(e_hist[chan],   (int)ptr->ecal,       1);
     hit_hist[0]   -> Fill(hit_hist[0],    chan,            1);
     if( ptr->ecal        >= 1 ){ hit_hist[1] -> Fill(hit_hist[1], chan, 1);
@@ -753,8 +745,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
       }
     }
     if( ptr->cfd         != 0 ){ hit_hist[2] -> Fill(hit_hist[2], chan, 1); }
-    if( ptr->wf_present  != 0 ){ hit_hist[3] -> Fill(hit_hist[3], chan, 1); }
-    if( ptr->scl_present != 0 ){ hit_hist[4] -> Fill(hit_hist[4], chan, 1); }
+    //if( ptr->wf_present  != 0 ){ hit_hist[3] -> Fill(hit_hist[3], chan, 1); }
+    //if( ptr->scl_present != 0 ){ hit_hist[4] -> Fill(hit_hist[4], chan, 1); }
 
     return(0);
   }
@@ -1068,7 +1060,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         sys = ptr->subsys;
         // Check this is a valid susbsytem type
         if( sys <0 || sys > MAX_SUBSYS ){
-          if( mult_hist[sys] != NULL && sys>=0 && sys<MAX_SUBSYS){ mult_hist[sys]->Fill(mult_hist[sys], ptr->fold, 1);  }
+          if( mult_hist[sys] != NULL && sys>=0 && sys<MAX_SUBSYS){ mult_hist[sys]->Fill(mult_hist[sys], ptr->multiplicity, 1);  }
           return(-1);
         }
         // Get the position for this fragment
@@ -1096,7 +1088,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             // The PU class is assigned in the presort, use ptr->psd for pileup class
             ge_pu_class->Fill(ge_pu_class, ptr->psd, 1);  // pileup class value
             ge_sum_class[ptr->psd]->Fill(ge_sum_class[ptr->psd], (int)ptr->ecal, 1);  // energy spectrum of pileup class value
-            ge_e_vs_k_class[ptr->psd]->Fill(ge_e_vs_k_class[ptr->psd], (int)ptr->ecal, (int)ptr->integ, 1);  // energy spectrum of pileup class value
+            ge_e_vs_k_class[ptr->psd]->Fill(ge_e_vs_k_class[ptr->psd], (int)ptr->ecal, (int)ptr->integ1, 1);  // energy spectrum of pileup class value
 
             if(ptr->psd == 1){  // single hit
               ge_1hit[pos]->Fill(ge_1hit[pos], (int)ptr->ecal, 1);
@@ -1111,30 +1103,30 @@ int init_default_histos(Config *cfg, Sort_status *arg)
               ge_2hit[pos]->Fill(ge_2hit[pos], (int)ptr->ecal, 1); // 2-hit pileup
               ge_xtal_2hit->Fill(ge_xtal_2hit, pos, (int)ptr->ecal, 1);
               // The following used for mapping the k2 dependant correction
-              ge_e_vs_k_2hit_first[pos]->Fill(ge_e_vs_k_2hit_first[pos], (int)ptr->ecal, (int)ptr->integ, 1);  // energy1 vs k1 spectrum of 1st Hit of 2hit pileup events
+              ge_e_vs_k_2hit_first[pos]->Fill(ge_e_vs_k_2hit_first[pos], (int)ptr->ecal, (int)ptr->integ1, 1);  // energy1 vs k1 spectrum of 1st Hit of 2hit pileup events
             }
             if(ptr->psd == 4 || ptr->psd == 6 || ptr->psd == 8){ // Select second Hit of two pileup events
               ge_2hit[pos]->Fill(ge_2hit[pos], (int)ptr->ecal, 1); // 2-hit pileup
               ge_xtal_2hit->Fill(ge_xtal_2hit, pos, (int)ptr->ecal, 1);
               // The following is not used for mapping the corrections but is a useful diagnostic
-              ge_e_vs_k_2hit_second[pos]->Fill(ge_e_vs_k_2hit_second[pos], (int)ptr->ecal, (int)ptr->integ, 1);  // energy2 vs k2 spectrum of 2nd Hit of 2hit pileup events
+              ge_e_vs_k_2hit_second[pos]->Fill(ge_e_vs_k_2hit_second[pos], (int)ptr->ecal, (int)ptr->integ1, 1);  // energy2 vs k2 spectrum of 2nd Hit of 2hit pileup events
 
               // The following 1408keV matrix used for mapping the E1 offset correction
-              if(ptr->e4cal > 1380 && ptr->e4cal < 1420){ // Require 152Eu 1408keV as E1 for mapping the E1 offset
-                ge_PU2_e2_v_k_gated1408[pos]->Fill(ge_PU2_e2_v_k_gated1408[pos], (int)ptr->ecal, (int)ptr->integ, 1);  // e2 vs k2 for fixed e1
+              if(ptr->alt_ecal > 1380 && ptr->alt_ecal < 1420){ // Require 152Eu 1408keV as E1 for mapping the E1 offset
+                ge_PU2_e2_v_k_gated1408[pos]->Fill(ge_PU2_e2_v_k_gated1408[pos], (int)ptr->ecal, (int)ptr->integ1, 1);  // e2 vs k2 for fixed e1
               }
 
               // The following x-rays matrix used for mapping the k2 dependant correction for E2
               // E2 vs k2 gated on fixed x-ray energies
               // The E2 energy has 1272keV subtracted from it to put the 1408keV peak around 136keV to allow a smaller matrix side and easier processing in the app
-              //if(ptr->e4cal > 5 && ptr->e4cal < 50){ // Require 152Eu x rays as E1 for mapping the k2 dependance
-              if(ptr->e4cal > 5 && ptr->e4cal < 130){ // Require 152Eu x rays (or 121keV because x rays are attenuated in some channels) as E1 for mapping the k2 dependance
-                ge_PU2_e2_v_k_gatedxrays[pos]->Fill(ge_PU2_e2_v_k_gatedxrays[pos], (int)(ptr->ecal - 1272), (int)ptr->integ, 1);  // e2 vs k2 for fixed e1
+              //if(ptr->alt_ecal > 5 && ptr->alt_ecal < 50){ // Require 152Eu x rays as E1 for mapping the k2 dependance
+              if(ptr->alt_ecal > 5 && ptr->alt_ecal < 130){ // Require 152Eu x rays (or 121keV because x rays are attenuated in some channels) as E1 for mapping the k2 dependance
+                ge_PU2_e2_v_k_gatedxrays[pos]->Fill(ge_PU2_e2_v_k_gatedxrays[pos], (int)(ptr->ecal - 1272), (int)ptr->integ1, 1);  // e2 vs k2 for fixed e1
               }
             }
 
-            //   if(ptr->psd==7){ ge_pu_dt12->Fill(ge_pu_dt12, (int)(ptr->ts_int+DT_SPEC_LENGTH/2), 1); }
-            //   if(ptr->psd==8){ ge_pu_dt13->Fill(ge_pu_dt13, (int)(ptr->ts_int+DT_SPEC_LENGTH/2), 1); }
+            //   if(ptr->psd==7){ ge_pu_dt12->Fill(ge_pu_dt12, (int)(ptr->delta_t+DT_SPEC_LENGTH/2), 1); }
+            //   if(ptr->psd==8){ ge_pu_dt13->Fill(ge_pu_dt13, (int)(ptr->delta_t+DT_SPEC_LENGTH/2), 1); }
 
 
             clover = (int)(pos/16)+1;
@@ -1232,22 +1224,22 @@ int init_default_histos(Config *cfg, Sort_status *arg)
           case SUBSYS_SCEPTAR: break;
           case SUBSYS_TAC_LABR:
 
-          // Save LBL channel number into ptr->q2 or q3 or q4
+          // Save LBL channel number into ptr->integ2 or integ3 or integ4
           // Save LBL energy ecal into TAC ptr-ecal2 or ecal3 or ecal4
-          if(ptr->e4cal>0){ break; } // more than two LaBr3 in coincidence with this TAC event so reject
-          if( ptr->q2 >=          0 && ptr->q3 >=           0 &&
-            ptr->q2 < MAX_DAQSIZE && ptr->q3  < MAX_DAQSIZE ){
-              c1 = crystal_table[ptr->q2]-1; // c1 runs from 0 to 7. c1 is position of first LBL in coincidence with this TAC.
-              c2 = crystal_table[ptr->q3]-1; // c2 runs from 0 to 7. c2 is position of second LBL in coincidence with this TAC.
+          if( ptr->q4 > 0 ){ break; } // more than two LaBr3 in coincidence with this TAC event so reject
+          if( ptr->integ2 >=          0 && ptr->integ3 >=           0 &&
+            ptr->integ2 < MAX_DAQSIZE && ptr->integ3  < MAX_DAQSIZE ){
+              c1 = crystal_table[ptr->integ2]-1; // c1 runs from 0 to 7. c1 is position of first LBL in coincidence with this TAC.
+              c2 = crystal_table[ptr->integ3]-1; // c2 runs from 0 to 7. c2 is position of second LBL in coincidence with this TAC.
             } else { c1 = c2 = -1; }
             if(c1>=0 && c1<N_LABR){
-              tac_gated_lbl[c1]->Fill(tac_gated_lbl[c1], (int)(ptr->e2cal), 1); // First LBL energy spectrum, requiring a TAC coincidence
+              tac_gated_lbl[c1]->Fill(tac_gated_lbl[c1], (int)(ptr->q2), 1); // First LBL energy spectrum, requiring a TAC coincidence
               if(c2>=0 && c2<N_LABR){
                 index = tac_labr_hist_index[c1][c2];
                 if(index>=0 && index<(int)((N_LABR)*(N_LABR-1)/2)+2){
                   offset = tac_lbl_combo_offset[index];
                   tac_labr_hist[index]->Fill(tac_labr_hist[index], (int)(ptr->ecal)+offset, 1);
-                  tac_labr_hist_uncal[index]->Fill(tac_labr_hist_uncal[index], (int)(ptr->energy), 1);
+                  tac_labr_hist_uncal[index]->Fill(tac_labr_hist_uncal[index], (int)(( ptr->integ1 == 0 ) ? ptr->q1 : spread(ptr->q1)/ptr->integ1), 1);
                 }
                 // Calibrated TAC spectra
                 final_tac[crystal_table[ptr->chan]-1]->Fill(final_tac[crystal_table[ptr->chan]-1], (int)(ptr->ecal)+offset, 1);
@@ -1255,20 +1247,20 @@ int init_default_histos(Config *cfg, Sort_status *arg)
 
                 // A 3d histogram of first LBL energy vs second LBL energy vs TAC
                 // lbl_lbl_tac->Fill(lbl_lbl_tac, (int)((ptr->e2cal/10)*(ptr->e3cal/10)), (int)(ptr->ecal)+offset, 1); // LBL energy vs LBL energy vs TAC
-                if(ptr->ecal>5 && ptr->e2cal>5 && ptr->e3cal>5){
-                  bin = (int)(((ptr->e2cal/10)*400)+(ptr->e3cal/10));
+                if(ptr->ecal>5 && ptr->q2>5 && ptr->q3>5){
+                  bin = (int)(((ptr->q2/10)*400)+(ptr->q3/10));
                   lbl_lbl_tac->Fill(lbl_lbl_tac, (int)(ptr->ecal)+offset-250, bin, 1); // LBL energy vs LBL energy vs TAC
                 }
 
                 // Compton Walk matrix for calibrations
                 // First LBL gated on 1332keV, this matrix is second LBL E vs TAC
                 if(ptr->ecal>5 && crystal_table[ptr->chan] == 1){ // Use the First TAC (TAC01)
-                  if(c1 == 0 && c2>0 && ptr->e2cal>1252 && ptr->e2cal<1412 && ptr->e3cal>5){ // LBL01 gated on 1332keV
-                    tac_labr_CompWalk[c2]->Fill(tac_labr_CompWalk[c2], (int)(ptr->ecal)+offset, (int)ptr->e3cal, 1); // TAC01 and other LBL energy
+                  if(c1 == 0 && c2>0 && ptr->q2>1252 && ptr->q2<1412 && ptr->q3>5){ // LBL01 gated on 1332keV
+                    tac_labr_CompWalk[c2]->Fill(tac_labr_CompWalk[c2], (int)(ptr->ecal)+offset, (int)ptr->q3, 1); // TAC01 and other LBL energy
                   }
                 }else if(ptr->ecal>5 && crystal_table[ptr->chan] == 2){
-                  if(c1 == 1 && c2 == 2 && ptr->e2cal>1252 && ptr->e2cal<1412 && ptr->e3cal>5){ // LBL02 gated on 1332keV
-                    tac_labr_CompWalk0->Fill(tac_labr_CompWalk0, (int)(ptr->ecal)+offset, (int)ptr->e3cal, 1); // TAC02 to check LBL01
+                  if(c1 == 1 && c2 == 2 && ptr->q2>1252 && ptr->q2<1412 && ptr->q3>5){ // LBL02 gated on 1332keV
+                    tac_labr_CompWalk0->Fill(tac_labr_CompWalk0, (int)(ptr->ecal)+offset, (int)ptr->q3, 1); // TAC02 to check LBL01
                   }
                 }
               }
@@ -1278,25 +1270,25 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             pos  = crystal_table[chan];
             if(pos>0 && pos<=N_DES_WALL){
               desw_psd[pos]       -> Fill(desw_psd[pos],   (int)ptr->psd,       1);
-              if(ptr->energy4>0){
-                desw_tof[pos]       -> Fill(desw_tof[pos],   (int)ptr->energy4,       1);
-                desw_tof_corr[pos]  -> Fill(desw_tof_corr[pos],   (int)ptr->e4cal,       1);
+              if(ptr->tof>0){
+                desw_tof[pos]       -> Fill(desw_tof[pos],   (int)ptr->tof,       1);
+                desw_tof_corr[pos]  -> Fill(desw_tof_corr[pos],   (int)ptr->alt_ecal,       1);
                 if(ptr->psd>10 && ptr->psd<710){
-                  desw_tof_psd[pos]  -> Fill(desw_tof_psd[pos],   (int)ptr->e4cal,       1);
+                  desw_tof_psd[pos]  -> Fill(desw_tof_psd[pos],   (int)ptr->alt_ecal,       1);
                 }
               }
             }
             desw_sum_e->Fill(desw_sum_e, (int)ptr->ecal, 1);
             if(ptr->psd>0){ desw_sum_psd->Fill(desw_sum_psd, (int)ptr->psd, 1); }
-            if(ptr->e4cal>0){ desw_sum_tof->Fill(desw_sum_tof, (int)ptr->e4cal, 1); } // e4cal = corrected time-of-flight
+            if(ptr->alt_ecal>0){ desw_sum_tof->Fill(desw_sum_tof, (int)ptr->alt_ecal, 1); } // alt_ecal = corrected time-of-flight
             pos  = crystal_table[ptr->chan];
             if( pos < 1 || pos > 60 ){
               fprintf(stderr,"bad descant wall detector[%d] for chan %d\n", pos, ptr->chan);
             } else {
               desw_e_xtal->Fill(desw_e_xtal, pos, (int)ptr->ecal, 1);
-              desw_tof_xtal->Fill(desw_tof_xtal, pos, (int)ptr->e4cal, 1);
+              desw_tof_xtal->Fill(desw_tof_xtal, pos, (int)ptr->alt_ecal, 1);
               desw_psd_e->Fill(desw_psd_e, (int)ptr->psd, (int)ptr->ecal, 1);
-              desw_psd_tof->Fill(desw_psd_tof, (int)ptr->psd, (int)ptr->e4cal, 1);
+              desw_psd_tof->Fill(desw_psd_tof, (int)ptr->psd, (int)ptr->alt_ecal, 1);
             }
             break;
             case SUBSYS_ARIES_A: // ARIES Standard Output
@@ -1418,7 +1410,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             }
             break;
             case SUBSYS_DESWALL: // ge-DSW
-            ge_dsw->Fill(ge_dsw, (int)ptr->ecal, (int)alt->e4cal, 1); // e4cal = DSW corrected time-of-flight
+            ge_dsw->Fill(ge_dsw, (int)ptr->ecal, (int)alt->alt_ecal, 1); // alt_ecal = DSW corrected time-of-flight
             break;
             default: break;
           }
@@ -1451,8 +1443,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                   tac_aries_lbl_sum->Fill(tac_aries_lbl_sum, corrected_tac_value, 1); // sum tac spectrum including all LBL
                   if(ptr->ecal >1225 && ptr->ecal <1315){ // gate on LaBr3 energy 1275keV
                     aries_tac->Fill(aries_tac, (int)corrected_tac_value, 1); // tac spectrum gated on 1275keV
-                    aries_tac_artEn->Fill(aries_tac_artEn, alt->e4cal, 1); // ARIES energy spectrum in coincidence with TAC
-                    if(alt->e4cal >24 && alt->e4cal <36){ // gate on ARIES energy
+                    aries_tac_artEn->Fill(aries_tac_artEn, alt->alt_ecal, 1); // ARIES energy spectrum in coincidence with TAC
+                    if(alt->alt_ecal >24 && alt->alt_ecal <36){ // gate on ARIES energy
                       aries_tac_Egate->Fill(aries_tac_Egate, corrected_tac_value, 1); // tac spectrum gated on 1275keV
                     }
                   }
@@ -1482,7 +1474,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
           17,19,21,23,25,27,29,31,15,13,11, 9, 7, 5, 3, 1
         };
 
-        int frag_hist[MAX_COINC_EVENTS];
+        int frag_hist[PTR_BUFSIZE];
         int fill_coinc_histos(int win_idx, int frag_idx)
         {
           int global_window_size = 100; // size in grif-replay should be double this
@@ -1492,10 +1484,10 @@ int init_default_histos(Config *cfg, Sort_status *arg)
           TH2I *hist_ee; TH1I *hist_dt;
 
           // histogram of coincwin-size
-          dt = (frag_idx - win_idx + 2*MAX_COINC_EVENTS) %  MAX_COINC_EVENTS; ++frag_hist[dt];
+          dt = (frag_idx - win_idx + 2*PTR_BUFSIZE) %  PTR_BUFSIZE; ++frag_hist[dt];
 
           while( win_idx != frag_idx ){ // check all conicidences in window
-            if( ++win_idx == MAX_COINC_EVENTS ){ win_idx = 0; } // wrap
+            if( ++win_idx == PTR_BUFSIZE ){ win_idx = 0; } // wrap
             alt = &grif_event[win_idx];
             if( ptr->subsys > alt->subsys ){ tmp = ptr; ptr = alt; alt = tmp; ptr_swap = 1; }
 
@@ -1553,9 +1545,9 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                         case SUBSYS_ARIES_B:// ARIES Fast Output in CAEN
                         if(alt->subsys == SUBSYS_DESWALL){ // aries-DSW
                           dt_hist[20]->Fill(dt_hist[20], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
-                          art_dsw->Fill(art_dsw, (int)ptr->ecal, (int)alt->e4cal, 1);
+                          art_dsw->Fill(art_dsw, (int)ptr->ecal, (int)alt->alt_ecal, 1);
                           desw_sum_e_b->Fill(desw_sum_e_b, (int)alt->ecal, 1);
-                          desw_sum_tof_b->Fill(desw_sum_tof_b, (int)alt->e4cal, 1); // e4cal = corrected time-of-flight
+                          desw_sum_tof_b->Fill(desw_sum_tof_b, (int)alt->alt_ecal, 1); // alt_ecal = corrected time-of-flight
                         } break;
                         case SUBSYS_ZDS_A: // grif16 zds
                         if(alt->subsys == SUBSYS_ZDS_B ){ // ZDS GRIF-CAEN coincidence
@@ -1569,7 +1561,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                           dt_hist[21]->Fill(dt_hist[21], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
                           dt_hist[25]->Fill(dt_hist[25], (int)(abs(ptr->cfd - alt->cfd)+DT_SPEC_LENGTH/2), 1);
                           desw_sum_e_b->Fill(desw_sum_e_b, (int)alt->ecal, 1);
-                          desw_sum_tof_b->Fill(desw_sum_tof_b, (int)alt->e4cal, 1); // e4cal = corrected time-of-flight
+                          desw_sum_tof_b->Fill(desw_sum_tof_b, (int)alt->alt_ecal, 1); // alt_ecal = corrected time-of-flight
                         } break;
                         case SUBSYS_DESWALL:
                         if( alt->subsys == SUBSYS_DESWALL ){
@@ -1578,20 +1570,20 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                           c1 = crystal_table[ptr->chan]-1; c2 = crystal_table[alt->chan]-1;
                           if( c1 >= 0 && c1 < 60 && c2 >= 0 && c2 < 60 ){
                             dsw_hit->Fill(dsw_hit, c1, c2, 1);
-                            dsw_dsw->Fill(dsw_dsw, (int)ptr->e4cal, (int)alt->e4cal, 1);
+                            dsw_dsw->Fill(dsw_dsw, (int)ptr->alt_ecal, (int)alt->alt_ecal, 1);
                             // Fold 2 sum spectra
                             desw_sum_e_nn->Fill(desw_sum_e_nn, (int)ptr->ecal, 1);
-                            desw_sum_tof_nn->Fill(desw_sum_tof_nn, (int)ptr->e4cal, 1);// e4cal = corrected time-of-flight
+                            desw_sum_tof_nn->Fill(desw_sum_tof_nn, (int)ptr->alt_ecal, 1);// alt_ecal = corrected time-of-flight
                             // DSW-DSW angular correlations
                             // Fill the appropriate angular bin spectrum with the corrected time-of-flight value
                             index = DSW_DSW_angles[c1][c2];
                             dsw_angcor[index]->Fill(dsw_angcor
-                              [index],(int)ptr->e4cal,(int)alt->e4cal, 1);
+                              [index],(int)ptr->alt_ecal,(int)alt->alt_ecal, 1);
                               // Fold 2, angle greater than 60 degrees, sum spectra
                               // index 13 = 58.555, index 14 = 61.535
-                              if( index > 13 ){                                         // e4cal = corrected time-of-flight
+                              if( index > 13 ){                                         // alt_ecal = corrected time-of-flight
                                 desw_sum_e_nn_a->Fill(desw_sum_e_nn_a, (int)ptr->ecal, 1);
-                                desw_sum_tof_nn_a->Fill(desw_sum_tof_nn_a, (int)ptr->e4cal, 1);
+                                desw_sum_tof_nn_a->Fill(desw_sum_tof_nn_a, (int)ptr->alt_ecal, 1);
                               }
                             }
                           } break;

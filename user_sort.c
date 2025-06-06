@@ -35,7 +35,7 @@ return(0);
 }
 
 // fragment at win_start is leaving coincwin (frag[win_end+1] is not in coinc)
-extern Grif_event grif_event[MAX_COINC_EVENTS];
+extern Grif_event grif_event[PTR_BUFSIZE];
 int user_sort(int win_strt, int win_end, int flag)
 {
 return(0);
@@ -47,7 +47,7 @@ return(0);
    Gate *gate;
    Cond *cond;
 
-   if( len < 0 ){ len += MAX_COINC_EVENTS; }
+   if( len < 0 ){ len += PTR_BUFSIZE; }
 
    // ------------ histogram increment tracking ----------------------
    // only want to increment histograms once per set of coinc-frags
@@ -103,11 +103,11 @@ return(0);
    if( ptr->chan != -1 ){
       m = win_strt;
       while( 1 ){
-         if( (( win_end < m ) ? win_end + MAX_COINC_EVENTS - m :
+         if( (( win_end < m ) ? win_end + PTR_BUFSIZE - m :
                 win_end - m ) > len ){
             printf("CORRUPT\n");
          }
-         if( ++m == MAX_COINC_EVENTS ){ m = 0; } // wrap
+         if( ++m == PTR_BUFSIZE ){ m = 0; } // wrap
          alt = &grif_event[m];
          if( alt->chan != -1 && m <= win_end ){
             calc_coincvars(ptr, alt); test_gates(ptr, alt);
@@ -144,7 +144,7 @@ return(0);
                   // ############# do not set done_flag for true 2d histos
                }
          }
-         i = m - win_strt; if( i < 0 ){ i += MAX_COINC_EVENTS; }
+         i = m - win_strt; if( i < 0 ){ i += PTR_BUFSIZE; }
          if( i >= len ){ break; }
       }
    }
@@ -295,6 +295,7 @@ float grif_crystal_phi[64]={
 //     - currently not much gain, unless can group by detector-type
 //          [dtype->in_use]
 /////////////////////////////////////////////////////////////////////////////
+extern int crystal_table[MAX_DAQSIZE];
 int calc_coincvars(Grif_event *ptr1, Grif_event *ptr2)
 {
    int gege, gesep, gepac, gelbs, sepsep, seppac, seplbs, pacpac, lbslbs;
@@ -314,8 +315,8 @@ int calc_coincvars(Grif_event *ptr1, Grif_event *ptr2)
    swap=0;
    while( 1 ){
       ts = tsd = NULL;
-      p1 = ptr1->array_posn;  p2 = ptr2->array_posn;
-      c1 = ptr1->crystal   ;  c2 = ptr2->crystal   ;
+      p1 = ptr1->array_posn;           p2 = ptr2->array_posn;
+      c1 = crystal_table[ptr1->chan];  c2 = crystal_table[ptr2->chan];
       if(        ptr1->dtype == 0 ){ // Ge
          if(        ptr2->dtype == 0 ){ gege = 1; // Ge-Ge
             ts  = &cfg->varlist[TD_GRG_GRG ]; ts ->valid = 1;
