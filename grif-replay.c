@@ -70,7 +70,7 @@ void show_coinc_stats()
    printf("Coinc[500-%4d]:%d\n", MAX_COINC_EVENTS, sum);
 }
 
-static int presort_window_start, sort_window_start;
+static int crosstalk_window_start, presort_window_start, sort_window_start;
 static int done_events;
 extern void grif_main(Sort_status *arg);
 extern void reorder_main(Sort_status *arg);
@@ -83,7 +83,7 @@ int sort_next_file(Config *cfg, Sort_status *sort)
 {
    time_t end, start=time(NULL);
    done_events = 0;
-   presort_window_start = sort_window_start = 0;
+   crosstalk_window_start = presort_window_start = sort_window_start = 0;
    memset(&diagnostics, 0, sizeof(Sort_metrics) );
    diagnostics.run_sort_start = start;
    sort->shutdown_midas = sort->end_of_data = 0;
@@ -158,7 +158,7 @@ static void online_loop(Config *cfg, Sort_status *sort)
       reorder_save = sort->reorder;
       singlethread_save = sort->single_thread;
       sortthread_save = sort->sort_thread;
-      presort_window_start = sort_window_start = 0;
+      crosstalk_window_start = presort_window_start = sort_window_start = 0;
 
       printf("creating reorder threads\n");
       pthread_create(&ordthrd,NULL,(void* (*)(void*))reorder_main,sort);
@@ -285,7 +285,8 @@ int process_event(Grif_event *ptr, int slot)
       init_default_histos(configs[1], &sort_status); sort_status.odb_done = 1;
    }
    apply_gains(ptr);
-   insert_presort_win(ptr, slot);
+   insert_crosstalk_win(ptr, slot);
+   //insert_presort_win(ptr, slot);
    return(0);
 }
 
@@ -310,6 +311,40 @@ char *debug_show_chan(Grif_event *ptr)
 }
 extern char chan_name[MAX_DAQSIZE][CHAN_NAMELEN];
 
+
+// add event to crosstalk window (event has just been read in)
+//    recalculate coincwin (sorting any events leaving window)
+// => final win of run won't be sorted, as these events will not leave window
+int insert_crosstalk_win(Grif_event *ptr, int slot)
+{
+   int window_width = 1940; // 19.4us needed for all crosstalk corrections
+   int win_count, win_end;
+   Grif_event *alt;
+   long dt;
+
+   ///////////////// Crosstalk window (used for time-dependent crosstalk corrections of HPGe)
+   while( crosstalk_window_start != slot ){ alt = &grif_event[crosstalk_window_start];
+   win_count = (slot - crosstalk_window_start+2*MAX_COINC_EVENTS) % MAX_COINC_EVENTS;
+      dt = ptr->ts - alt->ts; if( dt < 0 ){ dt *= -1; }
+
+      // should exit while-loop when no more events outside window
+      //    *BUT* add error recovery - if window too full, dump events
+      if( dt < window_width ){
+         //if( win_count < 0.45*MAX_COINC_EVENTS  ){ break; }
+         if( win_count < coinc_events_cutoff ){ break; } // LIMIT to ?? events
+         else { ++prefull; }
+      }
+
+      // event[win_start] is leaving window
+      //    ( either because dt > coincwidth OR due to error recovery)
+      // NOTE event[slot] is out of window - use slot-1 as window-end
+      if( (win_end = slot-1) < 0 ){ win_end = MAX_COINC_EVENTS-1; } // WRAP
+      process_crosstalk(crosstalk_window_start, win_end);
+      insert_presort_win(alt, crosstalk_window_start); // add event to next window
+      if( ++crosstalk_window_start >= MAX_COINC_EVENTS ){ crosstalk_window_start=0; } // WRAP
+   }
+   return(0);
+}
 
 // add event to presort window (event has just been read in)
 //    recalculate coincwin (sorting any events leaving window)
@@ -368,7 +403,8 @@ int insert_presort_win(Grif_event *ptr, int slot)
 // add event to main sort window (event has just left presort window)
 int insert_sort_win(Grif_event *ptr, int slot)
 {
-   int window_width = 200; // 2us - MAXIMUM (indiv. gates can be smaller)
+   //int window_width = 200; // 2us - MAXIMUM (indiv. gates can be smaller)
+   int window_width = 4400; // 44us to map all crosstalk corrections - MAXIMUM (indiv. gates can be smaller)
    int win_count, win_end;
    Grif_event *alt;
    long dt;

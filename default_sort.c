@@ -25,6 +25,7 @@ static float  quad_table[MAX_DAQSIZE]; float   *quads = quad_table;
 float  pileupk1[MAX_DAQSIZE][7];
 float  pileupk2[MAX_DAQSIZE][7];
 float  pileupE1[MAX_DAQSIZE][7];
+float  crosstalk[MAX_DAQSIZE][3][16];
 static short *chan_address = addr_table;
 static int subsys_initialized[MAX_SUBSYS];
 extern Grif_event grif_event[MAX_COINC_EVENTS];
@@ -43,17 +44,20 @@ int init_default_histos(Config *cfg, Sort_status *arg)
   Cal_coeff *cal;
   int i, j;
 
-  // Initialize all pileup parameters to unset values
+  // Initialize all pileup and crosstalk parameters to unset values
   for(i=0; i<odb_daqsize; i++){
     for(j=0; j<7; j++){
       pileupk1[i][j] = pileupk2[i][j] = pileupE1[i][j] = -1;
+    }
+    for(j=0; j<16; j++){
+      crosstalk[i][0][j] = crosstalk[i][1][j] = crosstalk[i][2][j] = -1;
     }
   }
 
   cfg->odb_daqsize = odb_daqsize;
   for(i=0; i<odb_daqsize; i++){ // update config with odb info
     edit_calibration(cfg, chan_name[i], offsets[i], gains[i], quads[i], pileupk1[i], pileupk2[i], pileupE1[i],
-      chan_address[i],  dtype_table[i], arg->cal_overwrite );
+      crosstalk[i][0], crosstalk[i][1], crosstalk[i][2], chan_address[i],  dtype_table[i], arg->cal_overwrite );
     }
     // ALSO need to transfer config info to the arrays that are used in sort
     for(i=0; i<odb_daqsize; i++){
@@ -71,11 +75,18 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         offsets[i]=cal->offset; gains[i]=cal->gain;  quads[i]=cal->quad;
       }
 
-      // Pileup parameters do not exist in the MIDAS ODB so must always be copied from the config (file or config)
-      for(j=0; j<7; j++){
-        pileupk1[i][j] = (isnan(cal->pileupk1[j])) ? 0.0 : cal->pileupk1[j];
-        pileupk2[i][j] = (isnan(cal->pileupk2[j])) ? 0.0 : cal->pileupk2[j];
-        pileupE1[i][j] = (isnan(cal->pileupE1[j])) ? 0.0 : cal->pileupE1[j];
+      // Pileup or crosstalk parameters do not exist in the MIDAS ODB so must always be copied from the config (file or config)
+      if(strncmp(chan_name[i],"GRG",3)==0){
+        for(j=0; j<7; j++){
+          pileupk1[i][j] = (isnan(cal->pileupk1[j])) ? 0.0 : cal->pileupk1[j];
+          pileupk2[i][j] = (isnan(cal->pileupk2[j])) ? 0.0 : cal->pileupk2[j];
+          pileupE1[i][j] = (isnan(cal->pileupE1[j])) ? 0.0 : cal->pileupE1[j];
+        }
+        for(j=0; j<16; j++){
+          crosstalk[i][0][j] = (isnan(cal->crosstalk0[j])) ? 0.0 : cal->crosstalk0[j];
+          crosstalk[i][1][j] = (isnan(cal->crosstalk1[j])) ? 0.0 : cal->crosstalk1[j];
+          crosstalk[i][2][j] = (isnan(cal->crosstalk2[j])) ? 0.0 : cal->crosstalk2[j];
+        }
       }
     }
 
@@ -326,6 +337,109 @@ int init_default_histos(Config *cfg, Sort_status *arg)
     return(0);
   }
 
+  // process_crosstalk - apply time-dependent crosstalk corrections to HPGe
+  int process_crosstalk(int frag_idx, int end_idx)
+  {
+    Grif_event *alt2, *alt, *ptr = &grif_event[frag_idx];
+    int i, j, dt, chan, chan2, bin;
+    float energy, ecal, correction;
+    int clover, ge1, c1,c2;
+    int ct_index[4][4] = {{-1,0,1,2},{0,-1,1,2},{0,1,-1,2},{0,1,2,-1}};
+
+// Skip all corrections to generate crosstalk parameters
+//return(0);
+
+    // Assign chan local variable and check it is a valid channel number
+    if( (chan=ptr->chan)<0 || ptr->chan >= odb_daqsize ){
+      fprintf(stderr,"process_crosstalk error: ignored event in chan:%d\n",ptr->chan );
+      return(-1);
+    }
+    // Only continue with HPGe events
+    if(ptr->subsys != SUBSYS_HPGE_A){ return(-1); }
+
+    i = frag_idx; ptr->fold = 1;
+    while( i != end_idx ){ // need at least two events in window
+      if( ++i >=  MAX_COINC_EVENTS ){ i=0; } alt = &grif_event[i]; // WRAP
+      if( (chan2 = alt->chan)<0 || alt->chan >= odb_daqsize ){
+        fprintf(stderr,"process_crosstalk error: ignored event in chan:%d\n",alt->chan );
+        return(-1);
+      }
+
+      if(alt->subsys == SUBSYS_HPGE_A && chan2 != chan ){
+
+        // HPGe Clover time-dependant crosstalk corrections
+        if((clover=(int)(crystal_table[chan2]/4)) == (int)(crystal_table[chan]/4)){
+/*
+          if(ptr->chan==0 && ((ptr->ecal>1160 && ptr->ecal<1184 && alt->ecal>1320 && alt->ecal<1344)
+          || (alt->ecal>1160 && alt->ecal<1184 && ptr->ecal>1320 && ptr->ecal<1344))
+          ){ fprintf(stdout,"crosstalk hit, %d %d with dt %ld\n",crystal_table[ptr->chan],crystal_table[alt->chan],(ptr->ts - alt->ts)); }
+*/
+          dt = ptr->ts - alt->ts;
+
+             if(dt>-480){
+            // The original hit came first (ptr) and the crosstalk-inducing hit second (alt)
+            // Make correction to ptr hit based on energy of alt.
+            bin = (int)((1920-dt)/160);
+            if(bin<0 || bin>15){ fprintf(stderr,"bin [%d] out of bounds for dt %d\n",bin,dt); continue; }
+            ge1 = crystal_table[chan];
+            c1 = ge1%4;
+            c2 = ct_index[c1][(int)(crystal_table[chan2]%4)];
+            correction = alt->ecal * crosstalk[ge1][c2][bin];
+            //correction = alt->ecal*( crosstalk[ge1][c2][0]+(dt*crosstalk[ge1][c2][1])+(dt*dt*crosstalk[ge1][c2][2])+(dt*dt*dt*crosstalk[ge1][c2][3])
+            //+(dt*dt*dt*dt*crosstalk[ge1][c2][4])+(dt*dt*dt*dt*dt*crosstalk[ge1][c2][5])+(dt*dt*dt*dt*dt*dt*crosstalk[ge1][c2][6]));
+
+            ptr->esum -= ptr->ecal;
+            energy = ( ptr->integ == 0 ) ? ptr->q : spread(ptr->q)/ptr->integ;
+            ecal = offsets[chan]+energy*(gains[chan]+energy*quads[chan]);
+      //      if(ptr->chan==0 && c2==0 && ptr->ecal>1160 && ptr->ecal<1184 && alt->ecal>1320 && alt->ecal<1344){ fprintf(stdout,"ct correction to ptr from alt %d with dt %d, bin[%d][%d]=%f: %f + %f = ",alt->ecal,dt,c2,bin,crosstalk[ge1][c2][bin],ecal,correction); }
+
+            ecal += correction;
+            ptr->ecal = (int)ecal;
+            ptr->esum += ptr->ecal;
+        //    if(ptr->chan==0 && c2==0 && ptr->ecal>1160 && ptr->ecal<1184 && alt->ecal>1320 && alt->ecal<1344){
+        //      fprintf(stdout,"%f\n",ecal);
+        //    }
+        //    if(ptr->chan==1 && ptr->ecal>1160 && ptr->ecal<1184 && alt->ecal>1320 && alt->ecal<1344){ fprintf(stdout,"ct0: [%e,%e,%e,%e,%e,%e,%e]\n",crosstalk[1][0][0],crosstalk[1][0][1],crosstalk[1][0][2],crosstalk[1][0][3],crosstalk[1][0][4],crosstalk[1][0][5],crosstalk[1][0][6]); }
+        //    if(ptr->chan==1 && ptr->ecal>1160 && ptr->ecal<1184 && alt->ecal>1320 && alt->ecal<1344){ fprintf(stdout,"ct1: [%e,%e,%e,%e,%e,%e,%e]\n",crosstalk[1][1][0],crosstalk[1][1][1],crosstalk[1][1][2],crosstalk[1][1][3],crosstalk[1][1][4],crosstalk[1][1][5],crosstalk[1][1][6]); }
+        //    if(ptr->chan==1 && ptr->ecal>1160 && ptr->ecal<1184 && alt->ecal>1320 && alt->ecal<1344){ fprintf(stdout,"ct2: [%e,%e,%e,%e,%e,%e,%e]\n",crosstalk[1][2][0],crosstalk[1][2][1],crosstalk[1][2][2],crosstalk[1][2][3],crosstalk[1][2][4],crosstalk[1][2][5],crosstalk[1][2][6]); }
+          }
+
+          if(dt>-1920){
+            // The original hit came second (alt) and the crosstalk-inducing hit first (ptr)
+            // Make correction to alt hit based on energy of ptr.
+          //  dt -= 1920; // Correct the timestamp difference so that the right correction is calculated
+            bin = (int)((1920+dt)/160);
+            if(bin<0 || bin>15){ fprintf(stderr,"bin [%d] out of bounds for dt %d\n",bin,dt); continue; }
+            ge1 = crystal_table[chan2];
+            c1 = ge1%4;
+            c2 = ct_index[c1][(int)(crystal_table[chan]%4)];
+            correction = ptr->ecal * crosstalk[ge1][c2][bin];
+          //  correction = (-2)*bin; // Just a test for Identifing the time bin structure in the plots.
+          //  correction = ptr->ecal*( crosstalk[ge1][c2][0]+(dt*crosstalk[ge1][c2][1])+(dt*dt*crosstalk[ge1][c2][2])+(dt*dt*dt*crosstalk[ge1][c2][3])
+          //  +(dt*dt*dt*dt*crosstalk[ge1][c2][4])+(dt*dt*dt*dt*dt*crosstalk[ge1][c2][5])+(dt*dt*dt*dt*dt*dt*crosstalk[ge1][c2][6]));
+            alt->esum -= alt->ecal;
+            energy = ( alt->integ == 0 ) ? alt->q : spread(alt->q)/alt->integ;
+            ecal = offsets[chan2]+energy*(gains[chan2]+energy*quads[chan2]);
+        //    if(alt->chan==0 && c2==0 && alt->ecal>1160 && alt->ecal<1184 && ptr->ecal>1320 && ptr->ecal<1344){ fprintf(stdout,"ct correction to alt from ptr %d with dt %d, bin[%d][%d]=%f: %f + %f = ",ptr->ecal,dt,c2,bin,crosstalk[ge1][c2][bin],ecal,correction); }
+            ecal += correction;
+            alt->ecal = (int)ecal;
+            alt->esum += alt->ecal;
+        //    if(alt->chan==0 && c2==0 && alt->ecal>1160 && alt->ecal<1184 && ptr->ecal>1320 && ptr->ecal<1344){
+        //      fprintf(stdout,"%f\n",ecal);
+        //    }
+          //  if(ptr->chan==1 && alt->ecal>1160 && alt->ecal<1184 && ptr->ecal>1320 && ptr->ecal<1344){ fprintf(stdout,"ct0: [%e,%e,%e,%e,%e,%e,%e]\n",crosstalk[1][0][0],crosstalk[1][0][1],crosstalk[1][0][2],crosstalk[1][0][3],crosstalk[1][0][4],crosstalk[1][0][5],crosstalk[1][0][6]); }
+          //  if(ptr->chan==1 && alt->ecal>1160 && alt->ecal<1184 && ptr->ecal>1320 && ptr->ecal<1344){ fprintf(stdout,"ct1: [%e,%e,%e,%e,%e,%e,%e]\n",crosstalk[1][1][0],crosstalk[1][1][1],crosstalk[1][1][2],crosstalk[1][1][3],crosstalk[1][1][4],crosstalk[1][1][5],crosstalk[1][1][6]); }
+        //    if(ptr->chan==1 && alt->ecal>1160 && alt->ecal<1184 && ptr->ecal>1320 && ptr->ecal<1344){ fprintf(stdout,"ct2: [%e,%e,%e,%e,%e,%e,%e]\n",crosstalk[1][2][0],crosstalk[1][2][1],crosstalk[1][2][2],crosstalk[1][2][3],crosstalk[1][2][4],crosstalk[1][2][5],crosstalk[1][2][6]); }
+          }
+
+        }
+      }
+
+    }// end of while
+    return(0);
+  }
+
+
   // Presort - do Suppression and Addback here
   //  - frag_idx is about to leave coinc window (which ends at end_idx)
   //    check other frags in window for possible suppression and/or summing
@@ -339,6 +453,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
     int chan,found,pos;
     float energy,correction;
     float correction12, correction23;
+    int clover, ge1, c1,c2;
+    int ct_index[4][4] = {{-1,0,1,2},{0,-1,1,2},{0,1,-1,2},{0,1,2,-1}};
 
     // Assign chan local variable and check it is a valid channel number
     if( (chan=ptr->chan)<0 || ptr->chan >= odb_daqsize ){
@@ -933,6 +1049,11 @@ int init_default_histos(Config *cfg, Sort_status *arg)
     {(void **) ge_cycle_num_g,   "HPGe_GeE_cycle%03d",       "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
     {(void **) ge_cycle_num_sh_g,"HPGe_GeE_NPU_cycle%03d",   "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
     {(void **) ge_cycle_num_pu_g,"HPGe_GeE_PU_cycle%03d",    "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
+    {NULL,                   "Analysis/Crosstalk",        ""},
+    {(void **) ct_e_vs_dt_B,       "Crosstalk_Blue_E_vs_dt_Ge%02d",  "", SUBSYS_HPGE_A, 864, 128, N_HPGE },
+    {(void **) ct_e_vs_dt_G,       "Crosstalk_Green_E_vs_dt_Ge%02d", "", SUBSYS_HPGE_A, 864, 128, N_HPGE },
+    {(void **) ct_e_vs_dt_R,       "Crosstalk_Red_E_vs_dt_Ge%02d",   "", SUBSYS_HPGE_A, 864, 128, N_HPGE },
+    {(void **) ct_e_vs_dt_W,       "Crosstalk_White_E_vs_dt_Ge%02d", "", SUBSYS_HPGE_A, 864, 128, N_HPGE },
   }; // Note initialized array variable is CONST (not same as double-pointer)
   // TH1I *hist;  hist = (TH1I *) 0;   ptr = &hist = (TH1I **)addr;  *ptr =
 
@@ -1364,8 +1485,70 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                 gg_angcor_110[angle_idx]->Fill(gg_angcor_110[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
                 angle_idx = ge_angles_145mm[c1][c2];
                 gg_angcor_145[angle_idx]->Fill(gg_angcor_145[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
+
+                // Inside of prompt window. Look at crosstalk analysis here
+                // General purpose case
+                // c1 and c2 are crystal numbers
+                // (c1/4) = Clover number
+                // (c1%4) = Crystal Color [B, G, R, W]
+                if( (int)(c1/4) == (int)(c2/4)  && c1!=c2){ // Two crystals are the same clover
+                  // Hits with ptr arriving before alt
+                  if(ptr->psd == 1 && alt->psd == 1){ // single hit only
+                    if(alt->ecal>1322 && alt->ecal<1342){ // Crosstalk hit was 1332keV
+                      switch(c2%4){
+                        case 0:  ct_e_vs_dt_B[c1]->Fill(ct_e_vs_dt_B[c1], ((int)((ptr->ts - alt->ts)/4)+300), (int)ptr->ecal-1100, 1); break;
+                        case 1:  ct_e_vs_dt_G[c1]->Fill(ct_e_vs_dt_G[c1], ((int)((ptr->ts - alt->ts)/4)+300), (int)ptr->ecal-1100, 1); break;
+                        case 2:  ct_e_vs_dt_R[c1]->Fill(ct_e_vs_dt_R[c1], ((int)((ptr->ts - alt->ts)/4)+300), (int)ptr->ecal-1100, 1); break;
+                        case 3:  ct_e_vs_dt_W[c1]->Fill(ct_e_vs_dt_W[c1], ((int)((ptr->ts - alt->ts)/4)+300), (int)ptr->ecal-1100, 1); break;
+                      }
+                    }
+                    // Hits with alt arriving before ptr
+                    if(ptr->ecal>1322 && ptr->ecal<1342){ // Crosstalk hit was 1332keV
+                      switch(c1%4){
+                        case 0:  ct_e_vs_dt_B[c2]->Fill(ct_e_vs_dt_B[c2], ((int)((alt->ts - ptr->ts)/4)+300), (int)alt->ecal-1100, 1); break;
+                        case 1:  ct_e_vs_dt_G[c2]->Fill(ct_e_vs_dt_G[c2], ((int)((alt->ts - ptr->ts)/4)+300), (int)alt->ecal-1100, 1); break;
+                        case 2:  ct_e_vs_dt_R[c2]->Fill(ct_e_vs_dt_R[c2], ((int)((alt->ts - ptr->ts)/4)+300), (int)alt->ecal-1100, 1); break;
+                        case 3:  ct_e_vs_dt_W[c2]->Fill(ct_e_vs_dt_W[c2], ((int)((alt->ts - ptr->ts)/4)+300), (int)alt->ecal-1100, 1); break;
+                      }
+                    }
+                  }
+                }
+              }
+            }else{
+              // Outside of prompt window. Look at crosstalk analysis here
+              c1 = crystal_table[ptr->chan];
+              c2 = crystal_table[alt->chan];
+              if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 < 64 ){
+
+                // General purpose case
+                // c1 and c2 are crystal numbers
+                // (c1/16) = Clover number
+                // (c1%4) = Crystal Color [B, G, R, W]
+                if( (int)(c1/4) == (int)(c2/4) && c1!=c2){ // Two crystals are the same clover
+                  if(ptr->psd == 1 && alt->psd == 1){ // single hit only
+                    // Hits with ptr arriving before alt
+                    if(alt->ecal>1322 && alt->ecal<1342){ // Crosstalk inducing hit was 1332keV
+                      switch(c2%4){
+                        case 0:  ct_e_vs_dt_B[c1]->Fill(ct_e_vs_dt_B[c1], ((int)((ptr->ts - alt->ts)/4)+300), (int)ptr->ecal-1100, 1); break;
+                        case 1:  ct_e_vs_dt_G[c1]->Fill(ct_e_vs_dt_G[c1], ((int)((ptr->ts - alt->ts)/4)+300), (int)ptr->ecal-1100, 1); break;
+                        case 2:  ct_e_vs_dt_R[c1]->Fill(ct_e_vs_dt_R[c1], ((int)((ptr->ts - alt->ts)/4)+300), (int)ptr->ecal-1100, 1); break;
+                        case 3:  ct_e_vs_dt_W[c1]->Fill(ct_e_vs_dt_W[c1], ((int)((ptr->ts - alt->ts)/4)+300), (int)ptr->ecal-1100, 1); break;
+                      }
+                    }
+                    // Hits with alt arriving before ptr
+                    if(ptr->ecal>1322 && ptr->ecal<1342){ // Crosstalk inducing hit was 1332keV
+                      switch(c1%4){
+                        case 0:  ct_e_vs_dt_B[c2]->Fill(ct_e_vs_dt_B[c2], ((int)((alt->ts - ptr->ts)/4)+300), (int)alt->ecal-1100, 1); break;
+                        case 1:  ct_e_vs_dt_G[c2]->Fill(ct_e_vs_dt_G[c2], ((int)((alt->ts - ptr->ts)/4)+300), (int)alt->ecal-1100, 1); break;
+                        case 2:  ct_e_vs_dt_R[c2]->Fill(ct_e_vs_dt_R[c2], ((int)((alt->ts - ptr->ts)/4)+300), (int)alt->ecal-1100, 1); break;
+                        case 3:  ct_e_vs_dt_W[c2]->Fill(ct_e_vs_dt_W[c2], ((int)((alt->ts - ptr->ts)/4)+300), (int)alt->ecal-1100, 1); break;
+                      }
+                    }
+                  }
+                }
               }
             }
+
             break;
             case SUBSYS_SCEPTAR:
             gb_dt->Fill(gb_dt, (int)((ptr->ts - alt->ts)+DT_SPEC_LENGTH/2), (int)ptr->esum, 1);
@@ -1485,7 +1668,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         int frag_hist[MAX_COINC_EVENTS];
         int fill_coinc_histos(int win_idx, int frag_idx)
         {
-          int global_window_size = 100; // size in grif-replay should be double this
+          //int global_window_size = 100; // 100 for a 2us window. size in grif-replay should be double this
+          int global_window_size = 2200; // 2200 for 44us window (crosstalk). size in grif-replay should be double this
           Grif_event *alt, *ptr = &grif_event[win_idx], *tmp;
           int dt, abs_dt,  pos, c1, c2, index, ptr_swap;
           int gg_gate=25, g_aries_upper_gate=25;

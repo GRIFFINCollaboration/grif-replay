@@ -321,6 +321,9 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
   TH2I  *gg_dt, *gb_dt;
   TH1I  *ge_isomer_popu, *ge_isomer_depop;
 
+    // Crosstalk Analysis
+    TH2I  *ct_e_vs_dt_B[N_HPGE], *ct_e_vs_dt_G[N_HPGE], *ct_e_vs_dt_R[N_HPGE], *ct_e_vs_dt_W[N_HPGE];
+
   ////////////////////////////////////
   ////////////////////////////////////
 

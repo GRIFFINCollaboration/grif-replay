@@ -39,6 +39,7 @@ typedef struct griffin_fragment_struct { // was 74 bytes, now ?
 
 extern int process_event(Grif_event *ptr, int slot);
 extern int apply_gains(Grif_event *ptr);
+extern int insert_crosstalk_win(Grif_event *ptr, int slot);
 extern int insert_presort_win(Grif_event *ptr, int slot);
 extern int insert_sort_win(Grif_event *ptr, int slot);
 extern int GetIDfromAddress(unsigned short addr);
