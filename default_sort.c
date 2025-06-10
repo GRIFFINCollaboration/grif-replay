@@ -29,6 +29,7 @@ static float  quad_table[MAX_DAQSIZE]; float   *quads = quad_table;
 float  pileupk1[MAX_DAQSIZE][7];
 float  pileupk2[MAX_DAQSIZE][7];
 float  pileupE1[MAX_DAQSIZE][7];
+float  crosstalk[MAX_DAQSIZE][3][16];
 static short *chan_address = addr_table;
 static int subsys_initialized[MAX_SUBSYS];
 extern Grif_event grif_event[PTR_BUFSIZE];
@@ -49,41 +50,51 @@ int init_default_histos(Config *cfg, Sort_status *arg)
   Cal_coeff *cal;
   int i, j;
 
-  // Initialize all pileup parameters to unset values
-  for(i=0; i<odb_daqsize; i++){
-    for(j=0; j<7; j++){
-      pileupk1[i][j] = pileupk2[i][j] = pileupE1[i][j] = -1;
-    }
-  }
-
-  cfg->odb_daqsize = odb_daqsize;
-  for(i=0; i<odb_daqsize; i++){ // update config with odb info
-    edit_calibration(cfg, chan_name[i], offsets[i], gains[i], quads[i], pileupk1[i], pileupk2[i], pileupE1[i],
-      chan_address[i],  dtype_table[i], arg->cal_overwrite );
-    }
-    // ALSO need to transfer config info to the arrays that are used in sort
+    // Initialize all pileup and crosstalk parameters to unset values
     for(i=0; i<odb_daqsize; i++){
-
-      cal = cfg->calib[i];
-      if( strcmp(chan_name[i], cal->name) != 0 ){ // conf not in odb order
-        for(j=0; j<cfg->ncal; j++){ cal = cfg->calib[j];
-          if( strcmp(chan_name[i], cal->name) == 0 ){ break; }
-        }
-        if( j == cfg->ncal ){ continue; } // not found in config
-      }
-
-      // overwrite = 0 => USE CONFIG NOT ODB for offset, gain, quads
-      if( arg->cal_overwrite == 0 ){
-        offsets[i]=cal->offset; gains[i]=cal->gain;  quads[i]=cal->quad;
-      }
-
-      // Pileup parameters do not exist in the MIDAS ODB so must always be copied from the config (file or config)
       for(j=0; j<7; j++){
-        pileupk1[i][j] = (isnan(cal->pileupk1[j])) ? 0.0 : cal->pileupk1[j];
-        pileupk2[i][j] = (isnan(cal->pileupk2[j])) ? 0.0 : cal->pileupk2[j];
-        pileupE1[i][j] = (isnan(cal->pileupE1[j])) ? 0.0 : cal->pileupE1[j];
+        pileupk1[i][j] = pileupk2[i][j] = pileupE1[i][j] = -1;
+      }
+      for(j=0; j<16; j++){
+        crosstalk[i][0][j] = crosstalk[i][1][j] = crosstalk[i][2][j] = -1;
       }
     }
+
+    cfg->odb_daqsize = odb_daqsize;
+    for(i=0; i<odb_daqsize; i++){ // update config with odb info
+      edit_calibration(cfg, chan_name[i], offsets[i], gains[i], quads[i], pileupk1[i], pileupk2[i], pileupE1[i],
+        crosstalk[i][0], crosstalk[i][1], crosstalk[i][2], chan_address[i],  dtype_table[i], arg->cal_overwrite );
+      }
+      // ALSO need to transfer config info to the arrays that are used in sort
+      for(i=0; i<odb_daqsize; i++){
+
+        cal = cfg->calib[i];
+        if( strcmp(chan_name[i], cal->name) != 0 ){ // conf not in odb order
+          for(j=0; j<cfg->ncal; j++){ cal = cfg->calib[j];
+            if( strcmp(chan_name[i], cal->name) == 0 ){ break; }
+          }
+          if( j == cfg->ncal ){ continue; } // not found in config
+        }
+
+        // overwrite = 0 => USE CONFIG NOT ODB for offset, gain, quads
+        if( arg->cal_overwrite == 0 ){
+          offsets[i]=cal->offset; gains[i]=cal->gain;  quads[i]=cal->quad;
+        }
+
+        // Pileup or crosstalk parameters do not exist in the MIDAS ODB so must always be copied from the config (file or config)
+        if(strncmp(chan_name[i],"GRG",3)==0){
+          for(j=0; j<7; j++){
+            pileupk1[i][j] = (isnan(cal->pileupk1[j])) ? 0.0 : cal->pileupk1[j];
+            pileupk2[i][j] = (isnan(cal->pileupk2[j])) ? 0.0 : cal->pileupk2[j];
+            pileupE1[i][j] = (isnan(cal->pileupE1[j])) ? 0.0 : cal->pileupE1[j];
+          }
+          for(j=0; j<16; j++){
+            crosstalk[i][0][j] = (isnan(cal->crosstalk0[j])) ? 0.0 : cal->crosstalk0[j];
+            crosstalk[i][1][j] = (isnan(cal->crosstalk1[j])) ? 0.0 : cal->crosstalk1[j];
+            crosstalk[i][2][j] = (isnan(cal->crosstalk2[j])) ? 0.0 : cal->crosstalk2[j];
+          }
+        }
+      }
 
     init_parameters_from_globals(cfg);
     init_chan_histos(cfg);

@@ -42,6 +42,7 @@ typedef struct global_struct {
 typedef struct cal_coeff_struct {
    char name[CHAN_NAMELEN]; float offset; float gain; float quad;
    float pileupk1[7], pileupk2[7], pileupE1[7];
+   float crosstalk0[16], crosstalk1[16], crosstalk2[16];
    short address; short datatype;
 } Cal_coeff;
 
@@ -151,12 +152,13 @@ extern int next_condname(Config *cfg);
 extern int queue_sum_histos(Config *cfg, int num, char url_args[][STRING_LEN], int fd);
 extern int set_calibration(Config *cfg, int num, char url_args[][STRING_LEN], int fd);
 extern int set_pileup_correction(Config *cfg, int num, char url_args[][STRING_LEN], int fd);
+extern int set_crosstalk_correction(Config *cfg, int num, char url_args[][STRING_LEN], int fd);
 
 extern int sum_histos(Config *cfg, Sortfile *sort);
 /////////////////////////////////////////////////////////////////////////
 /////////////////////          Gains         ////////////////////////////
 /////////////////////////////////////////////////////////////////////////
-extern int edit_calibration(Config *cfg, char *name, float offset, float gain, float quad, float pileupk1[7], float pileupk2[7], float pileupE1[7], int address, int type, int overwrite);
+extern int edit_calibration(Config *cfg, char *name, float offset, float gain, float quad, float pileupk1[7], float pileupk2[7], float pileupE1[7], float ct0[7], float ct1[7], float ct2[7], int address, int type, int overwrite);
 
 /////////////////////////////////////////////////////////////////////////
 /////////////////////       Variables        ////////////////////////////

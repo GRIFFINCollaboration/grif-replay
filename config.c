@@ -633,6 +633,9 @@ int handle_command(int fd, int narg, char url_args[][STRING_LEN])
    if( strcmp(ptr, "setPileupCorrection") == 0 ){ /* -------------------- */
       set_pileup_correction(configs[0], narg, url_args, fd);
    } else
+   if( strcmp(ptr, "setCrosstalkCorrection") == 0 ){ /* -------------------- */
+      set_crosstalk_correction(configs[0], narg, url_args, fd);
+   } else
    if( strcmp(ptr, "setDataDirectory") == 0 ){ /* -------------------- */
       send_header(fd, APP_JSON);
       set_directory(configs[0], "Data", url_args[3]);
@@ -810,16 +813,27 @@ int write_config(Config *cfg, FILE *fp)
    fprintf(fp,"      ]},\n");
    fprintf(fp,"      {\"Calibrations\" : [\n");
    for(i=0; i<cfg->ncal; i++){ calib = cfg->calib[i];
-      fprintf(fp,"%9s{\"name\" : \"%s\" , \"address\" : %d , \"datatype\" : %d , \"offset\" : %f , \"gain\" : %f , \"quad\" : %e ", "", calib->name, calib->address, calib->datatype, calib->offset, calib->gain, calib->quad );
-      if(calib->pileupk1[0] != -1 && !isnan(calib->pileupk1[0])){
-        fprintf(fp,", \"pileupk1\" : [ %f , %f , %e , %e , %e , %e , %e ]",calib->pileupk1[0],calib->pileupk1[1],calib->pileupk1[2],calib->pileupk1[3],calib->pileupk1[4],calib->pileupk1[5],calib->pileupk1[6]);
-        fprintf(fp,", \"pileupk2\" : [ %f , %f , %e , %e , %e , %e , %e ]",calib->pileupk2[0],calib->pileupk2[1],calib->pileupk2[2],calib->pileupk2[3],calib->pileupk2[4],calib->pileupk2[5],calib->pileupk2[6]);
-        fprintf(fp,", \"pileupE1\" : [ %f , %f , %e , %e , %e , %e , %e ]",calib->pileupE1[0],calib->pileupE1[1],calib->pileupE1[2],calib->pileupE1[3],calib->pileupE1[4],calib->pileupE1[5],calib->pileupE1[6]);
-      }else{
-        fprintf(fp,", \"pileupk1\" : [ %d , %d , %d , %d , %d , %d , %d ]",1,0,0,0,0,0,0);
-        fprintf(fp,", \"pileupk2\" : [ %d , %d , %d , %d , %d , %d , %d ]",1,0,0,0,0,0,0);
-        fprintf(fp,", \"pileupE1\" : [ %d , %d , %d , %d , %d , %d , %d ]",0,0,0,0,0,0,0);
-      }
+     fprintf(fp,"%9s{\"name\" : \"%s\" , \"address\" : %d , \"datatype\" : %d , \"offset\" : %f , \"gain\" : %f , \"quad\" : %e ", "", calib->name, calib->address, calib->datatype, calib->offset, calib->gain, calib->quad );
+     if(strncmp(calib->name,"GRG",3)==0){
+       if(calib->pileupk1[0] != -1 && !isnan(calib->pileupk1[0])){
+         fprintf(fp,", \"pileupk1\" : [ %f , %f , %e , %e , %e , %e , %e ]",calib->pileupk1[0],calib->pileupk1[1],calib->pileupk1[2],calib->pileupk1[3],calib->pileupk1[4],calib->pileupk1[5],calib->pileupk1[6]);
+         fprintf(fp,", \"pileupk2\" : [ %f , %f , %e , %e , %e , %e , %e ]",calib->pileupk2[0],calib->pileupk2[1],calib->pileupk2[2],calib->pileupk2[3],calib->pileupk2[4],calib->pileupk2[5],calib->pileupk2[6]);
+         fprintf(fp,", \"pileupE1\" : [ %f , %f , %e , %e , %e , %e , %e ]",calib->pileupE1[0],calib->pileupE1[1],calib->pileupE1[2],calib->pileupE1[3],calib->pileupE1[4],calib->pileupE1[5],calib->pileupE1[6]);
+       }else{
+         fprintf(fp,", \"pileupk1\" : [ %d , %d , %d , %d , %d , %d , %d ]",1,0,0,0,0,0,0);
+         fprintf(fp,", \"pileupk2\" : [ %d , %d , %d , %d , %d , %d , %d ]",1,0,0,0,0,0,0);
+         fprintf(fp,", \"pileupE1\" : [ %d , %d , %d , %d , %d , %d , %d ]",0,0,0,0,0,0,0);
+       }
+       if(calib->crosstalk0[0] != -1 && !isnan(calib->crosstalk0[0])){
+         fprintf(fp,", \"crosstalk0\" : [ %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f ]",calib->crosstalk0[0],calib->crosstalk0[1],calib->crosstalk0[2],calib->crosstalk0[3],calib->crosstalk0[4],calib->crosstalk0[5],calib->crosstalk0[6],calib->crosstalk0[7],calib->crosstalk0[8],calib->crosstalk0[9],calib->crosstalk0[10],calib->crosstalk0[11],calib->crosstalk0[12],calib->crosstalk0[13],calib->crosstalk0[14],calib->crosstalk0[15]);
+         fprintf(fp,", \"crosstalk1\" : [ %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f ]",calib->crosstalk1[0],calib->crosstalk1[1],calib->crosstalk1[2],calib->crosstalk1[3],calib->crosstalk1[4],calib->crosstalk1[5],calib->crosstalk1[6],calib->crosstalk1[7],calib->crosstalk1[8],calib->crosstalk1[9],calib->crosstalk1[10],calib->crosstalk1[11],calib->crosstalk1[12],calib->crosstalk1[13],calib->crosstalk1[14],calib->crosstalk1[15]);
+         fprintf(fp,", \"crosstalk2\" : [ %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f ]",calib->crosstalk2[0],calib->crosstalk2[1],calib->crosstalk2[2],calib->crosstalk2[3],calib->crosstalk2[4],calib->crosstalk2[5],calib->crosstalk2[6],calib->crosstalk2[7],calib->crosstalk2[8],calib->crosstalk2[9],calib->crosstalk2[10],calib->crosstalk2[11],calib->crosstalk2[12],calib->crosstalk2[13],calib->crosstalk2[14],calib->crosstalk2[15]);
+       }else{
+         fprintf(fp,", \"crosstalk0\" : [ %d , %d , %d , %d , %d , %d , %d , %d , %d , %d , %d , %d , %d , %d , %d , %d ]",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+         fprintf(fp,", \"crosstalk1\" : [ %d , %d , %d , %d , %d , %d , %d , %d , %d , %d , %d , %d , %d , %d , %d , %d ]",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+         fprintf(fp,", \"crosstalk2\" : [ %d , %d , %d , %d , %d , %d , %d , %d , %d , %d , %d , %d , %d , %d , %d , %d ]",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+       }
+     }
       fprintf(fp, "%s", ( i<cfg->ncal-1 ) ? "},\n" : "}\n" );
    }
    fprintf(fp,"      ]},\n");
@@ -854,6 +868,11 @@ int load_config(Config *cfg, char *filename, char *buffer)
    char *ptr, *name, *valstr, *title, *path, *var, *var2, op[8], tmp[80];
    float gain, offset, quad;
    float puk1[7], puk2[7], puE1[7];
+   float ct0[16], ct1[16], ct2[16];
+   // Initialize values to defaults
+   // Values of -1 are ignored by edit_calibration - use this for all channels that are not HPGe to avoid bloating the size of the config
+   float puk_reset[7]={1,0,0,0,0,0,0}, puE1_reset[7]={0,0,0,0,0,0,0}, pu_ignore[7]={-1,-1,-1,-1,-1,-1,-1};
+   float ct_reset[16]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, ct_ignore[16]={-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
    Histogram *histo;
    Config *tmp_cfg;
    Cond *cond;
@@ -1208,14 +1227,60 @@ int load_config(Config *cfg, char *filename, char *buffer)
         //while(isdigit(*ptr)||*ptr=='.'||*ptr=='-'||*ptr=='+'||*ptr=='e'||*ptr==','||*ptr=='['||*ptr==']'){++ptr;}
         while(*ptr!='}'){++ptr;}
         ++ptr;
+      }else if(strncmp(name,"GRG",3)==0){ // Only process pileup and crosstalk for HPGe
+          // for(i=0; i<7; i++){ puk1[i] = puk2[i] = puE1[i] = 0; } // Initialize pileup parameters to default values
+          // puk1[0] = puk2[0] = 1; // set default factor as 1 not zero
+           memcpy(puk1,puk_reset, 7 * sizeof(float));
+           memcpy(puk2,puk_reset, 7 * sizeof(float));
+           memcpy(puE1,puE1_reset, 7 * sizeof(float));
       }else{
-           // Initialize pileup parameters to default values
-           for(i=0; i<7; i++){
-             puk1[i] = puk2[i] = puE1[i] = 0;
-           }
-           puk1[0] = puk2[0] = 1; // set default factor as 1 not zero
+           //for(i=0; i<7; i++){ puk1[i] = puk2[i] = puE1[i] = -1; } // values will be ignored
+            memcpy(puk1,pu_ignore, 7 * sizeof(float));
+            memcpy(puk2,pu_ignore, 7 * sizeof(float));
+            memcpy(puE1,pu_ignore, 7 * sizeof(float));
       }
-      cfg->lock=1; edit_calibration(cfg,name,offset,gain,quad,puk1,puk2,puE1,address,type,1); cfg->lock=0;
+      // The crosstalk correction parameters were introduced in June 2025.
+      // Config files before this date will not have crosstalk corrections, and after this they are optional
+      if( strncmp(ptr,"\"crosstalk0\":",11) == 0 ){
+        ptr += 11; valstr = ptr;
+        if( sscanf(valstr, "[%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f], ", &ct0[0],&ct0[1],&ct0[2],&ct0[3],&ct0[4],&ct0[5],&ct0[6],&ct0[7],&ct0[8],&ct0[9],&ct0[10],&ct0[11],&ct0[12],&ct0[13],&ct0[14],&ct0[15]) != 16 ){
+          fprintf(stderr,"load_config:errPUA byte %ld\n", ptr-config_data);
+          return(-1);
+        }
+        while(*ptr!='\"'){++ptr;}
+        if( strncmp(ptr,"\"crosstalk1\":",11) != 0 ){
+          fprintf(stderr,"load_config:errPUB byte %ld\n", ptr-config_data);
+          return(-1);
+        } ptr += 11; valstr = ptr;
+        if( sscanf(valstr, "[%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f], ", &ct1[0],&ct1[1],&ct1[2],&ct1[3],&ct1[4],&ct1[5],&ct1[6],&ct1[7],&ct1[8],&ct1[9],&ct1[10],&ct1[11],&ct1[12],&ct1[13],&ct1[14],&ct1[15]) != 16 ){
+          fprintf(stderr,"load_config:errPUC byte %ld\n", ptr-config_data);
+          return(-1);
+        }
+        //while(isdigit(*ptr)||*ptr=='.'||*ptr=='-'||*ptr=='+'||*ptr=='e'||*ptr==','||*ptr=='['||*ptr==']'){++ptr;}
+        while(*ptr!='\"'){++ptr;}
+        if( strncmp(ptr,"\"crosstalk2\":",11) != 0 ){
+          fprintf(stderr,"load_config:errPUD byte %ld\n", ptr-config_data);
+          return(-1);
+        } ptr += 11; valstr = ptr;
+        if( sscanf(valstr, "[%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f]", &ct2[0],&ct2[1],&ct2[2],&ct2[3],&ct2[4],&ct2[5],&ct2[6],&ct2[7],&ct2[8],&ct2[9],&ct2[10],&ct2[11],&ct2[12],&ct2[13],&ct2[14],&ct2[15]) != 16 ){
+          fprintf(stderr,"load_config:errPUE byte %ld\n", ptr-config_data);
+          return(-1);
+        }
+        //while(isdigit(*ptr)||*ptr=='.'||*ptr=='-'||*ptr=='+'||*ptr=='e'||*ptr==','||*ptr=='['||*ptr==']'){++ptr;}
+        while(*ptr!='}'){++ptr;}
+        ++ptr;
+      }else if(strncmp(name,"GRG",3)==0){ // Only process pileup and crosstalk for HPGe
+           //for(i=0; i<16; i++){ ct0[i] = ct1[i] = ct2[i] = 0; } // Initialize crosstalk parameters to default values
+            memcpy(ct0,ct_reset, 16 * sizeof(float));
+            memcpy(ct1,ct_reset, 16 * sizeof(float));
+            memcpy(ct2,ct_reset, 16 * sizeof(float));
+      }else{
+          // for(i=0; i<16; i++){ ct0[i] = ct1[i] = ct2[i] = -1; } // values will be ignored
+            memcpy(ct0,ct_ignore, 16 * sizeof(float));
+            memcpy(ct1,ct_ignore, 16 * sizeof(float));
+            memcpy(ct2,ct_ignore, 16 * sizeof(float));
+      }
+      cfg->lock=1; edit_calibration(cfg,name,offset,gain,quad,puk1,puk2,puE1,ct0,ct1,ct2,address,type,1); cfg->lock=0;
       if( *ptr++ == ',' ){ continue; } // have skipped ']' if not
       ptr+=2; break; // skip '},'
     }
@@ -1324,18 +1389,19 @@ int clear_config(Config *cfg)
 int clear_calibrations(Config *cfg)
 {
   float offset=0, gain=1, quad=0;
-  float puk1[7], puk2[7], puE1[7];
   int i, address=-1, datatype=-1;
-
   // Initialize values to defaults
-  for(i=0; i<7; i++){
-    puk1[i] = puk2[i] = puE1[i] = 0;
-  }
-  puk1[0] = puk2[0] = 1; // set default factor as 1 not zero
+  // Values of -1 are ignored by edit_calibration - use this for all channels that are not HPGe to avoid bloating the size of the config
+  float puk_reset[7]={1,0,0,0,0,0,0}, puE1_reset[7]={0,0,0,0,0,0,0}, pu_ignore[7]={-1,-1,-1,-1,-1,-1,-1};
+  float ct_reset[16]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, ct_ignore[16]={-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
 
   // delete any calibration values
   for(i=0; i<cfg->ncal;     i++){
-    edit_calibration(cfg, cfg->calib[i]->name, offset, gain, quad, puk1, puk2, puE1, address, datatype, 1);
+    if(strncmp(cfg->calib[i]->name,"GRG",3)==0){
+      edit_calibration(cfg, cfg->calib[i]->name, offset, gain, quad, puk_reset, puk_reset, puE1_reset, ct_reset, ct_reset, ct_reset, address, datatype, 1);
+    }else{
+      edit_calibration(cfg, cfg->calib[i]->name, offset, gain, quad, pu_ignore, pu_ignore, pu_ignore, ct_ignore, ct_ignore, ct_ignore, address, datatype, 1);
+    }
   }
   return(0);
 }
@@ -1444,7 +1510,7 @@ int merge_configs(Config *src, Config *dst)
 
    dst->lock = 1;  src->lock = 1;
    for(i=0; i<src->ncal;      i++){ cal = src->calib[i];
-      edit_calibration(dst, cal->name, cal->offset, cal->gain, cal->quad, cal->pileupk1, cal->pileupk2, cal->pileupE1, cal->address, cal->datatype, 1);
+      edit_calibration(dst, cal->name, cal->offset, cal->gain, cal->quad, cal->pileupk1, cal->pileupk2, cal->pileupE1, cal->crosstalk0, cal->crosstalk1, cal->crosstalk2, cal->address, cal->datatype, 1);
    }
    for(i=0; i<src->nglobal;   i++){ global = src->globals[i];
       add_global(dst, global->name, global->min, global->max);
@@ -2063,12 +2129,16 @@ int set_calibration(Config *cfg, int num, char url_args[][STRING_LEN], int fd)
 {
    float offset, gain, quad;
    float puk1[7], puk2[7], puE1[7];
+   float ct0[16], ct1[16], ct2[16];
    int i, address=-1, datatype=-1;
    char tmp[128];
 
    // Initialize values to -1
    for(i=0; i<7; i++){
      puk1[i] = puk2[i] = puE1[i] = -1;
+   }
+   for(i=0; i<16; i++){
+     ct0[i]  = ct1[i]  = ct2[i]  = -1;
    }
 
    for(i=2; i<num; i+=8){
@@ -2133,7 +2203,7 @@ int set_calibration(Config *cfg, int num, char url_args[][STRING_LEN], int fd)
       // Send the response header
       send_header(fd, APP_JSON);
 
-      edit_calibration(cfg, url_args[i+1], offset, gain, quad, puk1, puk2, puE1,
+      edit_calibration(cfg, url_args[i+1], offset, gain, quad, puk1, puk2, puE1, ct0, ct1, ct2,
                        address, datatype, 1);
    }
    return(0);
@@ -2143,6 +2213,7 @@ int set_pileup_correction(Config *cfg, int num, char url_args[][STRING_LEN], int
 {
    float offset=-1, gain=-1, quad=-1;
    float puk1[7], puk2[7], puE1[7];
+   float ct0[16], ct1[16], ct2[16];
    int i, address=-1, datatype=-1;
    char tmp[128];
 
@@ -2151,6 +2222,9 @@ for(i=0; i<7; i++){
   puk1[i] = puk2[i] = puE1[i] = 0;
 }
 puk1[0] = puk2[0] = 1; // set default factor as 1 not zero
+for(i=0; i<16; i++){
+  ct0[i]  = ct1[i]  = ct2[i]  = -1;
+}
 
    for(i=2; i<num; i+=8){
       if( strncmp(url_args[i], "channelName", 10) != 0 ){
@@ -2214,30 +2288,122 @@ puk1[0] = puk2[0] = 1; // set default factor as 1 not zero
       // Send the response header
       send_header(fd, APP_JSON);
 
-    edit_calibration(cfg, url_args[i+1], offset, gain, quad, puk1, puk2, puE1, address, datatype, 1);
+    edit_calibration(cfg, url_args[i+1], offset, gain, quad, puk1, puk2, puE1, ct0, ct1, ct2, address, datatype, 1);
    }
    return(0);
 }
 
-int edit_calibration(Config *cfg, char *name, float offset, float gain, float quad, float puk1[7], float puk2[7], float puE1[7], int address, int type, int overwrite)
+int set_crosstalk_correction(Config *cfg, int num, char url_args[][STRING_LEN], int fd)
+{
+   float offset=-1, gain=-1, quad=-1;
+   float puk1[7], puk2[7], puE1[7];
+   float ct0[16], ct1[16], ct2[16];
+   int i, address=-1, datatype=-1;
+   char tmp[128];
+
+// Initialize values to defaults
+for(i=0; i<7; i++){
+  puk1[i] = puk2[i] = puE1[i] = -1;
+}
+for(i=0; i<16; i++){
+  ct0[i]  = ct1[i]  = ct2[i]  = 0;
+}
+
+   for(i=2; i<num; i+=8){
+      if( strncmp(url_args[i], "channelName", 10) != 0 ){
+         sprintf(tmp,"set_crosstalk_correction: expected \"channelName\" at %s\n",url_args[i]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
+         fprintf(stderr,"expected \"channelName\" at %s\n", url_args[i]);
+         return(-1);
+      }
+      if( strncmp(url_args[i+2], "crosstalk0", 8) != 0 ){
+         sprintf(tmp,"set_crosstalk_correction: expected \"crosstalk0\" at %s\n",url_args[i+2]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
+         fprintf(stderr,"expected \"crosstalk0\" at %s\n", url_args[i+2]);
+         return(-1);
+      }
+      if( sscanf(url_args[i+3], "%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f", ct0,ct0+1,ct0+2,ct0+3,ct0+4,ct0+5,ct0+6,ct0+7,ct0+8,ct0+9,ct0+10,ct0+11,ct0+12,ct0+13,ct0+14,ct0+15) != 16 ){
+         sprintf(tmp,"set_crosstalk_correction: can't read crosstalk k1 value (expected 7 values), %s\n",url_args[i+3]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
+         fprintf(stderr,"can't read crosstalk k1, expected 16 values: %s\n", url_args[i+3]);
+         return(-1);
+      }
+      if( strncmp(url_args[i+4], "crosstalk1", 8) != 0 ){
+         sprintf(tmp,"set_crosstalk_correction: expected \"crosstalk1\" at %s\n",url_args[i+4]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
+         fprintf(stderr,"expected \"crosstalk1\" at %s\n", url_args[i+4]);
+         return(-1);
+      }
+      if( sscanf(url_args[i+5], "%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f", ct1,ct1+1,ct1+2,ct1+3,ct1+4,ct1+5,ct1+6,ct1+7,ct1+8,ct1+9,ct1+10,ct1+11,ct1+12,ct1+13,ct1+14,ct1+15) != 16 ){
+         sprintf(tmp,"set_crosstalk_correction: can't read pileup k2 value (expected 7 values), %s\n",url_args[i+5]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
+         fprintf(stderr,"can't read pileup k2, expected 16 values: %s\n", url_args[i+5]);
+         return(-1);
+      }
+      if( strncmp(url_args[i+6], "crosstalk2", 8) != 0 ){
+         sprintf(tmp,"set_crosstalk_correction: expected \"crosstalk2\" at %s\n",url_args[i+6]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
+         fprintf(stderr,"expected \"crosstalk2\" at %s\n", url_args[i+6]);
+         return(-1);
+      }
+      if( sscanf(url_args[i+7], "%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f", ct2,ct2+1,ct2+2,ct2+3,ct2+4,ct2+5,ct2+6,ct2+7,ct2+8,ct2+9,ct2+10,ct2+11,ct2+12,ct2+13,ct2+14,ct2+15) != 16 ){
+         sprintf(tmp,"set_crosstalk_correction: can't read pileup E1 value (expected 7 values), %s\n",url_args[i+7]);
+         send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
+         fprintf(stderr,"can't read pileup E1, expected 16 values: %s\n", url_args[i+7]);
+         return(-1);
+      }
+//      if( strncmp(url_args[i+14], "address", 4) != 0 ){
+//         fprintf(stderr,"expected \"address\" at %s\n", url_args[i+14]);
+//         return(-1);
+//      }
+//      if( sscanf(url_args[i+15], "%d", &address) < 1 ){
+//         fprintf(stderr,"can't read address: %s\n", url_args[i+15]);
+//         return(-1);
+//      }
+//      if( strncmp(url_args[i+16], "datatype", 6) != 0 ){
+//         fprintf(stderr,"expected \"datatype\" at %s\n", url_args[i+16]);
+//         return(-1);
+//      }
+//      if( sscanf(url_args[i+17], "%d", &datatype) < 1 ){
+//         fprintf(stderr,"can't read datatype: %s\n", url_args[i+17]);
+//         return(-1);
+//      }
+      // Send the response header
+      send_header(fd, APP_JSON);
+
+    edit_calibration(cfg, url_args[i+1], offset, gain, quad, puk1, puk2, puE1, ct0, ct1, ct2, address, datatype, 1);
+   }
+   return(0);
+}
+
+int edit_calibration(Config *cfg, char *name, float offset, float gain, float quad, float puk1[7], float puk2[7], float puE1[7], float ct0[16], float ct1[16], float ct2[16], int address, int type, int overwrite)
 {
    time_t current_time = time(NULL);
    int i,j, len, arg;
    Cal_coeff *cal;
-
+/*
+if(strcmp(name,"GRG01WN00A")==0){
+  fprintf(stdout,"edit_calibration for %s:\n",name);// debugger breakpoint
+}
+*/
    for(i=0; i<cfg->ncal; i++){ cal = cfg->calib[i];
       if( strncmp(name, cfg->calib[i]->name, strlen(name)) == 0 &&
           strlen(name) == strlen(cfg->calib[i]->name)       ){ break; }
    }
    if( i < cfg->ncal ){ // calib already exists
-      if( overwrite ){
-      if( offset != -1 ){ cal->offset = offset; }
-      if( gain   != -1 ){ cal->gain = gain; }
-      if( quad   != -1 ){ cal->quad = quad; }
-      if( puk1[0] != -1 ){ for(j=0; j<7; j++){cal->pileupk1[j] = puk1[j];} }
-      if( puk2[0] != -1 ){ for(j=0; j<7; j++){cal->pileupk2[j] = puk2[j];} }
-      if( puE1[0] != -1 ){ for(j=0; j<7; j++){cal->pileupE1[j] = puE1[j];} }
-      }
+     if( overwrite ){
+       if( offset != -1 ){ cal->offset = offset; }
+       if( gain   != -1 ){ cal->gain = gain; }
+       if( quad   != -1 ){ cal->quad = quad; }
+       if(strncmp(name,"GRG",3)==0){ // Only process pileup and crosstalk for HPGe
+         if( puk1[0] != -1 ){ for(j=0; j<7; j++){cal->pileupk1[j] = puk1[j];} }
+         if( puk2[0] != -1 ){ for(j=0; j<7; j++){cal->pileupk2[j] = puk2[j];} }
+         if( puE1[0] != -1 ){ for(j=0; j<7; j++){cal->pileupE1[j] = puE1[j];} }
+         if( ct0[0] != -1 ){ for(j=0; j<16; j++){cal->crosstalk0[j] = ct0[j];} }
+         if( ct1[0] != -1 ){ for(j=0; j<16; j++){cal->crosstalk1[j] = ct1[j];} }
+         if( ct2[0] != -1 ){ for(j=0; j<16; j++){cal->crosstalk2[j] = ct2[j];} }
+       }
+     }
       if( address != -1 ){
          cal->address = address;  cal->datatype = type;
       }
@@ -2254,24 +2420,53 @@ int edit_calibration(Config *cfg, char *name, float offset, float gain, float qu
       if( offset != -1 ){ cal->offset = offset; }else{ cal->offset = 0; }
       if( gain   != -1 ){ cal->gain = gain; }else{ cal->gain = 1; }
       if( quad   != -1 ){ cal->quad = quad; }else{ cal->quad = 0; }
-      if( puk1[0] != -1 ){
-        for(j=0; j<7; j++){ cal->pileupk1[j] = puk1[j]; }
-      }else{
-        cal->pileupk1[0]=1; cal->pileupk1[1]=0; cal->pileupk1[2]=0; cal->pileupk1[3]=0; cal->pileupk1[4]=0; cal->pileupk1[5]=0; cal->pileupk1[6]=0;
-      }
-      if( puk2[0] != -1 ){
-        for(j=0; j<7; j++){cal->pileupk2[j] = puk2[j]; }
-      }else{
-        cal->pileupk2[0]=1; cal->pileupk2[1]=0; cal->pileupk2[2]=0; cal->pileupk2[3]=0; cal->pileupk2[4]=0; cal->pileupk2[5]=0; cal->pileupk2[6]=0;
-      }
-      if( puE1[0] != -1 ){
-        for(j=0; j<7; j++){cal->pileupE1[j] = puE1[j]; }
-      }else{
-        cal->pileupE1[0]=0; cal->pileupE1[1]=0; cal->pileupE1[2]=0; cal->pileupE1[3]=0; cal->pileupE1[4]=0; cal->pileupE1[5]=0; cal->pileupE1[6]=0;
+      if(strncmp(name,"GRG",3)==0){ // Only process pileup and crosstalk for HPGe
+        if( puk1[0] != -1 ){
+          for(j=0; j<7; j++){ cal->pileupk1[j] = puk1[j]; }
+        }else{
+          cal->pileupk1[0]=1; cal->pileupk1[1]=0; cal->pileupk1[2]=0; cal->pileupk1[3]=0; cal->pileupk1[4]=0; cal->pileupk1[5]=0; cal->pileupk1[6]=0;
+        }
+        if( puk2[0] != -1 ){
+          for(j=0; j<7; j++){cal->pileupk2[j] = puk2[j]; }
+        }else{
+          cal->pileupk2[0]=1; cal->pileupk2[1]=0; cal->pileupk2[2]=0; cal->pileupk2[3]=0; cal->pileupk2[4]=0; cal->pileupk2[5]=0; cal->pileupk2[6]=0;
+        }
+        if( puE1[0] != -1 ){
+          for(j=0; j<7; j++){cal->pileupE1[j] = puE1[j]; }
+        }else{
+          cal->pileupE1[0]=0; cal->pileupE1[1]=0; cal->pileupE1[2]=0; cal->pileupE1[3]=0; cal->pileupE1[4]=0; cal->pileupE1[5]=0; cal->pileupE1[6]=0;
+        }
+        if( ct0[0] != -1 ){
+          for(j=0; j<16; j++){ cal->crosstalk0[j] = ct0[j]; }
+        }else{
+          cal->crosstalk0[0]=0; cal->crosstalk0[1]=0; cal->crosstalk0[2]=0; cal->crosstalk0[3]=0; cal->crosstalk0[4]=0; cal->crosstalk0[5]=0; cal->crosstalk0[6]=0; cal->crosstalk0[7]=0;
+          cal->crosstalk0[8]=0; cal->crosstalk0[9]=0; cal->crosstalk0[10]=0; cal->crosstalk0[11]=0; cal->crosstalk0[12]=0; cal->crosstalk0[13]=0; cal->crosstalk0[14]=0; cal->crosstalk0[15]=0;
+        }
+        if( ct1[0] != -1 ){
+          for(j=0; j<16; j++){ cal->crosstalk1[j] = ct1[j]; }
+        }else{
+          cal->crosstalk1[0]=0; cal->crosstalk1[1]=0; cal->crosstalk1[2]=0; cal->crosstalk1[3]=0; cal->crosstalk1[4]=0; cal->crosstalk1[5]=0; cal->crosstalk1[6]=0; cal->crosstalk1[7]=0;
+          cal->crosstalk1[8]=0; cal->crosstalk1[9]=0; cal->crosstalk1[10]=0; cal->crosstalk1[11]=0; cal->crosstalk1[12]=0; cal->crosstalk1[13]=0; cal->crosstalk1[14]=0; cal->crosstalk1[15]=0;
+        }
+        if( ct2[0] != -1 ){
+          for(j=0; j<16; j++){ cal->crosstalk2[j] = ct2[j]; }
+        }else{
+          cal->crosstalk2[0]=0; cal->crosstalk2[1]=0; cal->crosstalk2[2]=0; cal->crosstalk2[3]=0; cal->crosstalk2[4]=0; cal->crosstalk2[5]=0; cal->crosstalk2[6]=0; cal->crosstalk2[7]=0;
+          cal->crosstalk2[8]=0; cal->crosstalk2[9]=0; cal->crosstalk2[10]=0; cal->crosstalk2[11]=0; cal->crosstalk2[12]=0; cal->crosstalk2[13]=0; cal->crosstalk2[14]=0; cal->crosstalk2[15]=0;
+        }
       }
       cal->address = address;  cal->datatype = type;
     }
    cfg->mtime = current_time;  save_config(cfg, DEFAULT_CONFIG, 1);
+
+/*
+   if(strcmp(name,"GRG01WN00A")==0){
+   fprintf(stdout,"ct0: [%f,%f,%f,%f,%f,%f,%f]\n",cal->crosstalk0[0],cal->crosstalk0[1],cal->crosstalk0[2],cal->crosstalk0[3],cal->crosstalk0[4],cal->crosstalk0[5],cal->crosstalk0[6]);
+   fprintf(stdout,"ct1: [%f,%f,%f,%f,%f,%f,%f]\n",cal->crosstalk1[0],cal->crosstalk1[1],cal->crosstalk1[2],cal->crosstalk1[3],cal->crosstalk1[4],cal->crosstalk1[5],cal->crosstalk1[6]);
+   fprintf(stdout,"ct2: [%f,%f,%f,%f,%f,%f,%f]\n",cal->crosstalk2[0],cal->crosstalk2[1],cal->crosstalk2[2],cal->crosstalk2[3],cal->crosstalk2[4],cal->crosstalk2[5],cal->crosstalk2[6]);
+}
+*/
+
    return(0);
 }
 
