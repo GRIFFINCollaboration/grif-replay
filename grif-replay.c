@@ -311,12 +311,15 @@ char *debug_show_chan(Grif_event *ptr)
 extern char chan_name[MAX_DAQSIZE][CHAN_NAMELEN];
 
 
+int presort_window_width= 1940;  // 19.4us needed for all crosstalk corrections. 5us needed for pileup corrections.
+//int sort_window_width=4400; //  44us to map all crosstalk corrections - MAXIMUM (indiv. gates can be smaller)
+int sort_window_width   = 200; //  2us - MAXIMUM (indiv. gates can be smaller)
+
 // add event to presort window (event has just been read in)
 //    recalculate coincwin (sorting any events leaving window)
 // => final win of run won't be sorted, as these events will not leave window
 int insert_presort_win(Grif_event *ptr, int slot)
 {
-   int window_width = 500; // 5us to capture all pileup events - MAXIMUM (indiv. gates can be smaller)
    int win_count, win_end;
    Grif_event *alt;
    long dt;
@@ -328,7 +331,7 @@ int insert_presort_win(Grif_event *ptr, int slot)
 
       // should exit while-loop when no more events outside window
       //    *BUT* add error recovery - if window too full, dump events
-      if( dt < window_width ){
+      if( dt < presort_window_width ){
          if( win_count < presort_events_cutoff ){ break; } // LIMIT to ?? events
          else { ++prefull; }
       }
@@ -342,14 +345,13 @@ int insert_presort_win(Grif_event *ptr, int slot)
       if( ++presort_window_start >= PTR_BUFSIZE ){ presort_window_start=0; } // WRAP
    }
    // all events outside window have now been removed ...
-   pre_sort_enter(presort_window_start, slot); 
+   pre_sort_enter(presort_window_start, slot);
    return(0);
 }
 
 // add event to main sort window (event has just left presort window)
 int insert_sort_win(Grif_event *ptr, int slot)
 {
-   int window_width = 200; // 2us - MAXIMUM (indiv. gates can be smaller)
    int win_count, win_end;
    Grif_event *alt;
    long dt;
@@ -368,7 +370,7 @@ int insert_sort_win(Grif_event *ptr, int slot)
 
       // should exit while-loop when no more events outside window
       //    *BUT* add error recovery - if window too full, dump events
-      if( dt < window_width ){
+      if( dt < sort_window_width ){
        //if( win_count >= 0.45*PTR_BUFSIZE ){ ++sortfull; } else {
          if( win_count > coinc_events_cutoff ){ ++sortfull; } else {
             // now removed all events not in coinc with newly added fragment

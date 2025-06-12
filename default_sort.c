@@ -217,90 +217,125 @@ int init_parameters_from_globals(Config *cfg){
 //      => all other window events are BEFORE the current event
 int pre_sort_enter(int start_idx, int frag_idx)
 {
-      Grif_event *ptr = &grif_event[frag_idx];
-      int caen_ts_offset = -60; // this value (-60) aligns the timestamps of HPGe with ZDS(CAEN)
-      float energy, psd;
-      int i, ppg_index;
-      int chan = ptr->chan;
+  Grif_event *alt, *ptr = &grif_event[frag_idx];
+  int caen_ts_offset = -60; // this value (-60) aligns the timestamps of HPGe with ZDS(CAEN)
+  float energy, ecal, psd, correction;
+  int i, ppg_index;
+  int dt, bin, chan2, chan = ptr->chan;
+  int clover, ge1, c1,c2;
+  int ct_index[4][4] = {{-1,0,1,2},{0,-1,1,2},{0,1,-1,2},{0,1,2,-1}};
 
-      // Protect against invalid channel numbers
-      if( chan < 0 || chan >= odb_daqsize ){
-        if( ptr->address == 0xFFFF ){
-          ppg_index=-1;
-          for(i=0; i<N_PPG_PATTERNS; i++){ if( (ptr->master_pattern & 0xFFFF) == ppg_patterns[i] ){ ppg_index = i; break; } }
-          if(ppg_index<0){ fprintf(stderr,"unrecognized ppg pattern, 0x%04X\n", (ptr->master_pattern & 0xFFFF)); return(-1); }
-          //  fprintf(stdout,"PPG PATTERN: 0x%04X (%s, %s) at time %10.4f seconds\n", (ptr->master_pattern & 0xFFFF), ppg_handles[ppg_index], ppg_names[ppg_index], (double)(ptr->ts/100000000) );
-        } else {
-          fprintf(stderr,"unpack_event: ignored event in chan:%d [0x%04x]\n", chan, ptr->address );
+  // Protect against invalid channel numbers
+  if( chan < 0 || chan >= odb_daqsize ){
+    if( ptr->address == 0xFFFF ){
+      ppg_index=-1;
+      for(i=0; i<N_PPG_PATTERNS; i++){ if( (ptr->master_pattern & 0xFFFF) == ppg_patterns[i] ){ ppg_index = i; break; } }
+      if(ppg_index<0){ fprintf(stderr,"unrecognized ppg pattern, 0x%04X\n", (ptr->master_pattern & 0xFFFF)); return(-1); }
+      //  fprintf(stdout,"PPG PATTERN: 0x%04X (%s, %s) at time %10.4f seconds\n", (ptr->master_pattern & 0xFFFF), ppg_handles[ppg_index], ppg_names[ppg_index], (double)(ptr->ts/100000000) );
+    } else {
+      fprintf(stderr,"unpack_event: ignored event in chan:%d [0x%04x]\n", chan, ptr->address );
+    }
+    return(-1);
+  }
+
+  // Check this timstamp against the cycle to see if the pattern has changed
+  if(ppg_cycles_active==1 && ppg_last_ptr_ts>ppg_pattern_end && ptr->ts>ppg_last_ptr_ts){
+    // Recalculate PPG cycle variables
+    // Here we update the current PPG pattern, cycle number, cycle start timestamp with the latest values.
+    // All subsequent events will use these values
+
+    ppg_pattern_start = ppg_pattern_end;                           // Timestamp of the start of the current pattern
+    ppg_cycle_step++;                                              // Current pattern number within this cycle. Patterns counted from zero at beginning of cycle
+    if(ppg_cycle_step==ppg_cycle_length){ // Move to next cycle
+      ppg_cycle_step = 0;
+      ppg_cycle_number++;                                          // Current cycle number. Cycles counted from zero at beginning of run
+      ppg_cycle_start = ppg_pattern_start;                       // Timestamp of the start of the current cycle
+      ppg_cycle_end += ppg_cycle_duration;                         // Timestamp of the end of the current cycle
+    }
+    ppg_current_pattern = ppg_cycle_pattern_code[ppg_cycle_step]; // Index of the current PPG cycle pattern for use with the ppg_patterns array
+    ppg_pattern_end = ppg_pattern_start + ppg_cycle_pattern_duration[ppg_cycle_step]; // Timestamp of the end of the current pattern
+    //  fprintf(stdout,"Cycle %04d, start/finish [%ld/%ld]: step %d, %s, start/finish [%ld/%ld]\n",
+    //  ppg_cycle_number, ppg_cycle_start, ppg_cycle_end, ppg_cycle_step, ppg_handles[ppg_current_pattern], ppg_pattern_start, ppg_pattern_end);
+  }
+  ppg_last_ptr_ts = ptr->ts; // Remember this timestamp for checking at the next event. Avoids rare bug where single events are out of order.
+
+  // Calculate the energy and calibrated energies
+  energy = ( ptr->integ1 == 0 ) ? ptr->q1 : spread(ptr->q1)/ptr->integ1;
+  ptr->ecal = ptr->esum=offsets[chan]+energy*(gains[chan]+energy*quads[chan]);
+  // NOBODY CURRENTLY USES e2,e3,e4 ...
+
+  // Assign the subsys type
+  if( (ptr->subsys = subsys_table[chan]) == -1 ){ return(-1); }
+  if( subsys_initialized[ptr->subsys] == 0 ){
+    //init_histos(configs[1], ptr->subsys);
+    init_histos(NULL, ptr->subsys);
+  }
+
+  // The TAC module produces its output signal around 2 microseconds later
+  // than the start and stop detector signals are processed.
+  if( ptr->subsys == SUBSYS_TAC_LABR || ptr->subsys == SUBSYS_TAC_ZDS || ptr->subsys == SUBSYS_TAC_ART){
+    ptr->ts -= tac_ts_offset[crystal_table[ptr->chan]-1]; // Subtract some amount from TAC timestamps
+  }
+
+  // DESCANT detectors
+  // use psd for Pulse Shape Discrimination provides a distinction between neutron and gamma events
+  //if( ptr->subsys == SUBSYS_DESCANT || ptr->subsys == SUBSYS_DESWALL){
+  if( ptr->subsys == SUBSYS_DESWALL){
+    //ptr->ts -= caen_ts_offset; // Subtract from CAEN timestamps to align coincidences
+    psd = ( ptr->q1 != 0 ) ? (spread(ptr->cc_short) / ptr->q1) : 0;
+    ptr->psd = (int)(psd*1000.0); // psd = long integration divided by short integration
+  }
+
+  // HPGe
+  if( ptr->subsys == SUBSYS_HPGE_A){
+    // Handle crosstalk before applying gains
+    ptr->psd = 14; // Pileup class - default value of 12 for all HPGe events
+    if(ptr->pileup==1 && ptr->nhit ==1){
+      // Single hit events
+      // no pileup, this is the most common type of HPGe event
+      ptr->psd = 1; // Pileup class, default for single hit events
+    }
+
+    i = start_idx;
+    while( i != frag_idx ){ // need at least two events in window
+      if( ++i >=  PTR_BUFSIZE ){ i=0; } alt = &grif_event[i]; // WRAP
+      if( (chan2 = alt->chan)<0 || alt->chan >= odb_daqsize ){
+        fprintf(stderr,"presort error: ignored event in chan:%d\n",alt->chan );
+        continue;
+      }
+      if((dt=ptr->ts - alt->ts)>680 || alt->subsys != SUBSYS_HPGE_A){ continue; }
+
+      if(chan2 != chan ){
+        if((clover=(int)(crystal_table[chan2]/4)) == (int)(crystal_table[chan]/4)){
+          // HPGe Clover time-dependant crosstalk corrections within same clover
+          // dt is always positive here
+          // The original hit (ptr) came after the crosstalk-inducing hit (alt)
+          // Make correction to ptr hit based on energy of alt.
+          if(dt<480){
+            bin = (int)((1920+dt)/160);
+            if(bin<0 || bin>15){ fprintf(stderr,"pre_sort_enter bin [%d] out of bounds for dt %d\n",bin,dt); continue; }
+            ge1 = crystal_table[chan];
+            c1 = ge1%4;
+            c2 = ct_index[c1][(int)(crystal_table[chan2]%4)];
+            ptr->ecal += alt->ecal * crosstalk[ge1][c2][bin];
+          }
+
+          // Fill crosstalk histograms
+          // (c2%4) = Crystal Color [B, G, R, W]
+          // Hits with ptr arriving after alt
+          if(alt->ecal>1327 && alt->ecal<1337){ // Crosstalk inducing hit was 1332keV
+            switch(crystal_table[alt->chan]%4){
+              case 0:  ct_e_vs_dt_B[crystal_table[ptr->chan]]->Fill(ct_e_vs_dt_B[crystal_table[ptr->chan]], ((int)((ptr->ts - alt->ts)/4)+300), (int)ptr->ecal-1100, 1); break;
+              case 1:  ct_e_vs_dt_G[crystal_table[ptr->chan]]->Fill(ct_e_vs_dt_G[crystal_table[ptr->chan]], ((int)((ptr->ts - alt->ts)/4)+300), (int)ptr->ecal-1100, 1); break;
+              case 2:  ct_e_vs_dt_R[crystal_table[ptr->chan]]->Fill(ct_e_vs_dt_R[crystal_table[ptr->chan]], ((int)((ptr->ts - alt->ts)/4)+300), (int)ptr->ecal-1100, 1); break;
+              case 3:  ct_e_vs_dt_W[crystal_table[ptr->chan]]->Fill(ct_e_vs_dt_W[crystal_table[ptr->chan]], ((int)((ptr->ts - alt->ts)/4)+300), (int)ptr->ecal-1100, 1); break;
+            }
+          }
+
         }
-        return(-1);
       }
-
-      // Check this timstamp against the cycle to see if the pattern has changed
-      if(ppg_cycles_active==1 && ppg_last_ptr_ts>ppg_pattern_end && ptr->ts>ppg_last_ptr_ts){
-        // Recalculate PPG cycle variables
-        // Here we update the current PPG pattern, cycle number, cycle start timestamp with the latest values.
-        // All subsequent events will use these values
-
-        ppg_pattern_start = ppg_pattern_end;                           // Timestamp of the start of the current pattern
-        ppg_cycle_step++;                                              // Current pattern number within this cycle. Patterns counted from zero at beginning of cycle
-        if(ppg_cycle_step==ppg_cycle_length){ // Move to next cycle
-          ppg_cycle_step = 0;
-          ppg_cycle_number++;                                          // Current cycle number. Cycles counted from zero at beginning of run
-          ppg_cycle_start = ppg_pattern_start;                       // Timestamp of the start of the current cycle
-          ppg_cycle_end += ppg_cycle_duration;                         // Timestamp of the end of the current cycle
-        }
-        ppg_current_pattern = ppg_cycle_pattern_code[ppg_cycle_step]; // Index of the current PPG cycle pattern for use with the ppg_patterns array
-        ppg_pattern_end = ppg_pattern_start + ppg_cycle_pattern_duration[ppg_cycle_step]; // Timestamp of the end of the current pattern
-        //  fprintf(stdout,"Cycle %04d, start/finish [%ld/%ld]: step %d, %s, start/finish [%ld/%ld]\n",
-        //  ppg_cycle_number, ppg_cycle_start, ppg_cycle_end, ppg_cycle_step, ppg_handles[ppg_current_pattern], ppg_pattern_start, ppg_pattern_end);
-      }
-      ppg_last_ptr_ts = ptr->ts; // Remember this timestamp for checking at the next event. Avoids rare bug where single events are out of order.
-
-      // Calculate the energy and calibrated energies
-      energy = ( ptr->integ1 == 0 ) ? ptr->q1 : spread(ptr->q1)/ptr->integ1;
-      ptr->ecal = ptr->esum=offsets[chan]+energy*(gains[chan]+energy*quads[chan]);
-      // NOBODY CURRENTLY USES e2,e3,e4 ...
-
-      // Assign the subsys type
-      if( (ptr->subsys = subsys_table[chan]) == -1 ){ return(-1); }
-      if( subsys_initialized[ptr->subsys] == 0 ){
-        //init_histos(configs[1], ptr->subsys);
-        init_histos(NULL, ptr->subsys);
-      }
-
-      /*
-      //  if(ptr->ts>5503154397){
-      if(ptr->ts<1500000000){ // First 15 seconds of events
-      fprintf(stdout,"%015ld, chan %03d, subsys %02d Cycle %04d, start/finish [%015ld/%015ld]: step %d, %s, start/finish [%015ld/%015ld]\n",ptr->ts,chan,ptr->subsys,ppg_cycle_number, ppg_cycle_start, ppg_cycle_end, ppg_cycle_step, ppg_handles[ppg_current_pattern], ppg_pattern_start, ppg_pattern_end);
-    }
-    */
-
-    // HPGe pileup
-    if( ptr->subsys == SUBSYS_HPGE_A){
-      ptr->psd = 14; // Pileup class - default value of 12 for all HPGe events
-      if(ptr->pileup==1 && ptr->nhit ==1){
-        // Single hit events
-        // no pileup, this is the most common type of HPGe event
-        ptr->psd = 1; // Pileup class, default for single hit events
-      }
-    }
-
-    // The TAC module produces its output signal around 2 microseconds later
-    // than the start and stop detector signals are processed.
-    if( ptr->subsys == SUBSYS_TAC_LABR || ptr->subsys == SUBSYS_TAC_ZDS || ptr->subsys == SUBSYS_TAC_ART){
-      ptr->ts -= tac_ts_offset[crystal_table[ptr->chan]-1]; // Subtract some amount from TAC timestamps
-    }
-
-    // DESCANT detectors
-    // use psd for Pulse Shape Discrimination provides a distinction between neutron and gamma events
-    //if( ptr->subsys == SUBSYS_DESCANT || ptr->subsys == SUBSYS_DESWALL){
-    if( ptr->subsys == SUBSYS_DESWALL){
-      //ptr->ts -= caen_ts_offset; // Subtract from CAEN timestamps to align coincidences
-      psd = ( ptr->q1 != 0 ) ? (spread(ptr->cc_short) / ptr->q1) : 0;
-      ptr->psd = (int)(psd*1000.0); // psd = long integration divided by short integration
-    }
-
+    } // end of while
+  } // end of if( ptr->subsys == SUBSYS_HPGE_A){
     return(0);
   }
 
@@ -314,9 +349,11 @@ int pre_sort_exit(int frag_idx, int end_idx)
     float desw_median_distance = 1681.8328; // descant wall median source-to-detector distance in mm
     int i, j, dt, dt13, tof;
     float q1,integ2,q12,k1,k2,k12,e1,e2,e12,m,c;
-    int chan,found,pos;
-    float energy,correction;
+    int chan,chan2,found,pos;
+    int clover, ge1, c1,c2,bin;
+    float energy,ecal,correction;
     float correction12, correction23;
+    int ct_index[4][4] = {{-1,0,1,2},{0,-1,1,2},{0,1,-1,2},{0,1,2,-1}};
 
     // Assign chan local variable and check it is a valid channel number
     if( (chan=ptr->chan)<0 || ptr->chan >= odb_daqsize ){
@@ -328,7 +365,7 @@ int pre_sort_exit(int frag_idx, int end_idx)
       if( ++i >=  PTR_BUFSIZE ){ i=0; } alt = &grif_event[i]; // WRAP
       if( alt->chan<0 || alt->chan >= odb_daqsize ){
         fprintf(stderr,"presort error: ignored event in chan:%d\n",alt->chan );
-        return(-1);
+        continue;
       }
 
       // Determine multiplicity
@@ -514,6 +551,39 @@ int pre_sort_exit(int frag_idx, int end_idx)
           }
           alt->alt_ecal=ptr->ecal; // Remember the ecal of the first Hit in this second Hit. Must be done regardless if a correction is made
         } // end of if(alt->subsys == SUBSYS_HPGE_A && alt->chan == ptr->chan)
+        else if(alt->subsys == SUBSYS_HPGE_A){
+          // HPGe Clover time-dependant crosstalk corrections
+          if((clover=(int)(crystal_table[chan2]/4)) == (int)(crystal_table[chan]/4)){
+            dt = ptr->ts - alt->ts; // Use relative time difference. This is always negative
+
+            if(dt>-1920 && dt <= 0){
+              // The original hit (ptr) came earlier then the crosstalk-inducing hit (alt)
+              // Make correction to ptr hit based on energy of alt.
+              //  dt -= 1920; // Correct the timestamp difference so that the right correction is calculated
+              bin = (int)((1920+dt)/160);
+              if(bin<0 || bin>15){ fprintf(stderr,"pre_sort_exit bin [%d] out of bounds for dt %d\n",bin,dt); continue; }
+              ge1 = crystal_table[chan];
+              c1 = ge1%4;
+              c2 = ct_index[c1][(int)(crystal_table[chan2]%4)];
+              ptr->ecal += alt->ecal * crosstalk[ge1][c2][bin];
+            }
+
+            // Fill crosstalk histograms
+            // (c2%4) = Crystal Color [B, G, R, W]
+            // Hits with ptr arriving after alt
+            if(ptr->ecal>1327 && ptr->ecal<1337){ // Crosstalk inducing hit was 1332keV
+              switch(crystal_table[ptr->chan]%4){
+                case 0:  ct_e_vs_dt_B[crystal_table[alt->chan]]->Fill(ct_e_vs_dt_B[crystal_table[alt->chan]], ((int)((alt->ts - ptr->ts)/4)+300), (int)alt->ecal-1100, 1); break;
+                case 1:  ct_e_vs_dt_G[crystal_table[alt->chan]]->Fill(ct_e_vs_dt_G[crystal_table[alt->chan]], ((int)((alt->ts - ptr->ts)/4)+300), (int)alt->ecal-1100, 1); break;
+                case 2:  ct_e_vs_dt_R[crystal_table[alt->chan]]->Fill(ct_e_vs_dt_R[crystal_table[alt->chan]], ((int)((alt->ts - ptr->ts)/4)+300), (int)alt->ecal-1100, 1); break;
+                case 3:  ct_e_vs_dt_W[crystal_table[alt->chan]]->Fill(ct_e_vs_dt_W[crystal_table[alt->chan]], ((int)((alt->ts - ptr->ts)/4)+300), (int)alt->ecal-1100, 1); break;
+              }
+            }
+
+          }
+          if( dt < 0 ){ dt = -1*dt; } // Reset the abs time difference for anything that follows
+        }
+
 
         // BGO suppression of HPGe
         if( (dt >= bgo_window_min && dt <= bgo_window_max) && alt->subsys == SUBSYS_BGO && !ptr->suppress ){
@@ -936,6 +1006,11 @@ int init_chan_histos(Config *cfg)
     {(void **) ge_cycle_num_g,   "HPGe_GeE_cycle%03d",       "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
     {(void **) ge_cycle_num_sh_g,"HPGe_GeE_NPU_cycle%03d",   "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
     {(void **) ge_cycle_num_pu_g,"HPGe_GeE_PU_cycle%03d",    "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
+    {NULL,                   "Analysis/Crosstalk",        ""},
+    {(void **) ct_e_vs_dt_B,       "Crosstalk_Blue_E_vs_dt_Ge%02d",  "", SUBSYS_HPGE_A, 864, 128, N_HPGE },
+    {(void **) ct_e_vs_dt_G,       "Crosstalk_Green_E_vs_dt_Ge%02d", "", SUBSYS_HPGE_A, 864, 128, N_HPGE },
+    {(void **) ct_e_vs_dt_R,       "Crosstalk_Red_E_vs_dt_Ge%02d",   "", SUBSYS_HPGE_A, 864, 128, N_HPGE },
+    {(void **) ct_e_vs_dt_W,       "Crosstalk_White_E_vs_dt_Ge%02d", "", SUBSYS_HPGE_A, 864, 128, N_HPGE },
   }; // Note initialized array variable is CONST (not same as double-pointer)
   // TH1I *hist;  hist = (TH1I *) 0;   ptr = &hist = (TH1I **)addr;  *ptr =
 
@@ -1488,10 +1563,10 @@ int init_chan_histos(Config *cfg)
         int frag_hist[PTR_BUFSIZE];
         int fill_coinc_histos(int win_idx, int frag_idx)
         {
-          int global_window_size = 100; // size in grif-replay should be double this
+          //int global_window_size = (int)(sort_window_width/2); // size in grif-replay should be double this
+          int global_window_size = 2200; // size in grif-replay should be double this
           Grif_event *alt, *ptr = &grif_event[win_idx], *tmp;
           int dt, abs_dt,  pos, c1, c2, index, ptr_swap;
-          int gg_gate=25, g_aries_upper_gate=25;
           TH2I *hist_ee; TH1I *hist_dt;
 
           // histogram of coincwin-size

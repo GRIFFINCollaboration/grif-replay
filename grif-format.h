@@ -34,7 +34,7 @@ typedef struct griffin_fragment_struct { // was 74 bytes, now ?            //OFF
 // NOTES on types ...
 //    address is 16bits 0-FFFF                               => unsigned 16bits
 //    chan is never over 32k, and want to allow -1 for unset => signed 16bits
-// 
+//
 // Q* are the original Q-Sum from the digitizer
 // Energy are the Q-Sums divided by integ-times
 // Ecal is calibrated energy#1
