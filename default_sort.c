@@ -303,7 +303,7 @@ int pre_sort_enter(int start_idx, int frag_idx)
         fprintf(stderr,"presort error: ignored event in chan:%d\n",alt->chan );
         continue;
       }
-      if((dt=ptr->ts - alt->ts)>680 || alt->subsys != SUBSYS_HPGE_A){ continue; }
+      if((dt=ptr->ts - alt->ts)>1000 || alt->subsys != SUBSYS_HPGE_A){ continue; }
 
       if(chan2 != chan ){
         if((clover=(int)(crystal_table[chan2]/4)) == (int)(crystal_table[chan]/4)){
@@ -312,23 +312,29 @@ int pre_sort_enter(int start_idx, int frag_idx)
           // The original hit (ptr) came after the crosstalk-inducing hit (alt)
           // Make correction to ptr hit based on energy of alt.
           if(dt<480){
-            bin = (int)((1920+dt)/160);
+            bin = (int)((1940+dt)/160);
             if(bin<0 || bin>15){ fprintf(stderr,"pre_sort_enter bin [%d] out of bounds for dt %d\n",bin,dt); continue; }
             ge1 = crystal_table[chan];
             c1 = ge1%4;
             c2 = ct_index[c1][(int)(crystal_table[chan2]%4)];
-            ptr->ecal += alt->ecal * crosstalk[ge1][c2][bin];
+            if(crosstalk[ge1][c2][bin] != -1 ){
+              correction = crosstalk[ge1][c2][bin] + ((crosstalk[ge1][c2][bin+1] - crosstalk[ge1][c2][bin]) * (float)(((1940+dt)%160)/160));
+            //  fprintf(stdout,"%f %f %f %f\n",crosstalk[ge1][c2][bin],crosstalk[ge1][c2][bin+1],(crosstalk[ge1][c2][bin+1] - crosstalk[ge1][c2][bin]),(float)(((1940+dt)%160)/160));
+            //  fprintf(stdout,"ct enter. c1 c2 %d %d, dt %d bin %d, alt %f * %f -> correction %f to %f\n",crystal_table[chan],crystal_table[chan2],dt,bin,alt->ecal,correction,(alt->ecal*correction),ptr->ecal);
+              ptr->ecal += alt->ecal * correction;
+            }
           }
 
           // Fill crosstalk histograms
           // (c2%4) = Crystal Color [B, G, R, W]
           // Hits with ptr arriving after alt
           if(alt->ecal>1327 && alt->ecal<1337){ // Crosstalk inducing hit was 1332keV
-            switch(crystal_table[alt->chan]%4){
-              case 0:  ct_e_vs_dt_B[crystal_table[ptr->chan]]->Fill(ct_e_vs_dt_B[crystal_table[ptr->chan]], ((int)((ptr->ts - alt->ts)/4)+300), (int)ptr->ecal-1100, 1); break;
-              case 1:  ct_e_vs_dt_G[crystal_table[ptr->chan]]->Fill(ct_e_vs_dt_G[crystal_table[ptr->chan]], ((int)((ptr->ts - alt->ts)/4)+300), (int)ptr->ecal-1100, 1); break;
-              case 2:  ct_e_vs_dt_R[crystal_table[ptr->chan]]->Fill(ct_e_vs_dt_R[crystal_table[ptr->chan]], ((int)((ptr->ts - alt->ts)/4)+300), (int)ptr->ecal-1100, 1); break;
-              case 3:  ct_e_vs_dt_W[crystal_table[ptr->chan]]->Fill(ct_e_vs_dt_W[crystal_table[ptr->chan]], ((int)((ptr->ts - alt->ts)/4)+300), (int)ptr->ecal-1100, 1); break;
+        //    if(crystal_table[chan] == 3){ fprintf(stdout,"enter c1,c2, %d %d, %d\n",crystal_table[chan],crystal_table[chan2],(crystal_table[chan2]%4)); }
+            switch(crystal_table[chan2]%4){
+              case 0:  ct_e_vs_dt_B[crystal_table[chan]]->Fill(ct_e_vs_dt_B[crystal_table[chan]], ((int)((alt->ts - ptr->ts)/4)+300), (int)ptr->ecal-1100, 1); break;
+              case 1:  ct_e_vs_dt_G[crystal_table[chan]]->Fill(ct_e_vs_dt_G[crystal_table[chan]], ((int)((alt->ts - ptr->ts)/4)+300), (int)ptr->ecal-1100, 1); break;
+              case 2:  ct_e_vs_dt_R[crystal_table[chan]]->Fill(ct_e_vs_dt_R[crystal_table[chan]], ((int)((alt->ts - ptr->ts)/4)+300), (int)ptr->ecal-1100, 1); break;
+              case 3:  ct_e_vs_dt_W[crystal_table[chan]]->Fill(ct_e_vs_dt_W[crystal_table[chan]], ((int)((alt->ts - ptr->ts)/4)+300), (int)ptr->ecal-1100, 1); break;
             }
           }
 
@@ -363,7 +369,7 @@ int pre_sort_exit(int frag_idx, int end_idx)
     i = frag_idx; ptr->multiplicity = 1;
     while( i != end_idx ){ // need at least two events in window
       if( ++i >=  PTR_BUFSIZE ){ i=0; } alt = &grif_event[i]; // WRAP
-      if( alt->chan<0 || alt->chan >= odb_daqsize ){
+      if( (chan2=alt->chan)<0 || alt->chan >= odb_daqsize ){
         fprintf(stderr,"presort error: ignored event in chan:%d\n",alt->chan );
         continue;
       }
@@ -556,27 +562,31 @@ int pre_sort_exit(int frag_idx, int end_idx)
           if((clover=(int)(crystal_table[chan2]/4)) == (int)(crystal_table[chan]/4)){
             dt = ptr->ts - alt->ts; // Use relative time difference. This is always negative
 
-            if(dt>-1920 && dt <= 0){
+            if(dt>-1940 && dt <= 0){
               // The original hit (ptr) came earlier then the crosstalk-inducing hit (alt)
               // Make correction to ptr hit based on energy of alt.
               //  dt -= 1920; // Correct the timestamp difference so that the right correction is calculated
-              bin = (int)((1920+dt)/160);
-              if(bin<0 || bin>15){ fprintf(stderr,"pre_sort_exit bin [%d] out of bounds for dt %d\n",bin,dt); continue; }
+              bin = (int)((1940+dt)/160);
+            //  if(bin<0 || bin>15){ fprintf(stderr,"pre_sort_exit bin [%d] out of bounds for dt %d\n",bin,dt); continue; }
               ge1 = crystal_table[chan];
               c1 = ge1%4;
               c2 = ct_index[c1][(int)(crystal_table[chan2]%4)];
-              ptr->ecal += alt->ecal * crosstalk[ge1][c2][bin];
+              if(crosstalk[ge1][c2][bin] != -1 ){
+               correction = crosstalk[ge1][c2][bin] + ((crosstalk[ge1][c2][bin+1] - crosstalk[ge1][c2][bin]) * (((1940+dt)%160)/160));
+               ptr->ecal += alt->ecal * correction;
+              }
             }
 
             // Fill crosstalk histograms
             // (c2%4) = Crystal Color [B, G, R, W]
             // Hits with ptr arriving after alt
             if(ptr->ecal>1327 && ptr->ecal<1337){ // Crosstalk inducing hit was 1332keV
-              switch(crystal_table[ptr->chan]%4){
-                case 0:  ct_e_vs_dt_B[crystal_table[alt->chan]]->Fill(ct_e_vs_dt_B[crystal_table[alt->chan]], ((int)((alt->ts - ptr->ts)/4)+300), (int)alt->ecal-1100, 1); break;
-                case 1:  ct_e_vs_dt_G[crystal_table[alt->chan]]->Fill(ct_e_vs_dt_G[crystal_table[alt->chan]], ((int)((alt->ts - ptr->ts)/4)+300), (int)alt->ecal-1100, 1); break;
-                case 2:  ct_e_vs_dt_R[crystal_table[alt->chan]]->Fill(ct_e_vs_dt_R[crystal_table[alt->chan]], ((int)((alt->ts - ptr->ts)/4)+300), (int)alt->ecal-1100, 1); break;
-                case 3:  ct_e_vs_dt_W[crystal_table[alt->chan]]->Fill(ct_e_vs_dt_W[crystal_table[alt->chan]], ((int)((alt->ts - ptr->ts)/4)+300), (int)alt->ecal-1100, 1); break;
+              if(crystal_table[chan2] == 3){ fprintf(stdout,"exit c2,c1, %d %d, %d\n",crystal_table[chan2],crystal_table[chan],(crystal_table[chan]%4)); }
+              switch(crystal_table[chan]%4){
+                case 0:  ct_e_vs_dt_B[crystal_table[chan2]]->Fill(ct_e_vs_dt_B[crystal_table[chan2]], ((int)((alt->ts - ptr->ts)/4)+300), (int)alt->ecal-1100, 1); break;
+                case 1:  ct_e_vs_dt_G[crystal_table[chan2]]->Fill(ct_e_vs_dt_G[crystal_table[chan2]], ((int)((alt->ts - ptr->ts)/4)+300), (int)alt->ecal-1100, 1); break;
+                case 2:  ct_e_vs_dt_R[crystal_table[chan2]]->Fill(ct_e_vs_dt_R[crystal_table[chan2]], ((int)((alt->ts - ptr->ts)/4)+300), (int)alt->ecal-1100, 1); break;
+                case 3:  ct_e_vs_dt_W[crystal_table[chan2]]->Fill(ct_e_vs_dt_W[crystal_table[chan2]], ((int)((alt->ts - ptr->ts)/4)+300), (int)alt->ecal-1100, 1); break;
               }
             }
 
@@ -925,10 +935,10 @@ int init_chan_histos(Config *cfg)
     close_folder(cfg);
     */
     {NULL,                   "Hits_and_Sums/Pileup-corrections",     "",                         },
-    {(void **) ge_e_vs_k_2hit_first,      "Ge%02d_E_vs_k_1st_of_2hit",              "", SUBSYS_HPGE_A,  2048, 512, 64},
-    {(void **) ge_e_vs_k_2hit_second,     "Ge%02d_E_vs_k_2nd_of_2hit",              "", SUBSYS_HPGE_A,  2048, 512, 64},
-    {(void **) ge_PU2_e2_v_k_gatedxrays,  "Ge%02d_PU2_E2_vs_k2_E1gated_on_Xrays",   "", SUBSYS_HPGE_A,   256, 512, 64},
-    {(void **) ge_PU2_e2_v_k_gated1408,   "Ge%02d_PU2_E2_vs_k2_E1gated_on_1408keV", "", SUBSYS_HPGE_A,   256, 512, 64},
+    {(void **) ge_e_vs_k_2hit_first,      "Ge%02d_E_vs_k_1st_of_2hit",              "", SUBSYS_HPGE_A,  2048, 720, 64},
+    {(void **) ge_e_vs_k_2hit_second,     "Ge%02d_E_vs_k_2nd_of_2hit",              "", SUBSYS_HPGE_A,  2048, 720, 64},
+    {(void **) ge_PU2_e2_v_k_gatedxrays,  "Ge%02d_PU2_E2_vs_k2_E1gated_on_Xrays",   "", SUBSYS_HPGE_A,   256, 720, 64},
+    {(void **) ge_PU2_e2_v_k_gated1408,   "Ge%02d_PU2_E2_vs_k2_E1gated_on_1408keV", "", SUBSYS_HPGE_A,   256, 720, 64},
     // Coinc
     {NULL,                  "Hits_and_Sums/Delta_t"," "},
     {(void **) dt_hist,     "",        dt_handles[0],  SUBSYS_HPGE_A,  DT_SPEC_LENGTH, 0, N_DT }, // leave subsys as GE -> all always defined
