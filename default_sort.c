@@ -581,7 +581,7 @@ int pre_sort_exit(int frag_idx, int end_idx)
             // (c2%4) = Crystal Color [B, G, R, W]
             // Hits with ptr arriving after alt
             if(ptr->ecal>1327 && ptr->ecal<1337){ // Crosstalk inducing hit was 1332keV
-              if(crystal_table[chan2] == 3){ fprintf(stdout,"exit c2,c1, %d %d, %d\n",crystal_table[chan2],crystal_table[chan],(crystal_table[chan]%4)); }
+            //  if(crystal_table[chan2] == 3){ fprintf(stdout,"exit c2,c1, %d %d, %d\n",crystal_table[chan2],crystal_table[chan],(crystal_table[chan]%4)); }
               switch(crystal_table[chan]%4){
                 case 0:  ct_e_vs_dt_B[crystal_table[chan2]]->Fill(ct_e_vs_dt_B[crystal_table[chan2]], ((int)((alt->ts - ptr->ts)/4)+300), (int)alt->ecal-1100, 1); break;
                 case 1:  ct_e_vs_dt_G[crystal_table[chan2]]->Fill(ct_e_vs_dt_G[crystal_table[chan2]], ((int)((alt->ts - ptr->ts)/4)+300), (int)alt->ecal-1100, 1); break;
