@@ -20,7 +20,7 @@ typedef struct griffin_fragment_struct { // was 74 bytes, now ?            //OFF
 // items below are derived from items above ...
    float      ecal;  int           chan; int      subsys;   int suppress;  //20
    float      esum;  int   multiplicity; int     delta_t;   int alt_chan;  //24
-   float  alt_ecal;  int            tof;                                   //28
+   float  alt_ecal;  int            tof; int    pu_class;                  //28
 } Grif_event;
 
 // NOTES on Grif_event ...

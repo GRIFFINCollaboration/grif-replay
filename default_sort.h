@@ -197,6 +197,22 @@ static int time_diff_gate_max[MAX_SUBSYS][MAX_SUBSYS];
 
 // HPGe pileup
 #define N_PU_CLASSES 15
+// Pileup Class definitions
+#define PU_ERROR             0
+#define PU_SINGLE_HIT        1
+#define PU_SINGLE_HIT_ERROR  2
+#define PU_2HIT_A1ST         3
+#define PU_2HIT_A2ND         4
+#define PU_2HIT_B1ST         5
+#define PU_2HIT_B2ND         6
+#define PU_2HIT_C1ST         7
+#define PU_2HIT_C2ND         8
+#define PU_2HIT_ERROR        9
+#define PU_3HIT_1ST         10
+#define PU_3HIT_2ND         11
+#define PU_3HIT_3RD         12
+#define PU_3HIT_ERROR       13
+#define PU_OTHER            14
 static char ge_pu_class_handles[N_PU_CLASSES][HANDLE_LENGTH]={
   "PU0",                          //  0    = Pu=0 error
   "PU1_NHIT1", "PU1_NHIT1_error", //  1, 2 = Single Hit, single hit error

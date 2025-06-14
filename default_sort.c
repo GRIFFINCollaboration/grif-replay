@@ -291,11 +291,11 @@ int pre_sort_enter(int start_idx, int frag_idx)
   // HPGe
   if( ptr->subsys == SUBSYS_HPGE_A){
     // Handle crosstalk before applying gains
-    ptr->psd = 14; // Pileup class - default value of 12 for all HPGe events
+    ptr->pu_class = PU_OTHER; // Pileup class - default value of 12 for all HPGe events
     if(ptr->pileup==1 && ptr->nhit ==1){
       // Single hit events
       // no pileup, this is the most common type of HPGe event
-      ptr->psd = 1; // Pileup class, default for single hit events
+      ptr->pu_class = PU_SINGLE_HIT; // Pileup class, default for single hit events
     }
 
     // HPGe Clover time-dependant crosstalk corrections within same clover
@@ -435,31 +435,31 @@ int pre_sort_exit(int frag_idx, int end_idx)
       if(alt->subsys == SUBSYS_HPGE_A && chan2 == chan){
         if(ptr->pileup==1 && ptr->nhit ==1){
           // no pileup, this is the most common type of HPGe event
-          ptr->psd = 1; // Pileup class
+          ptr->pu_class = PU_SINGLE_HIT; // Pileup class
         }else if(ptr->pileup==0){
           // pileup error
-          ptr->psd = 0; // Pileup class, error
+          ptr->pu_class = PU_ERROR; // Pileup class, error
         }
       if(dt>500){ continue; } // Restrict pileup handling to 5 microseconds. 8 microseconds needed in some early datasets
 
       // Two and three hit pileup...
         if((ptr->pileup==1 && ptr->nhit==2) && (alt->pileup==2 && alt->nhit==1)){
-          ptr->psd = alt->psd = 9; // Pileup class, error for 2Hits
+          ptr->pu_class = alt->pu_class = PU_2HIT_ERROR; // Pileup class, error for 2Hits
           ptr->delta_t = alt->delta_t = dt;
           if(ptr->q1>0 && ptr->integ1>0 && ptr->q2>0 && ptr->integ2>0 && alt->q1>0 && alt->integ1>0){
             // 2 Hit, Type A
             // The (ptr) fragement is the first Hit of a two Hit pile-up event.
             // Assign the pileup class numbers to the two hits and calculate the time difference between them
-            ptr->psd = 3; // Pileup class, 1st of 2Hits
-            alt->psd = 4; // Pileup class, 2nd of 2Hits
+            ptr->pu_class = PU_2HIT_A1ST; // Pileup class, 1st of 2Hits
+            alt->pu_class = PU_2HIT_A2ND; // Pileup class, 2nd of 2Hits
             ptr->delta_t = alt->delta_t = dt;
 
           }else{
             // 2 Hit, Type B
             // 2Hit pileup where 2nd Hit integration region starts after 1st Hit integration ends but before 2nd Hit CFD has completed
             // Assign the pileup class numbers to the two hits and calculate the time difference between them
-            ptr->psd = 7; // Pileup class, 1st of 2Hits
-            alt->psd = 8; // Pileup class, 2nd of 2Hits
+            ptr->pu_class = PU_2HIT_C1ST; // Pileup class, 1st of 2Hits
+            alt->pu_class = PU_2HIT_C2ND; // Pileup class, 2nd of 2Hits
             ptr->delta_t = alt->delta_t = dt;
 
           }
@@ -467,70 +467,22 @@ int pre_sort_exit(int frag_idx, int end_idx)
           // 2 Hit, Type C
           // 2Hit pileup where 2nd Hit integration region starts after 1st Hit integration and 2nd Hit CFD have ended
           // Assign the pileup class numbers to the two hits and calculate the time difference between them
-          ptr->psd = 5; // Pileup class, 1st of 2Hits
-          alt->psd = 6; // Pileup class, 2nd of 2Hits
+          ptr->pu_class = PU_2HIT_B1ST; // Pileup class, 1st of 2Hits
+          alt->pu_class = PU_2HIT_B2ND; // Pileup class, 2nd of 2Hits
           ptr->delta_t = alt->delta_t = dt; // Save the time difference between pileup hits into both hits
 
         }else if((ptr->pileup==1 && ptr->nhit==3) && (alt->pileup==2 && alt->nhit==2)){ // 3Hit pileup
-          ptr->psd = alt->psd = 13; // Pileup class, error for 3Hits
+          ptr->pu_class = alt->pu_class = PU_3HIT_ERROR; // Pileup class, error for 3Hits
           if(ptr->q1>0 && ptr->integ1>0 && ptr->q2>0 && ptr->integ2>0 && alt->q1>1 && alt->integ1>0 && alt->q2>0 && alt->integ2>0){
-            /*
-            found=0;
-            //  if(ptr->ecal > 1160 && ptr->ecal < 1180 && alt->ecal > 1325 && alt->ecal < 1350){
-            fprintf(stdout,"Found a pileup 3 hit group for chan %d with dt %d\n",ptr->chan,dt);
-            fprintf(stdout,"ptr: %ld %d, PU=%d, nhits=%d, q: %d %d %d %d, k: %d %d %d %d, ecal: %d %d %d %d, %lf %lf %lf\n",ptr->ts,ptr->cfd,ptr->pileup,ptr->nhit,ptr->q,ptr->q2,ptr->q3,ptr->q4,ptr->integ,ptr->integ2,ptr->integ3,ptr->integ4,ptr->ecal,ptr->e2cal,ptr->e3cal,ptr->alt_ecal,offsets[ptr->chan],gains[ptr->chan],quads[ptr->chan]);
-            fprintf(stdout,"alt: %ld %d, PU=%d, nhits=%d, q: %d %d %d %d, k: %d %d %d %d, ecal: %d %d %d %d, %lf %lf %lf\n",alt->ts,alt->cfd,alt->pileup,alt->nhit,alt->q,alt->q2,alt->q3,alt->q4,alt->integ,alt->integ2,alt->integ3,alt->integ4,alt->ecal,alt->e2cal,alt->e3cal,alt->alt_ecal,offsets[alt->chan],gains[alt->chan],quads[alt->chan]);
-            fprintf(stdout,"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",ptr->q,ptr->q2,alt->q,ptr->integ,ptr->integ2,alt->integ,ptr->energy,ptr->energy2,alt->energy,ptr->ecal,ptr->e2cal,alt->ecal);
-            found=1;
-            //    }
-            */
             j=i+1;
             while( j != end_idx ){ // need to find the third events in window associated with this channel
               if( ++j >=  PTR_BUFSIZE ){ break; } alt2 = &grif_event[j]; // WRAP
-
               if(alt2->chan == ptr->chan){ // It must also be a HPGe if the channel number is the same
-                /*
-                fprintf(stdout,"alt2: %ld %d, PU=%d, nhits=%d, q: %d %d %d %d, k: %d %d %d %d, ecal: %d %d %d %d, %lf %lf %lf\n",alt2->ts,alt2->cfd,alt2->pileup,alt2->nhit,alt2->q,alt2->q2,alt2->q3,alt2->q4,alt2->integ,alt2->integ2,alt2->integ3,alt2->integ4,alt2->ecal,alt2->e2cal,alt2->e3cal,alt2->alt_ecal,offsets[alt2->chan],gains[alt2->chan],quads[alt2->chan]);
-                */
                 if(alt2->pileup==3 && alt2->nhit==1){
-                  alt2->psd = 12; // Pileup class
+                  alt2->pu_class = PU_3HIT_3RD; // Pileup class
                   if(alt2->q1>1 && alt2->integ1>0){
-
                     // Determine absolute time difference between timestamps for Hit 1 and 3
                     dt13 = ptr->ts - alt2->ts; if( dt13 < 0 ){ dt13 = -1*dt13; }
-
-
-                    // Three-Hit pile-up case...
-                    // there are two types depending on the relative timing of the third Hit...
-                    // Triple pileup case A ... in which the 3rd pulse occurs more than L samples after the first
-                    //                          there are 5 regions, 3 of which are not piled up (1 per pulse)
-                    //                      ____                ____
-                    //    |   |        |  /|    |\  |      |  /|    |\  |      |          :
-                    //    |   |        | / |    | \ |      | / |    | \ |      |          :
-                    //    |   *________|/__|____|  \|______|/__|____|  \|______|          :
-                    //    |  /                   \                  \          \          :
-                    //    | /   K1           K12  \    K2        K23 \     K3   \         :
-                    //  __*/                       \_____             \______    \________:
-                    //    0            S                   X
-                    //
-                    // ------------------------------------------------------------------------------------------
-                    // Triple pileup case B ... in which the 3rd pulse occurs less than L samples after the first
-                    //                          again 5 regions, only 2 of which are not piled up (first and last pulse)
-                    //                          There is no region to obtain the height of pulse 2
-                    //                          so the event contains K12, the sum of pulse 1+2, in place of pulseheight2
-                    //                                    ________
-                    //    |   |        |   |         |  /|        |\  |      |   |      |   :
-                    //    |   |        |   |         | / |        | \ |      |   |      |   :
-                    //    |   |        |   |_________|/__|________|  \|______|   |      |   :
-                    //    |   |        |  /|          :           |\  |      |\  |      |   :
-                    //    |   |        | / |          :           | \ |      | \ |      |   :
-                    //    |   *________|/__|__________:___________|  \|______|__\|______|   :
-                    //    |  /                        :           \                     \   :
-                    //    | /     K1            K12   :    K123    \     K23        K3   \  :
-                    //  __*/                          :             \_____                \_:
-                    //    0            S              X           L
-                    //
-
                     // The Differencitation period of the HPGe Pulse Height evaluation is L = 5000ns.
                     if(dt13>500){
                       // Triple pileup case A ... in which the 3rd pulse occurs more than L samples after the first
@@ -538,17 +490,17 @@ int pre_sort_exit(int frag_idx, int end_idx)
                       correction23 = (alt->q1/alt->integ1)-((alt->q2/alt->integ2)-(alt2->q1/alt2->integ1));
                       correction12 = (ptr->q1/ptr->integ1)-((ptr->q2/ptr->integ2)-(alt->q1/alt->integ1)-correction23);
                       // Hit 1
-                      ptr->psd = 10; // Pileup class
+                      ptr->pu_class = PU_3HIT_1ST; // Pileup class
                       energy = (spread(ptr->q1)/ptr->integ1) + correction12;
                       ptr->ecal=ptr->esum = offsets[ptr->chan]+energy*(gains[ptr->chan]+energy*quads[ptr->chan]);
                       // Hit 2
                       alt->delta_t = dt;
-                      alt->psd = 11; // Pileup class
+                      alt->pu_class = PU_3HIT_2ND; // Pileup class
                       energy = (spread(alt->q1)/alt->integ1) - correction12 + correction23;
                       alt->ecal=alt->esum = offsets[alt->chan]+energy*(gains[alt->chan]+energy*quads[alt->chan]);
                       // Hit 3
                       alt2->delta_t = dt13;
-                      alt2->psd = 12; // Pileup class
+                      alt2->pu_class = PU_3HIT_3RD; // Pileup class
                       energy = (spread(alt2->q1)/alt2->integ1) - correction23;
                       alt2->ecal=alt2->esum = offsets[alt2->chan]+energy*(gains[alt2->chan]+energy*quads[alt2->chan]);
                     }else{
@@ -559,23 +511,20 @@ int pre_sort_exit(int frag_idx, int end_idx)
                       correction23 = (alt->q1/alt->integ1)-((alt->q2/alt->integ2)-(alt2->q1/alt2->integ1));
                       correction12 = (ptr->q1/ptr->integ1)-((ptr->q2/ptr->integ2)-(alt->q1/alt->integ1)-correction23);
                       // Hit 1
-                      ptr->psd = 10; // Pileup class
+                      ptr->pu_class = PU_3HIT_1ST; // Pileup class
                       energy = (spread(ptr->q1)/ptr->integ1) + correction12;
                       ptr->ecal=ptr->esum = offsets[ptr->chan]+energy*(gains[ptr->chan]+energy*quads[ptr->chan]);
                       // Hit 2
                       alt->delta_t = dt;
-                      alt->psd = 11; // Pileup class
+                      alt->pu_class = PU_3HIT_2ND; // Pileup class
                       energy = (spread(alt->q1)/alt->integ1) - correction12 + correction23;
                       alt->ecal=alt->esum = offsets[alt->chan]+energy*(gains[alt->chan]+energy*quads[alt->chan]);
                       // Hit 3
                       alt2->delta_t = dt13;
-                      alt2->psd = 12; // Pileup class
+                      alt2->pu_class = PU_3HIT_3RD; // Pileup class
                       energy = (spread(alt2->q1)/alt2->integ1) - correction23;
                       alt2->ecal=alt2->esum = offsets[alt2->chan]+energy*(gains[alt2->chan]+energy*quads[alt2->chan]);
                     }
-                    /*
-                    fprintf(stdout,"Complete 3Hit PU event, dt13=%d: %d,%d,%d,%d,%d, %d,%d,%d,%d,%d, %d,%d,%d,%d,%d, %d,%d,%d,%d,%d\n\n",dt13,ptr->q,ptr->q2,alt->q,alt->q2,alt2->q,ptr->integ,ptr->integ2,alt->integ,alt->integ2,alt2->integ,ptr->energy,ptr->energy2,alt->energy,alt->energy2,alt2->energy,ptr->ecal,ptr->e2cal,alt->ecal,alt->e2cal,alt2->ecal);
-                    */
                     break; // Break the while if we found the third Hit
                   }
                 }
@@ -586,7 +535,7 @@ int pre_sort_exit(int frag_idx, int end_idx)
 
         // Now apply hit-specific energy corrections
         if(pileupk1[chan][0] != 1){
-          if(ptr->psd>=3 && ptr->psd<=8){ // 2-Hit pileup events
+          if(ptr->pu_class>=PU_2HIT_A1ST && ptr->pu_class<=PU_2HIT_C2ND){ // 2-Hit pileup events
             // Apply the k1 dependant correction to the energy of the first hit
             // It was already checked that chan for ptr and alt are the same for pileup events
             pos  = crystal_table[ptr->chan];
@@ -1226,27 +1175,27 @@ int init_chan_histos(Config *cfg)
             nhits = ptr->nhit;
             ge_nhits_type->Fill(ge_nhits_type, (int)nhits, 1);
 
-            // The PU class is assigned in the presort, use ptr->psd for pileup class
-            ge_pu_class->Fill(ge_pu_class, ptr->psd, 1);  // pileup class value
-            ge_sum_class[ptr->psd]->Fill(ge_sum_class[ptr->psd], (int)ptr->ecal, 1);  // energy spectrum of pileup class value
-            ge_e_vs_k_class[ptr->psd]->Fill(ge_e_vs_k_class[ptr->psd], (int)ptr->ecal, (int)ptr->integ1, 1);  // energy spectrum of pileup class value
+            // The PU class is assigned in the presort, use ptr->pu_class for pileup class
+            ge_pu_class->Fill(ge_pu_class, ptr->pu_class, 1);  // pileup class value
+            ge_sum_class[ptr->pu_class]->Fill(ge_sum_class[ptr->pu_class], (int)ptr->ecal, 1);  // energy spectrum of pileup class value
+            ge_e_vs_k_class[ptr->pu_class]->Fill(ge_e_vs_k_class[ptr->pu_class], (int)ptr->ecal, (int)ptr->integ1, 1);  // energy spectrum of pileup class value
 
-            if(ptr->psd == 1){  // single hit
+            if(ptr->pu_class == PU_SINGLE_HIT){  // single hit
               ge_1hit[pos]->Fill(ge_1hit[pos], (int)ptr->ecal, 1);
               ge_xtal_1hit->Fill(ge_xtal_1hit, pos, (int)ptr->ecal, 1);
             }
-            if(ptr->psd > 9 && ptr->psd < 13){ // 3-hit pileup
+            if(ptr->pu_class >= PU_3HIT_1ST && ptr->pu_class <= PU_3HIT_3RD){ // 3-hit pileup
               ge_3hit[pos]->Fill(ge_3hit[pos], (int)ptr->ecal, 1);
               ge_xtal_3hit->Fill(ge_xtal_3hit, pos, (int)ptr->ecal, 1);
             }
 
-            if(ptr->psd == 3 || ptr->psd == 5 || ptr->psd == 7){ // Select first Hit of two pileup events
+            if(ptr->pu_class == PU_2HIT_A1ST || ptr->pu_class == PU_2HIT_B1ST || ptr->pu_class == PU_2HIT_C1ST){ // Select first Hit of two pileup events
               ge_2hit[pos]->Fill(ge_2hit[pos], (int)ptr->ecal, 1); // 2-hit pileup
               ge_xtal_2hit->Fill(ge_xtal_2hit, pos, (int)ptr->ecal, 1);
               // The following used for mapping the k2 dependant correction
               ge_e_vs_k_2hit_first[pos]->Fill(ge_e_vs_k_2hit_first[pos], (int)ptr->ecal, (int)ptr->integ1, 1);  // energy1 vs k1 spectrum of 1st Hit of 2hit pileup events
             }
-            if(ptr->psd == 4 || ptr->psd == 6 || ptr->psd == 8){ // Select second Hit of two pileup events
+            if(ptr->pu_class == PU_2HIT_A2ND || ptr->pu_class == PU_2HIT_B2ND || ptr->pu_class == PU_2HIT_C2ND){ // Select second Hit of two pileup events
               ge_2hit[pos]->Fill(ge_2hit[pos], (int)ptr->ecal, 1); // 2-hit pileup
               ge_xtal_2hit->Fill(ge_xtal_2hit, pos, (int)ptr->ecal, 1);
               // The following is not used for mapping the corrections but is a useful diagnostic
@@ -1265,10 +1214,6 @@ int init_chan_histos(Config *cfg)
                 ge_PU2_e2_v_k_gatedxrays[pos]->Fill(ge_PU2_e2_v_k_gatedxrays[pos], (int)(ptr->ecal - 1272), (int)ptr->integ1, 1);  // e2 vs k2 for fixed e1
               }
             }
-
-            //   if(ptr->psd==7){ ge_pu_dt12->Fill(ge_pu_dt12, (int)(ptr->delta_t+DT_SPEC_LENGTH/2), 1); }
-            //   if(ptr->psd==8){ ge_pu_dt13->Fill(ge_pu_dt13, (int)(ptr->delta_t+DT_SPEC_LENGTH/2), 1); }
-
 
             clover = (int)(pos/16)+1;
             if( clover >= 0 && clover < N_CLOVER && ptr->esum >= 0 ){   // ge addback
@@ -1290,7 +1235,7 @@ int init_chan_histos(Config *cfg)
               if(ppg_cycle_number<MAX_CYCLES){
                 ge_cycle_num[ppg_cycle_number]->Fill(ge_cycle_num[ppg_cycle_number], bin, 1);
                 cycle_num_vs_ge->Fill(cycle_num_vs_ge, ppg_cycle_number, bin, 1);
-                if(ptr->psd == 1){
+                if(ptr->pu_class == PU_SINGLE_HIT){
                   ge_cycle_num_sh[ppg_cycle_number]->Fill(ge_cycle_num_sh[ppg_cycle_number], bin, 1);
                   cycle_num_vs_sh->Fill(cycle_num_vs_sh, ppg_cycle_number, bin, 1);
                 }else{
@@ -1299,7 +1244,7 @@ int init_chan_histos(Config *cfg)
                 }
                 if((ptr->ecal>=ppg_cycles_gamma_gate_min) && (ptr->ecal<=ppg_cycles_gamma_gate_max)){
                   ge_cycle_num_g[ppg_cycle_number]->Fill(ge_cycle_num_g[ppg_cycle_number], bin, 1);
-                  if(ptr->psd == 1){
+                  if(ptr->pu_class == PU_SINGLE_HIT){
                     ge_cycle_num_sh_g[ppg_cycle_number]->Fill(ge_cycle_num_sh_g[ppg_cycle_number], bin, 1);
                     cycle_num_vs_ge_sh_g->Fill(cycle_num_vs_ge_sh_g, ppg_cycle_number, bin, 1);
                   }else{
