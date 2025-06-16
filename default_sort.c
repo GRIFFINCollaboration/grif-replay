@@ -1001,9 +1001,11 @@ int init_chan_histos(Config *cfg)
     {(void **)&cycle_num_vs_ge_dt,    "cycle_vs_deadtime",   "", SUBSYS_HPGE_A, MAX_CYCLES, CYCLE_SPEC_LENGTH},
     {(void **)&cycle_num_vs_sh,       "cycle_vs_Ge_NPU",     "", SUBSYS_HPGE_A, MAX_CYCLES, CYCLE_SPEC_LENGTH},
     {(void **)&cycle_num_vs_pu,       "cycle_vs_Ge_PU",      "", SUBSYS_HPGE_A, MAX_CYCLES, CYCLE_SPEC_LENGTH},
+    {(void **)&ge_e_vs_cycle_time,    "Time_within_cycle_vs_Ge","",SUBSYS_HPGE_A, CYCLE_SPEC_LENGTH, E_2D_SPECLEN},
     {(void **)&ge_cycle_activity, "HPGe_cycle_activity",     "", SUBSYS_HPGE_A,     CYCLE_SPEC_LENGTH},
     {(void **)&zds_cycle_activity, "ZDS_cycle_activity",     "", SUBSYS_ZDS_A,      CYCLE_SPEC_LENGTH},
     {(void **) ge_cycle_code,    "",    ge_cycle_code_titles[0], SUBSYS_HPGE_A,     E_SPECLEN, 0, N_PPG_PATTERNS},
+    {(void **) gg_cycle_code,    "",    gg_cycle_code_titles[0], SUBSYS_HPGE_A,     E_SPECLEN, E_SPECLEN, N_PPG_PATTERNS},
     {(void **) ge_cycle_num,     "HPGe_cycle%03d",           "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
     {(void **) ge_cycle_num_sh,  "HPGe_NPU_cycle%03d",       "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
     {(void **) ge_cycle_num_pu,  "HPGe_PU_cycle%03d",        "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
@@ -1060,6 +1062,9 @@ int init_chan_histos(Config *cfg)
         } else { // array of histos (title and handle both the same)
           for(j=0; j<hptr->count; j++){
             sprintf(tmp, (strlen(hptr->title) == 0) ? hptr->handle+j*HANDLE_LENGTH : hptr->title, j);
+            if(strncmp(tmp, "dt_",3)==0){
+              fprintf(stdout,"Create %s\n",tmp);
+          }
             if( hptr->ychan == 0 ){ // 1d
               *(TH1I **)(hptr->ptr+j) = H1_BOOK(cfg, tmp, tmp, hptr->xchan, 0, hptr->xchan );
             } else {
@@ -1232,6 +1237,7 @@ int init_chan_histos(Config *cfg)
               ge_cycle_code[ppg_current_pattern]->Fill(ge_cycle_code[ppg_current_pattern], (int)ptr->ecal, 1);
               bin = (int)((ptr->ts-ppg_cycle_start)/ppg_cycles_binning_factor);  // convert 10ns to binning size set as Global
               ge_cycle_activity->Fill(ge_cycle_activity, bin, 1);
+              ge_e_vs_cycle_time->Fill(ge_e_vs_cycle_time, bin, (int)ptr->ecal, 1);
               if(ppg_cycle_number<MAX_CYCLES){
                 ge_cycle_num[ppg_cycle_number]->Fill(ge_cycle_num[ppg_cycle_number], bin, 1);
                 cycle_num_vs_ge->Fill(cycle_num_vs_ge, ppg_cycle_number, bin, 1);
@@ -1426,6 +1432,10 @@ int init_chan_histos(Config *cfg)
               if( ptr->esum >= 0 &&  alt->esum >= 0 ){ // addback energies
                 gg_ab->Fill(gg_ab, (int)ptr->esum, (int)alt->esum, 1);
               }
+              // PPG Cycles histograms
+              if(ppg_cycles_active==1){
+                gg_cycle_code[ppg_current_pattern]->Fill(gg_cycle_code[ppg_current_pattern], (int)ptr->ecal, (int)alt->ecal, 1);
+              }
               c1 = crystal_table[ptr->chan];
               c2 = crystal_table[alt->chan];
               if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 < 64 ){
@@ -1559,6 +1569,18 @@ int init_chan_histos(Config *cfg)
           0, 2, 4, 6, 8,10,12,14,30,28,26,24,22,20,18,16,
           17,19,21,23,25,27,29,31,15,13,11, 9, 7, 5, 3, 1
         };
+        // Reordering is applied at the unpacking of the ODB
+        // Per GRIFFIN elog, https://grsilog.triumf.ca/GRIFFIN/25966 for downstream DSSD
+        // Per GRIFFIN elog, https://grsilog.triumf.ca/GRIFFIN/25968 for upstream DSSD
+        int reorder_rcmp_strips[7][32] = {
+          {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+          {0, 2, 4, 6, 8,10,12,14,30,28,26,24,22,20,18,16,17,19,21,23,25,27,29,31,15,13,11, 9, 7, 5, 3, 1},
+          {0, 2, 4, 6, 8,10,12,14,30,28,26,24,22,20,18,16,17,19,21,23,25,27,29,31,15,13,11, 9, 7, 5, 3, 1},
+          {0, 2, 4, 6, 8,10,12,14,30,28,26,24,22,20,18,16,17,19,21,23,25,27,29,31,15,13,11, 9, 7, 5, 3, 1},
+          {1, 3, 5, 7, 9,11,13,15,31,29,27,25,23,21,19,17,16,18,20,22,24,26,28,30,14,12,10, 8, 6, 4, 2, 0},
+          {1, 3, 5, 7, 9,11,13,15,31,29,27,25,23,21,19,17,16,18,20,22,24,26,28,30,14,12,10, 8, 6, 4, 2, 0},
+          {1, 3, 5, 7, 9,11,13,15,31,29,27,25,23,21,19,17,16,18,20,22,24,26,28,30,14,12,10, 8, 6, 4, 2, 0}
+        };
 
         int frag_hist[PTR_BUFSIZE];
         int fill_coinc_histos(int win_idx, int frag_idx)
@@ -1619,7 +1641,6 @@ int init_chan_histos(Config *cfg)
                         }
                       }}
                       if( alt->subsys == SUBSYS_TAC_LABR && crystal_table[alt->chan] == 8 ){ // ARIES TAC
-                        dt_hist[14]->Fill(dt_hist[14], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
                         // sum tac spectrum including all art
                         tac_aries_art_sum->Fill(tac_aries_art_sum, (int)alt->ecal, 1);
                         c2 = crystal_table[ptr->chan]-1;
@@ -1630,7 +1651,6 @@ int init_chan_histos(Config *cfg)
                         } break;
                         case SUBSYS_ARIES_B:// ARIES Fast Output in CAEN
                         if(alt->subsys == SUBSYS_DESWALL){ // aries-DSW
-                          dt_hist[20]->Fill(dt_hist[20], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
                           art_dsw->Fill(art_dsw, (int)ptr->ecal, (int)alt->alt_ecal, 1);
                           desw_sum_e_b->Fill(desw_sum_e_b, (int)alt->ecal, 1);
                           desw_sum_tof_b->Fill(desw_sum_tof_b, (int)alt->alt_ecal, 1); // alt_ecal = corrected time-of-flight
@@ -1639,19 +1659,16 @@ int init_chan_histos(Config *cfg)
                         if(alt->subsys == SUBSYS_ZDS_B ){ // ZDS GRIF-CAEN coincidence
                           gc_hist->Fill(gc_hist, 3, 1);
                           gc_hist->Fill(gc_hist, 5, 1);
-                          dt_hist[22]->Fill(dt_hist[22], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
                           dt_hist[23]->Fill(dt_hist[23], (int)(abs(ptr->cfd - alt->cfd)+DT_SPEC_LENGTH/2), 1);
                         } break;
                         case SUBSYS_ZDS_B: // CAEN zds
                         if( alt->subsys == SUBSYS_DESWALL ){ // ZDS-DSW
-                          dt_hist[21]->Fill(dt_hist[21], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
                           dt_hist[25]->Fill(dt_hist[25], (int)(abs(ptr->cfd - alt->cfd)+DT_SPEC_LENGTH/2), 1);
                           desw_sum_e_b->Fill(desw_sum_e_b, (int)alt->ecal, 1);
                           desw_sum_tof_b->Fill(desw_sum_tof_b, (int)alt->alt_ecal, 1); // alt_ecal = corrected time-of-flight
                         } break;
                         case SUBSYS_DESWALL:
                         if( alt->subsys == SUBSYS_DESWALL ){
-                          dt_hist[18]->Fill(dt_hist[18], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
                           dt_hist[24]->Fill(dt_hist[24], (int)(abs(ptr->cfd - alt->cfd)+DT_SPEC_LENGTH/2), 1);
                           c1 = crystal_table[ptr->chan]-1; c2 = crystal_table[alt->chan]-1;
                           if( c1 >= 0 && c1 < 60 && c2 >= 0 && c2 < 60 ){
@@ -1991,7 +2008,7 @@ int init_chan_histos(Config *cfg)
                       } break;
                       case ODBHANDLE_RCS:
                       crystal_table[i] = pos;
-                      element_table[i] = element;
+                      element_table[i] = reorder_rcmp_strips[pos][element];
                       break;
                       case ODBHANDLE_GRG: case ODBHANDLE_GRS:
                       element_table[i] = element;

@@ -119,8 +119,11 @@ long ppg_cycles_binning_factor = 10000000;      // Default of 10,000,000 convert
 int ppg_cycles_gamma_gate_min = 1800;           // 26Na, S1140
 int ppg_cycles_gamma_gate_max = 1820;           // 26Na, S1140
 char ge_cycle_code_titles[N_PPG_PATTERNS][HANDLE_LENGTH]={ "0xC008_Move_Tape","0xC002_Background","0xC001_Beam-on_Implant","0xC004_Beam-off_Decay","0xC0F0_Source_data","0xC009_Continuous_Tape_Beam-on", "0xC00A_Continuous_Tape_Background" };
+char gg_cycle_code_titles[N_PPG_PATTERNS][HANDLE_LENGTH]={ "0xC008_GG_Move_Tape","0xC002_GG_Background","0xC001_GG_Beam-on_Implant","0xC004_GG_Beam-off_Decay","0xC0F0_GG_Source_data","0xC009_GG_Continuous_Tape_Beam-on", "0xC00A_GG_Continuous_Tape_Background" };
 TH1I   *ge_cycle_activity, *zds_cycle_activity; // Activity over cycle time, sum of all cycles
+TH2I   *ge_e_vs_cycle_time;                     // Energy vs time within the cycle
 TH1I   *ge_cycle_code[N_PPG_PATTERNS];          // Energy spectrum for each PPG pattern
+TH2I   *gg_cycle_code[N_PPG_PATTERNS];          // Ge-Ge 2D histogram for each PPG pattern
 TH1I   *ge_cycle_num[MAX_CYCLES];               // Activity over cycle time for each indivdual cycle
 TH1I   *ge_cycle_num_sh[MAX_CYCLES];            // Activity over cycle time for each indivdual cycle, single_hit only
 TH1I   *ge_cycle_num_pu[MAX_CYCLES];            // Activity over cycle time for each indivdual cycle, pileup only
