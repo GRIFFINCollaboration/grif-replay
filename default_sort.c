@@ -32,6 +32,8 @@ float  pileupE1[MAX_DAQSIZE][7];
 float  crosstalk[MAX_DAQSIZE][3][16];
 static short *chan_address = addr_table;
 static int subsys_initialized[MAX_SUBSYS];
+int subsys_deadtime_count[MAX_SUBSYS];
+int previous_trig_acc[MAX_DAQSIZE];
 extern Grif_event grif_event[PTR_BUFSIZE];
 
 // Default sort function declarations
@@ -99,6 +101,11 @@ int init_default_histos(Config *cfg, Sort_status *arg)
     init_parameters_from_globals(cfg);
     init_chan_histos(cfg);
     init_histos(cfg, SUBSYS_HPGE_A); // always create Ge histos
+
+    // Reset the deadtime counters and previous_trig_acc at BOR
+    memset(subsys_deadtime_count,0,MAX_SUBSYS*sizeof(int));
+    memset(previous_trig_acc,0,MAX_DAQSIZE*sizeof(int));
+    ppg_bin_end = ppg_cycles_binning_factor;
 
     return(0);
 }
@@ -222,7 +229,7 @@ int pre_sort_enter(int start_idx, int frag_idx)
   float energy, ecal, psd, correction;
   int i, ppg_index;
   int dt, bin, chan2, chan = ptr->chan;
-  int clover, ge1, c1,c2;
+  int clover, ge1, c1,c2, add;
   int ct_index[4][4] = {{-1,0,1,2},{0,-1,1,2},{0,1,-1,2},{0,1,2,-1}};
 
   // Protect against invalid channel numbers
@@ -240,27 +247,6 @@ int pre_sort_enter(int start_idx, int frag_idx)
     return(-1);
   }
 
-  // Check this timstamp against the cycle to see if the pattern has changed
-  if(ppg_cycles_active==1 && ppg_last_ptr_ts>ppg_pattern_end && ptr->ts>ppg_last_ptr_ts){
-    // Recalculate PPG cycle variables
-    // Here we update the current PPG pattern, cycle number, cycle start timestamp with the latest values.
-    // All subsequent events will use these values
-
-    ppg_pattern_start = ppg_pattern_end;                           // Timestamp of the start of the current pattern
-    ppg_cycle_step++;                                              // Current pattern number within this cycle. Patterns counted from zero at beginning of cycle
-    if(ppg_cycle_step==ppg_cycle_length){ // Move to next cycle
-      ppg_cycle_step = 0;
-      ppg_cycle_number++;                                          // Current cycle number. Cycles counted from zero at beginning of run
-      ppg_cycle_start = ppg_pattern_start;                       // Timestamp of the start of the current cycle
-      ppg_cycle_end += ppg_cycle_duration;                         // Timestamp of the end of the current cycle
-    }
-    ppg_current_pattern = ppg_cycle_pattern_code[ppg_cycle_step]; // Index of the current PPG cycle pattern for use with the ppg_patterns array
-    ppg_pattern_end = ppg_pattern_start + ppg_cycle_pattern_duration[ppg_cycle_step]; // Timestamp of the end of the current pattern
-    //  fprintf(stdout,"Cycle %04d, start/finish [%ld/%ld]: step %d, %s, start/finish [%ld/%ld]\n",
-    //  ppg_cycle_number, ppg_cycle_start, ppg_cycle_end, ppg_cycle_step, ppg_handles[ppg_current_pattern], ppg_pattern_start, ppg_pattern_end);
-  }
-  ppg_last_ptr_ts = ptr->ts; // Remember this timestamp for checking at the next event. Avoids rare bug where single events are out of order.
-
   // Calculate the energy and calibrated energies
   energy = ( ptr->integ1 == 0 ) ? ptr->q1 : spread(ptr->q1)/ptr->integ1;
   ptr->ecal = ptr->esum=offsets[chan]+energy*(gains[chan]+energy*quads[chan]);
@@ -272,6 +258,58 @@ int pre_sort_enter(int start_idx, int frag_idx)
     //init_histos(configs[1], ptr->subsys);
     init_histos(NULL, ptr->subsys);
   }
+
+    // Check this timstamp against the current cycle bin and fill deadtime histograms if it is a new bin
+    if(ppg_cycles_active==1 && ppg_last_ptr_ts>ppg_bin_end && ptr->ts>ppg_last_ptr_ts){
+     // Fill deadtime histograms and reset the deadtime count
+     bin = (int)((ppg_last_ptr_ts-ppg_cycle_start)/ppg_cycles_binning_factor);  // convert 10ns to binning size set as Global
+     if(ppg_cycle_number<MAX_CYCLES){
+       ge_cycle_num_dt[ppg_cycle_number]->Fill(ge_cycle_num_dt[ppg_cycle_number], bin, subsys_deadtime_count[0]);
+       cycle_num_vs_ge_dt->Fill(cycle_num_vs_ge_dt, ppg_cycle_number, bin, subsys_deadtime_count[0]);
+     }
+     memset(subsys_deadtime_count,0,MAX_SUBSYS*sizeof(int));
+     // Calculate the timestamp of the next bin
+     ppg_bin_end += ppg_cycles_binning_factor;
+    }
+
+  // Increment deadtime counter for fixed deadtime of this event
+  // Check if any events were lost since previous event using Accepted Event counter
+  subsys_deadtime_count[ptr->subsys] += (ptr->deadtime>0) ? ptr->deadtime : 120; // Use default 1.2us for S1140 data
+  /*
+  if(ptr->trig_acc - previous_trig_acc[chan] != 1 && ptr->trig_acc - previous_trig_acc[chan] != 16383){
+    if(ptr->trig_acc - previous_trig_acc[chan]>16100){ // Handle the wrap at 14 bits
+      add = ((ptr->trig_acc + 16383) - previous_trig_acc[chan]);
+      add *= (ptr->deadtime>0) ? ptr->deadtime : 120;
+      subsys_deadtime_count[ptr->subsys] += add;
+    }else if(ptr->trig_acc - previous_trig_acc[chan] > 0){
+      add = (ptr->trig_acc - previous_trig_acc[chan]);
+      add *= (ptr->deadtime>0) ? ptr->deadtime : 120;
+      subsys_deadtime_count[ptr->subsys] += add;
+    }
+  }
+  */
+  previous_trig_acc[chan] = ptr->trig_acc;
+
+    // Check this timstamp against the cycle to see if the pattern has changed
+    if(ppg_cycles_active==1 && ppg_last_ptr_ts>ppg_pattern_end && ptr->ts>ppg_last_ptr_ts){
+      // Recalculate PPG cycle variables
+      // Here we update the current PPG pattern, cycle number, cycle start timestamp with the latest values.
+      // All subsequent events will use these values
+
+      ppg_pattern_start = ppg_pattern_end;                           // Timestamp of the start of the current pattern
+      ppg_cycle_step++;                                              // Current pattern number within this cycle. Patterns counted from zero at beginning of cycle
+      if(ppg_cycle_step==ppg_cycle_length){ // Move to next cycle
+        ppg_cycle_step = 0;
+        ppg_cycle_number++;                                          // Current cycle number. Cycles counted from zero at beginning of run
+        ppg_cycle_start = ppg_pattern_start;                       // Timestamp of the start of the current cycle
+        ppg_cycle_end += ppg_cycle_duration;                         // Timestamp of the end of the current cycle
+      }
+      ppg_current_pattern = ppg_cycle_pattern_code[ppg_cycle_step]; // Index of the current PPG cycle pattern for use with the ppg_patterns array
+      ppg_pattern_end = ppg_pattern_start + ppg_cycle_pattern_duration[ppg_cycle_step]; // Timestamp of the end of the current pattern
+      //  fprintf(stdout,"Cycle %04d, start/finish [%ld/%ld]: step %d, %s, start/finish [%ld/%ld]\n",
+      //  ppg_cycle_number, ppg_cycle_start, ppg_cycle_end, ppg_cycle_step, ppg_handles[ppg_current_pattern], ppg_pattern_start, ppg_pattern_end);
+    }
+    ppg_last_ptr_ts = ptr->ts; // Remember this timestamp for checking at the next event. Avoids rare bug where single events are out of order.
 
   // The TAC module produces its output signal around 2 microseconds later
   // than the start and stop detector signals are processed.
@@ -290,8 +328,7 @@ int pre_sort_enter(int start_idx, int frag_idx)
 
   // HPGe
   if( ptr->subsys == SUBSYS_HPGE_A){
-    // Handle crosstalk before applying gains
-    ptr->pu_class = PU_OTHER; // Pileup class - default value of 12 for all HPGe events
+    ptr->pu_class = PU_OTHER; // Pileup class - default value for all HPGe events
     if(ptr->pileup==1 && ptr->nhit ==1){
       // Single hit events
       // no pileup, this is the most common type of HPGe event
@@ -1010,6 +1047,7 @@ int init_chan_histos(Config *cfg)
     {(void **) ge_cycle_num,     "HPGe_cycle%03d",           "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
     {(void **) ge_cycle_num_sh,  "HPGe_NPU_cycle%03d",       "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
     {(void **) ge_cycle_num_pu,  "HPGe_PU_cycle%03d",        "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
+    {(void **) ge_cycle_num_dt,  "HPGe_DT_cycle%03d",        "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
     {(void **) ge_cycle_num_g,   "HPGe_GeE_cycle%03d",       "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
     {(void **) ge_cycle_num_sh_g,"HPGe_GeE_NPU_cycle%03d",   "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
     {(void **) ge_cycle_num_pu_g,"HPGe_GeE_PU_cycle%03d",    "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },

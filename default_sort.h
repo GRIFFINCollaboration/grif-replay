@@ -102,7 +102,7 @@ long ppg_cycle_pattern_duration[16]; // Length of each pattern in timestamp unit
 int  ppg_cycle_pattern_code[16];     // Index of each pattern for use with the ppg_patterns array
 int  ppg_cycles_active;              // Cycles active or made inactive if set to Source/constant beam-on etc.
 
-// These variables are updated in apply_gains at each PPG pattern change
+// These variables are updated in pre_sort_enter at each PPG pattern change
 long ppg_last_ptr_ts;     // Previous event timestamp. Avoids rare bug where single events are out of order.
 int ppg_current_pattern;  // Index of the current PPG cycle pattern for use with the ppg_patterns array
 int ppg_cycle_number;     // Current cycle number. Cycles counted from zero at beginning of run
@@ -111,6 +111,7 @@ long ppg_cycle_end;       // Timestamp of the end of the current cycle
 int ppg_cycle_step;       // Current pattern number within this cycle. Patterns counted from zero at beginning of cycle
 long ppg_pattern_start;   // Timestamp of the start of the current pattern
 long ppg_pattern_end;     // Timestamp of the end of the current pattern
+long ppg_bin_end;         // Timestamp of the end of the current bin (used for deadtime histogram)
 
 // Spectra for cycles
 // The binning factor and gamma-energy gates will ultimately be set from a Global at BOR
@@ -127,6 +128,7 @@ TH2I   *gg_cycle_code[N_PPG_PATTERNS];          // Ge-Ge 2D histogram for each P
 TH1I   *ge_cycle_num[MAX_CYCLES];               // Activity over cycle time for each indivdual cycle
 TH1I   *ge_cycle_num_sh[MAX_CYCLES];            // Activity over cycle time for each indivdual cycle, single_hit only
 TH1I   *ge_cycle_num_pu[MAX_CYCLES];            // Activity over cycle time for each indivdual cycle, pileup only
+TH1I   *ge_cycle_num_dt[MAX_CYCLES];            // Deadtime over cycle time for each indivdual cycle
 TH1I   *ge_cycle_num_g[MAX_CYCLES];             // Activity over cycle time for each indivdual cycle
 TH1I   *ge_cycle_num_sh_g[MAX_CYCLES];          // Activity over cycle time for each indivdual cycle, single_hit only
 TH1I   *ge_cycle_num_pu_g[MAX_CYCLES];          // Activity over cycle time for each indivdual cycle, pileup only
