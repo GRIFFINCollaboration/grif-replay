@@ -272,23 +272,23 @@ int pre_sort_enter(int start_idx, int frag_idx)
      ppg_bin_end += ppg_cycles_binning_factor;
     }
 
-  // Increment deadtime counter for fixed deadtime of this event
-  // Check if any events were lost since previous event using Accepted Event counter
-  subsys_deadtime_count[ptr->subsys] += (ptr->deadtime>0) ? ptr->deadtime : 120; // Use default 1.2us for S1140 data
-  /*
-  if(ptr->trig_acc - previous_trig_acc[chan] != 1 && ptr->trig_acc - previous_trig_acc[chan] != 16383){
-    if(ptr->trig_acc - previous_trig_acc[chan]>16100){ // Handle the wrap at 14 bits
-      add = ((ptr->trig_acc + 16383) - previous_trig_acc[chan]);
-      add *= (ptr->deadtime>0) ? ptr->deadtime : 120;
-      subsys_deadtime_count[ptr->subsys] += add;
-    }else if(ptr->trig_acc - previous_trig_acc[chan] > 0){
-      add = (ptr->trig_acc - previous_trig_acc[chan]);
-      add *= (ptr->deadtime>0) ? ptr->deadtime : 120;
-      subsys_deadtime_count[ptr->subsys] += add;
+    // Increment deadtime counter for fixed deadtime of this event
+    // Check if any events were lost since previous event using Accepted Event counter
+    subsys_deadtime_count[ptr->subsys] += (ptr->deadtime>0) ? ptr->deadtime : 120; // Use default 1.2us for S1140 data
+    if(ptr->trig_acc - previous_trig_acc[chan] != 1 && ptr->trig_acc - previous_trig_acc[chan] != 16383){
+      if(ptr->trig_acc - previous_trig_acc[chan]>16100){ // Handle the wrap at 14 bits
+        add = ((ptr->trig_acc + 16383) - previous_trig_acc[chan]);
+        add *= (ptr->deadtime>0) ? ptr->deadtime : 120;
+        subsys_deadtime_count[ptr->subsys] += add;
+      }else if(ptr->trig_acc - previous_trig_acc[chan] > 0){
+        add = (ptr->trig_acc - previous_trig_acc[chan]);
+        add *= (ptr->deadtime>0) ? ptr->deadtime : 120;
+        if(add<2400){ // More than 20 missed events is likely an error
+          subsys_deadtime_count[ptr->subsys] += add;
+        }
+      }
     }
-  }
-  */
-  previous_trig_acc[chan] = ptr->trig_acc;
+    previous_trig_acc[chan] = ptr->trig_acc;
 
     // Check this timstamp against the cycle to see if the pattern has changed
     if(ppg_cycles_active==1 && ppg_last_ptr_ts>ppg_pattern_end && ptr->ts>ppg_last_ptr_ts){
