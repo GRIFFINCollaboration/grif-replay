@@ -176,9 +176,9 @@ int unpack_grif3_event(unsigned *evntbuf, int evlen, Grif_event *ptr, int proces
 	 qtcount = 0;
          ptr->dtype  = ((value & 0x000000F) >>  0);
 
-         //if( ptr->dtype == 6 ){
-	 //   printf("DSC\n");
-	 //}
+  //       if( ptr->dtype == 10 || ptr->dtype==11 ){
+	 //   printf("RCS\n");
+	// }
          ptr->address= ((value & 0xFFFF0) >>  4);
 	 // ptr->address >= 0x8000 - currently this will be caen data events
 	 //   which have had their address altered to allow reordering
@@ -218,8 +218,8 @@ int unpack_grif3_event(unsigned *evntbuf, int evlen, Grif_event *ptr, int proces
          ptr->ts = ptr->ts;
 	 break;
       case 0xc:                                             /* waveform data */
-         if( wave_ptr == NULL ){
-            fprintf(stderr,"griffin_decode: no memory for waveform\n");
+         if( wave_ptr == NULL){
+          //  fprintf(stderr,"griffin_decode: no memory for waveform\n");
          } else if( process_waveforms == 1 ){/* + 14->16bit sign extension */
 	    waveform[(*wave_ptr)  ]   = value & 0x3fff;
             waveform[(*wave_ptr)++] |= ((value>>13) & 1) ? 0xC000 : 0;
@@ -248,7 +248,7 @@ int unpack_grif3_event(unsigned *evntbuf, int evlen, Grif_event *ptr, int proces
       case 0x0: case 0x1: case 0x2: case 0x3:
       case 0x4: case 0x5: case 0x6: case 0x7:
          if( ptr->dtype == 0xF ){ // scalar events have different format
-            if( ptr->address != 0xFFFF ){ discard = 1; } 
+            if( ptr->address != 0xFFFF ){ discard = 1; }
             //ptr->scl_present = 1;
             //scalar[ptr->scalar_length++]  = val32;
             break;
@@ -318,5 +318,6 @@ int unpack_grif3_event(unsigned *evntbuf, int evlen, Grif_event *ptr, int proces
       default:  fprintf(stderr,"griffin_decode: default case\n"); return(-1);
       }
    }
+
    return( discard ); // discard scalars other than ppg-"scalar"
 }

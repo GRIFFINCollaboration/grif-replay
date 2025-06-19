@@ -576,11 +576,12 @@ int pre_sort_exit(int frag_idx, int end_idx)
       // The charged particles enter the P side and this has superior energy resolution
       // Ensure the energy collected in the front and back is similar
       ptr->esum = -1; // Need to exclude any noise and random coincidences.
-      if( (dt >= rcmp_fb_window_min && dt <= rcmp_fb_window_max) && alt->subsys == SUBSYS_RCMP && (ptr->ecal>0 && ptr->ecal<32768)){
+      if( alt->subsys == SUBSYS_RCMP && (dt >= rcmp_fb_window_min && dt <= rcmp_fb_window_max) && (ptr->ecal>0 && ptr->ecal<32768)){
         if((crystal_table[ptr->chan] == crystal_table[alt->chan]) && (polarity_table[ptr->chan] != polarity_table[alt->chan]) && (alt->ecal > 0  && ptr->ecal<32768)){
           if( ((ptr->ecal / alt->ecal)<=1.1 && (ptr->ecal / alt->ecal)>=0.9)){
             // Ensure esum comes from P side, but use this timestamp
             ptr->esum = polarity_table[ptr->chan]==0 ? ptr->ecal : (polarity_table[ptr->chan]==1 ? alt->ecal : -1);
+            ptr->suppress = alt->suppress = 1;
           }
         }
       }
@@ -1062,9 +1063,6 @@ int init_chan_histos(Config *cfg)
         } else { // array of histos (title and handle both the same)
           for(j=0; j<hptr->count; j++){
             sprintf(tmp, (strlen(hptr->title) == 0) ? hptr->handle+j*HANDLE_LENGTH : hptr->title, j);
-            if(strncmp(tmp, "dt_",3)==0){
-              fprintf(stdout,"Create %s\n",tmp);
-          }
             if( hptr->ychan == 0 ){ // 1d
               *(TH1I **)(hptr->ptr+j) = H1_BOOK(cfg, tmp, tmp, hptr->xchan, 0, hptr->xchan );
             } else {
@@ -1407,7 +1405,7 @@ int init_chan_histos(Config *cfg)
               rcmp_fb_sum->Fill(rcmp_fb_sum, (int)ptr->esum, 1);
             }
             pos  = crystal_table[ptr->chan];
-            elem = (int)(elem + (int)(polarity_table[ptr->chan]*N_RCMP_STRIPS)); // polarity_table value is 0 or 1
+            elem = (int)(element_table[ptr->chan] + (int)(polarity_table[ptr->chan]*N_RCMP_STRIPS)); // polarity_table value is 0 or 1
             if( pos < 1 || pos > 6 ){
               fprintf(stderr,"bad RCMP DSSD[%d] for chan %d, elem%d, pol%d\n", pos, ptr->chan, elem, polarity_table[ptr->chan]);
             } else if( elem < 0 || elem > 63 ){
@@ -1561,25 +1559,24 @@ int init_chan_histos(Config *cfg)
           return(0);
         }
 
-        int reorder_rcmp_US_strips[32] = { // Per GRIFFIN elog, https://grsilog.triumf.ca/GRIFFIN/25966
-          1, 3, 5, 7, 9,11,13,15,31,29,27,25,23,21,19,17,
-          16,18,20,22,24,26,28,30,14,12,10, 8, 6, 4, 2, 0
-        };
-        int reorder_rcmp_DS_strips[32] = { // Per GRIFFIN elog, https://grsilog.triumf.ca/GRIFFIN/25968
-          0, 2, 4, 6, 8,10,12,14,30,28,26,24,22,20,18,16,
-          17,19,21,23,25,27,29,31,15,13,11, 9, 7, 5, 3, 1
-        };
-        // Reordering is applied at the unpacking of the ODB
-        // Per GRIFFIN elog, https://grsilog.triumf.ca/GRIFFIN/25966 for downstream DSSD
-        // Per GRIFFIN elog, https://grsilog.triumf.ca/GRIFFIN/25968 for upstream DSSD
-        int reorder_rcmp_strips[7][32] = {
-          {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-          {0, 2, 4, 6, 8,10,12,14,30,28,26,24,22,20,18,16,17,19,21,23,25,27,29,31,15,13,11, 9, 7, 5, 3, 1},
-          {0, 2, 4, 6, 8,10,12,14,30,28,26,24,22,20,18,16,17,19,21,23,25,27,29,31,15,13,11, 9, 7, 5, 3, 1},
-          {0, 2, 4, 6, 8,10,12,14,30,28,26,24,22,20,18,16,17,19,21,23,25,27,29,31,15,13,11, 9, 7, 5, 3, 1},
-          {1, 3, 5, 7, 9,11,13,15,31,29,27,25,23,21,19,17,16,18,20,22,24,26,28,30,14,12,10, 8, 6, 4, 2, 0},
-          {1, 3, 5, 7, 9,11,13,15,31,29,27,25,23,21,19,17,16,18,20,22,24,26,28,30,14,12,10, 8, 6, 4, 2, 0},
-          {1, 3, 5, 7, 9,11,13,15,31,29,27,25,23,21,19,17,16,18,20,22,24,26,28,30,14,12,10, 8, 6, 4, 2, 0}
+        // This lookup table reorders strips that have already been reordered in the ODB...
+        // Per GRIFFIN elog, https://grsilog.triumf.ca/GRIFFIN/25966
+        // Per GRIFFIN elog, https://grsilog.triumf.ca/GRIFFIN/25968
+        int reorder_rcmp_strips[7][2][32] = {
+          {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+           {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+          {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // RCS1 X
+           {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // RCS1 Y
+          {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // RCS2 X
+           {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}, // RCS2 X
+          {{1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30},  // RCS3 X
+           {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // RCS3 Y
+          {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // RCS4 X
+           {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}, // RCS4 Y
+          {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // RCS5 X
+           {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // RCS5 Y
+          {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // RCS6 X
+           {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}  // RCS6 Y
         };
 
         int frag_hist[PTR_BUFSIZE];
@@ -1620,7 +1617,8 @@ int init_chan_histos(Config *cfg)
                   c1 = crystal_table[ptr->chan];
                   c2 = crystal_table[alt->chan];
                   bgobgo_hit->Fill(bgobgo_hit, c1, c2, 1);
-                }} break;
+                }}
+                break;
                 case SUBSYS_RCMP:
                 if(alt->subsys == SUBSYS_RCMP){
                   if( (abs_dt >= time_diff_gate_min[SUBSYS_RCMP][SUBSYS_RCMP]) && (abs_dt <= time_diff_gate_max[SUBSYS_RCMP][SUBSYS_RCMP]) ){
@@ -1628,8 +1626,11 @@ int init_chan_histos(Config *cfg)
                     polarity_table[ptr->chan] != polarity_table[alt->chan] ){ // front and back of same DSSD
                       c1 = element_table[ptr->chan];
                       c2 = element_table[alt->chan];
-                      rcmp_hit[(pos-1)]->Fill(rcmp_hit[(pos-1)], c1, c2, 1);
                       rcmp_fb[(pos-1)]->Fill(rcmp_fb[(pos-1)], (int)ptr->ecal, (int)alt->ecal, 1);
+                      if(polarity_table[ptr->chan]==0){ rcmp_hit[(pos-1)]->Fill(rcmp_hit[(pos-1)], c1, c2, 1);
+                      }else{
+                        rcmp_hit[(pos-1)]->Fill(rcmp_hit[(pos-1)], c2, c1, 1);
+                      }
                     }}} break;
                     case SUBSYS_ARIES_A:
                     if( alt->subsys == SUBSYS_ARIES_A && ptr->ecal>0 && alt->ecal>0 ){
@@ -2008,7 +2009,7 @@ int init_chan_histos(Config *cfg)
                       } break;
                       case ODBHANDLE_RCS:
                       crystal_table[i] = pos;
-                      element_table[i] = reorder_rcmp_strips[pos][element];
+                      element_table[i] = reorder_rcmp_strips[pos][polarity_table[i]][element];
                       break;
                       case ODBHANDLE_GRG: case ODBHANDLE_GRS:
                       element_table[i] = element;

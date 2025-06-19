@@ -50,7 +50,8 @@ void reorder_status(int current_time)
 #define OVERFULL_FRACTION   0.5
 #define OUTPUT_FRACTION    0.25
 #define INIT_WAIT           250 // allow # junk events per grifc at run start
-#define REORDER_MAXEVENTSIZE 20 // max 20 words - 80 bytes
+//#define REORDER_MAXEVENTSIZE 20 // max 20 words - 80 bytes
+#define REORDER_MAXEVENTSIZE 70 // max 70 words - 280 bytes to accomodate 100 sample waveforms
 typedef struct reorderbuf_struct Tsbuf;
 struct reorderbuf_struct {
    volatile Tsbuf *next; unsigned long ts;
