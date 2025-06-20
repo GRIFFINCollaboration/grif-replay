@@ -267,6 +267,7 @@ int TH2I_Fill(TH2I *this, int xval, int yval, int count)
         fprintf(stderr,"TH2I_Fill: data malloc failed for %s\n",this->handle);
         return(-1);
      }
+     memset(this->data, 0, xbins*ybins*sizeof(int) );
   }
   (this->data[(int)xbin + (int)(ybin)*this->xbins])+=count;
   return(0);
@@ -281,6 +282,7 @@ int TH2I_SetBinContent(TH2I *this, int xbin, int ybin, int value)
          fprintf(stderr,"TH2I_Fill: data malloc failed for %s\n",this->handle);
          return(-1);
       }
+      memset(this->data, 0, xbins*ybins*sizeof(int) );
    }
    (this->data[xbin+ybin*this->xbins])=value; return(0);
 }
@@ -500,6 +502,7 @@ int read_histo_data(Histogram *histo, FILE *fp)
       fprintf(stderr,"read_histo_data: data malloc failed\n");
       return(-1);
    }
+   memset(histo->data, 0, bins*sizeof(int));
    if( fseek(fp, histo->file_data_offset, SEEK_SET) < 0 ){
       fprintf(stderr,"failed_seek histo:%s\n", histo->title );
       return(-1);
@@ -714,7 +717,7 @@ int sum_th1I(Config *dst_cfg, Config *src_cfg, TH1I *src)
             return(-1);
          }
       }
-      memcmp(dst->data, src->data, dst->valid_bins*sizeof(int) );
+      memcpy(dst->data, src->data, dst->valid_bins*sizeof(int) );
       return(0);
    }
    for(i=0; i<dst->valid_bins && i<src->valid_bins; i++){ dst->data[i] += src->data[i]; }
