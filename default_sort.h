@@ -137,6 +137,11 @@ TH2I   *cycle_num_vs_ge_sh_g;                   // 2D histogram of cycle # vs th
 TH2I   *cycle_num_vs_ge_dt;                     // 2D histogram of cycle # vs the cycle time for deadtime .
 TH2I   *cycle_num_vs_sh;                        // 2D histogram of cycle # vs the cycle time for NP.
 TH2I   *cycle_num_vs_pu;                        // 2D histogram of cycle # vs the cycle time for PU.
+TH2I   *cycle_num_vs_ge_b;                      // 2D histogram of cycle # vs the cycle time. GRGB
+TH2I   *cycle_num_vs_ge_b_sh_g;                 // 2D histogram of cycle # vs the cycle time for 1809 gated/NP. GRGB
+TH2I   *cycle_num_vs_ge_b_dt;                   // 2D histogram of cycle # vs the cycle time for deadtime . GRGB
+TH2I   *cycle_num_vs_sh_b;                      // 2D histogram of cycle # vs the cycle time for NP. GRGB
+TH2I   *cycle_num_vs_pu_b;                      // 2D histogram of cycle # vs the cycle time for PU. GRGB
 
 //#######################################################################
 //########        Individual channel singles HISTOGRAMS        ##########
