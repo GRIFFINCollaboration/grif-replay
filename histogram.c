@@ -267,7 +267,7 @@ int TH2I_Fill(TH2I *this, int xval, int yval, int count)
         fprintf(stderr,"TH2I_Fill: data malloc failed for %s\n",this->handle);
         return(-1);
      }
-     memset(this->data, 0, xbins*ybins*sizeof(int) );
+     memset(this->data, 0, this->xbins*this->ybins*sizeof(int) );
   }
   (this->data[(int)xbin + (int)(ybin)*this->xbins])+=count;
   return(0);
@@ -282,7 +282,7 @@ int TH2I_SetBinContent(TH2I *this, int xbin, int ybin, int value)
          fprintf(stderr,"TH2I_Fill: data malloc failed for %s\n",this->handle);
          return(-1);
       }
-      memset(this->data, 0, xbins*ybins*sizeof(int) );
+      memset(this->data, 0, this->xbins*this->ybins*sizeof(int) );
    }
    (this->data[xbin+ybin*this->xbins])=value; return(0);
 }
