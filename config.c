@@ -815,7 +815,7 @@ int write_config(Config *cfg, FILE *fp)
    for(i=0; i<cfg->ncal; i++){ calib = cfg->calib[i];
      fprintf(fp,"%9s{\"name\" : \"%s\" , \"address\" : %d , \"datatype\" : %d , \"offset\" : %f , \"gain\" : %f , \"quad\" : %e ", "", calib->name, calib->address, calib->datatype, calib->offset, calib->gain, calib->quad );
      if(strncmp(calib->name,"GRG",3)==0){
-       if(calib->pileupk1[0] != -1 && !isnan(calib->pileupk1[0])){
+       if(calib->pileupk1[0] != -1){
          fprintf(fp,", \"pileupk1\" : [ %f , %f , %e , %e , %e , %e , %e ]",calib->pileupk1[0],calib->pileupk1[1],calib->pileupk1[2],calib->pileupk1[3],calib->pileupk1[4],calib->pileupk1[5],calib->pileupk1[6]);
          fprintf(fp,", \"pileupk2\" : [ %f , %f , %e , %e , %e , %e , %e ]",calib->pileupk2[0],calib->pileupk2[1],calib->pileupk2[2],calib->pileupk2[3],calib->pileupk2[4],calib->pileupk2[5],calib->pileupk2[6]);
          fprintf(fp,", \"pileupE1\" : [ %f , %f , %e , %e , %e , %e , %e ]",calib->pileupE1[0],calib->pileupE1[1],calib->pileupE1[2],calib->pileupE1[3],calib->pileupE1[4],calib->pileupE1[5],calib->pileupE1[6]);
@@ -824,7 +824,7 @@ int write_config(Config *cfg, FILE *fp)
          fprintf(fp,", \"pileupk2\" : [ %d , %d , %d , %d , %d , %d , %d ]",1,0,0,0,0,0,0);
          fprintf(fp,", \"pileupE1\" : [ %d , %d , %d , %d , %d , %d , %d ]",0,0,0,0,0,0,0);
        }
-       if(calib->crosstalk0[0] != -1 && !isnan(calib->crosstalk0[0])){
+       if(calib->crosstalk0[0] != -1){
          fprintf(fp,", \"crosstalk0\" : [ %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f ]",calib->crosstalk0[0],calib->crosstalk0[1],calib->crosstalk0[2],calib->crosstalk0[3],calib->crosstalk0[4],calib->crosstalk0[5],calib->crosstalk0[6],calib->crosstalk0[7],calib->crosstalk0[8],calib->crosstalk0[9],calib->crosstalk0[10],calib->crosstalk0[11],calib->crosstalk0[12],calib->crosstalk0[13],calib->crosstalk0[14],calib->crosstalk0[15]);
          fprintf(fp,", \"crosstalk1\" : [ %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f ]",calib->crosstalk1[0],calib->crosstalk1[1],calib->crosstalk1[2],calib->crosstalk1[3],calib->crosstalk1[4],calib->crosstalk1[5],calib->crosstalk1[6],calib->crosstalk1[7],calib->crosstalk1[8],calib->crosstalk1[9],calib->crosstalk1[10],calib->crosstalk1[11],calib->crosstalk1[12],calib->crosstalk1[13],calib->crosstalk1[14],calib->crosstalk1[15]);
          fprintf(fp,", \"crosstalk2\" : [ %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f , %f ]",calib->crosstalk2[0],calib->crosstalk2[1],calib->crosstalk2[2],calib->crosstalk2[3],calib->crosstalk2[4],calib->crosstalk2[5],calib->crosstalk2[6],calib->crosstalk2[7],calib->crosstalk2[8],calib->crosstalk2[9],calib->crosstalk2[10],calib->crosstalk2[11],calib->crosstalk2[12],calib->crosstalk2[13],calib->crosstalk2[14],calib->crosstalk2[15]);
@@ -1214,7 +1214,6 @@ int load_config(Config *cfg, char *filename, char *buffer)
           fprintf(stderr,"load_config:errPUC byte %ld\n", ptr-config_data);
           return(-1);
         }
-        //while(isdigit(*ptr)||*ptr=='.'||*ptr=='-'||*ptr=='+'||*ptr=='e'||*ptr==','||*ptr=='['||*ptr==']'){++ptr;}
         while(*ptr!='\"'){++ptr;}
         if( strncmp(ptr,"\"pileupE1\":",11) != 0 ){
           fprintf(stderr,"load_config:errPUD byte %ld\n", ptr-config_data);
@@ -1224,58 +1223,50 @@ int load_config(Config *cfg, char *filename, char *buffer)
           fprintf(stderr,"load_config:errPUE byte %ld\n", ptr-config_data);
           return(-1);
         }
-        //while(isdigit(*ptr)||*ptr=='.'||*ptr=='-'||*ptr=='+'||*ptr=='e'||*ptr==','||*ptr=='['||*ptr==']'){++ptr;}
-        while(*ptr!='}'){++ptr;}
-        ++ptr;
+        while(*ptr!=']'){++ptr;}
+        ptr+=2;
       }else if(strncmp(name,"GRG",3)==0){ // Only process pileup and crosstalk for HPGe
-          // for(i=0; i<7; i++){ puk1[i] = puk2[i] = puE1[i] = 0; } // Initialize pileup parameters to default values
-          // puk1[0] = puk2[0] = 1; // set default factor as 1 not zero
            memcpy(puk1,puk_reset, 7 * sizeof(float));
            memcpy(puk2,puk_reset, 7 * sizeof(float));
            memcpy(puE1,puE1_reset, 7 * sizeof(float));
       }else{
-           //for(i=0; i<7; i++){ puk1[i] = puk2[i] = puE1[i] = -1; } // values will be ignored
             memcpy(puk1,pu_ignore, 7 * sizeof(float));
             memcpy(puk2,pu_ignore, 7 * sizeof(float));
             memcpy(puE1,pu_ignore, 7 * sizeof(float));
       }
       // The crosstalk correction parameters were introduced in June 2025.
       // Config files before this date will not have crosstalk corrections, and after this they are optional
-      if( strncmp(ptr,"\"crosstalk0\":",11) == 0 ){
-        ptr += 11; valstr = ptr;
+      if( strncmp(ptr,"\"crosstalk0\":",13) == 0 ){
+        ptr += 13; valstr = ptr;
         if( sscanf(valstr, "[%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f], ", &ct0[0],&ct0[1],&ct0[2],&ct0[3],&ct0[4],&ct0[5],&ct0[6],&ct0[7],&ct0[8],&ct0[9],&ct0[10],&ct0[11],&ct0[12],&ct0[13],&ct0[14],&ct0[15]) != 16 ){
-          fprintf(stderr,"load_config:errPUA byte %ld\n", ptr-config_data);
+          fprintf(stderr,"load_config:errCTA byte %ld\n", ptr-config_data);
           return(-1);
         }
         while(*ptr!='\"'){++ptr;}
-        if( strncmp(ptr,"\"crosstalk1\":",11) != 0 ){
-          fprintf(stderr,"load_config:errPUB byte %ld\n", ptr-config_data);
+        if( strncmp(ptr,"\"crosstalk1\":",13) != 0 ){
+          fprintf(stderr,"load_config:errCTB byte %ld\n", ptr-config_data);
           return(-1);
-        } ptr += 11; valstr = ptr;
+        } ptr += 13; valstr = ptr;
         if( sscanf(valstr, "[%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f], ", &ct1[0],&ct1[1],&ct1[2],&ct1[3],&ct1[4],&ct1[5],&ct1[6],&ct1[7],&ct1[8],&ct1[9],&ct1[10],&ct1[11],&ct1[12],&ct1[13],&ct1[14],&ct1[15]) != 16 ){
-          fprintf(stderr,"load_config:errPUC byte %ld\n", ptr-config_data);
+          fprintf(stderr,"load_config:errCTC byte %ld\n", ptr-config_data);
           return(-1);
         }
-        //while(isdigit(*ptr)||*ptr=='.'||*ptr=='-'||*ptr=='+'||*ptr=='e'||*ptr==','||*ptr=='['||*ptr==']'){++ptr;}
         while(*ptr!='\"'){++ptr;}
-        if( strncmp(ptr,"\"crosstalk2\":",11) != 0 ){
-          fprintf(stderr,"load_config:errPUD byte %ld\n", ptr-config_data);
+        if( strncmp(ptr,"\"crosstalk2\":",13) != 0 ){
+          fprintf(stderr,"load_config:errCTD byte %ld\n", ptr-config_data);
           return(-1);
-        } ptr += 11; valstr = ptr;
+        } ptr += 13; valstr = ptr;
         if( sscanf(valstr, "[%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f]", &ct2[0],&ct2[1],&ct2[2],&ct2[3],&ct2[4],&ct2[5],&ct2[6],&ct2[7],&ct2[8],&ct2[9],&ct2[10],&ct2[11],&ct2[12],&ct2[13],&ct2[14],&ct2[15]) != 16 ){
-          fprintf(stderr,"load_config:errPUE byte %ld\n", ptr-config_data);
+          fprintf(stderr,"load_config:errCTE byte %ld\n", ptr-config_data);
           return(-1);
         }
-        //while(isdigit(*ptr)||*ptr=='.'||*ptr=='-'||*ptr=='+'||*ptr=='e'||*ptr==','||*ptr=='['||*ptr==']'){++ptr;}
-        while(*ptr!='}'){++ptr;}
-        ++ptr;
+        while(*ptr!=']'){++ptr;}
+        ptr+=2;
       }else if(strncmp(name,"GRG",3)==0){ // Only process pileup and crosstalk for HPGe
-           //for(i=0; i<16; i++){ ct0[i] = ct1[i] = ct2[i] = 0; } // Initialize crosstalk parameters to default values
             memcpy(ct0,ct_reset, 16 * sizeof(float));
             memcpy(ct1,ct_reset, 16 * sizeof(float));
             memcpy(ct2,ct_reset, 16 * sizeof(float));
       }else{
-          // for(i=0; i<16; i++){ ct0[i] = ct1[i] = ct2[i] = -1; } // values will be ignored
             memcpy(ct0,ct_ignore, 16 * sizeof(float));
             memcpy(ct1,ct_ignore, 16 * sizeof(float));
             memcpy(ct2,ct_ignore, 16 * sizeof(float));
