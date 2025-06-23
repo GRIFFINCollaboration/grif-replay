@@ -310,11 +310,6 @@ char *debug_show_chan(Grif_event *ptr)
 }
 extern char chan_name[MAX_DAQSIZE][CHAN_NAMELEN];
 
-
-int presort_window_width= 1940;  // 19.4us needed for all crosstalk corrections. 5us needed for pileup corrections.
-//int sort_window_width=4400; //  44us to map all crosstalk corrections - MAXIMUM (indiv. gates can be smaller)
-int sort_window_width   = 200; //  2us - MAXIMUM (indiv. gates can be smaller)
-
 // add event to presort window (event has just been read in)
 //    recalculate coincwin (sorting any events leaving window)
 // => final win of run won't be sorted, as these events will not leave window

@@ -36,6 +36,10 @@ int subsys_deadtime_count[MAX_SUBSYS];
 int previous_trig_acc[MAX_DAQSIZE];
 extern Grif_event grif_event[PTR_BUFSIZE];
 
+
+int presort_window_width= 1940;  // 19.4us needed for all crosstalk corrections. 5us needed for pileup corrections.
+int sort_window_width   = 200; //  2us - MAXIMUM (indiv. gates can be smaller)
+
 // Default sort function declarations
 extern int init_parameters_from_globals(Config *cfg);
 extern int perform_pileup_correction(Grif_event *ptr, Grif_event *alt, int dt, int chan, int chan2, int i, int end_idx);
@@ -210,10 +214,14 @@ int init_parameters_from_globals(Config *cfg){
         ppg_cycles_binning_factor = (int)(global->max * 100000); // milliseconds to 10ns timestamp unit conversion
       }else if(strncmp(tmp,"cycles_gamma_gate",17) == 0){
         ppg_cycles_gamma_gate_min = global->min; ppg_cycles_gamma_gate_min = global->max;
-      }
-    }// end of for(i=0; i<cfg->nglobal; i++){
-      return(0);
+      }else if(strncmp(tmp,"presort_window_width",20) == 0){
+        presort_window_width = global->max;
+      }else if(strncmp(tmp,"sort_window_width",17) == 0){
+        sort_window_width = global->max;
+      }// end of for(i=0; i<cfg->nglobal; i++){
     }
+    return(0);
+}
 
 //#######################################################################
 //######## PRESORT(gain corrections, addback, suppression)     ##########
@@ -366,8 +374,6 @@ int pre_sort_enter(int start_idx, int frag_idx)
             c2 = ct_index[c1][(int)(crystal_table[chan2]%4)];
             if(crosstalk[ge1][c2][bin] != -1 ){
               correction = crosstalk[ge1][c2][bin] + ((crosstalk[ge1][c2][bin+1] - crosstalk[ge1][c2][bin]) * (float)(((1940+dt)%160)/160));
-            //  fprintf(stdout,"%f %f %f %f\n",crosstalk[ge1][c2][bin],crosstalk[ge1][c2][bin+1],(crosstalk[ge1][c2][bin+1] - crosstalk[ge1][c2][bin]),(float)(((1940+dt)%160)/160));
-            //  fprintf(stdout,"ct enter. c1 c2 %d %d, dt %d bin %d, alt %f * %f -> correction %f to %f\n",crystal_table[chan],crystal_table[chan2],dt,bin,alt->ecal,correction,(alt->ecal*correction),ptr->ecal);
               ptr->ecal += alt->ecal * correction;
             }
         }
@@ -391,7 +397,6 @@ int pre_sort_enter(int start_idx, int frag_idx)
 
               // (c2%4) = Crystal Color [B, G, R, W]
               // Hits with ptr arriving after alt
-            //    if(crystal_table[chan] == 3){ fprintf(stdout,"enter c1,c2, %d %d, %d\n",crystal_table[chan],crystal_table[chan2],(crystal_table[chan2]%4)); }
                 switch(crystal_table[chan2]%4){
                   case 0:  ct_e_vs_dt_B[crystal_table[chan]]->Fill(ct_e_vs_dt_B[crystal_table[chan]], ((int)((alt->ts - ptr->ts)/4)+300), (int)ptr->ecal-1100, 1); break;
                   case 1:  ct_e_vs_dt_G[crystal_table[chan]]->Fill(ct_e_vs_dt_G[crystal_table[chan]], ((int)((alt->ts - ptr->ts)/4)+300), (int)ptr->ecal-1100, 1); break;
@@ -459,7 +464,6 @@ int pre_sort_exit(int frag_idx, int end_idx)
             // Make correction to ptr hit based on energy of alt.
             //  dt -= 1920; // Correct the timestamp difference so that the right correction is calculated
             bin = (int)((1940+dt)/160);
-            //  if(bin<0 || bin>15){ fprintf(stderr,"pre_sort_exit bin [%d] out of bounds for dt %d\n",bin,dt); continue; }
             ge1 = crystal_table[chan];
             c1 = ge1%4;
             c2 = ct_index[c1][(int)(crystal_table[chan2]%4)];
@@ -600,7 +604,6 @@ int pre_sort_exit(int frag_idx, int end_idx)
           // (c2%4) = Crystal Color [B, G, R, W]
           // Hits with ptr arriving after alt
           // Fill higher-channels of the x axis on these plots
-            //  if(crystal_table[chan2] == 3){ fprintf(stdout,"exit c2,c1, %d %d, %d\n",crystal_table[chan2],crystal_table[chan],(crystal_table[chan]%4)); }
             switch(crystal_table[chan]%4){
               case 0:  ct_e_vs_dt_B[crystal_table[chan2]]->Fill(ct_e_vs_dt_B[crystal_table[chan2]], ((int)((alt->ts - ptr->ts)/4)+300), (int)alt->ecal-1100, 1); break;
               case 1:  ct_e_vs_dt_G[crystal_table[chan2]]->Fill(ct_e_vs_dt_G[crystal_table[chan2]], ((int)((alt->ts - ptr->ts)/4)+300), (int)alt->ecal-1100, 1); break;
@@ -968,17 +971,6 @@ int init_chan_histos(Config *cfg)
     {(void **) ge_1hit,      "Ge%02d_Single_hit",       "",                          SUBSYS_HPGE_A,  E_SPECLEN, 0, 64},
     {(void **) ge_2hit,      "Ge%02d_2_hit_pileup",     "",                          SUBSYS_HPGE_A,  E_SPECLEN, 0, 64},
     {(void **) ge_3hit,      "Ge%02d_3_hit_pileup",     "",                          SUBSYS_HPGE_A,  E_SPECLEN, 0, 64},
-    /*
-    //  These definitions of pileup spectra need to be converted to the new method.
-    // Filling of these spectra is currently disabled.
-
-    sprintf(title,  "Pile-up_3Hits_detlaT_1_2"); sprintf(handle, "PU_dt12");
-    ge_pu_dt12 = H1_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-    sprintf(title,  "Pile-up_3Hits_detlaT_1_3"); sprintf(handle, "PU_dt13");
-    ge_pu_dt13 = H1_BOOK(cfg, handle, title, E_2D_SPEC_LENGTH, 0, E_2D_SPEC_LENGTH);
-
-    close_folder(cfg);
-    */
     {NULL,                   "Hits_and_Sums/Pileup-corrections",     "",                         },
     {(void **) ge_e_vs_k_2hit_first,      "Ge%02d_E_vs_k_1st_of_2hit",              "", SUBSYS_HPGE_A,  2048, 720, 64},
     {(void **) ge_e_vs_k_2hit_second,     "Ge%02d_E_vs_k_2nd_of_2hit",              "", SUBSYS_HPGE_A,  2048, 720, 64},
@@ -993,6 +985,7 @@ int init_chan_histos(Config *cfg)
     {(void **)&gg_ab,       "Addback_GG",         "",  SUBSYS_HPGE_A,  E_2D_SPECLEN, SYMMETERIZE},
     {(void **)&gg,          "GG",                 "",  SUBSYS_HPGE_A,  E_2D_SPECLEN, SYMMETERIZE},
     {(void **)&ge_paces,    "GePaces",            "",  SUBSYS_PACES,   E_2D_SPECLEN, E_2D_SPECLEN},
+    {(void **)&ge_bgo,      "GeBGO",              "",  SUBSYS_HPGE_A,  E_2D_SPECLEN, E_2D_SPECLEN},
     {(void **)&ge_labr,     "GeLabr",             "",  SUBSYS_LABR_L,  E_2D_SPECLEN, E_2D_SPECLEN},
     {(void **)&ge_zds,      "GeZds",              "",  SUBSYS_ZDS_A,   E_2D_SPECLEN, E_2D_SPECLEN},
     {(void **)&ge_art,      "GeAries",            "",  SUBSYS_ARIES_A, E_2D_SPECLEN, E_2D_SPECLEN},
@@ -1017,6 +1010,8 @@ int init_chan_histos(Config *cfg)
     {(void **)&dsw_hit,     "DSWDSWHit",          "",  SUBSYS_DESWALL,64,  64},
     {(void **) rcmp_hit,    "RCS%d_PN_hit",       "",  SUBSYS_RCMP, N_RCMP_STRIPS,     N_RCMP_STRIPS,     N_RCMP_POS},
     {(void **) rcmp_fb,     "RCS%d_Front_Back",  "",   SUBSYS_RCMP, E_2D_RCMP_SPECLEN, E_2D_RCMP_SPECLEN, N_RCMP_POS},
+    {(void **)&rcmp_x_ge_hit,"RCS_Xstrips_vs_GeHit","",SUBSYS_RCMP, 192,  64},
+    {(void **)&rcmp_y_ge_hit,"RCS_Ystrips_vs_GeHit","",SUBSYS_RCMP, 192,  64},
     {NULL,                  "Ang_Corr/GG_Ang_Corr",         ""},
     {(void **) gg_angcor_110,"Ge-Ge_110mm_angular_bin%02d", "", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  SYMMETERIZE, N_GE_ANG_CORR},
     {(void **) gg_angcor_145,"Ge-Ge_145mm_angular_bin%02d", "", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  SYMMETERIZE, N_GE_ANG_CORR},
@@ -1159,6 +1154,7 @@ int init_chan_histos(Config *cfg)
         }
         // fill in subsys EvsE and Dt table pointers [** [X][<=Y]
         subsys_e_vs_e[SUBSYS_HPGE_A ][SUBSYS_HPGE_A ] = gg;
+        subsys_e_vs_e[SUBSYS_HPGE_A ][SUBSYS_BGO    ] = ge_bgo;
         subsys_e_vs_e[SUBSYS_HPGE_A ][SUBSYS_PACES  ] = ge_paces;
         subsys_e_vs_e[SUBSYS_HPGE_A ][SUBSYS_LABR_L ] = ge_labr;
         subsys_e_vs_e[SUBSYS_HPGE_A ][SUBSYS_RCMP   ] = ge_rcmp;
@@ -1268,7 +1264,6 @@ int init_chan_histos(Config *cfg)
               // The following x-rays matrix used for mapping the k2 dependant correction for E2
               // E2 vs k2 gated on fixed x-ray energies
               // The E2 energy has 1272keV subtracted from it to put the 1408keV peak around 136keV to allow a smaller matrix side and easier processing in the app
-              //if(ptr->alt_ecal > 5 && ptr->alt_ecal < 50){ // Require 152Eu x rays as E1 for mapping the k2 dependance
               if(ptr->alt_ecal > 5 && ptr->alt_ecal < 130){ // Require 152Eu x rays (or 121keV because x rays are attenuated in some channels) as E1 for mapping the k2 dependance
                 ge_PU2_e2_v_k_gatedxrays[pos]->Fill(ge_PU2_e2_v_k_gatedxrays[pos], (int)(ptr->ecal - 1272), (int)ptr->integ1, 1);  // e2 vs k2 for fixed e1
               }
@@ -1497,7 +1492,7 @@ int init_chan_histos(Config *cfg)
 
         int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
         {
-          int c1, c2, angle_idx;
+          int c1, c2, pos, angle_idx;
           switch(alt->subsys){
             case SUBSYS_HPGE_A:
             gg_dt->Fill(gg_dt, (int)((ptr->ts - alt->ts)+DT_SPEC_LENGTH/2), (int)ptr->ecal, 1); // This dt result is always negative
@@ -1582,6 +1577,15 @@ int init_chan_histos(Config *cfg)
             case SUBSYS_DESWALL: // ge-DSW
             ge_dsw->Fill(ge_dsw, (int)ptr->ecal, (int)alt->alt_ecal, 1); // alt_ecal = DSW corrected time-of-flight
             break;
+            case SUBSYS_RCMP: // ge-RCMP
+            c1 = crystal_table[ptr->chan];
+            pos  = crystal_table[alt->chan];
+            c2 = (int)(element_table[alt->chan] + (int)((pos-1)*N_RCMP_STRIPS));
+            if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 <= 192 && ptr->ecal>5 && alt->ecal>5 ){
+              if(polarity_table[alt->chan]==0){ rcmp_x_ge_hit->Fill(rcmp_x_ge_hit, c2, c1, 1); }
+              else{ rcmp_y_ge_hit->Fill(rcmp_y_ge_hit, c2, c1, 1); }
+            }
+            break;
             default: break;
           }
           return(0);
@@ -1658,8 +1662,7 @@ int init_chan_histos(Config *cfg)
         int frag_hist[PTR_BUFSIZE];
         int fill_coinc_histos(int win_idx, int frag_idx)
         {
-          //int global_window_size = (int)(sort_window_width/2); // size in grif-replay should be double this
-          int global_window_size = 2200; // size in grif-replay should be double this
+          int global_window_size = (int)(sort_window_width/2); // size in grif-replay should be double this
           Grif_event *alt, *ptr = &grif_event[win_idx], *tmp;
           int dt, abs_dt,  pos, c1, c2, index, ptr_swap;
           TH2I *hist_ee; TH1I *hist_dt;

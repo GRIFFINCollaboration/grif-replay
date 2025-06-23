@@ -285,6 +285,7 @@ TH1I  *rcmp_sum, *rcmp_fb_sum;  // rcmp_sum is sum of strip energies, fb is with
 TH2I  *rcmp_strips[N_RCMP_POS];
 TH2I  *rcmp_hit[N_RCMP_POS];
 TH2I  *rcmp_fb[N_RCMP_POS];
+TH2I  *rcmp_x_ge_hit, *rcmp_y_ge_hit; // rcmp strips vs Ge hitpatterns
 
 // DESCANT WALL
 TH1I  *desw_sum_e, *desw_sum_tof, *desw_sum_psd;  // Sums of energies and corTOF and PSD
@@ -331,7 +332,7 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
   TH2I *gg_hit, *bgobgo_hit, *aa_hit, *gea_hit, *lba_hit, *dsw_hit;
 
   // 2d Energy vs Energy Coincidence matrices
-  TH2I *gg, *gg_ab, *gg_opp, *gg_ab_opp, *ge_paces, *ge_labr, *ge_rcmp, *labr_labr, *labr_zds, *labr_rcmp;
+  TH2I *gg, *gg_ab, *gg_opp, *gg_ab_opp, *ge_bgo, *ge_paces, *ge_labr, *ge_rcmp, *labr_labr, *labr_zds, *labr_rcmp;
   TH2I *ge_art, *ge_zds, *paces_art, *labr_art, *art_art, *dsw_dsw, *ge_dsw, *art_dsw;
 
   // Angular Correlation histograms
