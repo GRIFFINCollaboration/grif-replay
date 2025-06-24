@@ -33,6 +33,7 @@ float  crosstalk[MAX_DAQSIZE][3][16];
 static short *chan_address = addr_table;
 static int subsys_initialized[MAX_SUBSYS];
 int subsys_deadtime_count[MAX_SUBSYS];
+int subsys_prg_ddtm[MAX_SUBSYS];
 int previous_trig_acc[MAX_DAQSIZE];
 extern Grif_event grif_event[PTR_BUFSIZE];
 
@@ -284,15 +285,15 @@ int pre_sort_enter(int start_idx, int frag_idx)
 
     // Increment deadtime counter for fixed deadtime of this event
     // Check if any events were lost since previous event using Accepted Event counter
-    subsys_deadtime_count[ptr->subsys] += (ptr->deadtime>0) ? ptr->deadtime : 120; // Use default 1.2us for S1140 data
+    subsys_deadtime_count[ptr->subsys] += (ptr->deadtime>0) ? ptr->deadtime : subsys_prg_ddtm[ptr->subsys];
     if(ptr->trig_acc - previous_trig_acc[chan] != 1 && ptr->trig_acc - previous_trig_acc[chan] != 16383){
       if(ptr->trig_acc - previous_trig_acc[chan]>16100){ // Handle the wrap at 14 bits
         add = ((ptr->trig_acc + 16383) - previous_trig_acc[chan]);
-        add *= (ptr->deadtime>0) ? ptr->deadtime : 120;
+        add *= (ptr->deadtime>0) ? ptr->deadtime : subsys_prg_ddtm[ptr->subsys];
         subsys_deadtime_count[ptr->subsys] += add;
       }else if(ptr->trig_acc - previous_trig_acc[chan] > 0){
         add = (ptr->trig_acc - previous_trig_acc[chan]);
-        add *= (ptr->deadtime>0) ? ptr->deadtime : 120;
+        add *= (ptr->deadtime>0) ? ptr->deadtime : subsys_prg_ddtm[ptr->subsys];
         if(add<2400){ // More than 20 missed events is likely an error
           subsys_deadtime_count[ptr->subsys] += add;
         }
@@ -373,7 +374,9 @@ int pre_sort_enter(int start_idx, int frag_idx)
             c1 = ge1%4;
             c2 = ct_index[c1][(int)(crystal_table[chan2]%4)];
             if(crosstalk[ge1][c2][bin] != -1 ){
-              correction = crosstalk[ge1][c2][bin] + ((crosstalk[ge1][c2][bin+1] - crosstalk[ge1][c2][bin]) * (float)(((1940+dt)%160)/160));
+            //  correction = crosstalk[ge1][c2][bin] + ((crosstalk[ge1][c2][bin+1] - crosstalk[ge1][c2][bin]) * (float)(((1940+dt)%160)/160));
+              correction = crosstalk[ge1][c2][bin];
+            //  fprintf(stdout,"CT enter, %d %d: %d %f %f %f %f: %f + %f = %f\n",chan,chan2,bin,crosstalk[ge1][c2][bin+1],crosstalk[ge1][c2][bin],(float)(((1940+dt)%160)/160),alt->ecal,ptr->ecal,(alt->ecal * correction),(ptr->ecal+(alt->ecal * correction)));
               ptr->ecal += alt->ecal * correction;
             }
         }
@@ -464,11 +467,14 @@ int pre_sort_exit(int frag_idx, int end_idx)
             // Make correction to ptr hit based on energy of alt.
             //  dt -= 1920; // Correct the timestamp difference so that the right correction is calculated
             bin = (int)((1940+dt)/160);
+            if(bin<0 || bin>15){ fprintf(stderr,"pre_sort_exit bin [%d] out of bounds for dt %d\n",bin,dt); continue; }
             ge1 = crystal_table[chan];
             c1 = ge1%4;
             c2 = ct_index[c1][(int)(crystal_table[chan2]%4)];
             if(crosstalk[ge1][c2][bin] != -1 ){
-              correction = crosstalk[ge1][c2][bin] + ((crosstalk[ge1][c2][bin+1] - crosstalk[ge1][c2][bin]) * (((1940+dt)%160)/160));
+              //correction = crosstalk[ge1][c2][bin] + ((crosstalk[ge1][c2][bin+1] - crosstalk[ge1][c2][bin]) * (((1940+dt)%160)/160));
+                correction = crosstalk[ge1][c2][bin];
+            //  fprintf(stdout,"CT exit, %d %d: %d %f %f %f %f: %f + %f = %f\n",chan,chan2,bin,crosstalk[ge1][c2][bin+1],crosstalk[ge1][c2][bin],(float)(((1940+dt)%160)/160),alt->ecal,ptr->ecal,(alt->ecal * correction),(ptr->ecal+(alt->ecal * correction)));
               ptr->ecal += alt->ecal * correction;
             }
           }
@@ -1879,6 +1885,20 @@ int init_chan_histos(Config *cfg)
                             fprintf(stderr,"can't read key name for Current PPG cycle\n"); ptr=str+1; continue;
                           }
                           strcpy(odb_ppg_current,value);
+                          ptr += i+1;
+                        } else if( strncasecmp(ptr,"<key name=\"prg_ddtm\"", 20) == 0 &&
+                        strncmp(path,"/DAQ/params/grif16/template/0",29) == 0 ){
+                          if( sscanf(ptr,"<key name=\"prg_ddtm\" type=\"DWORD\">%d</key>", &subsys_prg_ddtm[0]) < 1 ){
+                            fprintf(stderr,"can't read key value for /DAQ/params/grif16/template/0/prg_ddtm\n"); ptr=str+1; continue;
+                          }
+                          fprintf(stdout,"Read in Det type 0 (HPGE A) prg_ddtm as %d\n",subsys_prg_ddtm[0]);
+                          ptr += i+1;
+                        } else if( strncasecmp(ptr,"<key name=\"prg_ddtm\"", 20) == 0 &&
+                        strncmp(path,"/DAQ/params/grif16/template/1",29) == 0 ){
+                          if( sscanf(ptr,"<key name=\"prg_ddtm\" type=\"DWORD\">%d</key>", &subsys_prg_ddtm[1]) < 1 ){
+                            fprintf(stderr,"can't read key value for /DAQ/params/grif16/template/1/prg_ddtm\n"); ptr=str+1; continue;
+                          }
+                          fprintf(stdout,"Read in Det type 1 (HPGE B) prg_ddtm as %d\n",subsys_prg_ddtm[1]);
                           ptr += i+1;
                         } else if( strncmp(ptr,"</keyarray>",10) == 0 ){ active = 0; arrayptr = (void *)('\0');
                         if( strncmp(path,"/PPG/Cycles/",12) == 0 ){ odb_ppg_cycle[odb_ppg_cycle_count].length = index+1; }
