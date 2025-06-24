@@ -48,6 +48,7 @@ static char subsys_name[MAX_SUBSYS][STRING_LEN] = {
 
 #define N_CLOVER 16
 #define N_HPGE 64
+#define N_BGO 320
 #define N_ARIES 76
 #define N_LABR 8
 #define N_TACS 12
@@ -274,6 +275,9 @@ TH1I *tac_lbl_ts_diff[N_TACS];
 TH1I  *ge_ab_e[N_CLOVER], *ge_sum_ab;
 TH1I  *ge_sum, *ge_sum_us, *ge_sum_ds, *ge_sum_ab_us, *ge_sum_ab_ds;
 TH1I  *ge_sum_b, *ge_sum_b, *ge_sum_b_sep, *ge_sum_b_zds, *ge_sum_b_art, *ge_sum_b_art_brems;
+
+// BGO HV alignment histograms
+TH1I *ge_bgo_gated[N_BGO];
 
 // ARIES, PACES and LaBr3
 TH1I  *aries_sum;  // aries_sum is sum of tile energies
