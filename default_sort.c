@@ -983,7 +983,7 @@ int init_chan_histos(Config *cfg)
     {(void **) ge_PU2_e2_v_k_gatedxrays,  "Ge%02d_PU2_E2_vs_k2_E1gated_on_Xrays",   "", SUBSYS_HPGE_A,   256, 720, 64},
     {(void **) ge_PU2_e2_v_k_gated1408,   "Ge%02d_PU2_E2_vs_k2_E1gated_on_1408keV", "", SUBSYS_HPGE_A,   256, 720, 64},
     {NULL,                   "Hits_and_Sums/BGO_HV_Alignment",     "",                         },
-    {(void **) ge_bgo_gated, "GeBGO%d",            "",  SUBSYS_HPGE_A,  E_2D_SPECLEN, 0, N_BGO},
+    {(void **) ge_bgo_gated, "",   ge_bgo_handles[0],  SUBSYS_HPGE_A,  E_2D_SPECLEN, 0, N_BGO},
     // Coinc
     {NULL,                  "Hits_and_Sums/Delta_t"," "},
     {(void **) dt_hist,     "",        dt_handles[0],  SUBSYS_HPGE_A,  DT_SPEC_LENGTH, 0, N_DT }, // leave subsys as GE -> all always defined
@@ -1536,7 +1536,7 @@ int init_chan_histos(Config *cfg)
             if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_BGO]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_BGO]) ){
               c1 = crystal_table[ptr->chan];
               c2 = crystal_table[alt->chan];
-              if( c1 >= 0 && c1 < 64 && ptr->ecal>5 && ptr->ecal<600){
+              if( c1 >= 0 && c1 < 64 && c1==c2 && ptr->ecal>5 && alt->ecal>5){
                 bin = (c2*5)+(element_table[alt->chan]-1);
                 if(bin>=0 && bin<N_BGO){
                   ge_bgo_gated[bin]->Fill(ge_bgo_gated[bin], (int)alt->ecal, 1);

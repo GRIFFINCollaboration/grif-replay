@@ -257,7 +257,6 @@ int TH2I_Fill(TH2I *this, int xval, int yval, int count)
   if(this->ymin != 0 || this->ybins != this->yrange){
     ybin = (1.0*yval-this->ymin) * this->ybins/(1.0*this->yrange);
   }else{ ybin = yval; }
-  // (this->entries)++; // entries is not actually used for anything
   if( xbin <            0 ){ (this->underflow)++; return(0); }
   if( xbin >= this->xbins ){ (this-> overflow)++; return(0); }
   if( ybin <            0 ){ (this->underflow)++; return(0); }
