@@ -1906,14 +1906,14 @@ int init_chan_histos(Config *cfg)
                             fprintf(stderr,"can't read key value for /DAQ/params/grif16/template/0/prg_ddtm\n"); ptr=str+1; continue;
                           }
                           fprintf(stdout,"Read in Det type 0 (HPGE A) prg_ddtm as %d\n",subsys_prg_ddtm[0]);
-                          ptr += i+1;
+                          while( *(ptr) != '/' ){ ++ptr; } while( *(ptr) != '<' ){ ++ptr; }
                         } else if( strncasecmp(ptr,"<key name=\"prg_ddtm\"", 20) == 0 &&
                         strncmp(path,"/DAQ/params/grif16/template/1",29) == 0 ){
                           if( sscanf(ptr,"<key name=\"prg_ddtm\" type=\"DWORD\">%d</key>", &subsys_prg_ddtm[1]) < 1 ){
                             fprintf(stderr,"can't read key value for /DAQ/params/grif16/template/1/prg_ddtm\n"); ptr=str+1; continue;
                           }
                           fprintf(stdout,"Read in Det type 1 (HPGE B) prg_ddtm as %d\n",subsys_prg_ddtm[1]);
-                          ptr += i+1;
+                          while( *(ptr) != '/' ){ ++ptr; } while( *(ptr) != '<' ){ ++ptr; }
                         } else if( strncmp(ptr,"</keyarray>",10) == 0 ){ active = 0; arrayptr = (void *)('\0');
                         if( strncmp(path,"/PPG/Cycles/",12) == 0 ){ odb_ppg_cycle[odb_ppg_cycle_count].length = index+1; }
                       } else if( strncmp(ptr,"<keyarray ",10) == 0 ){
