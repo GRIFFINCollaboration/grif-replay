@@ -1,4 +1,4 @@
-// small+simple replacement for root histograms
+//    small+simple replacement for root histograms
 //    Keep same code (add this pointers), style is useful when having mutiple
 //    histogram types/dimensions (otherwise clearer to convert to procedural)
 // file IO is separate from histogram access: analyser dumps files at endofrun
@@ -142,10 +142,6 @@ int TH1I_Reset(TH1I *this)
 
 int TH1I_Fill(TH1I *this, int xval, int count)
 {
-<<<<<<< HEAD
-   float bin = (1.0*xval-this->xmin) * this->xbins/(1.0*this->xrange);
-   (this->entries)++;
-=======
   float bin;
   if(this->xmin != 0 || this->xbins != this->xrange){
     bin = (1.0*xval-this->xmin) * this->xbins/(1.0*this->xrange);
@@ -153,7 +149,6 @@ int TH1I_Fill(TH1I *this, int xval, int count)
     bin = xval;
   }
 //   (this->entries)++; // entries is not actually used for anything
->>>>>>> development
    if( bin <            0 ){ (this->underflow)++; return(0); }
    if( bin >= this->xbins ){ (this-> overflow)++; return(0); }
    (this->data[(int)bin])+=count;
@@ -199,19 +194,11 @@ TH2I *H2_BOOK(Config *cfg, char *name, char *title, int xbins, int xmin, int xma
    }
    // always allocate the data for sorting histograms
    // skip allocation for large histos read from disk (only read when needed)
-<<<<<<< HEAD
-   if( xbins*ybins <= SMALL_HISTO_BINS ||
-       cfg == configs[0] || cfg == configs[1] ){
-      if( (result->data = (int *)malloc(xbins*ybins*sizeof(int))) == NULL){
-         fprintf(stderr,"H2_BOOK: data malloc failed\n");
-         free(result); return(NULL);
-=======
    if( xbins*ybins <= SMALL_HISTO_BINS /* ||
       cfg == configs[0] || cfg == configs[1]*/ ){
       if( (result->data = (int *)malloc(xbins*ybins*sizeof(int))) == NULL){
          fprintf(stderr,"H2_BOOK: data malloc failed\n");
          return(NULL);
->>>>>>> development
       }
       memset(result->data, 0, xbins*ybins*sizeof(int) );
    } else {
@@ -220,13 +207,10 @@ TH2I *H2_BOOK(Config *cfg, char *name, char *title, int xbins, int xmin, int xma
    if( (tlen=strlen(title)) >= TITLE_LENGTH  ){ tlen = TITLE_LENGTH-1; }
    if( (hlen=strlen(name))  >= HANDLE_LENGTH ){ hlen = HANDLE_LENGTH-1; }
 
-<<<<<<< HEAD
-=======
 if(strncmp(title,"LBL-LBL_vs_TAC",14)==0){
 fprintf(stdout,"create %s\n",title);
 }
 
->>>>>>> development
    memcpy(result->path, cfg->current_path, strlen(cfg->current_path)+1 );
    memcpy(result->handle, name, hlen+1);
    memcpy(result->title, title, tlen+1);
@@ -255,13 +239,9 @@ fprintf(stdout,"create %s\n",title);
 int TH2I_Reset(TH2I *this)
 {
   // fprintf(stdout,"Reset TH1I histogram, %s\n",this->title);
-<<<<<<< HEAD
-   memset(this->data, 0, this->xbins*this->ybins*sizeof(int)); return(0);
-=======
    if( this->data != NULL ){
       memset(this->data, 0, this->xbins*this->ybins*sizeof(int));
    } return(0);
->>>>>>> development
    this->valid_bins    = this->xbins*this->ybins;
    this->underflow     = 0;
    this->overflow      = 0;
@@ -270,17 +250,6 @@ int TH2I_Reset(TH2I *this)
 
 int TH2I_Fill(TH2I *this, int xval, int yval, int count)
 {
-<<<<<<< HEAD
-   float xbin = (1.0*xval-this->xmin) * this->xbins/(1.0*this->xrange);
-   float ybin = (1.0*yval-this->ymin) * this->ybins/(1.0*this->yrange);
-   (this->entries)++;
-   if( xbin <            0 ){ (this->underflow)++; return(0); }
-   if( xbin >= this->xbins ){ (this-> overflow)++; return(0); }
-   if( ybin <            0 ){ (this->underflow)++; return(0); }
-   if( ybin >= this->ybins ){ (this-> overflow)++; return(0); }
-   (this->data[(int)xbin + (int)(ybin)*this->xbins])+=count;
-   return(0);
-=======
   float xbin, ybin;
   if(this->xmin != 0 || this->xbins != this->xrange){
     xbin = (1.0*xval-this->xmin) * this->xbins/(1.0*this->xrange);
@@ -301,15 +270,12 @@ int TH2I_Fill(TH2I *this, int xval, int yval, int count)
   }
   (this->data[(int)xbin + (int)(ybin)*this->xbins])+=count;
   return(0);
->>>>>>> development
 }
 
 int TH2I_SetBinContent(TH2I *this, int xbin, int ybin, int value)
 {
    if( xbin < 0 || xbin >= this->xbins ){ return(-1); }
    if( ybin < 0 || ybin >= this->ybins ){ return(-1); }
-<<<<<<< HEAD
-=======
    if( this->data == NULL ){
       if( (this->data=(int *)malloc(this->xbins*this->ybins*sizeof(int)))==NULL){
          fprintf(stderr,"TH2I_Fill: data malloc failed for %s\n",this->handle);
@@ -317,7 +283,6 @@ int TH2I_SetBinContent(TH2I *this, int xbin, int ybin, int value)
       }
       memset(this->data, 0, this->xbins*this->ybins*sizeof(int) );
    }
->>>>>>> development
    (this->data[xbin+ybin*this->xbins])=value; return(0);
 }
 
@@ -325,10 +290,7 @@ int TH2I_GetBinContent(TH2I *this, int xbin, int ybin)
 {
    if( xbin < 0 || xbin >= this->xbins ){ return(-1); }
    if( ybin < 0 || ybin >= this->ybins ){ return(-1); }
-<<<<<<< HEAD
-=======
    if( this->data == NULL ){ return(0); }
->>>>>>> development
    return( (this->data[xbin+ybin*this->xbins]) );
 }
 
@@ -539,10 +501,7 @@ int read_histo_data(Histogram *histo, FILE *fp)
       fprintf(stderr,"read_histo_data: data malloc failed\n");
       return(-1);
    }
-<<<<<<< HEAD
-=======
    memset(histo->data, 0, bins*sizeof(int));
->>>>>>> development
    if( fseek(fp, histo->file_data_offset, SEEK_SET) < 0 ){
       fprintf(stderr,"failed_seek histo:%s\n", histo->title );
       return(-1);
@@ -693,17 +652,11 @@ int write_th1I(FILE *fp, void *ptr)
 
    bins = (hist->type==INT_2D || hist->type==INT_2D_SYMM) ? hist->xbins*hist->ybins : hist->xbins;
    // check for empty (count non-zero at same time)
-<<<<<<< HEAD
-   count = 0; for(i=0; i<bins; i++){
-      if( hist->data[i] != 0 ){
-         ++count; if( hist->type==INT_2D || hist->type==INT_2D_SYMM){ break; }
-=======
    count = 0; if( hist->data != NULL ){
       for(i=0; i<bins; i++){
          if( hist->data[i] != 0 ){
             ++count; if( hist->type==INT_2D || hist->type==INT_2D_SYMM){ break; }
          }
->>>>>>> development
       }
    }
    if( count == 0 ){ size=0; mode=0; }
@@ -737,9 +690,6 @@ int write_th1I(FILE *fp, void *ptr)
    return(0);
 }
 
-<<<<<<< HEAD
-int sum_th1I(Config *dst_cfg, TH1I *dst, TH1I *src)
-=======
 int sum_th1I(Config *dst_cfg, Config *src_cfg, TH1I *src)
 {
    int i, bins, ybins;
@@ -774,7 +724,6 @@ int sum_th1I(Config *dst_cfg, Config *src_cfg, TH1I *src)
 }
 
 int old_sum_th1I(Config *dst_cfg, TH1I *dst, TH1I *src)
->>>>>>> development
 {
    int i, bins, ybins;
    if( dst == NULL ){
