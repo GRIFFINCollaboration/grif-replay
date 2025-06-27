@@ -87,7 +87,7 @@ static char subsys_name[MAX_SUBSYS][STRING_LEN] = {
 int ppg_patterns[N_PPG_PATTERNS]={ 0xC008,0xC002,0xC001,0xC004,0xC0F0,0xC009,0xC00A };
 char ppg_handles[N_PPG_PATTERNS][32]={ "0xC008","0xC002","0xC001","0xC004","0xC0F0","0xC009","0xC00A" };
 char ppg_names[N_PPG_PATTERNS][32]={
-  "Move_Tape", "Background", "Beam-on_Implant", "Beam-off_Decay", "Source_data", "Continuous_Tape_Beam-on", "Continuous_Tape_Background"
+  "Move_Tape", "Background", "Beam_on_Implant", "Beam_off_Decay", "Source_data", "Continuous_Tape_Beam_on", "Continuous_Tape_Background"
 };
 #define MAX_ODB_PPG_CYCLES 50
 typedef struct ppg_cycles_struct {
@@ -120,8 +120,8 @@ long ppg_bin_end;         // Timestamp of the end of the current bin (used for d
 long ppg_cycles_binning_factor = 10000000;      // Default of 10,000,000 converts 10ns to 100 millisecond binning
 int ppg_cycles_gamma_gate_min = 1800;           // 26Na, S1140
 int ppg_cycles_gamma_gate_max = 1820;           // 26Na, S1140
-char ge_cycle_code_titles[N_PPG_PATTERNS][HANDLE_LENGTH]={ "0xC008_Move_Tape","0xC002_Background","0xC001_Beam-on_Implant","0xC004_Beam-off_Decay","0xC0F0_Source_data","0xC009_Continuous_Tape_Beam-on", "0xC00A_Continuous_Tape_Background" };
-char gg_cycle_code_titles[N_PPG_PATTERNS][HANDLE_LENGTH]={ "0xC008_GG_Move_Tape","0xC002_GG_Background","0xC001_GG_Beam-on_Implant","0xC004_GG_Beam-off_Decay","0xC0F0_GG_Source_data","0xC009_GG_Continuous_Tape_Beam-on", "0xC00A_GG_Continuous_Tape_Background" };
+char ge_cycle_code_titles[N_PPG_PATTERNS][HANDLE_LENGTH]={ "0xC008_Move_Tape","0xC002_Background","0xC001_Beam_on_Implant","0xC004_Beam_off_Decay","0xC0F0_Source_data","0xC009_Continuous_Tape_Beam_on", "0xC00A_Continuous_Tape_Background" };
+char gg_cycle_code_titles[N_PPG_PATTERNS][HANDLE_LENGTH]={ "0xC008_GG_Move_Tape","0xC002_GG_Background","0xC001_GG_Beam_on_Implant","0xC004_GG_Beam_off_Decay","0xC0F0_GG_Source_data","0xC009_GG_Continuous_Tape_Beam_on", "0xC00A_GG_Continuous_Tape_Background" };
 TH1I   *ge_cycle_activity, *zds_cycle_activity; // Activity over cycle time, sum of all cycles
 TH2I   *ge_e_vs_cycle_time;                     // Energy vs time within the cycle
 TH1I   *ge_cycle_code[N_PPG_PATTERNS];          // Energy spectrum for each PPG pattern
