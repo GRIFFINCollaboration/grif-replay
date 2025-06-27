@@ -13,8 +13,10 @@
 int send_spectrum_list(char *name, int fd);
 int send_spectrum(int num, char urlarg[][STRING_LEN], char *, int fd);
 int send_sort_status(int fd);
+int most_recent_calib_file(char *data_dir, int data_run, char *result);
 int send_datafile_list(char *path, int fd, int type);
 int send_histofile_list(char *path, int fd);
+int send_configfile_list(char *path, int fd);
 int send_file_details(char *path, int fd);
 int add_sortfile(char *path, char *histodir, char *confdir, char *calsrc);
 int open_next_sortfiles(Sort_status *arg);
@@ -22,10 +24,14 @@ int free_sortfile(Sortfile *sort);
 int close_sortfiles(Sort_status *arg);
 int end_current_sortfile(int fd);
 void unload_midas_module();
-int pre_sort(int frag_idx, int end_idx);
 int user_addto_window(int win_strt, int new_frag);
 int default_sort(int win_idx, int frag_idx, int flag);
 int sort_built_event(int window_start, int win_end);
+
+// Sorting window sizes. Can be set as Globals
+extern int presort_window_width;
+extern int sort_window_width;
+
 /////////////////////////////////////////////////////////////////////////
 /////////////////////       Histograms       ////////////////////////////
 /////////////////////////////////////////////////////////////////////////
@@ -41,6 +47,7 @@ typedef struct global_struct {
 typedef struct cal_coeff_struct {
    char name[CHAN_NAMELEN]; float offset; float gain; float quad;
    float pileupk1[7], pileupk2[7], pileupE1[7];
+   float crosstalk0[16], crosstalk1[16], crosstalk2[16];
    short address; short datatype;
 } Cal_coeff;
 
@@ -76,7 +83,7 @@ typedef struct th2i_struct TH2I;
 
 // float has around 24bits integer precision
 struct th1i_struct {  long  file_data_offset;    int data_size;
-   int      type;  TH1I    *next;   char     path[HISTO_FOLDER_LENGTH];
+   int      type;  TH1I    *next;   char    path[HISTO_FOLDER_LENGTH];
    int     xbins;  int     ybins;   char          title[TITLE_LENGTH];
    int     *data;  int valid_bins;  char        handle[HANDLE_LENGTH];
    int underflow;  int   overflow;
@@ -147,14 +154,16 @@ extern int read_histo_data(Histogram *histo, FILE *fp);
 extern Config *add_config(char *name);
 extern int remove_config(Config *cfg);
 extern int next_condname(Config *cfg);
-extern int sum_histos(Config *cfg, int num, char url_args[][STRING_LEN], int fd);
+extern int queue_sum_histos(Config *cfg, int num, char url_args[][STRING_LEN], int fd);
 extern int set_calibration(Config *cfg, int num, char url_args[][STRING_LEN], int fd);
 extern int set_pileup_correction(Config *cfg, int num, char url_args[][STRING_LEN], int fd);
+extern int set_crosstalk_correction(Config *cfg, int num, char url_args[][STRING_LEN], int fd);
 
+extern int sum_histos(Config *cfg, Sortfile *sort);
 /////////////////////////////////////////////////////////////////////////
 /////////////////////          Gains         ////////////////////////////
 /////////////////////////////////////////////////////////////////////////
-extern int edit_calibration(Config *cfg, char *name, float offset, float gain, float quad, float pileupk1[7], float pileupk2[7], float pileupE1[7], int address, int type, int overwrite);
+extern int edit_calibration(Config *cfg, char *name, float offset, float gain, float quad, float pileupk1[7], float pileupk2[7], float pileupE1[7], float ct0[7], float ct1[7], float ct2[7], int address, int type, int overwrite);
 
 /////////////////////////////////////////////////////////////////////////
 /////////////////////       Variables        ////////////////////////////

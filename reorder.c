@@ -50,7 +50,8 @@ void reorder_status(int current_time)
 #define OVERFULL_FRACTION   0.5
 #define OUTPUT_FRACTION    0.25
 #define INIT_WAIT           250 // allow # junk events per grifc at run start
-#define REORDER_MAXEVENTSIZE 20 // max 20 words - 80 bytes
+//#define REORDER_MAXEVENTSIZE 20 // max 20 words - 80 bytes
+#define REORDER_MAXEVENTSIZE 70 // max 70 words - 280 bytes to accomodate 100 sample waveforms
 typedef struct reorderbuf_struct Tsbuf;
 struct reorderbuf_struct {
    volatile Tsbuf *next; unsigned long ts;
@@ -96,7 +97,10 @@ void reorder_main(Sort_status *arg)
       switch(type){
       case 0x8:
          if( evstart != NULL ){ err_format=1; } else { evstart=evptr; }
-         grifc = ((*evptr) >> 16) & 0xF;  break;
+         if( (grifc = ((*evptr) >> 16) & 0xF) == 0xF ){
+            type = 0;
+         }
+         break;
       case 0xE:
          if( ts_stat != 2 ){ err_format=1; } ev_done = 1; break;
       case 0xA:
@@ -124,17 +128,18 @@ void reorder_main(Sort_status *arg)
       // often, at start of run, get junk data from prev run(large timestamps)
       // try and discard this (timestamps larger than 2.6 seconds)
       if( reorder_init[grifc] != 0 ){
-         ++err[ERR_INIT_IN]; err[ERR_WORDS_IN] += len;
-         if( (ts>>28) == 0 ){ reorder_init[grifc] = 0; }
-         else             { --reorder_init[grifc]; }
-         evstart = NULL; err_format = len = ev_done = ts_stat = 0; continue;
+         if( (ts>>28) != 0 ){
+            ++err[ERR_INIT_IN]; err[ERR_WORDS_IN] += len;
+            evstart = NULL; err_format = len = ev_done = ts_stat = 0; continue;
+         }
+         reorder_init[grifc] = 0;
       }
       // now have full event without any obvious format errors
-      
+
       // events that are so late, that we have already output their timeslot
       // can no longer be made to be in order
       // - drop them for now (may include anyway - mark as just for singles?)
-      if( ts <= output_ts ){
+      if( ts < output_ts ){
          ++err[ERR_LATE_IN]; err[ERR_WORDS_IN] += len;
          evstart = NULL; err_format = len = ev_done = ts_stat = 0; continue;
       }
@@ -177,6 +182,9 @@ void reorder_main(Sort_status *arg)
          tslot[ts_slot] = newptr;
       } else {                              // insert into list IN TIME ORDER
          while( 1 ){ // at this point - bufptr is previous, nxtptr is current
+            if( nxtptr == NULL ){
+               printf("IMPOSSIBLE ERROR\n"); break;
+            }
             if( ts <= nxtptr->ts || nxtptr->in_use == 0 ){ // insert here
                if( bufptr == NULL ){
                   tslot[ts_slot] = newptr; newptr->next = nxtptr;
@@ -239,7 +247,7 @@ void reorder_out(Sort_status *arg)
       prev_ts = ts;
       // have found event to output (ts is now - or earlier)
       //    iterate over this in-use linked list
-      //    NOTE: as this list is sorted in timestamp order, this iteration 
+      //    NOTE: as this list is sorted in timestamp order, this iteration
       //    will only be over any equal timestamp events at start of list
       while(1){
          nxt = buf->next;

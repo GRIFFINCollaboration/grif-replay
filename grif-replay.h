@@ -39,7 +39,8 @@ typedef struct sortfile_struct {
    long data_size; int run; int subrun;
    int run_digits; int subrun_digits;
    int num_subruns;  char  *cal_src;
-   char file_info[4][256];
+   char file_info[4][256]; char **arg;  int narg;  int carg;
+   char recent_cal[256]; // others attempted on open-subrun
 } Sortfile;
 
 typedef struct sortstatus_struct {
@@ -51,8 +52,8 @@ typedef struct sortstatus_struct {
    volatile long midas_bytes;         int cal_overwrite;
    volatile int  midas_timestamp;     FILE *data_fp;
    volatile int  shutdown_midas;      FILE *histo_fp;
-   volatile int  grif_sort_done;
-   volatile int  online_mode;
+   volatile int  grif_sort_done;      FILE *cal_fp;
+   volatile int  online_mode;         int  sum_mode;
    volatile int  run_in_progress;
    volatile int  run_number;
 } Sort_status;
