@@ -269,12 +269,13 @@ int pre_sort_enter(int start_idx, int frag_idx)
     init_histos(NULL, ptr->subsys);
   }
 
-    // Check this timstamp against the current cycle bin and fill deadtime histograms if it is a new bin
+    // Check this timestamp against the current cycle bin and fill deadtime histograms if it is a new bin
     if(ppg_cycles_active==1 && ppg_last_ptr_ts>ppg_bin_end && ptr->ts>ppg_last_ptr_ts){
      // Fill deadtime histograms and reset the deadtime count
      bin = (int)((ppg_last_ptr_ts-ppg_cycle_start)/ppg_cycles_binning_factor);  // convert 10ns to binning size set as Global
      if(ppg_cycle_number<MAX_CYCLES){
-       ge_cycle_num_dt[ppg_cycle_number]->Fill(ge_cycle_num_dt[ppg_cycle_number], bin, subsys_deadtime_count[SUBSYS_HPGE_A]);
+       gea_cycle_num_dt[ppg_cycle_number]->Fill(gea_cycle_num_dt[ppg_cycle_number], bin, subsys_deadtime_count[SUBSYS_HPGE_A]);
+       geb_cycle_num_dt[ppg_cycle_number]->Fill(geb_cycle_num_dt[ppg_cycle_number], bin, subsys_deadtime_count[SUBSYS_HPGE_B]);
        cycle_num_vs_ge_dt->Fill(cycle_num_vs_ge_dt, ppg_cycle_number, bin, subsys_deadtime_count[SUBSYS_HPGE_A]);
        cycle_num_vs_ge_b_dt->Fill(cycle_num_vs_ge_b_dt, ppg_cycle_number, bin, subsys_deadtime_count[SUBSYS_HPGE_B]);
      }
@@ -1065,13 +1066,18 @@ int init_chan_histos(Config *cfg)
     {(void **)&zds_cycle_activity, "ZDS_cycle_activity",     "", SUBSYS_ZDS_A,      CYCLE_SPEC_LENGTH},
     {(void **) ge_cycle_code,    "",    ge_cycle_code_titles[0], SUBSYS_HPGE_A,     E_SPECLEN, 0, N_PPG_PATTERNS},
     {(void **) gg_cycle_code,    "",    gg_cycle_code_titles[0], SUBSYS_HPGE_A,     E_SPECLEN, E_SPECLEN, N_PPG_PATTERNS},
-    {(void **) ge_cycle_num,     "HPGe_cycle%03d",           "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
-    {(void **) ge_cycle_num_sh,  "HPGe_NPU_cycle%03d",       "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
-    {(void **) ge_cycle_num_pu,  "HPGe_PU_cycle%03d",        "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
-    {(void **) ge_cycle_num_dt,  "HPGe_DT_cycle%03d",        "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
-    {(void **) ge_cycle_num_g,   "HPGe_GeE_cycle%03d",       "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
-    {(void **) ge_cycle_num_sh_g,"HPGe_GeE_NPU_cycle%03d",   "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
-    {(void **) ge_cycle_num_pu_g,"HPGe_GeE_PU_cycle%03d",    "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
+    {(void **) gea_cycle_num,     "HPGeA_cycle%03d",         "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
+    {(void **) gea_cycle_num_sh,  "HPGeA_NPU_cycle%03d",     "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
+    {(void **) gea_cycle_num_pu,  "HPGeA_PU_cycle%03d",      "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
+    {(void **) gea_cycle_num_dt,  "HPGeA_DT_cycle%03d",      "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
+    {(void **) gea_cycle_num_g,   "HPGeA_GeE_cycle%03d",     "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
+    {(void **) gea_cycle_num_sh_g,"HPGeA_GeE_NPU_cycle%03d", "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
+    {(void **) geb_cycle_num,     "HPGeB_cycle%03d",         "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
+    {(void **) geb_cycle_num_sh,  "HPGeB_NPU_cycle%03d",     "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
+    {(void **) geb_cycle_num_pu,  "HPGeB_PU_cycle%03d",      "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
+    {(void **) geb_cycle_num_dt,  "HPGeB_DT_cycle%03d",      "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
+    {(void **) geb_cycle_num_g,   "HPGeB_GeE_cycle%03d",     "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
+    {(void **) geb_cycle_num_sh_g,"HPGeB_GeE_NPU_cycle%03d", "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
     {NULL,                   "Analysis/Crosstalk",        ""},
     {(void **) ct_e_vs_dt_B,       "Crosstalk_Blue_E_vs_dt_Ge%02d",  "", SUBSYS_HPGE_A, 864, 128, N_HPGE },
     {(void **) ct_e_vs_dt_G,       "Crosstalk_Green_E_vs_dt_Ge%02d", "", SUBSYS_HPGE_A, 864, 128, N_HPGE },
@@ -1296,22 +1302,20 @@ int init_chan_histos(Config *cfg)
               ge_cycle_activity->Fill(ge_cycle_activity, bin, 1);
               ge_e_vs_cycle_time->Fill(ge_e_vs_cycle_time, bin, (int)ptr->ecal, 1);
               if(ppg_cycle_number<MAX_CYCLES){
-                ge_cycle_num[ppg_cycle_number]->Fill(ge_cycle_num[ppg_cycle_number], bin, 1);
+                gea_cycle_num[ppg_cycle_number]->Fill(gea_cycle_num[ppg_cycle_number], bin, 1);
                 cycle_num_vs_ge->Fill(cycle_num_vs_ge, ppg_cycle_number, bin, 1);
                 if(ptr->pu_class == PU_SINGLE_HIT){
-                  ge_cycle_num_sh[ppg_cycle_number]->Fill(ge_cycle_num_sh[ppg_cycle_number], bin, 1);
+                  gea_cycle_num_sh[ppg_cycle_number]->Fill(gea_cycle_num_sh[ppg_cycle_number], bin, 1);
                   cycle_num_vs_sh->Fill(cycle_num_vs_sh, ppg_cycle_number, bin, 1);
                 }else{
-                  ge_cycle_num_pu[ppg_cycle_number]->Fill(ge_cycle_num_pu[ppg_cycle_number], bin, 1);
+                  gea_cycle_num_pu[ppg_cycle_number]->Fill(gea_cycle_num_pu[ppg_cycle_number], bin, 1);
                   cycle_num_vs_pu->Fill(cycle_num_vs_pu, ppg_cycle_number, bin, 1);
                 }
                 if((ptr->ecal>=ppg_cycles_gamma_gate_min) && (ptr->ecal<=ppg_cycles_gamma_gate_max)){
-                  ge_cycle_num_g[ppg_cycle_number]->Fill(ge_cycle_num_g[ppg_cycle_number], bin, 1);
+                  gea_cycle_num_g[ppg_cycle_number]->Fill(gea_cycle_num_g[ppg_cycle_number], bin, 1);
                   if(ptr->pu_class == PU_SINGLE_HIT){
-                    ge_cycle_num_sh_g[ppg_cycle_number]->Fill(ge_cycle_num_sh_g[ppg_cycle_number], bin, 1);
+                    gea_cycle_num_sh_g[ppg_cycle_number]->Fill(gea_cycle_num_sh_g[ppg_cycle_number], bin, 1);
                     cycle_num_vs_ge_sh_g->Fill(cycle_num_vs_ge_sh_g, ppg_cycle_number, bin, 1);
-                  }else{
-                    ge_cycle_num_pu_g[ppg_cycle_number]->Fill(ge_cycle_num_pu_g[ppg_cycle_number], bin, 1);
                   }
                 }
               }
@@ -1326,14 +1330,19 @@ int init_chan_histos(Config *cfg)
             if(ppg_cycles_active==1){
               bin = (int)((ptr->ts-ppg_cycle_start)/ppg_cycles_binning_factor);  // convert 10ns to binning size set as Global
               if(ppg_cycle_number<MAX_CYCLES){
+                geb_cycle_num[ppg_cycle_number]->Fill(geb_cycle_num[ppg_cycle_number], bin, 1);
                 cycle_num_vs_ge_b->Fill(cycle_num_vs_ge_b, ppg_cycle_number, bin, 1);
                 if(ptr->pu_class == PU_SINGLE_HIT){
+                  geb_cycle_num_sh[ppg_cycle_number]->Fill(geb_cycle_num_sh[ppg_cycle_number], bin, 1);
                   cycle_num_vs_sh_b->Fill(cycle_num_vs_sh_b, ppg_cycle_number, bin, 1);
                 }else{
+                  geb_cycle_num_pu[ppg_cycle_number]->Fill(geb_cycle_num_pu[ppg_cycle_number], bin, 1);
                   cycle_num_vs_pu_b->Fill(cycle_num_vs_pu_b, ppg_cycle_number, bin, 1);
                 }
                 if((ptr->ecal>=ppg_cycles_gamma_gate_min) && (ptr->ecal<=ppg_cycles_gamma_gate_max)){
+                  geb_cycle_num_g[ppg_cycle_number]->Fill(geb_cycle_num_g[ppg_cycle_number], bin, 1);
                   if(ptr->pu_class == PU_SINGLE_HIT){
+                    geb_cycle_num_sh_g[ppg_cycle_number]->Fill(geb_cycle_num_sh_g[ppg_cycle_number], bin, 1);
                     cycle_num_vs_ge_b_sh_g->Fill(cycle_num_vs_ge_b_sh_g, ppg_cycle_number, bin, 1);
                   }
                 }
@@ -1902,17 +1911,17 @@ int init_chan_histos(Config *cfg)
                           ptr += i+1;
                         } else if( strncasecmp(ptr,"<key name=\"prg_ddtm\"", 20) == 0 &&
                         strncmp(path,"/DAQ/params/grif16/template/0",29) == 0 ){
-                          if( sscanf(ptr,"<key name=\"prg_ddtm\" type=\"DWORD\">%d</key>", &subsys_prg_ddtm[0]) < 1 ){
+                          if( sscanf(ptr,"<key name=\"prg_ddtm\" type=\"DWORD\">%d</key>", &subsys_prg_ddtm[SUBSYS_HPGE_A]) < 1 ){
                             fprintf(stderr,"can't read key value for /DAQ/params/grif16/template/0/prg_ddtm\n"); ptr=str+1; continue;
                           }
-                          fprintf(stdout,"Read in Det type 0 (HPGE A) prg_ddtm as %d\n",subsys_prg_ddtm[0]);
+                          fprintf(stdout,"Read in Det type 0 (HPGE A) prg_ddtm as %d\n",subsys_prg_ddtm[SUBSYS_HPGE_A]);
                           while( *(ptr) != '/' ){ ++ptr; } while( *(ptr) != '<' ){ ++ptr; }
                         } else if( strncasecmp(ptr,"<key name=\"prg_ddtm\"", 20) == 0 &&
                         strncmp(path,"/DAQ/params/grif16/template/1",29) == 0 ){
-                          if( sscanf(ptr,"<key name=\"prg_ddtm\" type=\"DWORD\">%d</key>", &subsys_prg_ddtm[1]) < 1 ){
+                          if( sscanf(ptr,"<key name=\"prg_ddtm\" type=\"DWORD\">%d</key>", &subsys_prg_ddtm[SUBSYS_HPGE_B]) < 1 ){
                             fprintf(stderr,"can't read key value for /DAQ/params/grif16/template/1/prg_ddtm\n"); ptr=str+1; continue;
                           }
-                          fprintf(stdout,"Read in Det type 1 (HPGE B) prg_ddtm as %d\n",subsys_prg_ddtm[1]);
+                          fprintf(stdout,"Read in Det type 1 (HPGE B) prg_ddtm as %d\n",subsys_prg_ddtm[SUBSYS_HPGE_B]);
                           while( *(ptr) != '/' ){ ++ptr; } while( *(ptr) != '<' ){ ++ptr; }
                         } else if( strncmp(ptr,"</keyarray>",10) == 0 ){ active = 0; arrayptr = (void *)('\0');
                         if( strncmp(path,"/PPG/Cycles/",12) == 0 ){ odb_ppg_cycle[odb_ppg_cycle_count].length = index+1; }

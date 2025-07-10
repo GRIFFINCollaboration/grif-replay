@@ -126,13 +126,18 @@ TH1I   *ge_cycle_activity, *zds_cycle_activity; // Activity over cycle time, sum
 TH2I   *ge_e_vs_cycle_time;                     // Energy vs time within the cycle
 TH1I   *ge_cycle_code[N_PPG_PATTERNS];          // Energy spectrum for each PPG pattern
 TH2I   *gg_cycle_code[N_PPG_PATTERNS];          // Ge-Ge 2D histogram for each PPG pattern
-TH1I   *ge_cycle_num[MAX_CYCLES];               // Activity over cycle time for each indivdual cycle
-TH1I   *ge_cycle_num_sh[MAX_CYCLES];            // Activity over cycle time for each indivdual cycle, single_hit only
-TH1I   *ge_cycle_num_pu[MAX_CYCLES];            // Activity over cycle time for each indivdual cycle, pileup only
-TH1I   *ge_cycle_num_dt[MAX_CYCLES];            // Deadtime over cycle time for each indivdual cycle
-TH1I   *ge_cycle_num_g[MAX_CYCLES];             // Activity over cycle time for each indivdual cycle
-TH1I   *ge_cycle_num_sh_g[MAX_CYCLES];          // Activity over cycle time for each indivdual cycle, single_hit only
-TH1I   *ge_cycle_num_pu_g[MAX_CYCLES];          // Activity over cycle time for each indivdual cycle, pileup only
+TH1I   *gea_cycle_num[MAX_CYCLES];               // Activity over cycle time for each indivdual cycle, GRGA
+TH1I   *gea_cycle_num_sh[MAX_CYCLES];            // Activity over cycle time for each indivdual cycle, GRGA, single_hit only
+TH1I   *gea_cycle_num_pu[MAX_CYCLES];            // Activity over cycle time for each indivdual cycle, GRGA, pileup only
+TH1I   *gea_cycle_num_dt[MAX_CYCLES];            // Deadtime over cycle time for each indivdual cycle, GRGA
+TH1I   *gea_cycle_num_g[MAX_CYCLES];             // Activity over cycle time for each indivdual cycle, GRGA, gamma-gated
+TH1I   *gea_cycle_num_sh_g[MAX_CYCLES];          // Activity over cycle time for each indivdual cycle, GRGA, gamma-gated, single_hit only
+TH1I   *geb_cycle_num[MAX_CYCLES];               // Activity over cycle time for each indivdual cycle, GRGB
+TH1I   *geb_cycle_num_sh[MAX_CYCLES];            // Activity over cycle time for each indivdual cycle, GRGB, single_hit only
+TH1I   *geb_cycle_num_pu[MAX_CYCLES];            // Activity over cycle time for each indivdual cycle, GRGB, pileup only
+TH1I   *geb_cycle_num_dt[MAX_CYCLES];            // Deadtime over cycle time for each indivdual cycle, GRGB
+TH1I   *geb_cycle_num_g[MAX_CYCLES];             // Activity over cycle time for each indivdual cycle, GRGB, gamma-gated
+TH1I   *geb_cycle_num_sh_g[MAX_CYCLES];          // Activity over cycle time for each indivdual cycle, GRGB, gamma-gated, single_hit only
 TH2I   *cycle_num_vs_ge;                        // 2D histogram of cycle # vs the cycle time.
 TH2I   *cycle_num_vs_ge_sh_g;                   // 2D histogram of cycle # vs the cycle time for 1809 gated/NP.
 TH2I   *cycle_num_vs_ge_dt;                     // 2D histogram of cycle # vs the cycle time for deadtime .
