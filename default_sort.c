@@ -1140,7 +1140,7 @@ int init_chan_histos(Config *cfg)
 
         // custom definitions that don't fit usual scheme
         if( subsystem == SUBSYS_TAC_LABR ){ // TAC coincidence pair spectra
-          open_folder(cfg, "Fast-Timing");
+          open_folder(cfg, "Fast_Timing");
           open_folder(cfg, "LBL_TAC_Combos");
           k=0; memset(tac_labr_hist_index, -1, N_LABR*N_LABR*sizeof(int));
           for(i=0; i<N_LABR; i++){
