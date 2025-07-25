@@ -299,6 +299,7 @@ TH1I  *desw_sum_e_b, *desw_sum_tof_b;       // Beta-tagged Sums of energies and 
 TH1I  *desw_sum_e_nn, *desw_sum_tof_nn;     // fold>2 Sums of energies and corTOF
 TH1I  *desw_sum_e_nn_a, *desw_sum_tof_nn_a; // fold>2, angle>60 Sums of energies and corTOF
 TH2I  *desw_psd_e, *desw_psd_tof;           // PSD vs energies or corrected-TOF
+TH2I  *desw_psd_q,*desw_psd_cc,*desw_q_cc,*desw_q_tof,*desw_cc_tof,*desw_psd_zdse; // 
 
 // TAC spectra
 TH1I *tac_labr_hist[(int)((N_LABR)*(N_LABR-1)/2)+2]; // this index numbers are the LaBr-LaBr position numbers

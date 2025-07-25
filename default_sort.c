@@ -142,7 +142,7 @@ int init_parameters_from_globals(Config *cfg){
     lbl_tac_window_max = 25;
     art_tac_window_max = 25;
     zds_tac_window_max = 25;
-    desw_beta_window_max = 80;
+    desw_beta_window_max = 50;
 
     // Initalize the cycles gamma-ray energy gate values
     ppg_cycles_gamma_gate_min = 1800;
@@ -584,6 +584,7 @@ int pre_sort_exit(int frag_idx, int end_idx)
           //  fprintf(stdout,"tof: %d - %d = %f\n",ptr->cfd, alt->cfd, tof);
           alt->tof = (int)(tof); // Time of flight
           alt->alt_ecal = (int)(spread(tof) * DSW_tof_corr_factor[crystal_table[alt->chan]-1]); // Corrected Time of Flight
+            desw_psd_zdse->Fill(desw_psd_zdse, (int)alt->psd, (int)ptr->ecal, 1); // Fill desw_psd_zdse
         }
       }
       break;
@@ -968,6 +969,12 @@ int init_chan_histos(Config *cfg)
     {(void **)&desw_tof_xtal,"DESWall_TOF_DetNum",   "DSW_TOF_Xtal",                SUBSYS_DESWALL, 64,  E_2D_SPECLEN},
     {(void **)&desw_psd_e,   "DESWall_PSD_En",       "DES_Wall_PSD_En",             SUBSYS_DESWALL, E_2D_SPECLEN, E_2D_SPECLEN},
     {(void **)&desw_psd_tof, "DES_Wall_PSD_TOF",      "DES_Wall_PSD_TOF",            SUBSYS_DESWALL, E_2D_SPECLEN, E_2D_SPECLEN},
+    {(void **)&desw_psd_q,   "DESWall_PSD_q",       "DES_Wall_PSD_q",             SUBSYS_DESWALL, E_2D_SPECLEN, E_2D_SPECLEN},
+    {(void **)&desw_psd_cc,  "DESWall_PSD_cc",       "DES_Wall_PSD_cc",             SUBSYS_DESWALL, E_2D_SPECLEN, E_2D_SPECLEN},
+    {(void **)&desw_q_cc,  "DESWall_q_cc",       "DES_Wall_q_cc",             SUBSYS_DESWALL, E_2D_SPECLEN, E_2D_SPECLEN},
+    {(void **)&desw_q_tof,  "DESWall_q_tof",       "DES_Wall_q_tof",             SUBSYS_DESWALL, E_2D_SPECLEN, E_2D_SPECLEN},
+    {(void **)&desw_cc_tof,  "DESWall_cc_tof",       "DES_Wall_cc_tof",             SUBSYS_DESWALL, E_2D_SPECLEN, E_2D_SPECLEN},
+    {(void **)&desw_psd_zdse, "DES_Wall_PSD_ZDSEn",      "DES_Wall_PSD_ZDSEn",       SUBSYS_DESWALL, E_2D_SPECLEN, E_2D_SPECLEN},
     {(void **) rcmp_strips,  "RCS%02d_E_strips",         "",                         SUBSYS_RCMP,   2*N_RCMP_STRIPS, E_2D_RCMP_SPECLEN, N_RCMP_POS},
     {NULL,                   "Hits_and_Sums/Pileup",     "",                         },
     {(void **)&ge_pu_class,  "Pile_up_class",           "",                          SUBSYS_HPGE_A,         64},
@@ -1463,10 +1470,19 @@ int init_chan_histos(Config *cfg)
             if( pos < 1 || pos > 60 ){
               fprintf(stderr,"bad descant wall detector[%d] for chan %d\n", pos, ptr->chan);
             } else {
-              desw_e_xtal->Fill(desw_e_xtal, pos, (int)ptr->ecal, 1);
-              desw_tof_xtal->Fill(desw_tof_xtal, pos, (int)ptr->alt_ecal, 1);
-              desw_psd_e->Fill(desw_psd_e, (int)ptr->psd, (int)ptr->ecal, 1);
-              desw_psd_tof->Fill(desw_psd_tof, (int)ptr->psd, (int)ptr->alt_ecal, 1);
+              if(ptr->ecal>5){
+                desw_e_xtal->Fill(desw_e_xtal, pos, (int)ptr->ecal, 1);
+                if(ptr->psd>5){
+                  desw_psd_e->Fill(desw_psd_e, (int)ptr->psd, (int)ptr->ecal, 1);
+                  desw_psd_q->Fill(desw_psd_q, (int)ptr->psd, (int)ptr->q1, 1);
+                  desw_psd_cc->Fill(desw_psd_cc, (int)ptr->psd, (int)ptr->cc_short, 1);
+                  desw_q_cc->Fill(desw_q_cc, (int)ptr->q1, (int)ptr->cc_short, 1);
+               }
+              }
+              if(ptr->alt_ecal>5){ // DESCANT Wall ptr->alt_ecal=corrected-TOF (ptr->tof is TOF)
+                desw_tof_xtal->Fill(desw_tof_xtal, pos, (int)ptr->alt_ecal, 1);
+                if(ptr->psd>5){ desw_psd_tof->Fill(desw_psd_tof, (int)ptr->psd, (int)ptr->alt_ecal, 1); }
+              }
             }
             break;
             case SUBSYS_ARIES_A: // ARIES Standard Output
@@ -1770,12 +1786,6 @@ int init_chan_histos(Config *cfg)
                           gc_hist->Fill(gc_hist, 5, 1);
                           dt_hist[23]->Fill(dt_hist[23], (int)(abs(ptr->cfd - alt->cfd)+DT_SPEC_LENGTH/2), 1);
                         } break;
-                        case SUBSYS_ZDS_B: // CAEN zds
-                        if( alt->subsys == SUBSYS_DESWALL ){ // ZDS-DSW
-                          dt_hist[25]->Fill(dt_hist[25], (int)(abs(ptr->cfd - alt->cfd)+DT_SPEC_LENGTH/2), 1);
-                          desw_sum_e_b->Fill(desw_sum_e_b, (int)alt->ecal, 1);
-                          desw_sum_tof_b->Fill(desw_sum_tof_b, (int)alt->alt_ecal, 1); // alt_ecal = corrected time-of-flight
-                        } break;
                         case SUBSYS_DESWALL:
                         if( alt->subsys == SUBSYS_DESWALL ){
                           dt_hist[24]->Fill(dt_hist[24], (int)(abs(ptr->cfd - alt->cfd)+DT_SPEC_LENGTH/2), 1);
@@ -1798,6 +1808,14 @@ int init_chan_histos(Config *cfg)
                                 desw_sum_tof_nn_a->Fill(desw_sum_tof_nn_a, (int)ptr->alt_ecal, 1);
                               }
                             }
+                          }
+                          if( alt->subsys == SUBSYS_ZDS_B ){ // ZDS-DSW
+                            dt_hist[25]->Fill(dt_hist[25], (int)(abs(ptr->cfd - alt->cfd)+DT_SPEC_LENGTH/2), 1);
+                            desw_sum_e_b->Fill(desw_sum_e_b, (int)ptr->ecal, 1);
+                            desw_sum_tof_b->Fill(desw_sum_tof_b, (int)ptr->alt_ecal, 1); // alt_ecal = corrected time-of-flight
+
+                            desw_q_tof->Fill(desw_q_tof, (int)ptr->q1, (int)ptr->alt_ecal, 1);
+                            desw_cc_tof->Fill(desw_cc_tof, (int)ptr->cc_short, (int)ptr->alt_ecal, 1);
                           } break;
                         } // end switch
                       }
