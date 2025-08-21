@@ -163,9 +163,13 @@ int tar2root(char *tarfile, char *rootfile)
                //R__unzipZLIB(&size, file_ptr-9, &pad, decomp_ptr );
                size = decompress_buffer((char *)file_body, size);
                printf("DECOMP:Size=%d\n", size);
+    	       if( file_head.type[0] == 'C' ){ // symmetric matrix
                for(j=0; j<ybins; j++){ for(i=0; i<xbins; i++){
-                     spec2d[count2]->SetBinContent(i,j,comp_ptr[i+j*xbins]);
-               }}
+                     spec2d[count2]->SetBinContent(i,j,comp_ptr[i+j*xbins]+comp_ptr[j+i*xbins]);
+               }} } else {
+                     for(j=0; j<ybins; j++){ for(i=0; i<xbins; i++){
+                           spec2d[count2]->SetBinContent(i,j,comp_ptr[i+j*xbins]);
+      	       }} }
             } else {
  	       if( file_head.type[0] == 'C' ){ // symmetric matrix
                for(j=0; j<ybins; j++){ for(i=0; i<xbins; i++){
