@@ -736,6 +736,13 @@ int handle_command(int fd, int narg, char url_args[][STRING_LEN])
       } else {
          send_spectrum( (narg-2)/2, url_args, NULL, fd);
       }
+   } else
+   if( strcmp(ptr, "callbinaryspechandler") == 0 ){
+      if( strcmp(url_args[2],"filename") == 0 ){
+         send_binary_spectrum( ((int)(narg-2)/2), url_args, url_args[3], fd);
+      } else {
+         send_binary_spectrum( ((int)(narg-2)/2), url_args, NULL, fd);
+      }
    } else {
          sprintf(tmp,"Unknown Command: %s\n",ptr);
          send_http_error_response(fd, STATUS_CODE_400,(char*)tmp);
@@ -3735,3 +3742,352 @@ int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
 put_line(fd, HIST_TRL, strlen(HIST_TRL) );
 return(0);
 }
+
+#define MAX_SUBMATRICES 524287 // 19 bits
+int send_binary_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd)
+{
+  int i, j, k, l, m, pos, count, val, index, xbins, ybins, *hist_data;
+  int list_max[4], list_valueSize[4], valCount;
+  int num_submatrices, num_nonempty_submatrices, transfer_method, coord_size, last_type;
+  int list_coordinates[4][256], list_values[4][256], list_value_counts[4], size[2];
+  Config *cfg = configs[1];
+  TH1I *hist;
+
+  // The variables for the matrix are currently 32 bits.
+  int bitMask_coord[4] ={ 0x0000007F, 0x00007F00, 0x007F0000, 0x7F000000 }; // 7, 15, 23, 31 bits
+  int bitMask[4]       ={ 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000 }; // 8, 16, 24, 32 bits
+  int bitShift[4]      ={          0,          8,         16,         24 }; // 8, 16, 24, 32 bits
+
+  int8_t binaryArray[MAX_SUBMATRICES]; // Max size is 2-bit submatrix type header word
+  int list_of_indexes[4][255],list_of_values[4][255],list_of_counts[4][255];
+  // Set maximum sizes for 524,287 submatrices (19 bits)
+  short submatrix_type[MAX_SUBMATRICES];  // Max size is 8,192 x 8,192 (262,400)
+  short submatrix_count[MAX_SUBMATRICES]; // Max size is 8,192 x 8,192 (262,400)
+  int submatrix_ids[MAX_SUBMATRICES]; // Max size is 160,000 x 32 = 320,000 submatrices
+
+  // Binary spectrum data transfer format
+  // All transfered as 8-bit integers
+  // Histogram Header format:
+  //    "name"               // <80 characters ending with string termination
+  //    "XaxisLength"        // 16 bits (<65,535)
+  //    "YaxisLength"        // 16 bits (<65,535)
+  //    "symmetrized"        // 1 bit, 0=non-symmeterized, 1=symmeterized
+  //    "XaxisMin"           // 15 bits (<16,383)
+  //    "XaxisMax"           // 16 bits (<65,535)
+  //    "transfer method"    // 1 bit, 0=submatrix id and type, 1=submatrix type only header.
+  //    "YaxisMin"           // 15 bits (<16,383)
+  //    "YaxisMax"           // 16 bits (<65,535)
+  //    "submatrix type map" // Either submatrix id and type, or submatrix type only.
+  //    "submatrix data"     // Histogram contents follows
+  //
+  // Following the Histogram header is
+  // transfer method is 1: a Submatrix type map, a 2-bit type for all submatrices of the histogram.
+  // transfer method is 0: a list of the id numbers with type for non-empty Submatrices.
+  // Then follows the data for each submatrix.
+  //
+  // Submatrix type map: is a 2-bit type per submatrix in an ordered list.
+  // 0 = empty, 1 = list, 2 = array, 3 = sequence (all subsequent submatrix types the same as the previous one).
+  // 4096x4096 example. 256x256 = 65,536 submatrices. 2 bits is 131,072 bits, 32,768 bytes, 16,384 characters.
+  // A 'sequence' type would end the header and means all subsequent submatrices are the same as the previous type.
+  //
+  // Submatrix id and type map:
+  // Only coordinates (id number) of non-empty submatrices appears in the header word, all others are empty type.
+  // The coordinate size in bytes (1, 2, 3 or 4) is calculated from the total number of submatrices.
+  // The upper 1 bit is used to encode the type. 0=list, 1=array
+  // At the start of the list is the count for how many non-empty submatrices appear in the header list.
+  // The count is the same number of bytes as required for each coorindate.
+  //
+  // Submatrix data formats by type:
+  // Nothing appears for an empty type.
+  //
+  // List type header:
+  // Four 8-bit characters represent the count of each data size values; 8, 16, 24, 32 bits
+  // Coordinates given as 8-bit characters in the order of 8, 16, 24, 32 bit value sizes
+  // Data values are given in order of size type (8, 16, 24, 32 bit), in the order of the coordinates given.
+  // List type is smaller than array type if count is 160 which is when the submatrix is 62.5% full.
+  //
+  // Array type header:
+  // 2 bits per entry for 256 entries. 2 bits represents type 0,1,2,3 for empty(missing),8-bit,16-bit,32-bit
+  // Size of header is 512 bits = 128 bytes = 64 characters for coordinates and type.
+  // This variable size of the values reduces the size of array type.
+  // Data values are given in sequential order in the size given in the header. Empty values are absent.
+  //
+
+  if( name != NULL ){
+    for(i=0; i<MAX_CONFIGS; i++){
+      if( configs[i] == NULL ){ continue; }
+      if( strcmp(name, configs[i]->name) == 0 ){ cfg = configs[i]; break; }
+    }
+    if( i == MAX_CONFIGS ){
+      if( (cfg=read_histofile(name,0)) == NULL ){
+        fprintf(stderr,"send_binary_spectrum: can't find/read:%s\n", name);
+        return(-1);
+      }
+    }
+  }
+  if( cfg == NULL || cfg->nhistos == 0 ){
+    send_http_error_response(fd, STATUS_CODE_404,(char*)"send_binary_spectrum can't read requested filename.");
+    return(-1);
+  }
+  j = (name == NULL) ? 0 : 1;
+  for(; j<num; j++){
+    if( (hist = hist_querytitle(cfg, url_args[2*(j+1)+1])) == NULL ){ // don't have it
+    send_http_error_response(fd, STATUS_CODE_404,(char*)"send_binary_spectrum can't read requested filename.");
+  } else { // do have this - send contents
+    if( hist->data == NULL ){ read_histo_data(hist, cfg->histo_fp ); }
+    if( hist->data == NULL ){ // we were not able to read data
+      send_http_error_response(fd, STATUS_CODE_404,(char*)"send_binary_spectrum can't read requested filename.");
+    } else if( hist->type == INT_1D ){
+      send_http_error_response(fd, STATUS_CODE_400,(char*)"send_binary_spectrum is only for 2d histograms.");
+    } else if( hist->type == INT_2D || hist->type == INT_2D_SYMM ){
+      xbins = hist->xbins; if( xbins > 8192 ){ xbins = 8192; }
+      ybins = hist->ybins; if( ybins > 8192 ){ ybins = 8192; }
+      if( (hist_data = malloc( xbins*ybins*sizeof(int) )) == NULL){
+        fprintf(stderr,"can't alloc memory for sending 2d histo\n");
+        send_http_error_response(fd, STATUS_CODE_500,(char*)"send_binary_spectrum can't alloc memory for sending 2d histogram.");
+        continue;
+      }
+      memset(hist_data, 0, xbins*ybins*sizeof(int) );
+      if( hist->symm == 0 ){
+        memcpy( hist_data, hist->data, xbins*ybins*sizeof(int) );
+      } else { // symmetrize here before sending
+        for(k=0; k<ybins; k++){ for(i=0; i<=k; i++){
+          hist_data[i+k*xbins] = hist->data[i+k*xbins] + hist->data[k+i*xbins];
+        }}
+      }
+      // Send success header and start the histogram sending
+      send_header(fd, APP_OCT);
+
+      // Determine the number of submatrices that contain data.
+      // This will determine which transfer method is used for the submatrix ids and types
+      num_submatrices = ceil(xbins/16) * ceil(ybins/16);
+
+      memset(submatrix_ids, 0, MAX_SUBMATRICES*sizeof(int) );
+      // Determine the size required to store submatrix coordinates (transfer method 0)
+      // Upper bit is used for the list/array type, so the coordinate is 7, 15, 23, or 31 bits
+      if(      num_submatrices <= 0x80       ){  coord_size = 1; } //  7-bit values (<128 = axis lengths: 176x176)
+      else if( num_submatrices <= 0x8000     ){  coord_size = 2; } // 15-bit values (256-32,767 = axis lengths: 2896x2896)
+      else if( num_submatrices <= 0x800000   ){  coord_size = 3; } // 23-bit values (32,768-8,388,607 = axis lengths: 46,336x46,336)
+      else if( num_submatrices <= 0x80000000 ){  coord_size = 4; } // 31-bit values (8,388,608-2,147,483,647 = axis lengths: 741,440x741,440)
+      else                                    {  fprintf(stdout,"Problem with coordinate size for %d submatrices. Needs to be less than 31 bits\n",num_submatrices); }
+
+      // Determine the number of non-zero values in each submatrix.
+      num_nonempty_submatrices = 0;
+      pos = 0;
+      for(k=0; k<ybins; k+=16){
+        for(i=0; i<xbins; i+=16){ count=0;
+          for(m=0; m<16; m++){ for(l=0; l<16; l++){
+            if( hist_data[i+l + (k+m)*xbins]!=0){ count++; }
+          }}
+          if( count ==  0 ){ submatrix_type[pos] = 0; } // empty
+          // List type size is Header word (8 bits), coordinates (count * 8 bits), values (count * 8, 16, 24 or 32 bits)
+          // Array type size is Header word (512 bits), values (count * 8, 16, 24 or 32 bits)
+          // List = 8 + (count * 8) + (list_value_counts[0]*8) + (list_value_counts[1]*16) + (list_value_counts[2]*24) + (list_value_counts[3]*32);
+          // Array = 512 + ((256-count)*8) + (list_value_counts[0]*8) + (list_value_counts[1]*16) + (list_value_counts[2]*24) + (list_value_counts[3]*32);
+          // So if (512-8=504). If (count*8)<(504+((256-count)*8)) then list type is smaller than array type.
+          // This happens when the count is 160 which is when the submatrix is 62.5% full.
+          else if( count<160 ){ submatrix_type[pos] = 1;
+            submatrix_ids[num_nonempty_submatrices]=pos;
+            num_nonempty_submatrices++; } // list
+            else { submatrix_type[pos] = 2;
+              submatrix_ids[num_nonempty_submatrices]=pos;
+              num_nonempty_submatrices++; } // array
+              submatrix_count[pos] = count;
+              ++pos; // Advance to next submatrix
+              if(pos>=MAX_SUBMATRICES){ break; }
+            }
+          }
+
+          // Determine the transfer method for the submatrix types, and ids
+          // transfer_method=0 requires the number of bytes per coordinate per non-empty submatrix
+          // transfer_method=1 requires 2 bits per submatrix, so 1 byte per 4 submatrices for full histogram.
+          if( num_nonempty_submatrices==0 ){ transfer_method = 0; }
+          else if((num_nonempty_submatrices*coord_size) > (num_submatrices/4)){ transfer_method = 1; }
+          else{ transfer_method = 0; }
+
+          // Determine the first instance of the last submatrix type in a series and mark it
+          // This will terminate the submatrix_type header at this point for transfer_method=1=submatrix type only.
+          last_type = submatrix_type[pos-1]; pos-=2;
+          if( submatrix_type[pos] == last_type && transfer_method==1){
+            while( submatrix_type[pos] == last_type ){ pos--; if(pos==0){ break; } }
+            if(pos+1<MAX_SUBMATRICES){ submatrix_type[pos+1] = 3; }
+          }
+
+          // Build the Histogram Header
+          count = strlen(hist->title)+1; i=0;
+          for(i=0; i<count; i++){
+            binaryArray[i] = hist->title[i];                              // "name"            // <80 characters ending with string termination
+          }
+          binaryArray[i++] = (xbins & 0xFF00) >> 8;                       // "XaxisLength"     // 16 bits (<65,535), upper bits
+          binaryArray[i++] = (xbins & 0xFF);                              // "XaxisLength"     // 16 bits (<65,535), lower bits
+          count +=2;
+          binaryArray[i++] = (ybins & 0xFF00) >> 8;                       // "YaxisLength"     // 16 bits (<65,535), upper bits
+          binaryArray[i++] = (ybins & 0xFF);                              // "YaxisLength"     // 16 bits (<65,535), lower bits
+          count +=2;
+          binaryArray[i] = hist->symm ? 0x80 : 0;                         // "symmetrized"     // 1 bit, 0=submatrix id numbers, 1=submatrix type header.
+          binaryArray[i] = binaryArray[i] | ((hist->xmin & 0x7F00) >> 8); // "XaxisMin"        // 15 bits (<16,383), upper bits
+          i++;
+          binaryArray[i++] = (hist->xmin & 0xFF);                         // "XaxisMin"        // 15 bits (<16,383), lower bits
+          count +=2;
+          binaryArray[i++] = (hist->xmax & 0xFF00) >> 8;                  // "XaxisMax"        // 16 bits (<65,535), upper bits
+          binaryArray[i++] = (hist->xmax & 0xFF);                         // "XaxisMax"        // 16 bits (<65,535), lower bits
+          count +=2;
+          binaryArray[i] = transfer_method ? 0x80 : 0;                    // "transfer method" // 1 bit
+          binaryArray[i] = binaryArray[i] | ((hist->ymin & 0x7F00) >> 8); // "YaxisMin"        // 15 bits (<16,383), upper bits
+          i++;
+          binaryArray[i++] = (hist->ymin & 0xFF);                         // "YaxisMin"        // 16 bits (<65,535), lower bits
+          count +=2;
+          binaryArray[i++] = (hist->ymax & 0xFF00) >> 8;                  // "YaxisMax"        // 16 bits (<65,535), upper bits
+          binaryArray[i++] = (hist->ymax & 0xFF);                         // "YaxisMax"        // 16 bits (<65,535), lower bits
+          count +=2;
+          put_binary(fd, binaryArray, count ); // Send header
+          // Header complete. Now process the submatrix type information.
+
+          // Submatrix type header word
+          index=0;
+          memset(binaryArray, 0, 20000 );
+          if( transfer_method ){
+            // First handle completely empty histograms
+            if(num_nonempty_submatrices==0){
+              binaryArray[index] = 0x30;           // Completely empty histogram
+              put_binary(fd, binaryArray, 1 ); // Send Submatrix type header word
+              free(hist_data);                 // Free the memory
+              return(0);                       // End now as no submatrices to transfer
+            }
+
+            // Submatrix type header is the type given as 2 bits for all submatrices
+            for(i=0; i<num_submatrices; i+=4){
+              binaryArray[index] = submatrix_type[i] << 6;
+              binaryArray[index] = binaryArray[index] | (submatrix_type[i+1] << 4);
+              binaryArray[index] = binaryArray[index] | (submatrix_type[i+2] << 2);
+              binaryArray[index] = binaryArray[index] |  submatrix_type[i+3];
+              index++;
+              if(submatrix_type[i]  ==3){ submatrix_type[i]  =submatrix_type[i-1]; break; }
+              if(submatrix_type[i+1]==3){ submatrix_type[i+1]=submatrix_type[i];   break; }
+              if(submatrix_type[i+2]==3){ submatrix_type[i+2]=submatrix_type[i+1]; break; }
+              if(submatrix_type[i+3]==3){ submatrix_type[i+3]=submatrix_type[i+2]; break; }
+            }
+            put_binary(fd, binaryArray, index ); // Send submatrix type header word
+          }else{
+            if(num_nonempty_submatrices==0){ continue; }
+            // Submatrix type header is a list of submatrix id numbers (coorindates) with the top bit indicating the type
+            // This header starts with the first entry being the number of coorindates which follow in the Submatrix type header.
+            valCount=coord_size-1;
+            while(valCount>=0){
+              binaryArray[index] = ((num_nonempty_submatrices & bitMask[valCount])>>bitShift[valCount]);
+              --valCount; index++;
+            }
+            // Now send each submatrix coordinate and type
+            // Type is the upper 1 bit. 0=list, 1=array. The lower 7, 15, 23 or 31 bits are the submatrix id number (coordinate)
+            for(i=0; i<num_nonempty_submatrices; i++){
+              valCount=coord_size-1;
+              binaryArray[index] = ((submatrix_type[submatrix_ids[i]]-1) << 7);
+              while(valCount>=0){
+                if(valCount==(coord_size-1)){ binaryArray[index] = binaryArray[index] | ((submatrix_ids[i] & bitMask_coord[valCount])>>bitShift[valCount]); }
+                else{                         binaryArray[index] = binaryArray[index] | ((submatrix_ids[i] & bitMask[valCount])>>bitShift[valCount]); }
+                --valCount; index++;
+              }
+            }
+            put_binary(fd, binaryArray, index ); // Send submatrix type header word
+          }
+          // Header and submatrix type information complete. Now process the submatrix data.
+
+          // Now begin transfer of the submatrices; Each submatrix begins with a header word followed by contents
+          pos = 0;
+          for(k=0; k<ybins; k+=16){
+            for(i=0; i<xbins; i+=16){ count = 0;
+              if( submatrix_type[pos] == 0 ){ ++pos; continue; // empty type
+              } else {
+
+                if( submatrix_type[pos] ==1 ){ // list
+                  // Loop through this submatrix initially to count value sizes
+                  memset(list_values, 0, 4*256*sizeof(int) );
+                  memset(list_value_counts, 0, 4*sizeof(int) );
+                  memset(list_coordinates, 0, 4*256*sizeof(int) );
+                  count=0; // Use for index of coordinates
+                  for(m=0; m<16; m++){
+                    for(l=0; l<16; l++){val=hist_data[i+l+(k+m)*xbins];
+                      if(val==0){ continue; }
+                      if     ( val <= 0x100 && list_value_counts[0]<254 ){  list_values[0][list_value_counts[0]]=val; list_coordinates[0][list_value_counts[0]]=count; list_value_counts[0]++; count++; } //  8-bit values
+                      else if( val <= 0x10000 && list_value_counts[1]<254  ){  list_values[1][list_value_counts[1]]=val; list_coordinates[1][list_value_counts[1]]=count; list_value_counts[1]++; count++;  } // 16-bit values
+                      else if( val <= 0x1000000 && list_value_counts[2]<254 ){  list_values[2][list_value_counts[2]]=val; list_coordinates[2][list_value_counts[2]]=count; list_value_counts[2]++; count++;  } // 24-bit values
+                      else                       {  list_values[3][list_value_counts[3]]=val; list_coordinates[3][list_value_counts[3]]=count; list_value_counts[3]++; count++;  } // 32-bit values
+                    }
+                  }
+                  // Build the list submatrix header
+                  index=0;
+                  binaryArray[index] = list_value_counts[index];
+                  if(list_value_counts[1]>0 && (list_value_counts[0]<256)){ index++; binaryArray[index] = list_value_counts[index]; }
+                  if(list_value_counts[2]>0 && (list_value_counts[0]+list_value_counts[1])<256){ index++; binaryArray[index] = list_value_counts[index]; }
+                  if(list_value_counts[3]>0 && (list_value_counts[0]+list_value_counts[1]+list_value_counts[2])<256){ index++; binaryArray[index] = list_value_counts[index]; }
+                  index++;
+                  // Loop through this submatrix to build the coordinates. Skip empty values
+                  for(m=0; m<4; m++){
+                    for(l=0; l<list_value_counts[m]; l++){
+                      // Add the coordinate
+                      binaryArray[index] = list_coordinates[m][l];
+                      index++;
+                    }
+                  }
+                  // Loop through this submatrix to build the values, list type
+                  for(m=0; m<4; m++){
+                    for(l=0; l<list_value_counts[m]; l++){ val=list_values[m][l];
+                      valCount = m;
+                      while(valCount>=0){
+                        binaryArray[index] = ((val & bitMask[valCount])>>bitShift[valCount]);
+                        --valCount; index++;
+                      }
+                    }
+                  }
+                  // Send this submatrix
+                  put_binary(fd, binaryArray, index ); // list type
+
+                }else if( submatrix_type[pos] == 2 ){ // array type
+                  // Build the list of data value sizes
+                  // Array types, 0 (8-bit), 1 (16-bit), 2 (24-bit), 3 (32-bit)
+                  // First find the maximum value per 4 subsubmatrices
+                  index=0;
+                  list_max[0]=list_max[1]=list_max[2]=list_max[3]=0;
+                  for(m=0; m<16; m++){
+                    for(l=0; l<16; l++){val=hist_data[i+l+(k+m)*xbins];
+                      if(val>list_max[(int)(index/64)]){ list_max[(int)(index/64)]=val; }
+                      index++;
+                    }
+                  }
+                  // Assign value size for each subsubmatrix based on maximum value
+                  for(m=0; m<4; m++){
+                    if     ( list_max[m] <= 0x100     ){ list_valueSize[m]=0; } //  8-bit values
+                    else if( list_max[m] <= 0x10000   ){ list_valueSize[m]=1; } // 16-bit values
+                    else if( list_max[m] <= 0x1000000 ){ list_valueSize[m]=2; } // 24-bit values
+                    else                               { list_valueSize[m]=3; } // 32-bit values
+                  }
+                  // Build array submatrix header word.
+                  index=0;
+                  binaryArray[index] = list_valueSize[0]<<6;
+                  binaryArray[index] = binaryArray[index] | list_valueSize[1]<<4;
+                  binaryArray[index] = binaryArray[index] | list_valueSize[2]<<2;
+                  binaryArray[index] = binaryArray[index] | list_valueSize[3];
+                  index++;
+
+                  // Build the submatrix data values, array type
+                  for(m=0; m<16; m++){
+                    for(l=0; l<16; l++){val=hist_data[i+l+(k+m)*xbins];
+                      valCount=list_valueSize[(int)((16*m+l)/64)];
+                      while(valCount>=0){
+                        binaryArray[index] = ((val & bitMask[valCount])>>bitShift[valCount]);
+                        --valCount; index++;
+                      }
+                    }
+                  }
+                  // send the data for this submatrix
+                  put_binary(fd, binaryArray, index ); // array type
+                } ++pos; // Advance to next submatrix
+              }
+            }
+          }
+          free(hist_data); // Free the histogram memory when done
+        } // End of else if( hist->type == INT_2D || hist->type == INT_2D_SYMM )
+      }
+    }
+    return(0);
+  }

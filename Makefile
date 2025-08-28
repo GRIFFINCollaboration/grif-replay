@@ -1,7 +1,7 @@
 OBJECTS = config.o grif-replay.o midas-format.o grif-format.o histogram.o \
           web_server.o reorder.o user_sort.o default_sort.o test_config.o
 
-CFLAGS  = -g -O3 -fPIC 
+CFLAGS  = -g -O3 -fPIC
 
 grif-replay: $(OBJECTS)
 	$(CC) $(CFLAGS) -o $@ $(OBJECTS) -rdynamic -lz -ldl -lm -lpthread

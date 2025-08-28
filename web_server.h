@@ -2,6 +2,7 @@
 
 extern int get_line(int fd, char *buf, int maxlen);
 extern int put_line(int fd, char *buf, int length);
+extern int put_binary(int fd, int8_t *buf, int length);
 int split_cmdurl(char *url);
 
 
@@ -13,6 +14,7 @@ int split_cmdurl(char *url);
 #define TEXT_CSS  1
 #define TEXT_JS   2
 #define APP_JSON  3
+#define APP_OCT   4 // application/octet-stream (binary data)
 
 extern int send_header(int fd, int type);          // "HTTP 200\nSvr\nCntntTypeX\n\n"
 extern int send_http_error_response(int fd, int type, char *error_message);

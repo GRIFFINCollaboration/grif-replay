@@ -174,7 +174,7 @@ void decodeurl(char *dst, const char *src); // currently unused
 #define HDRB "Server: javaspec v0\r\nContent-Type: "
 
 static char content_types[][32]={
-   "text/html","text/css","text/javascript","application/json"
+   "text/html","text/css","text/javascript","application/json","application/octet-stream"
 };
 int send_header(int fd, int type)
 {
@@ -358,6 +358,19 @@ int put_line(int fd, char *buf, int length)
    while( length ){
       if( (sent = write(fd, buf, length)) <= 0 ){
          perror("put_line failed"); return(-1);
+      }
+      length -= sent; buf += sent;
+   }
+   return(0);
+}
+
+/* write 8-bit binary as many characters at a time as we can */
+int put_binary(int fd, int8_t *buf, int length)
+{
+   int sent;
+   while( length ){
+      if( (sent = write(fd, buf, length)) <= 0 ){ // is write the correct function here?
+         perror("put_binary failed"); return(-1);
       }
       length -= sent; buf += sent;
    }

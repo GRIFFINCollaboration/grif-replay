@@ -11,7 +11,8 @@
 #include "grif-replay.h"
 
 int send_spectrum_list(char *name, int fd);
-int send_spectrum(int num, char urlarg[][STRING_LEN], char *, int fd);
+int send_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd);
+int send_binary_spectrum(int num, char url_args[][STRING_LEN], char *name, int fd);
 int send_sort_status(int fd);
 int most_recent_calib_file(char *data_dir, int data_run, char *result);
 int send_datafile_list(char *path, int fd, int type);
