@@ -3906,7 +3906,7 @@ int send_binary_spectrum(int num, char url_args[][STRING_LEN], char *name, int f
           last_type = submatrix_type[pos-1]; pos-=2;
           if( submatrix_type[pos] == last_type && transfer_method==1){
             while( submatrix_type[pos] == last_type ){ pos--; if(pos==0){ break; } }
-            if(pos+1<num_submatrices){ submatrix_type[pos+1] = 3; }
+            if(pos+2<num_submatrices){ submatrix_type[pos+2] = 3; }
           }
 
           // Build the Histogram Header
@@ -3966,10 +3966,11 @@ int send_binary_spectrum(int num, char url_args[][STRING_LEN], char *name, int f
               binaryArray[index] = binaryArray[index] | (submatrix_type[i+2] << 2);
               binaryArray[index] = binaryArray[index] |  submatrix_type[i+3];
               index++;
-              if(submatrix_type[i]  ==3){ submatrix_type[i]  =submatrix_type[i-1]; break; }
-              if(submatrix_type[i+1]==3){ submatrix_type[i+1]=submatrix_type[i];   break; }
-              if(submatrix_type[i+2]==3){ submatrix_type[i+2]=submatrix_type[i+1]; break; }
-              if(submatrix_type[i+3]==3){ submatrix_type[i+3]=submatrix_type[i+2]; break; }
+              // If we find a type 3 then change it back so the data is transferred correctly below
+              if(submatrix_type[i]  ==3){ submatrix_type[i]  =submatrix_type[i-1];  break; }
+              if(submatrix_type[i+1]==3){ submatrix_type[i+1]=submatrix_type[i];    break; }
+              if(submatrix_type[i+2]==3){ submatrix_type[i+2]=submatrix_type[i+1];  break; }
+              if(submatrix_type[i+3]==3){ submatrix_type[i+3]=submatrix_type[i+2];  break; }
             }
             put_binary(fd, binaryArray, index ); // Send submatrix type header word
           }else{
