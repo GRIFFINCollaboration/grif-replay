@@ -1551,6 +1551,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                     angle_idx = ge_angles_110mm[c1][c2];
                     gg_angcor_110[angle_idx]->Fill(gg_angcor_110[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
                   //  fprintf(stdout,"%d %d have angular difference of %lf\n",c1,c2,angular_diff_GeGe(c1,c2,110));
+                  // double atan2(double y, double x);
 
                     angle_idx = ge_angles_145mm[c1][c2];
                     gg_angcor_145[angle_idx]->Fill(gg_angcor_145[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
@@ -2037,7 +2038,11 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                           for(i=0; i<odb_ppg_cycle[index].length; i++){
                             ppg_index=-1;
                             for(j=0; j<N_PPG_PATTERNS; j++){ if( (odb_ppg_cycle[index].codes[i] & 0xFFFF) == ppg_patterns[j] ){ ppg_index = j; break; } }
-                            if(ppg_index<0){ fprintf(stderr,"unrecognized ppg pattern, 0x%04X\n", (odb_ppg_cycle[index].codes[i] & 0xFFFF)); return(-1); }
+                            if(ppg_index<0){
+                              fprintf(stderr,"unrecognized ppg pattern, 0x%04X\n", (odb_ppg_cycle[index].codes[i] & 0xFFFF));
+                              gen_derived_odb_tables();
+                              return(-1);
+                          }
                             ppg_cycle_pattern_code[i] = ppg_index;
 
                             if(odb_ppg_cycle[index].durations[i] == -1){

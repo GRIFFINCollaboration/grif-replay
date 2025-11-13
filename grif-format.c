@@ -85,21 +85,23 @@ void grif_main(Sort_status *arg)
       }
       if( (( (*evptr)>>28 )&0xf) != 0xE ){
 	if( (++wcnt % 256) == 0 ){
-            printf("SEGFAULT:wcnt=%d\n", wcnt);
+	  printf("SEGFAULT:wcnt=%d [evptr:%d before end][avail=%d]\n", wcnt,  bufend-evptr, rd_avail);
          }
          ++evptr;       // DO NOT consume input data here or event
          if( evptr >= bufend){  // start can be overwritten before we use it
             evptr -= bufsize;
             if( (wrap = wcnt) > 255 ){
-               printf("SEGFAULT:wcnt=%d\n", wcnt);
+	      printf("SEGFAULT:wcnt=%d wrap [evptr:%d before end][avail=%d]\n", wcnt, bufend-evptr, rd_avail);
             }
-            memcpy(tmp_buf, (char *)evstart, wcnt*sizeof(int));
+            if( wcnt < 255 ){ memcpy(tmp_buf, (char *)evstart, wcnt*sizeof(int)); }
          }
          continue;
       }
       // *evptr == 0xE......
       if( wrap ){
-         memcpy(&tmp_buf[wrap+1], bufstart, (wcnt+1-wrap)*sizeof(int));
+	 if( wrap < 254 && wcnt+1 < 255 ){
+            memcpy(&tmp_buf[wrap+1], bufstart, (wcnt+1-wrap)*sizeof(int));
+	 }
          evstart = tmp_buf; wrap = 0;
       }
       len = wcnt+1; // include word#0
@@ -108,7 +110,7 @@ void grif_main(Sort_status *arg)
          if( (wr_avail = PTR_BUFSIZE - rd_avail) != 0 ){ break; }
          usleep(usecs);
       }
-      if( unpack_grif3_event(evstart, len, ptr, waveforms) == 0 ){
+      if( len < 256 && unpack_grif3_event(evstart, len, ptr, waveforms) == 0 ){
          //if( !arg->sort_thread ){ process_event(ptr, wrpos); }
          //if( ( ++grif_evcount % 1000000) == 0 ){
          //   fprintf(stderr, "%10d events ...\n", grif_evcount);
