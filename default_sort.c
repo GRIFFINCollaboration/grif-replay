@@ -2040,7 +2040,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                             ppg_index=-1;
                             for(j=0; j<N_PPG_PATTERNS; j++){ if( (odb_ppg_cycle[index].codes[i] & 0xFFFF) == ppg_patterns[j] ){ ppg_index = j; break; } }
                             if(ppg_index<0){
-                              fprintf(stderr,"unrecognized ppg pattern, 0x%04X\n", (odb_ppg_cycle[index].codes[i] & 0xFFFF)); 
+                              fprintf(stderr,"unrecognized ppg pattern, 0x%04X\n", (odb_ppg_cycle[index].codes[i] & 0xFFFF));
                               gen_derived_odb_tables();
                               return(-1);
                           }
