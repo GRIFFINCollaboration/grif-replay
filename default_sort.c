@@ -591,7 +591,6 @@ int init_default_histos(Config *cfg, Sort_status *arg)
           }// end of switch
         }// end of while
 
-
         // Fill crosstalk histograms
         if(ptr->subsys == SUBSYS_HPGE_A){
           i = frag_idx;
