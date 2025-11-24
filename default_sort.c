@@ -451,7 +451,16 @@ int init_default_histos(Config *cfg, Sort_status *arg)
           if(alt->subsys != SUBSYS_HPGE_A && dt>250){ continue; }
 
           // Determine multiplicity
-          if( alt->subsys == ptr->subsys ){ ++ptr->multiplicity; }
+          if( alt->subsys == ptr->subsys ){
+            if(ptr->subsys == SUBSYS_HPGE_A){
+              // Prompt coincidence window for HPGe multiplicity
+              if( (dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_HPGE_A]) && (dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_HPGE_A]) ){
+                ++ptr->multiplicity;
+              }
+            }else{ // 2 microseconds presort window for multiplicity of all other subsystem types
+              ++ptr->multiplicity;
+            }
+          }
 
           // SubSystem-specific pre-processing
           switch(ptr->subsys){
@@ -887,6 +896,11 @@ int init_default_histos(Config *cfg, Sort_status *arg)
           sys = ptr->subsys;
           if( sys >=0 && sys < MAX_SUBSYS ){
             hit_hist[5] -> Fill(hit_hist[5], sys, 1);
+
+            if(sys == SUBSYS_HPGE_A){ // Individual Ge crystal energy in coincidence, used for angular correlations
+              gg_energy[crystal_table[ptr->chan]]->Fill(gg_energy[crystal_table[ptr->chan]], (int)ptr->ecal, 1);
+            }
+
           }
         }
         if( ptr->cfd         != 0 ){ hit_hist[2] -> Fill(hit_hist[2], chan, 1); }
@@ -1029,6 +1043,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {NULL,                  "Ang_Corr/GG_Ang_Corr",         ""},
         {(void **) gg_angcor_110,"Ge_Ge_110mm_angular_bin%02d", "", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  SYMMETERIZE, N_GE_ANG_CORR},
         {(void **) gg_angcor_145,"Ge_Ge_145mm_angular_bin%02d", "", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  SYMMETERIZE, N_GE_ANG_CORR},
+        {(void **) gg_energy,    "",          gg_energy_handles[0], SUBSYS_HPGE_A,  E_SPECLEN, 0, 64},
         {NULL,                   "Ang_Corr/DSW_DSW_Ang_Corr",   ""},
         {(void **) dsw_angcor,   "DSW_DSW_angular_bin%03d",     "", SUBSYS_DESWALL,DSW_ANGCOR_SPECLEN, SYMMETERIZE, N_DSW_DSW_ANG_CORR },
         {NULL,                   "Ang_Corr/GG_ART_Ang_Corr",    ""},
@@ -1088,6 +1103,9 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {(void **) ct_e_vs_dt_G,       "Crosstalk_Green_E_vs_dt_Ge%02d", "", SUBSYS_HPGE_A, 864, 128, N_HPGE },
         {(void **) ct_e_vs_dt_R,       "Crosstalk_Red_E_vs_dt_Ge%02d",   "", SUBSYS_HPGE_A, 864, 128, N_HPGE },
         {(void **) ct_e_vs_dt_W,       "Crosstalk_White_E_vs_dt_Ge%02d", "", SUBSYS_HPGE_A, 864, 128, N_HPGE },
+        {NULL,                   "Analysis/Comp_Pol",        ""},
+        {(void **) gg_comp_pol_110,"GeGe_110mm_CompPol_bin%02d", "", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  SYMMETERIZE, N_GE_COMP_POL},
+        {(void **) gg_comp_pol_145,"GeGe_145mm_CompPol_bin%02d", "", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  SYMMETERIZE, N_GE_COMP_POL},
       }; // Note initialized array variable is CONST (not same as double-pointer)
       // TH1I *hist;  hist = (TH1I *) 0;   ptr = &hist = (TH1I **)addr;  *ptr =
 
@@ -1523,23 +1541,24 @@ int init_default_histos(Config *cfg, Sort_status *arg)
 
             int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
             {
-              int c1, c2, pos, bin, angle_idx;
+              int c1, c2, c3, pos, bin, angle_idx;
               switch(alt->subsys){
                 case SUBSYS_HPGE_A:
                 gg_dt->Fill(gg_dt, (int)((ptr->ts - alt->ts)+DT_SPEC_LENGTH/2), (int)ptr->ecal, 1); // This dt result is always negative
                 gg_dt->Fill(gg_dt, (int)((alt->ts - ptr->ts)+DT_SPEC_LENGTH/2), (int)alt->ecal, 1); // This dt result is always positive
                 if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_HPGE_A]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_HPGE_A]) ){
-                  if( ptr->esum >= 0 &&  alt->esum >= 0 ){ // addback energies
-                    gg_ab->Fill(gg_ab, (int)ptr->esum, (int)alt->esum, 1);
-                  }
+
                   // PPG Cycles histograms
                   if(ppg_cycles_active==1){
                     gg_cycle_code[ppg_current_pattern]->Fill(gg_cycle_code[ppg_current_pattern], (int)ptr->ecal, (int)alt->ecal, 1);
                   }
+
                   c1 = crystal_table[ptr->chan];
                   c2 = crystal_table[alt->chan];
                   if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 < 64 ){
+                    if(ptr->ecal < 5 &&  alt->ecal < 5){ break; } // Both crystals must have a valid energy
                     gg_hit->Fill(gg_hit, c1, c2, 1); // 2d crystal hitpattern
+
                     if( c2 == grif_opposite[c1] ){
                       // 180 degree coinc matrix for summing corrections
                       gg_opp->Fill(gg_opp, (int)ptr->ecal, (int)alt->ecal, 1);
@@ -1550,12 +1569,23 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                     // c1 and c2 run from 0 to 63 for ge_angles_145mm.
                     angle_idx = ge_angles_110mm[c1][c2];
                     gg_angcor_110[angle_idx]->Fill(gg_angcor_110[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
-                  //  fprintf(stdout,"%d %d have angular difference of %lf\n",c1,c2,angular_diff_GeGe(c1,c2,110));
-                  // double atan2(double y, double x);
-
+                    //  fprintf(stdout,"%d %d have angular difference of %lf\n",c1,c2,angular_diff_GeGe(c1,c2,110));
+                    // double atan2(double y, double x);
                     angle_idx = ge_angles_145mm[c1][c2];
                     gg_angcor_145[angle_idx]->Fill(gg_angcor_145[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
 
+                    if( ptr->esum > 5 ||  alt->esum > 5 ){ // addback energies
+                      gg_ab->Fill(gg_ab, (int)ptr->esum, (int)alt->esum, 1);
+                      // Fill Compton polarimetry matrices Here
+                      // c1 and c2 are the same as for angular correlations. These define the plane.
+                      // c3 is another crystal in one of the clovers.
+                      // The azimuthal scattering angle is between c3 and the plane of polarization.
+                      // c3 = ptr->alt_chan; // or alt->alt_chan;
+                      // find plane Normal vector (c1,c2). Find azimuthal Normal vector, c3.
+                      // Determine angle_idx from azimuthal.
+                      // fill comp_pol[angle_idx] with (int)ptr->esum, (int)alt->esum
+                      // gg_comp_pol_110[angle_idx]->Fill(gg_comp_pol_110[angle_idx], (int)ptr->esum, (int)alt->esum, 1);
+                    }
                   }
                 }
                 break;
@@ -2042,7 +2072,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                               fprintf(stderr,"unrecognized ppg pattern, 0x%04X\n", (odb_ppg_cycle[index].codes[i] & 0xFFFF));
                               gen_derived_odb_tables();
                               return(-1);
-                          }
+                            }
                             ppg_cycle_pattern_code[i] = ppg_index;
 
                             if(odb_ppg_cycle[index].durations[i] == -1){

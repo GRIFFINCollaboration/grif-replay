@@ -299,7 +299,7 @@ TH1I  *desw_sum_e_b, *desw_sum_tof_b;       // Beta-tagged Sums of energies and 
 TH1I  *desw_sum_e_nn, *desw_sum_tof_nn;     // fold>2 Sums of energies and corTOF
 TH1I  *desw_sum_e_nn_a, *desw_sum_tof_nn_a; // fold>2, angle>60 Sums of energies and corTOF
 TH2I  *desw_psd_e, *desw_psd_tof;           // PSD vs energies or corrected-TOF
-TH2I  *desw_psd_q,*desw_psd_cc,*desw_q_cc,*desw_q_tof,*desw_cc_tof,*desw_psd_zdse; // 
+TH2I  *desw_psd_q,*desw_psd_cc,*desw_q_cc,*desw_q_tof,*desw_cc_tof,*desw_psd_zdse; //
 
 // TAC spectra
 TH1I *tac_labr_hist[(int)((N_LABR)*(N_LABR-1)/2)+2]; // this index numbers are the LaBr-LaBr position numbers
@@ -341,6 +341,17 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
   // 2d Energy vs Energy Coincidence matrices
   TH2I *gg, *gg_ab, *gg_opp, *gg_ab_opp, *ge_bgo, *ge_paces, *ge_labr, *ge_rcmp, *labr_labr, *labr_zds, *labr_rcmp;
   TH2I *ge_art, *ge_zds, *paces_art, *labr_art, *art_art, *dsw_dsw, *ge_dsw, *art_dsw;
+  TH1I *gg_energy[N_HPGE];
+  char gg_energy_handles[N_HPGE][HANDLE_LENGTH]={
+      "GRG01BN00A_GGEnergy","GRG01GN00A_GGEnergy","GRG01RN00A_GGEnergy","GRG01WN00A_GGEnergy", "GRG02BN00A_GGEnergy","GRG02GN00A_GGEnergy","GRG02RN00A_GGEnergy","GRG02WN00A_GGEnergy",
+      "GRG03BN00A_GGEnergy","GRG03GN00A_GGEnergy","GRG03RN00A_GGEnergy","GRG03WN00A_GGEnergy", "GRG04BN00A_GGEnergy","GRG04GN00A_GGEnergy","GRG04RN00A_GGEnergy","GRG04WN00A_GGEnergy",
+      "GRG05BN00A_GGEnergy","GRG05GN00A_GGEnergy","GRG05RN00A_GGEnergy","GRG05WN00A_GGEnergy", "GRG06BN00A_GGEnergy","GRG06GN00A_GGEnergy","GRG06RN00A_GGEnergy","GRG06WN00A_GGEnergy",
+      "GRG07BN00A_GGEnergy","GRG07GN00A_GGEnergy","GRG07RN00A_GGEnergy","GRG07WN00A_GGEnergy", "GRG08BN00A_GGEnergy","GRG08GN00A_GGEnergy","GRG08RN00A_GGEnergy","GRG08WN00A_GGEnergy",
+      "GRG09BN00A_GGEnergy","GRG09GN00A_GGEnergy","GRG09RN00A_GGEnergy","GRG09WN00A_GGEnergy", "GRG10BN00A_GGEnergy","GRG10GN00A_GGEnergy","GRG10RN00A_GGEnergy","GRG10WN00A_GGEnergy",
+      "GRG11BN00A_GGEnergy","GRG11GN00A_GGEnergy","GRG11RN00A_GGEnergy","GRG11WN00A_GGEnergy", "GRG12BN00A_GGEnergy","GRG12GN00A_GGEnergy","GRG12RN00A_GGEnergy","GRG12WN00A_GGEnergy",
+      "GRG13BN00A_GGEnergy","GRG13GN00A_GGEnergy","GRG13RN00A_GGEnergy","GRG13WN00A_GGEnergy", "GRG14BN00A_GGEnergy","GRG14GN00A_GGEnergy","GRG14RN00A_GGEnergy","GRG14WN00A_GGEnergy",
+      "GRG15BN00A_GGEnergy","GRG15GN00A_GGEnergy","GRG15RN00A_GGEnergy","GRG15WN00A_GGEnergy", "GRG16BN00A_GGEnergy","GRG16GN00A_GGEnergy","GRG16RN00A_GGEnergy","GRG16WN00A_GGEnergy"
+    };
 
   // Angular Correlation histograms
   #define N_GE_ANG_CORR       52
@@ -350,6 +361,11 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
   TH2I  *gg_angcor_145[N_GE_ANG_CORR];
   TH2I  *ge_art_angcor[N_GRG_ART_ANG_CORR];
   TH2I  *dsw_angcor[N_DSW_DSW_ANG_CORR];
+
+  // Compton Polarimetry histograms
+  #define N_GE_COMP_POL       52
+  TH2I  *gg_comp_pol_110[N_GE_COMP_POL];
+  TH2I  *gg_comp_pol_145[N_GE_COMP_POL];
 
   // Isomer Spectroscopy
   TH2I  *gg_dt, *gb_dt;
