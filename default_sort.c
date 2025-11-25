@@ -31,7 +31,7 @@ float  pileupk2[MAX_DAQSIZE][7];
 float  pileupE1[MAX_DAQSIZE][7];
 float  crosstalk[MAX_DAQSIZE][3][16];
 static short *chan_address = addr_table;
-static int subsys_initialized[MAX_SUBSYS];
+int subsys_initialized[MAX_SUBSYS];
 int subsys_deadtime_count[MAX_SUBSYS];
 int subsys_prg_ddtm[MAX_SUBSYS];
 int previous_trig_acc[MAX_DAQSIZE];

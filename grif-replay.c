@@ -148,6 +148,11 @@ static void online_loop(Config *cfg, Sort_status *sort)
    pthread_create(&midas_thread, NULL, (void* (*)(void*))midas_module_main, sort);
    sort->odb_ready = 0; // only done on module load atm.
    while(1){
+
+     // quick hack to fix bug - do properly
+      extern int subsys_initialized[24];
+      memset(subsys_initialized, 0, sizeof(int)*24 );
+
       while( !sort->run_in_progress ){ usleep(1); } // wait for run to start
       start =time(NULL);
       done_events = 0;
