@@ -351,6 +351,16 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
   TH2I  *ge_art_angcor[N_GRG_ART_ANG_CORR];
   TH2I  *dsw_angcor[N_DSW_DSW_ANG_CORR];
 
+<<<<<<< Updated upstream
+=======
+  // Compton Polarimetry histograms
+  TH2I  *comp_pol_angles_110;
+  TH2I  *comp_pol_angles_145;
+  #define N_GE_COMP_POL       12 // 12 bins is 180 degrees divided into a bin width of 15 degrees
+  TH2I  *gg_comp_pol_110[N_GE_COMP_POL];
+  TH2I  *gg_comp_pol_145[N_GE_COMP_POL];
+
+>>>>>>> Stashed changes
   // Isomer Spectroscopy
   TH2I  *gg_dt, *gb_dt;
   TH1I  *ge_isomer_popu, *ge_isomer_depop;

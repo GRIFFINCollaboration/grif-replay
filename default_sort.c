@@ -1089,6 +1089,9 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {(void **) ct_e_vs_dt_G,       "Crosstalk_Green_E_vs_dt_Ge%02d", "", SUBSYS_HPGE_A, 864, 128, N_HPGE },
         {(void **) ct_e_vs_dt_R,       "Crosstalk_Red_E_vs_dt_Ge%02d",   "", SUBSYS_HPGE_A, 864, 128, N_HPGE },
         {(void **) ct_e_vs_dt_W,       "Crosstalk_White_E_vs_dt_Ge%02d", "", SUBSYS_HPGE_A, 864, 128, N_HPGE },
+        {NULL,                   "Analysis/Comp_Pol",        ""},
+        {(void **) gg_comp_pol_110,"GeGe_110mm_CompPol_bin%02d", "", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  GE_ANGCOR_SPECLEN, N_GE_COMP_POL},
+        {(void **) gg_comp_pol_145,"GeGe_145mm_CompPol_bin%02d", "", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  GE_ANGCOR_SPECLEN, N_GE_COMP_POL},
       }; // Note initialized array variable is CONST (not same as double-pointer)
       // TH1I *hist;  hist = (TH1I *) 0;   ptr = &hist = (TH1I **)addr;  *ptr =
 
@@ -1524,7 +1527,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
 
             int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
             {
-              int c1, c2, pos, bin, angle_idx;
+              int c1, c2, c3, pos, bin, angle_idx, coinc_ecal, scatt_esum;
+              double angle;
               switch(alt->subsys){
                 case SUBSYS_HPGE_A:
                 gg_dt->Fill(gg_dt, (int)((ptr->ts - alt->ts)+DT_SPEC_LENGTH/2), (int)ptr->ecal, 1); // This dt result is always negative
@@ -1551,12 +1555,31 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                     // c1 and c2 run from 0 to 63 for ge_angles_145mm.
                     angle_idx = ge_angles_110mm[c1][c2];
                     gg_angcor_110[angle_idx]->Fill(gg_angcor_110[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
-                  //  fprintf(stdout,"%d %d have angular difference of %lf\n",c1,c2,angular_diff_GeGe(c1,c2,110));
-                  // double atan2(double y, double x);
-
+                    //fprintf(stdout,"%d %d have angular difference of: calculate %lf [%f]\n",c1,c2,angular_diff_GeGe(c1,c2,110),angular_bins_110mm[angle_idx]);
+                    // double atan2(double y, double x);
                     angle_idx = ge_angles_145mm[c1][c2];
                     gg_angcor_145[angle_idx]->Fill(gg_angcor_145[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
 
+                    if( ptr->esum > 5 ||  alt->esum > 5 ){ // addback energies
+                      gg_ab->Fill(gg_ab, (int)ptr->esum, (int)alt->esum, 1);
+                      // Fill Compton polarimetry matrices Here
+                      // c1 and c2 are the same as for angular correlations. These define the plane.
+                      // c3 is another crystal in one of the clovers.
+                      // The azimuthal scattering angle is between c3 and the plane of polarization.
+                      if(angle_idx>11 && angle_idx<41){ // Only look at Compton Polarimetry for clovers at 90 degrees to each other. (Always checked with 145mm)
+                        c3 = ptr->alt_chan;
+                        if(c3<0){ // c1 is coincident, c2+c3 are the scattering event
+                          c3 = alt->alt_chan; scatt_esum = (int)alt->esum; coinc_ecal = (int)ptr->esum;
+                        }else{ // c2 is coincident, c1+c3 are the scattering event
+                          scatt_esum = (int)ptr->esum; coinc_ecal = (int)alt->esum;
+                        }
+                        // Determine angle_idx from azimuthal.
+                        angle = azimuthal_GeGeGe(c1,c2,c3,110);
+                        angle_idx = (int)(angle / 15);
+                        if(angle_idx==12){ angle_idx=11; } // Put 180 degree scatters into the last valid bin
+                        gg_comp_pol_110[angle_idx]->Fill(gg_comp_pol_110[angle_idx], coinc_ecal, scatt_esum, 1); // Asymmetric matrix
+                      }
+                    }
                   }
                 }
                 break;
