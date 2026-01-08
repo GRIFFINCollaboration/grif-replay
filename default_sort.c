@@ -2125,8 +2125,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                           if(ppg_cycle_duration == 0){
                             fprintf(stdout,"PPG cycle duration is infinite, ie. no cycles\n");
                             fprintf(stdout,"Setting PPG cycle duration to 15 seconds for diagnostics\n");
-                            ppg_cycle_duration = 15000000000; // 15 seconds
-                            ppg_cycle_pattern_duration[0] = 15000000000; // 15 seconds
+                            ppg_cycle_duration = 1500000000; // 15 seconds
+                            ppg_cycle_pattern_duration[0] = 1500000000; // 15 seconds
                             ppg_cycles_active = 1;
                           }else{
                             fprintf(stdout,"PPG cycle duration is %10.4f seconds\n",(double)(ppg_cycle_duration/100000000));
@@ -2139,8 +2139,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                           ppg_cycle_step = 0;                               // Current pattern number within this cycle. Patterns counted from zero at beginning of cycle
                           ppg_pattern_start = 0;                            // Timestamp of the start of the current pattern
                           ppg_pattern_end = ppg_cycle_pattern_duration[0];  // Timestamp of the end of the current pattern
-                          fprintf(stdout,"Cycle %04d, start/finish [%ld/%ld]: step %d, %s, start/finish [%ld/%ld]\n",
-                          ppg_cycle_number, ppg_cycle_start, ppg_cycle_end, ppg_cycle_step, ppg_handles[ppg_current_pattern], ppg_pattern_start, ppg_pattern_end);
+                          fprintf(stdout,"Cycle %04d, start/finish [%ld/%ld]: step %d, %s, start/finish [%ld/%ld], ppg_current_pattern=%d\n",
+                          ppg_cycle_number, ppg_cycle_start, ppg_cycle_end, ppg_cycle_step, ppg_handles[ppg_current_pattern], ppg_pattern_start, ppg_pattern_end,ppg_current_pattern);
                         }
 
                         // arrays typically around 500 entries [one per "chan"] each entry with ...
