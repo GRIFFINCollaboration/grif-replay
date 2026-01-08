@@ -1636,10 +1636,6 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                 gb_dt->Fill(gb_dt, (int)((ptr->ts - alt->ts)+DT_SPEC_LENGTH/2), (int)ptr->esum, 1);
                 if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_SCEPTAR]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_SCEPTAR]) ){
                   //  ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1); // beta-gated Ge sum energy spectrum
-                  if((int)ptr->ecal == 3576){
-                    fprintf(stdout,"=======================================Fill ge_sum_b: SEP: %d %d %d - GRG: %d %d %d",alt->chan,alt->trig_req,(int)alt->ecal,ptr->chan,ptr->trig_req,(int)ptr->ecal);
-                    fprintf(stdout,"==== %ld - %ld = %ld\n",ptr->ts,alt->ts,ptr->ts-alt->ts);
-                  }
                   //  ge_sum_b_sep->Fill(ge_sum_b_sep, (int)ptr->ecal, 1); // Sceptar-gated Ge sum energy spectrum
                 }else if((ptr->ts - alt->ts)<-25){
                   ge_isomer_popu->Fill(ge_isomer_popu, (int)ptr->ecal, 1); // Early gamma rays appearing earlier in time than the prompt
@@ -2128,6 +2124,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                             ppg_cycle_duration = 1500000000; // 15 seconds
                             ppg_cycle_pattern_duration[0] = 1500000000; // 15 seconds
                             ppg_cycles_active = 1;
+                            ppg_cycle_length = odb_ppg_cycle[index].length;
                           }else{
                             fprintf(stdout,"PPG cycle duration is %10.4f seconds\n",(double)(ppg_cycle_duration/100000000));
                           }
@@ -2140,7 +2137,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                           ppg_pattern_start = 0;                            // Timestamp of the start of the current pattern
                           ppg_pattern_end = ppg_cycle_pattern_duration[0];  // Timestamp of the end of the current pattern
                           fprintf(stdout,"Cycle %04d, start/finish [%ld/%ld]: step %d, %s, start/finish [%ld/%ld], ppg_current_pattern=%d\n",
-                          ppg_cycle_number, ppg_cycle_start, ppg_cycle_end, ppg_cycle_step, ppg_handles[ppg_current_pattern], ppg_pattern_start, ppg_pattern_end,ppg_current_pattern);
+                          ppg_cycle_number, ppg_cycle_start, ppg_cycle_end, ppg_cycle_step, ppg_handles[ppg_current_pattern], ppg_pattern_start, ppg_pattern_end, ppg_current_pattern);
                         }
 
                         // arrays typically around 500 entries [one per "chan"] each entry with ...
