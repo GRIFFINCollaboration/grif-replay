@@ -3820,17 +3820,17 @@ int send_binary_spectrum(int num, char url_args[][STRING_LEN], char *name, int f
     }
   }
   if( cfg == NULL || cfg->nhistos == 0 ){
-    send_http_error_response(fd, STATUS_CODE_404,(char*)"send_binary_spectrum can't read requested filename.");
+    send_http_error_response(fd, STATUS_CODE_404,(char*)"send_binary_spectrum can't read requested filename");
     return(-1);
   }
   j = (name == NULL) ? 0 : 1;
   for(; j<num; j++){
     if( (hist = hist_querytitle(cfg, url_args[2*(j+1)+1])) == NULL ){ // don't have it
-    send_http_error_response(fd, STATUS_CODE_404,(char*)"send_binary_spectrum can't read requested filename.");
+    send_http_error_response(fd, STATUS_CODE_404,(char*)"send_binary_spectrum can't read requested histogram");
   } else { // do have this - send contents
     if( hist->data == NULL ){ read_histo_data(hist, cfg->histo_fp ); }
     if( hist->data == NULL ){ // we were not able to read data
-      send_http_error_response(fd, STATUS_CODE_404,(char*)"send_binary_spectrum can't read requested filename.");
+      send_http_error_response(fd, STATUS_CODE_404,(char*)"send_binary_spectrum can't read data of requested histogram");
     } else if( hist->type == INT_1D ){
       send_http_error_response(fd, STATUS_CODE_400,(char*)"send_binary_spectrum is only for 2d histograms.");
     } else if( hist->type == INT_2D || hist->type == INT_2D_SYMM ){

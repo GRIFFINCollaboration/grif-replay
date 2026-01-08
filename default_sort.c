@@ -460,7 +460,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             // HPGe Clover time-dependant crosstalk corrections
             if(alt->subsys == SUBSYS_HPGE_A && chan2 != chan){
               if((clover=(int)(crystal_table[chan2]/4)) == (int)(crystal_table[chan]/4)){
-                dt = ptr->ts - alt->ts; // Use relative time difference. This is always negative
+                dt = ptr->ts - alt->ts; // Use relative time difference. This is always negative.
 
                 if(dt>-1940 && dt <= 0){
                   // The original hit (ptr) came earlier then the crosstalk-inducing hit (alt)
@@ -489,21 +489,33 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             if(alt->subsys == SUBSYS_HPGE_A && chan2 == chan){
               perform_pileup_correction(ptr, alt, dt, chan, chan2, i, end_idx);
             }
-
             // BGO suppression of HPGe
-            if( (dt >= bgo_window_min && dt <= bgo_window_max) && alt->subsys == SUBSYS_BGO && !ptr->suppress ){
-              // could alternatively use crystal numbers rather than clover#
-              //    (don't currently have this for BGO)
-              if( crystal_table[ptr->chan]/16 == crystal_table[alt->chan]/16 ){ ptr->suppress = 1; }
+            if(alt->subsys == SUBSYS_BGO){
+              if( (dt >= bgo_window_min && dt <= bgo_window_max) ){
+                // could alternatively use crystal numbers rather than clover#
+                //    (don't currently have this for BGO)
+                if( (int)(crystal_table[ptr->chan]/4) == (int)(crystal_table[alt->chan]/4) ){ ptr->suppress = 1; }
+              }
             }
             // Germanium addback -
             //    earliest fragment has the sum energy, others are marked -1
             // Remember the other crystal channel number in alt_chan for use in Compton Polarimetry
             if( (dt >= addback_window_min && dt <= addback_window_max) && alt->subsys == SUBSYS_HPGE_A ){
-              if( alt->esum >= 0 && crystal_table[alt->chan]/16 == crystal_table[ptr->chan]/16 ){
-                ptr->esum += alt->esum; alt->esum = -1; ptr->alt_chan = alt->chan;
+              if( alt->esum >= 0 && (int)(crystal_table[alt->chan]/4) == (int)(crystal_table[ptr->chan]/4) ){
+                ptr->esum += alt->esum; alt->esum = -1; ptr->alt_chan = alt->chan; if(alt->suppress==1){ ptr->suppress = 1; }
               }
             }
+            // Tag HPGe events which have a beta-coincidence
+            // Use the ptr->tof
+            // ptr->tof = 0 = No beta coincidence
+            // ptr->tof > 0 = Beta coincidence with any beta detector
+            // ptr->tof = 1 = Beta coincidence with SCEPTAR only
+            // ptr->tof = 2 = Beta coincidence with ZDS only
+            // ptr->tof = 4 = Beta coincidence with ARIES only
+            // The bit assignments are cumulative eg. pt->tof = 5 = Beta coincidence with both SCEPTAR and ARIES.
+            if( (dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_SCEPTAR]) && (dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_SCEPTAR]) ){ ptr->tof = ptr->tof | 1; break; }
+            if( (dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_ZDS_A])   && (dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_ZDS_A])   ){ ptr->tof = ptr->tof | 2; break; }
+            if( (dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_ARIES_A]) && (dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_ARIES_A]) ){ ptr->tof = ptr->tof | 4; break; }
             break;
             case SUBSYS_HPGE_B:
             // HPGe B pile-up corrections
@@ -924,12 +936,22 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         // Singles
         {NULL,                   "Hits_and_Sums/Sums",                                   },
         {(void **)&ge_sum_ab,    "Addback_Sum_Energy",      "",                          SUBSYS_HPGE_A,  E_SPECLEN},
+        {(void **)&ge_sum_b_ab,  "AB_Sum_En_betaTagged",    "",                          SUBSYS_HPGE_A,  E_SPECLEN},
+        {(void **)&ge_sum_ab_sup,"AB_Sup_Sum_Energy",      "",                           SUBSYS_HPGE_A,  E_SPECLEN},
+        {(void **)&ge_sum_ab_sup_rej,"AB_Sup_Sum_En_Rejected", "",                       SUBSYS_HPGE_A,  E_SPECLEN},
+        {(void **)&ge_ab_dt, "AB_BGO_dt_all", "",                                       SUBSYS_HPGE_A,  E_SPECLEN},
+        {(void **)&ge_ab_sup_dt, "AB_Supp_dt", "",                                       SUBSYS_HPGE_A,  E_SPECLEN},
+        {(void **)&ge_ab_sup_dt_rand, "AB_Supp_dt_samCl_rand", "",                                       SUBSYS_HPGE_A,  E_SPECLEN},
+        {(void **)&ge_ab_sup_dt_oth, "AB_Supp_dt_other", "",                                       SUBSYS_HPGE_A,  E_SPECLEN},
+        {(void **)&ge_ab_sup_dt_rand_oth, "AB_Supp_dt_other_rand", "",                                       SUBSYS_HPGE_A,  E_SPECLEN},
         {(void **)&ge_sum,       "Ge_Sum_Energy",           "",                          SUBSYS_HPGE_A,  E_SPECLEN},
         {(void **)&ge_sum_b,     "Ge_Sum_En_betaTagged",    "",                          SUBSYS_HPGE_A,  E_SPECLEN},
         {(void **)&ge_sum_b_sep, "Ge_Sum_En_SceptarTagged", "Ge_Sum_E_B_SEP",            SUBSYS_HPGE_A,  E_SPECLEN},
         {(void **)&ge_sum_b_zds, "Ge_Sum_En_ZdsTagged",     "Ge_Sum_E_B_ZDS",            SUBSYS_HPGE_A,  E_SPECLEN},
         {(void **)&ge_sum_b_art, "Ge_Sum_En_AriesTagged",   "Ge_Sum_E_B_ART",            SUBSYS_HPGE_A,  E_SPECLEN},
         {(void **)&ge_sum_b_art_brems, "Ge_Sum_En_AriesTagged_Brems",   "Ge_Sum_E_B_ART_Brems",SUBSYS_HPGE_A,  E_SPECLEN},
+        {(void **)&ge_sum_b_sep_brems, "Ge_Sum_En_SceptarTagged_Brems", "Ge_Sum_E_B_SEP_Brems",SUBSYS_HPGE_A,  E_SPECLEN},
+        {(void **)&ge_sum_b_ab_sep_brems, "AB_Sum_En_SceptarTagged_Brems", "AB_Sum_E_B_SEP_Brems",SUBSYS_HPGE_A,  E_SPECLEN},
         {(void **)&paces_sum,    "PACES_Sum_Energy",        "",                          SUBSYS_PACES,   E_SPECLEN},
         {(void **)&labr_sum,     "LaBr3_Sum_Energy",        "",                          SUBSYS_LABR_L,  E_SPECLEN},
         {(void **)&aries_sum,    "ARIES_Sum_Energy",        "",                          SUBSYS_ARIES_A, E_SPECLEN},
@@ -949,6 +971,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {(void **)&ge_sum_ab_us, "Upstream_AB_Sum_Energy",  "",                          SUBSYS_HPGE_A,  E_SPECLEN},
         {(void **)&ge_sum_ab_ds, "Downstream_AB_Sum_Energy","",                          SUBSYS_HPGE_A,  E_SPECLEN},
         {(void **) ge_ab_e,      "Addback_%d",               "",                         SUBSYS_HPGE_A,  E_SPECLEN, 0, N_CLOVER},
+        {(void **) ge_ab_sup_e,  "Addback_Suppressed_%d",    "",                         SUBSYS_HPGE_A,  E_SPECLEN, 0, N_CLOVER},
         {NULL,                   "Hits_and_Sums/Energy",     "",                         },
         {(void **)&ge_xtal,      "GeEnergy_CrystalNum",      "",                         SUBSYS_HPGE_A,   64, E_2D_SPECLEN},
         {(void **)&ge_xtal_1hit, "GeEnergy_CrystalNum_1_hit","",                         SUBSYS_HPGE_A,   64, E_2D_SPECLEN},
@@ -961,6 +984,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {(void **)&bgoa_xtal,    "BgoAncilEnergy_CrystalNum","",                         SUBSYS_LABR_BGO, 32, E_2D_SPECLEN},
         {(void **)&labr_xtal,    "Labr3Energy_CrystalNum",   "LabrE_Xtal",               SUBSYS_LABR_L,   16, E_2D_SPECLEN},
         {(void **)&paces_xtal,   "PacesEnergy_CrystalNum",   "PacesE_Xtal",              SUBSYS_PACES,    16, E_2D_SPECLEN},
+        {(void **)&sceptar_xtal, "SceptarEnergy_CrystalNum", "SceptarE_Xtal",            SUBSYS_SCEPTAR,  32, E_2D_SPECLEN},
         {(void **)&aries_xtal,   "AriesEnergy_CrystalNum",   "AriesE_Xtal",              SUBSYS_ARIES_A,  80, E_2D_SPECLEN},
         // {(void **)&labr_tac_xtal,"TAC_LBL_ART_vs_LBL_Num", "TAC_ART_LBL_LBL_Xtal",       SUBSYS_TAC_ART,   16,  E_2D_SPECLEN},
         {(void **)&art_tac_xtal, "TAC_LBL_ART_vs_ART_Num", "TAC_ART_LBL_ART_Xtal",       SUBSYS_ARIES_A,  80,  E_2D_SPECLEN},
@@ -1247,6 +1271,15 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                   ge_sum_us->Fill(ge_sum_us, (int)ptr->ecal, 1);
                 }
 
+                // Beta-gated HPGe singles spectra
+                if(ptr->tof>0){
+                  ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1);       // beta-gated Ge sum energy spectrum
+                  ge_sum_b_ab->Fill(ge_sum_b_ab, (int)ptr->esum, 1); // beta-gated Ge addback spectrum
+                }
+                if(ptr->tof & 1){ ge_sum_b_sep->Fill(ge_sum_b_sep, (int)ptr->ecal, 1); } // Sceptar-gated Ge sum energy spectrum
+                if(ptr->tof & 2){ ge_sum_b_zds->Fill(ge_sum_b_zds, (int)ptr->ecal, 1); } // Zds-gated Ge sum energy spectrum
+                if(ptr->tof & 4){ ge_sum_b_art->Fill(ge_sum_b_art, (int)ptr->ecal, 1); } // Aries-gated Ge sum energy spectrum
+
                 // Pile-up
                 pu = ptr->pileup;
                 ge_pu_type->Fill(ge_pu_type, (int)pu, 1);
@@ -1292,10 +1325,17 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                   }
                 }
 
-                clover = (int)(pos/16)+1;
+                clover = (int)(pos/4)+1;
                 if( clover >= 0 && clover < N_CLOVER && ptr->esum >= 0 ){   // ge addback
                   ge_ab_e[clover]->Fill(ge_ab_e[clover],  (int)ptr->esum, 1);
                   ge_sum_ab   ->Fill(ge_sum_ab,     (int)ptr->esum, 1);
+                  //  if(ptr->suppress != 1){ ge_sum_ab_sup->Fill(ge_sum_ab_sup,(int)ptr->esum, 1); } // Addback and BGO suppressed
+                  //  else{  ge_sum_ab_sup_rej->Fill(ge_sum_ab_sup_rej,(int)ptr->esum, 1); }          // Addback and What is rejected by BGO suppressed
+                  if(ptr->suppress == 1){ ge_sum_ab_sup_rej->Fill(ge_sum_ab_sup_rej,(int)ptr->esum, 1); } // Addback and What is rejected by BGO suppressed
+                  else{
+                    ge_sum_ab_sup->Fill(ge_sum_ab_sup,(int)ptr->esum, 1);               // Addback and BGO suppressed
+                    ge_ab_sup_e[clover]->Fill(ge_ab_sup_e[clover],  (int)ptr->esum, 1); // Addback and BGO suppressed per clover
+                  }
 
                   if( clover < 9 ){ // Separate Addback sum for upstream and downstream
                     ge_sum_ab_us->Fill(ge_sum_ab_us, (int)ptr->ecal, 1);
@@ -1408,7 +1448,9 @@ int init_default_histos(Config *cfg, Sort_status *arg)
               } else {
                 labr_xtal->Fill(labr_xtal, pos, (int)ptr->ecal, 1);
               } break;
-              case SUBSYS_SCEPTAR: break;
+              case SUBSYS_SCEPTAR:
+              sceptar_xtal->Fill(sceptar_xtal, crystal_table[ptr->chan], (int)ptr->ecal, 1);
+              break;
               case SUBSYS_TAC_LABR:
 
               // Save LBL channel number into ptr->integ2 or integ3 or integ4
@@ -1598,8 +1640,12 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                 case SUBSYS_SCEPTAR:
                 gb_dt->Fill(gb_dt, (int)((ptr->ts - alt->ts)+DT_SPEC_LENGTH/2), (int)ptr->esum, 1);
                 if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_SCEPTAR]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_SCEPTAR]) ){
-                  ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1); // beta-gated Ge sum energy spectrum
-                  ge_sum_b_sep->Fill(ge_sum_b_sep, (int)ptr->ecal, 1); // Sceptar-gated Ge sum energy spectrum
+                  //  ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1); // beta-gated Ge sum energy spectrum
+                  if((int)ptr->ecal == 3576){
+                    fprintf(stdout,"=======================================Fill ge_sum_b: SEP: %d %d %d - GRG: %d %d %d",alt->chan,alt->trig_req,(int)alt->ecal,ptr->chan,ptr->trig_req,(int)ptr->ecal);
+                    fprintf(stdout,"==== %ld - %ld = %ld\n",ptr->ts,alt->ts,ptr->ts-alt->ts);
+                  }
+                  //  ge_sum_b_sep->Fill(ge_sum_b_sep, (int)ptr->ecal, 1); // Sceptar-gated Ge sum energy spectrum
                 }else if((ptr->ts - alt->ts)<-25){
                   ge_isomer_popu->Fill(ge_isomer_popu, (int)ptr->ecal, 1); // Early gamma rays appearing earlier in time than the prompt
                 }else if((ptr->ts - alt->ts)>25){
@@ -1610,8 +1656,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                 gb_dt->Fill(gb_dt, (int)((ptr->ts - alt->ts)+DT_SPEC_LENGTH/2), (int)ptr->esum, 1);
                 if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_ARIES_A]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_ARIES_A]) ){
                   if(ptr->ecal > 10 && alt->ecal > 10){
-                    ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1);         // beta-gated Ge sum energy spectrum
-                    ge_sum_b_art->Fill(ge_sum_b_art, (int)ptr->ecal, 1); // Aries-gated Ge sum energy spectrum
+                    //  ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1);         // beta-gated Ge sum energy spectrum
+                    //  ge_sum_b_art->Fill(ge_sum_b_art, (int)ptr->ecal, 1); // Aries-gated Ge sum energy spectrum
                     ge_art->Fill(ge_art, (int)ptr->ecal, (int)alt->esum, 1);
                     c1 = crystal_table[ptr->chan];
                     c2 = crystal_table[alt->chan];
@@ -1637,8 +1683,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                 case SUBSYS_ZDS_A:
                 gb_dt->Fill(gb_dt, (int)((ptr->ts - alt->ts)+DT_SPEC_LENGTH/2), (int)ptr->esum, 1);
                 if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_ZDS_A]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_ZDS_A]) ){
-                  ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1);         // beta-gated Ge sum energy spectrum
-                  ge_sum_b_zds->Fill(ge_sum_b_zds, (int)ptr->ecal, 1); // Zds-gated Ge sum energy spectrum
+                  //  ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1);         // beta-gated Ge sum energy spectrum
+                  //  ge_sum_b_zds->Fill(ge_sum_b_zds, (int)ptr->ecal, 1); // Zds-gated Ge sum energy spectrum
                 }else if((ptr->ts - alt->ts)<0){
                   ge_isomer_popu->Fill(ge_isomer_popu, (int)ptr->ecal, 1); // Early gamma rays appearing earlier in time than the prompt
                 }else if((ptr->ts - alt->ts)>0){
@@ -2066,15 +2112,12 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                               fprintf(stderr,"unrecognized ppg pattern, 0x%04X\n", (odb_ppg_cycle[index].codes[i] & 0xFFFF));
                               gen_derived_odb_tables();
                               return(-1);
-                          }
+                            }
                             ppg_cycle_pattern_code[i] = ppg_index;
 
                             if(odb_ppg_cycle[index].durations[i] == -1){
                               // Infinte duration
                               odb_ppg_cycle[index].length = i+1;
-                              ppg_cycle_length = odb_ppg_cycle[index].length;
-                              ppg_cycle_duration = 0;
-                              ppg_cycles_active = 0;
                             }else{
                               ppg_cycles_active = 1;
                               ppg_cycle_length = odb_ppg_cycle[index].length;
@@ -2086,6 +2129,10 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                           }
                           if(ppg_cycle_duration == 0){
                             fprintf(stdout,"PPG cycle duration is infinite, ie. no cycles\n");
+                            fprintf(stdout,"Setting PPG cycle duration to 15 seconds for diagnostics\n");
+                            ppg_cycle_duration = 15000000000; // 15 seconds
+                            ppg_cycle_pattern_duration[0] = 15000000000; // 15 seconds
+                            ppg_cycles_active = 1;
                           }else{
                             fprintf(stdout,"PPG cycle duration is %10.4f seconds\n",(double)(ppg_cycle_duration/100000000));
                           }
@@ -2165,15 +2212,15 @@ int init_default_histos(Config *cfg, Sort_status *arg)
 
                         // Record crystal and element numbers [** Naming schemes are subsystem-dependant **]
                         switch(subsys){
-                          case ODBHANDLE_LBL: case ODBHANDLE_LBS: // LaBr,Paces, Ares and Zds
-                          case ODBHANDLE_LBT: case ODBHANDLE_ART:
+                          case ODBHANDLE_LBL: case ODBHANDLE_LBS: // LaBr,Paces, Aries and Zds
+                          case ODBHANDLE_LBT: case ODBHANDLE_SEP: case ODBHANDLE_ART:
                           case ODBHANDLE_DAL: case ODBHANDLE_DAT:
                           case ODBHANDLE_PAC: case ODBHANDLE_ZDS: case ODBHANDLE_DSW:
                           crystal_table[i] = pos;
                           if(        crystal == 'A' ){ element_table[i] = 1;
                           } else if( crystal == 'B' ){ element_table[i] = 2;
                           } else if( crystal == 'C' ){ element_table[i] = 3;
-                          } else if( crystal == 'X' ){ element_table[i] = -1; // just one crystal for LaBr3, ZDS, ART, LBT
+                          } else if( crystal == 'X' ){ element_table[i] = -1; // just one crystal for LaBr3, ZDS, ART, LBT, SEP
                           } else {
                             fprintf(stderr,"unknown crystal for ancillary[=%c] in %s\n", crystal, chan_name[i]);
                           } break;
