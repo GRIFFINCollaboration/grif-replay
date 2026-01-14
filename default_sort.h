@@ -12,7 +12,7 @@
 #define SUBSYS_PACES     1
 #define SUBSYS_LABR_L    2
 #define SUBSYS_RCMP      3
-#define SUBSYS_ARIES_A   4
+#define SUBSYS_ARIES_A   4 // GRIF16
 #define SUBSYS_ZDS_A     5 // GRIF16
 #define SUBSYS_TAC_LABR  6
 #define SUBSYS_LABR_BGO  7
@@ -277,9 +277,9 @@ TH1I *subsys_dt[MAX_SUBSYS][MAX_SUBSYS];
 TH1I *tac_lbl_ts_diff[N_TACS];
 
 // HPGe (ge_sum is sum of crystal energies, ge_sum_b is beta-gated)
-TH1I  *ge_ab_e[N_CLOVER], *ge_sum_ab;
+TH1I  *ge_ab_e[N_CLOVER], *ge_ab_sup_e[N_CLOVER], *ge_sum_ab, *ge_sum_ab_sup, *ge_sum_ab_sup_rej;
 TH1I  *ge_sum, *ge_sum_us, *ge_sum_ds, *ge_sum_ab_us, *ge_sum_ab_ds;
-TH1I  *ge_sum_b, *ge_sum_b, *ge_sum_b_sep, *ge_sum_b_zds, *ge_sum_b_art, *ge_sum_b_art_brems;
+TH1I  *ge_sum_b, *ge_sum_b_ab, *ge_sum_b_sep, *ge_sum_b_sep_brems, *ge_sum_b_ab_sep_brems, *ge_sum_b_zds, *ge_sum_b_art, *ge_sum_b_art_brems;
 
 // ARIES, PACES and LaBr3
 TH1I  *aries_sum;  // aries_sum is sum of tile energies
@@ -322,7 +322,7 @@ TH2I *lbl_lbl_tac;                       // A special 3d histogram disguised as 
 
 // 2D Energy vs detector number
 TH2I *ge_xtal, *bgo_xtal, *bgof_xtal, *bgos_xtal, *bgob_xtal, *bgoa_xtal, *labr_xtal;
-TH2I *labr_tac_xtal, *paces_xtal, *aries_xtal, *art_tac_xtal, *desw_e_xtal, *desw_tof_xtal;
+TH2I *labr_tac_xtal, *paces_xtal, *sceptar_xtal, *aries_xtal, *art_tac_xtal, *desw_e_xtal, *desw_tof_xtal;
 
 #define N_DT 27   // Time difference
 char dt_handles[N_DT][HANDLE_LENGTH]={
@@ -363,7 +363,9 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
   TH2I  *dsw_angcor[N_DSW_DSW_ANG_CORR];
 
   // Compton Polarimetry histograms
-  #define N_GE_COMP_POL       52
+  TH2I  *comp_pol_angles_110;
+  TH2I  *comp_pol_angles_145;
+  #define N_GE_COMP_POL       12 // 12 bins is 180 degrees divided into a bin width of 15 degrees
   TH2I  *gg_comp_pol_110[N_GE_COMP_POL];
   TH2I  *gg_comp_pol_145[N_GE_COMP_POL];
 

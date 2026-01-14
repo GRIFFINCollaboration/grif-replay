@@ -507,6 +507,13 @@ float grif_crystal_cartesian_110mm[64][3]={
           return result;
         }
 
+        // calculate cross product of two three-dimensional vectors
+        void cross_product(double vector1[], double vector2[], double result[]) {
+          result[0] = vector1[1] * vector2[2] - vector1[2] * vector2[1];
+          result[1] = vector1[2] * vector2[0] - vector1[0] * vector2[2];
+          result[2] = vector1[0] * vector2[1] - vector1[1] * vector2[0];
+        }
+
         // calculate the product of the magnitudes of two three-dimensional vector
         double vector_magnitude_product(double vector1[], double vector2[]){
           double result1 = 0.0,result2 = 0.0;
@@ -532,8 +539,8 @@ float grif_crystal_cartesian_110mm[64][3]={
           }else if(distance==145){
             fprintf(stderr,"angular_diff_GeGe function error: 145mm distance case not implemented yet\n");
             return 0;
-          //  vec1[0] = grif_crystal_cartesian_145mm[c1][0]; vec1[1] = grif_crystal_cartesian_145mm[c1][1]; vec1[2] = grif_crystal_cartesian_145mm[c1][2];
-          //  vec2[0] = grif_crystal_cartesian_145mm[c2][0]; vec2[1] = grif_crystal_cartesian_145mm[c2][1]; vec2[2] = grif_crystal_cartesian_145mm[c2][2];
+            //  vec1[0] = grif_crystal_cartesian_145mm[c1][0]; vec1[1] = grif_crystal_cartesian_145mm[c1][1]; vec1[2] = grif_crystal_cartesian_145mm[c1][2];
+            //  vec2[0] = grif_crystal_cartesian_145mm[c2][0]; vec2[1] = grif_crystal_cartesian_145mm[c2][1]; vec2[2] = grif_crystal_cartesian_145mm[c2][2];
           }else{
             fprintf(stderr,"angular_diff_GeGe function error: unknown distance = %d. Expected int of 110 or 145\n",distance);
             return 0;
@@ -541,6 +548,36 @@ float grif_crystal_cartesian_110mm[64][3]={
           dot = dot_product(vec1,vec2);
           mag = vector_magnitude_product(vec1,vec2);
           angle = RADIANS_TO_DEGREES*acos( dot / mag );
+
+          return angle;
+        }
+
+        // Calculate the azimuthal angle between a scattering event in one clover and a coincidence plane defined by two HPGe
+        // c1 and c2 are the same as for angular correlations. These define the coincidence plane.
+        // c3 is another crystal in one of the clovers.
+        double azimuthal_GeGeGe(int c1, int c2, int c3, int distance){
+          double vec1[3], vec2[3], vec3[3], coincidence_plane[3], scattering_plane[3], dot, mag, angle;
+
+          if(distance==110){
+            vec1[0] = grif_crystal_cartesian_110mm[c1][0]; vec1[1] = grif_crystal_cartesian_110mm[c1][1]; vec1[2] = grif_crystal_cartesian_110mm[c1][2];
+            vec2[0] = grif_crystal_cartesian_110mm[c2][0]; vec2[1] = grif_crystal_cartesian_110mm[c2][1]; vec2[2] = grif_crystal_cartesian_110mm[c2][2];
+            vec3[0] = grif_crystal_cartesian_110mm[c3][0]; vec3[1] = grif_crystal_cartesian_110mm[c3][1]; vec3[2] = grif_crystal_cartesian_110mm[c3][2];
+          }else if(distance==145){
+            fprintf(stderr,"azimuthal_GeGeGe function error: 145mm distance case not implemented yet\n");
+            return 0;
+            //  vec1[0] = grif_crystal_cartesian_145mm[c1][0]; vec1[1] = grif_crystal_cartesian_145mm[c1][1]; vec1[2] = grif_crystal_cartesian_145mm[c1][2];
+            //  vec2[0] = grif_crystal_cartesian_145mm[c2][0]; vec2[1] = grif_crystal_cartesian_145mm[c2][1]; vec2[2] = grif_crystal_cartesian_145mm[c2][2];
+            //  vec3[0] = grif_crystal_cartesian_145mm[c3][0]; vec3[1] = grif_crystal_cartesian_145mm[c3][1]; vec3[2] = grif_crystal_cartesian_145mm[c3][2];
+          }else{
+            fprintf(stderr,"azimuthal_GeGeGe function error: unknown distance = %d. Expected int of 110 or 145\n",distance);
+            return 0;
+          }
+          cross_product(vec1,vec2,coincidence_plane); // the Normal vector of the plane (c1,c2)
+          cross_product(vec2,vec3,scattering_plane);  // the Normal vector of the plane (c2,c3)
+          // Now find the angle between the coincidence and scattering planes, the azimuthal
+          dot = dot_product(coincidence_plane,scattering_plane);
+          mag = vector_magnitude_product(coincidence_plane,scattering_plane);
+          angle = RADIANS_TO_DEGREES*acos( dot / mag ); // This is the azimuthal angle
 
           return angle;
         }
