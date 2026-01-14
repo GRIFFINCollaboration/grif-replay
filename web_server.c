@@ -19,7 +19,7 @@
 
 #define MAX_QUEUE_LEN    6
 #define REQUEST_TIMEOUT 30 // 30 seconds (was 10 seconds)
-#define URLLEN        2048 //      maximum url and other string lengths
+#define URLLEN        2048 // maximum url and other string lengths
 #define WEBPORT       9093 //    http standard recommends ~8000bytes BUT
                            // windows browsers will not handle more than 2000
 
@@ -101,7 +101,7 @@ void web_main(int *arg)
 #define MAXURLARGS 128
 #define ROOTDIR "/home/griffin/daq/analyser"
 static char buf[URLLEN], url[URLLEN], filename[URLLEN];
-static char url_args[MAXURLARGS][STRING_LEN];
+static char url_args[MAXURLARGS][URL_STRING_LEN];
 char *histo_list[MAXURLARGS];
 
 int get_request(int fd);
@@ -110,7 +110,7 @@ int send_file(char *filename, int fd);
 
 int handle_connection(int fd)
 {
-   extern int handle_command(int fd, int narg, char url_args[][STRING_LEN]);
+   extern int handle_command(int fd, int narg, char url_args[][URL_STRING_LEN]);
    int request_count, content_type, command, arg;
    char *arg2 = url_args[1];
    char *ptr = url;
@@ -136,7 +136,7 @@ int split_cmdurl(char *url)  // split ?cmd=XXX&arg1=XXX?...
          url_args[i][j++] = ' '; ptr+=3; continue;
       }
       url_args[i][j++] = *ptr++;
-      if( j >= STRING_LEN ){ --j; err=1; }
+      if( j >= URL_STRING_LEN ){ --j; err=1; }
       if( *ptr != '&' && *ptr != '=' ){ continue; }
       if( err ){ fprintf(stderr,"arg %d too long in %s\n", i, url); }
       url_args[i][j] = 0;

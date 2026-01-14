@@ -11,6 +11,7 @@
 //#define FILE_BUFSIZ     1048576 // 64k * 4 * 4 [1M]
 #define FILE_BUFSIZ     (1024*1024*1024) // allows matrices up to 16k*16k*4
 #define STRING_LEN          256
+#define URL_STRING_LEN     2048
 
 #define MAX_HISTO_GATES     64
 #define MAX_SORT_VARS      256
