@@ -1162,7 +1162,7 @@ while( 1 ){ // Calibrations
   } ptr += 9;
   name = ptr; while( *ptr != '"' ){ ++ptr; } *ptr++ = 0;
   if( strncmp(ptr,",\"address\":",11) != 0 ){
-    fprintf(stderr,"load_config: errV byte %ld\n", ptr-config_data);
+    fprintf(stderr,"load_config: errV1 byte %ld\n", ptr-config_data);
     return(-1);
   } ptr += 11; valstr = ptr;
   while( isdigit(*ptr) || *ptr=='-' || *ptr=='.' ){++ptr;} *ptr++ = 0;
@@ -1171,7 +1171,7 @@ while( 1 ){ // Calibrations
     return(-1);
   }
   if( strncmp(ptr,"\"datatype\":",11) != 0 ){
-    fprintf(stderr,"load_config: errV byte %ld\n", ptr-config_data);
+    fprintf(stderr,"load_config: errV2 byte %ld\n", ptr-config_data);
     return(-1);
   } ptr += 11; valstr = ptr;
   while( isdigit(*ptr) || *ptr=='-' || *ptr=='.' ){++ptr;} *ptr++ = 0;
@@ -1189,7 +1189,7 @@ while( 1 ){ // Calibrations
     return(-1);
   }
   if( strncmp(ptr,"\"gain\":",7) != 0 ){
-    fprintf(stderr,"load_config: errV byte %ld\n", ptr-config_data);
+    fprintf(stderr,"load_config: errV3 byte %ld\n", ptr-config_data);
     return(-1);
   } ptr += 7; valstr = ptr;
   while( isdigit(*ptr) || *ptr=='-' || *ptr=='.' ){++ptr;} *ptr++ = 0;

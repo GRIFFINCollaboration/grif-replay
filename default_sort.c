@@ -256,6 +256,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         return(-1);
       }
 
+      //      fprintf(stdout,"%d %ld %d\n",ptr->chan,ptr->ts,ptr->q1);
+
       // Calculate the energy and calibrated energies
       energy = ( ptr->integ1 == 0 ) ? ptr->q1 : spread(ptr->q1)/ptr->integ1;
       ptr->ecal = ptr->esum=offsets[chan]+energy*(gains[chan]+energy*quads[chan]);
@@ -352,6 +354,13 @@ int init_default_histos(Config *cfg, Sort_status *arg)
           ptr->pu_class = PU_SINGLE_HIT; // Single hit events, no pileup, this is the most common type of HPGe event
         }
 
+        // Fill TBragg histogram
+        if(ptr->alt_ecal>1){
+          tbragg->Fill(tbragg, (int)(ptr->ecal/4), (int)ptr->alt_ecal, 1); // E vs Z
+          tbragg_z->Fill(tbragg_z, (int)ptr->alt_ecal, 1); //  Z
+          tbragg_e->Fill(tbragg_e, (int)(ptr->ecal/4), 1); //  E
+        }
+
         // HPGe Clover time-dependant crosstalk corrections within same clover
         i = start_idx;
         while( i != frag_idx ){ // need at least two events in window
@@ -382,7 +391,6 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             }
           }
         } // end of while
-
 
         // Fill crosstalk histograms
         i = start_idx;
@@ -1125,6 +1133,10 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {NULL,                   "Analysis/Comp_Pol",        ""},
         {(void **) gg_comp_pol_110,"GeGe_110mm_CompPol_bin%02d", "", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  GE_ANGCOR_SPECLEN, N_GE_COMP_POL},
         {(void **) gg_comp_pol_145,"GeGe_145mm_CompPol_bin%02d", "", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  GE_ANGCOR_SPECLEN, N_GE_COMP_POL},
+        {NULL,                   "TBragg/TBragg",                                   },
+        {(void **)&tbragg,      "deltaE_vs_E",             "",          SUBSYS_HPGE_A,  E_2D_SPECLEN, E_2D_SPECLEN},
+        {(void **)&tbragg_z,    "TBragg_Z",                "",                           SUBSYS_HPGE_A,  E_SPECLEN},
+        {(void **)&tbragg_e,    "TBragg_E",                "",                           SUBSYS_HPGE_A,  E_SPECLEN},
       }; // Note initialized array variable is CONST (not same as double-pointer)
       // TH1I *hist;  hist = (TH1I *) 0;   ptr = &hist = (TH1I **)addr;  *ptr =
 

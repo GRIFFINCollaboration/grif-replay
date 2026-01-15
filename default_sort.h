@@ -376,6 +376,11 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
     // Crosstalk Analysis
     TH2I  *ct_e_vs_dt_B[N_HPGE], *ct_e_vs_dt_G[N_HPGE], *ct_e_vs_dt_R[N_HPGE], *ct_e_vs_dt_W[N_HPGE];
 
+  // TBragg
+  TH2I  *tbragg;
+  TH1I  *tbragg_z, *tbragg_e;
+
+
   ////////////////////////////////////
   ////////////////////////////////////
 

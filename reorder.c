@@ -35,6 +35,7 @@ void reorder_status(int current_time)
                                                                       // errors - do not add to total
    printf("Reorder: in:%10ld out:%10ld err:%10d[%5.1f%%] [Desync:%d]\n         ",
           tsevents_in, tsevents_out, sum, (100.0*sum)/tsevents_in, err[8] );
+          printf("Errors: %d %d %d %d %d %d %d\n",err[0],err[2],err[3],err[4],err[5],err[6],err[7]); // seeing err 3 (ERR_LENGTH_IN) and 5 (ERR_EARLY_IN)
    printf("[init:%d format:%d length:%d early:%d late:%d,%d, unk:%d]\n",
           err[2], err[0], err[3], err[5], err[4], err[6], err[7] );
 }
@@ -43,7 +44,8 @@ void reorder_status(int current_time)
 //this type of sort is a bucket-sort with insertion-sort into each time-bucket
 //  it is planned to optimize the insertion sort with one skip-list if needed
 //////////////////////////////////////////////////////////////////////////////
-#define TOO_EARLY_CUTOFF 3000000000
+// #define TOO_EARLY_CUTOFF 3000000000
+#define TOO_EARLY_CUTOFF 300000000000 // extended for tbragg on alphadon
 #define REORDER_EVENTS    65536  // *0.5 => max 32k events stored in buffers
 #define REORDER_TSLOTS  1000000  // 1 million [~1.25 seconds]
 #define BUCKET_SIZE_BITS      7  // 128 timestamps per slot -> 1us
@@ -51,7 +53,8 @@ void reorder_status(int current_time)
 #define OUTPUT_FRACTION    0.25
 #define INIT_WAIT           250 // allow # junk events per grifc at run start
 //#define REORDER_MAXEVENTSIZE 20 // max 20 words - 80 bytes
-#define REORDER_MAXEVENTSIZE 70 // max 70 words - 280 bytes to accomodate 100 sample waveforms
+//#define REORDER_MAXEVENTSIZE 70 // max 70 words - 280 bytes to accomodate 100 sample waveforms
+#define REORDER_MAXEVENTSIZE 500 // max 170 words - to accomodate 300 sample waveforms
 typedef struct reorderbuf_struct Tsbuf;
 struct reorderbuf_struct {
    volatile Tsbuf *next; unsigned long ts;
@@ -122,7 +125,7 @@ void reorder_main(Sort_status *arg)
          ++err[ERR_FORMAT_IN]; err[ERR_WORDS_IN] += len;
          evstart = NULL; err_format = len = ev_done = ts_stat = 0; continue;
       }
-      if( len > REORDER_MAXEVENTSIZE ){
+      if( len > REORDER_MAXEVENTSIZE ){ printf("length at REORDER_MAXEVENTSIZE = %d\n",len);
          ++err[ERR_LENGTH_IN]; err[ERR_WORDS_IN] += len;
          evstart = NULL; err_format = len = ev_done = ts_stat = 0; continue;
       }
@@ -149,7 +152,7 @@ void reorder_main(Sort_status *arg)
       // their timeslot comes (reuse would be expected ~64k events later)
       //   i.e. buffer would become blocked for a long time
       //   discard for now, until implement a way of avoiding blocked buf
-      if( ts > (output_ts + TOO_EARLY_CUTOFF) ){
+      if( ts > (output_ts + TOO_EARLY_CUTOFF) ){ printf("ts at entry: ts=%ld, output_ts=%ld, output_ts+cutoff=%ld\n",ts,output_ts,(output_ts + TOO_EARLY_CUTOFF));
          ++err[ERR_EARLY_IN]; err[ERR_WORDS_IN] += len;
          evstart = NULL; err_format = len = ev_done = ts_stat = 0; continue;
       }
@@ -208,7 +211,8 @@ void reorder_main(Sort_status *arg)
    return;
 }
 
-#define MAX_DATA_GAP 4000000000 // 40 seconds
+//#define MAX_DATA_GAP 4000000000 // 40 seconds
+#define MAX_DATA_GAP 360000000000 // extended for tbragg at alphadon
 void reorder_out(Sort_status *arg)
 {
    int i, j, wr_avail, wrpos, ts_slot, *err;
@@ -230,6 +234,7 @@ void reorder_out(Sort_status *arg)
       }
       while(1){ ts += bucket_length; // check slots, in order, for next event
          if( ts - prev_ts >= MAX_DATA_GAP ){ // what is this?
+           printf("Max Gap: ts=%ld, prev_ts=%ld, gap=%ld\n",ts,prev_ts,ts - prev_ts);
             if( arg->reorder_in_done ){
                arg->reorder_out_done = 1;
                printf("Reorder: end output thread [ts:%3ds] ...\n",
