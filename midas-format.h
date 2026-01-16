@@ -22,8 +22,7 @@ typedef struct midas_bank_header_struct {
 
 //#define BANK_BUFSIZE (64*1024*1024)
 #define BANK_BUFSIZE (4*1024*1024) // this is 32bit-words
-extern unsigned bankbuf[];
-//extern unsigned *bankbuf[BANK_BUFSIZE+2*DRAGON_EVENTWORDS];
+extern unsigned bankbuf[BANK_BUFSIZE];
 extern volatile unsigned long bankbuf_wrpos;
 extern volatile unsigned long bankbuf_rdpos;
 // without brackets, and using wrpos = bankbuf_wrpos % BANK_BUFSIZE;
