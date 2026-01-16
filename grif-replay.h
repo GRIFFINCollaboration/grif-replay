@@ -3,6 +3,7 @@
 
 #define SYS_PATH_LENGTH    2048 // allow this much space for filesystem paths
                                 // also any other "large" strings
+#define URL_STRING_LEN SYS_PATH_LENGTH
 
 // tar file format limits some string lengths ...
 #define HISTO_FOLDER_LENGTH 155 // stored in 155 char field
@@ -11,7 +12,6 @@
 //#define FILE_BUFSIZ     1048576 // 64k * 4 * 4 [1M]
 #define FILE_BUFSIZ     (1024*1024*1024) // allows matrices up to 16k*16k*4
 #define STRING_LEN          256
-#define URL_STRING_LEN     2048
 
 #define MAX_HISTO_GATES     64
 #define MAX_SORT_VARS      256
@@ -87,7 +87,8 @@ typedef struct sortmetrics_struct {
 extern void midas_status(int), reorder_status(int), grif_status(int);
 extern int gen_derived_odb_tables();
 extern int open_next_subrun(Sort_status *arg);
-extern int read_odb_items(int len, int *bank_data);
+extern int read_odb_tree(int len, int *bank_data);
+extern int read_odb_items(int len, int *bank_data); // old version
 
 #endif
 

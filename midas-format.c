@@ -10,6 +10,7 @@
 
 static char recbuf[RECORDSIZE];
 static int recbufpos, recordlen;
+static int midas_evstart; // start of event data - just after event-header
 
 static int errcount;
 
@@ -42,6 +43,147 @@ void midas_status(int current_time)
    rate = diagnostics.midas_file_bytes / ((dt == 0) ? 1 : dt);
    printf("%22s sorttime:%3ds => [%8.4f Mbytes/s]\n", "", dt, rate/1024/1024);
 }
+
+//////////////////////////////////////////////////////////////////////////
+///////     midas-main (usually run in separate thread)            ///////
+//////////////////////////////////////////////////////////////////////////
+// read data banks from midas file (additionally handle odb record at BOR)
+//   either copy data to buffer or process it immediately[if single thread]
+// 
+// buffer-wraparound easy to handle during simple data copies
+//  - but messier if doing more complex decoding into buffer
+//  - in this case do not wraparound - allow extra space after end of buffer
+//    do wraparound after decoding is done (copy excess data to start of buffer)
+// [extra space is only used temporarily, and only here + data-decode modules]
+
+
+#ifdef DRAGON_SORT
+#include "dragon-format.h"
+
+unsigned bankbuf[BANK_BUFSIZE+2*DRAGON_EVENTWORDS];
+volatile unsigned long bankbuf_wrpos;
+volatile unsigned long bankbuf_rdpos;
+
+void midas_main(Sort_status *arg)
+{
+   int items, len, overrun, wrpos, words_used, words_left, evok, err;
+   int single_thread = arg->single_thread; //save!
+   unsigned int usecs=100, *ptr;
+   Dragon_event *evt;
+   static int evcount;
+   char *bank_name;
+   time_t tstamp;
+   extern int process_grif3_bank(unsigned *buf, int len); // if single thread
+   extern int read_dragon_odb(int bank_len, int *bank_data);
+
+   bankbuf_wrpos = bankbuf_rdpos = 0;
+   recbufpos = recordlen = 0;
+   while(1){
+      if( arg->shutdown_midas != 0 ){ fprintf(stderr,"SHUTDOWN\n"); break; }
+      if( arg->end_of_data == 1 ){ usleep(usecs); continue; }
+      // buffer read position is taken care of in next_event and next_bank
+      if( next_event(arg) < 0 ){     // midas event
+         if( open_next_subrun(arg) == 0 ){
+            recbufpos = recordlen = 0; continue;
+         }
+         arg->end_of_data = 1; continue;
+      }
+      // use external set-timestamps fn for following
+      diagnostics.midas_last_timestamp = ev_head.timestamp;
+      if( diagnostics.midas_run_start == 0 ){
+         diagnostics.midas_run_start = ev_head.timestamp;
+      } else if( ev_head.timestamp != diagnostics.midas_run_start ){
+         diagnostics.midas_datarate = diagnostics.midas_file_bytes /
+            (ev_head.timestamp - diagnostics.midas_run_start);
+      } else {
+         ;// no datarate yet
+      }
+      // wait for space to store whole event
+      // V1190 buffer size is 256 words => can potentially get events ~300 words long
+      // and, for memory efficiency, we do not allow anywhere near this size
+      //   => may want to split single event into two
+      //   => would need to wait here for enough space for TWO events [or more?]
+      // (not yet implemented - too long events are currently truncated)
+      while(1){
+         words_used = bankbuf_wrpos - bankbuf_rdpos;
+         if( (words_left = BANK_BUFSIZE - words_used) >= DRAGON_EVENTWORDS){
+            break;
+         }
+         usleep(usecs); continue;
+      }
+      wrpos = bankbuf_wrpos % BANK_BUFSIZE;
+      evt = (Dragon_event *)( bankbuf+wrpos );
+      memset(evt, 0, sizeof(Dragon_event));
+      evt->begin_marker = DRAGON_EVENT_MARK;
+      err = evok = 0;
+
+      while( (items = next_bank(arg, &bank_name)) > 0 ){
+         len = ( (bank_head.data_size+3) & ~3) / 4; // bytes to ints
+         ptr = (unsigned *)(recbuf+recbufpos);
+         // scalar banks are ignored for now
+         if( strcmp(bank_name,"VTRH") == 0 ){
+            if( !unpack_io32_bank(evt, ptr, len, HEAD_EVENT) ){ evok=1; } else { ++err; }
+         } else
+         if( strcmp(bank_name,"VTRT") == 0 ){
+            if( !unpack_io32_bank(evt, ptr, len, TAIL_EVENT) ){ evok=1; } else { ++err; }
+         } else
+         if( strcmp(bank_name,"TSCH") == 0 ){
+            if( !unpack_io32_fifobank(evt, ptr, len, HEAD_EVENT) ){ evok=1; } else { ++err; }
+         } else
+         if( strcmp(bank_name,"TSCT") == 0 ){
+            if( !unpack_io32_fifobank(evt, ptr, len, TAIL_EVENT) ){ evok=1; } else { ++err; }
+         } else
+         if( strcmp(bank_name,"TDC0") == 0 ){
+            if( !unpack_v1190_bank(evt, ptr, len, HEAD_EVENT) ){ evok=1; } else { ++err; }
+         } else
+         if( strcmp(bank_name,"TLT0") == 0 ){
+            if( !unpack_v1190_bank(evt, ptr, len, TAIL_EVENT) ){ evok=1; } else { ++err; }
+         } else
+         if( strcmp(bank_name,"ADC0") == 0 ){
+            if( !unpack_v792_bank(evt, ptr, len, 0, HEAD_EVENT) ){ evok=1; } else { ++err; }
+         } else
+         if( strcmp(bank_name,"TLQ0") == 0 ){
+            if( !unpack_v792_bank(evt, ptr, len, 0, TAIL_EVENT) ){ evok=1; } else { ++err; }
+         } else
+         if( strcmp(bank_name,"TLQ1") == 0 ){
+            if( !unpack_v792_bank(evt, ptr, len, 1, TAIL_EVENT) ){ evok=1; } else { ++err; }
+         } else { continue; }//ignore others
+      }
+      if( items == -1 ){ //  corrupt or unknown data - skip rest of event
+         // NOTE: can be part-way through event at this point
+         recbufpos = midas_evstart + ev_head.data_size;
+         continue;
+      } else if( items == -2 ){
+         if( arg->odb_ready == 0 ){ // odb "event" @ start of file
+            // "bank_name", here contains bank length, as integer
+            read_dragon_odb(*(int *)bank_name, (int *)(recbuf+recbufpos) );
+            arg->odb_ready = 1;
+         }
+         recbufpos += ev_head.data_size;
+         continue;
+      } else if( arg->odb_ready == 0 ){
+         arg->odb_ready = 2; // missing
+      }
+      if( err == 0 && evok ){
+         if( single_thread ){
+            // ????????????
+         } else { //update wrpos (and handle any buffer overrun)
+            // -> NO! memcpy(bankbuf+wrpos, evt, sizeof(Dragon_event) );
+            //printf("MIDAS evt%6d pos:%6d\n", evcount++, bankbuf_wrpos);
+            bankbuf_wrpos += DRAGON_EVENTWORDS;
+            if( (overrun = (wrpos + DRAGON_EVENTWORDS - BANK_BUFSIZE)) > 0 ){
+               memcpy(bankbuf, bankbuf+wrpos, sizeof(int)*overrun);
+            }
+         }
+      } else {
+         // count error-events
+      }
+   }
+   fprintf(stdout,"shutting down midas thread ...\n");
+   return;
+}
+#endif // DRAGON_SORT
+#ifdef GRIFFIN_SORT
 //////////////////////////////////////////////////////////////////////////
 ///////       Short section to translate caen data to grif fmt     ///////
 //////////////////////////////////////////////////////////////////////////
@@ -312,6 +454,7 @@ void midas_main(Sort_status *arg)
    fprintf(stdout,"shutting down midas thread ...\n");
    return;
 }
+#endif // GRIFFIN_SORT
 
 int next_record(Sort_status *arg)
 {
@@ -350,6 +493,7 @@ int next_event(Sort_status *arg)
    }
    memcpy((char *)&ev_head, recbuf+recbufpos, sizeof(Midas_event_header) );
    recbufpos += sizeof(Midas_event_header);
+   midas_evstart = recbufpos;
    arg->midas_timestamp = ev_head.timestamp;
    if( arg->debug ){
       printf("\n\nEvent     id: %d",             ev_head.event_id     );
@@ -387,6 +531,11 @@ int next_bank(Sort_status *arg, char **bank_name) // loop over banks in event
          printf("    Flags        : %d",   allbank_head.flags );
          printf("    (swap needed): %s\n", swap_required ? "yes" : "no" );
       }
+      if( allbank_head.allbanksize > 65535 || allbank_head.allbanksize < 16 ){
+         // something wrong - ignore this event
+         fprintf(stderr,"BAD allbanksize: %d\n", allbank_head.allbanksize );
+	 return(-1);
+      }
       recbufpos += sizeof(Midas_allbank_header);
       memset((char *)&bank_head, 0, sizeof(Midas_bank_header) );
    }
@@ -400,7 +549,7 @@ int next_bank(Sort_status *arg, char **bank_name) // loop over banks in event
 		 errcount++, recbufpos - evbase, ev_head.data_size );
 	 return(-1);
       }
-      return(-1);
+      return(0); // end of event - return zero items
    }
    if( allbank_head.flags & BANK_IS_32BIT ){
       memcpy((char *)&bank_head, recbuf+recbufpos, sizeof(Midas_bank_header) );
