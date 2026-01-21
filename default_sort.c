@@ -1629,7 +1629,9 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                         angle = azimuthal_GeGeGe(c1,c2,c3,110);
                         angle_idx = (int)(angle / 15);
                         if(angle_idx==12){ angle_idx=11; } // Put 180 degree scatters into the last valid bin
-                        gg_comp_pol_110[angle_idx]->Fill(gg_comp_pol_110[angle_idx], coinc_ecal, scatt_esum, 1); // Asymmetric matrix
+                        if(angle_idx>=0 && angle_idx<N_GE_COMP_POL){
+                          gg_comp_pol_110[angle_idx]->Fill(gg_comp_pol_110[angle_idx], coinc_ecal, scatt_esum, 1); // Asymmetric matrix
+                        }
                       }
                     }
                   }
