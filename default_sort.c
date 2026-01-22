@@ -909,7 +909,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
           if( sys >=0 && sys < MAX_SUBSYS ){
             hit_hist[5] -> Fill(hit_hist[5], sys, 1);
 
-            if(sys == SUBSYS_HPGE_A){ // Individual Ge crystal energy in coincidence, used for angular correlations
+            if(sys == SUBSYS_HPGE_A && ptr->multiplicity>1){ // Individual Ge crystal energy in coincidence, used for angular correlations
               gg_energy[crystal_table[ptr->chan]]->Fill(gg_energy[crystal_table[ptr->chan]], (int)ptr->ecal, 1);
             }
 
