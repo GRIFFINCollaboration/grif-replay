@@ -908,11 +908,6 @@ int init_default_histos(Config *cfg, Sort_status *arg)
           sys = ptr->subsys;
           if( sys >=0 && sys < MAX_SUBSYS ){
             hit_hist[5] -> Fill(hit_hist[5], sys, 1);
-
-            if(sys == SUBSYS_HPGE_A && ptr->multiplicity>1){ // Individual Ge crystal energy in coincidence, used for angular correlations
-              gg_energy[crystal_table[ptr->chan]]->Fill(gg_energy[crystal_table[ptr->chan]], (int)ptr->ecal, 1);
-            }
-
           }
         }
         if( ptr->cfd         != 0 ){ hit_hist[2] -> Fill(hit_hist[2], chan, 1); }
@@ -1596,6 +1591,10 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                   if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 < 64 ){
                     if(ptr->ecal < 5 &&  alt->ecal < 5){ break; } // Both crystals must have a valid energy
                     gg_hit->Fill(gg_hit, c1, c2, 1); // 2d crystal hitpattern
+
+                    // Individual Ge crystal energy in coincidence, used for angular correlations weighting factors
+                    gg_energy[c1]->Fill(gg_energy[c1], (int)ptr->ecal, 1);
+                    gg_energy[c2]->Fill(gg_energy[c2], (int)alt->ecal, 1);
 
                     if( c2 == grif_opposite[c1] ){
                       // 180 degree coinc matrix for summing corrections
