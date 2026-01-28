@@ -496,6 +496,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             // THIS IS EQUAL TO THE DIFF PERIOD OF HPGE TYPE
             // First assign the pileup class type, then correct the energies
             if(alt->subsys == SUBSYS_HPGE_A && chan2 == chan){
+              gea_self_dt->Fill(gea_self_dt, dt, crystal_table[chan], 1);
               perform_pileup_correction(ptr, alt, dt, chan, chan2, i, end_idx);
             }
             // BGO suppression of HPGe
@@ -529,6 +530,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             case SUBSYS_HPGE_B:
             // HPGe B pile-up corrections
             if(alt->subsys == SUBSYS_HPGE_B && chan2 == chan){
+              geb_self_dt->Fill(geb_self_dt, dt, crystal_table[chan], 1);
               perform_pileup_correction(ptr, alt, dt, chan, chan2, i, end_idx);
             }
             break;
@@ -1003,6 +1005,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {(void **)&desw_psd_zdse, "DES_Wall_PSD_ZDSEn",      "DES_Wall_PSD_ZDSEn",       SUBSYS_DESWALL, E_2D_SPECLEN, E_2D_SPECLEN},
         {(void **) rcmp_strips,  "RCS%02d_E_strips",         "",                         SUBSYS_RCMP,   2*N_RCMP_STRIPS, E_2D_RCMP_SPECLEN, N_RCMP_POS},
         {NULL,                   "Hits_and_Sums/Pileup",     "",                         },
+        {(void **)&gea_self_dt,  "GeA_crystal_vs_self_dt",    "",                         SUBSYS_HPGE_A,  E_2D_SPECLEN, 64},
+        {(void **)&geb_self_dt,  "GeB_crystal_vs_self_dt",    "",                         SUBSYS_HPGE_A,  E_2D_SPECLEN, 64},
         {(void **)&ge_pu_class,  "Pile_up_class",           "",                          SUBSYS_HPGE_A,         64},
         {(void **) ge_sum_class,    "", ge_pu_class_sum_titles[0],                       SUBSYS_HPGE_A,  E_SPECLEN,   0, N_PU_CLASSES},
         {(void **) ge_e_vs_k_class, "", ge_pu_class_2d_titles[0],                        SUBSYS_HPGE_A,       2048, 512, N_PU_CLASSES},

@@ -339,6 +339,7 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
   TH2I *gg_hit, *bgobgo_hit, *aa_hit, *gea_hit, *lba_hit, *dsw_hit;
 
   // 2d Energy vs Energy Coincidence matrices
+  TH2I *gea_self_dt,*geb_self_dt;
   TH2I *gg, *gg_ab, *gg_opp, *gg_ab_opp, *ge_bgo, *ge_paces, *ge_labr, *ge_rcmp, *labr_labr, *labr_zds, *labr_rcmp;
   TH2I *ge_art, *ge_zds, *paces_art, *labr_art, *art_art, *dsw_dsw, *ge_dsw, *art_dsw;
   TH1I *gg_energy[N_HPGE];
