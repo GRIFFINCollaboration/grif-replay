@@ -38,23 +38,42 @@ char odb_typestr[ODB_DATATYPES][DTYPE_STRLEN] = {
    "FLOAT", "DOUBLE", "BITS", "STRING",    "ARRAY", "STRUCT", "KEY", "LINK"
 };
 
+// read odb value into integer variable (even if source type is float)
+static Xml_val *get_odb_value(char *path, int *type);
 int odbval_int(char *key, int *dst)
 {
-   int type;  void *val;
+   int type;  float f_val; Xml_val *val;
 
    if( (val = get_odb_value(key, &type)) == NULL ){ return(-1); }
-   if( type >= 0 && type <= 7 ){ *dst = *(int   *)val; return(0); }// ints
-   if( type == 8 || type == 9 ){ *dst = *(float *)val; return(0); }// floats
+   if( type >= 0 && type <= 7 ){ // ints
+      if( sscanf(val->p_val, "%d", dst) >= 1 ){ return(0); }
+      printf("odbval_int:cant read integer value[%s]\n", val->p_val);
+      return(-1);
+   }
+   if( type == 8 || type == 9 ){ // floats
+      if( sscanf(val->p_val, "%f", &f_val) >= 1 ){ *dst = f_val; return(0); }
+      printf("odbval_int:cant read value[%s]\n", val->p_val);
+      return(-1);
+   }
    printf("odbval_int[%s] Non-Numeric key-type [%d]\n", key, type);
    return(-1);
 }
+// read odb value into floating-point variable (even if source type is integer)
 int odbval_float(char *key, float *dst)
 {
-   int type;  void *val;
+   int type, i_val;  Xml_val *val;
 
    if( (val = get_odb_value(key, &type)) == NULL ){ return(-1); }
-   if( type >= 0 && type <= 7 ){ *dst = *(int   *)val; return(0); }// ints
-   if( type == 8 || type == 9 ){ *dst = *(float *)val; return(0); }// floats
+   if( type >= 0 && type <= 7 ){ // ints
+      if( sscanf(val->p_val, "%d", &i_val) >= 1 ){ *dst = i_val; return(0); }
+      printf("odbval_int:cant read integer value[%s]\n", val->p_val);
+      return(-1);
+   }
+   if( type == 8 || type == 9 ){ // floats
+      if( sscanf(val->p_val, "%f", dst) >= 1 ){ return(0); }
+      printf("odbval_int:cant read value[%s]\n", val->p_val);
+      return(-1);
+   }
    printf("odbval_float[%s] Non-Numeric key-type [%d]\n", key, type);
    return(-1);
 }
@@ -68,21 +87,21 @@ int odbarray_int(char *key, int *dst, int maxlen)
    if( type >= 0 && type <= 7 ){ // integer values
       i_array = array;
       for(i=0; i<nval && i<maxlen; i++){ dst[i] = i_array[i]; }
-      if( nval >= maxlen ){
-         printf("read_odb_int[%s] Too many entries %d [max %d]\n",
+      if( nval > maxlen ){
+         printf("odbarray_int[%s] Too many entries %d [max %d]\n",
                                                   key, nval, maxlen);
          return(-1);
       }
    } else if ( type == 8 || type == 9 ){ // float values
       f_array = array;
       for(i=0; i<nval && i<maxlen; i++){ dst[i] = f_array[i]; }
-      if( nval >= maxlen ){
-         printf("read_odb_int[%s] Too many entries %d [max %d]\n",
+      if( nval > maxlen ){
+         printf("odbarray_int[%s] Too many entries %d [max %d]\n",
                                                   key, nval, maxlen);
          return(-1);
       }
    } else {
-      printf("read_odb_int[%s] Non-Numeric key-type [%d]\n", key, type);
+      printf("odbarray_int[%s] Non-Numeric key-type [%d]\n", key, type);
       return(-1);
    }
    return(0);
@@ -97,21 +116,21 @@ int odbarray_float(char *key, float *dst, int maxlen)
    if( type >= 0 && type <= 7 ){ // integer values
       i_array = array;
       for(i=0; i<nval && i<maxlen; i++){ dst[i] = i_array[i]; }
-      if( nval >= maxlen ){
-         printf("read_odb_float[%s] Too many entries %d [max %d]\n",
+      if( nval > maxlen ){
+         printf("odbarray_float[%s] Too many entries %d [max %d]\n",
                                                   key, nval, maxlen);
          return(-1);
       }
    } else if ( type == 8 || type == 9 ){ // float values
       f_array = array;
       for(i=0; i<nval && i<maxlen; i++){ dst[i] = f_array[i]; }
-      if( nval >= maxlen ){
-         printf("read_odb_float[%s] Too many entries %d [max %d]\n",
+      if( nval > maxlen ){
+         printf("odbarray_float[%s] Too many entries %d [max %d]\n",
                                                   key, nval, maxlen);
          return(-1);
       }
    } else {
-      printf("read_odb_int[%s] Non-Numeric key-type [%d]\n", key, type);
+      printf("odbodbarray_float[%s] Non-Numeric key-type [%d]\n", key, type);
       return(-1);
    }
    return(0);
@@ -122,11 +141,11 @@ int odbarray_float(char *key, float *dst, int maxlen)
 // alloc resulting array here - free in caller
 int get_odb_array(char *path, void **value, int *type, int *nvalues, int *size)
 {
-   int i, i_val, index;
+   int i, i_val, index, *i_array;
+   float f_val, *f_array;
    char *tmp, *result;
    Xml_node *node;
    Xml_attr *attr;
-   float f_val;
    *size = 4;
 
    // find array node, and read attrs: type, length(if string), num_values
@@ -175,7 +194,7 @@ int get_odb_array(char *path, void **value, int *type, int *nvalues, int *size)
    if( (result = calloc(*nvalues, *size) ) == NULL ){
      printf("get_odb_array: failed malloc for %s\n", path); return(-1);
    }
-   *value = result;
+   *value = i_array = f_array = result;
    if( (node = node->child_head) == NULL ){
       printf("get_odb_array:empty\n", path); return(-1);
    }
@@ -216,7 +235,8 @@ int get_odb_array(char *path, void **value, int *type, int *nvalues, int *size)
             printf("get_odb_array:cant read float value[%s]\n", tmp);
             break;
          }
-         ((float *)result)[index] = i_val; break;
+         // doesnt work ?? ((float *)result)[index] = f_val; break;
+         f_array[index] = f_val; break;
       case 11: // string
          if( strlen(tmp) >= *size ){
             printf("get_odb_array:string[%s] above specified length\n", tmp);
@@ -232,7 +252,7 @@ int get_odb_array(char *path, void **value, int *type, int *nvalues, int *size)
    return(0);
 }
 
-void *get_odb_value(char *path, int *type)
+static Xml_val *get_odb_value(char *path, int *type)
 {  // value is stored in value element, not subnode
    Xml_node *node = get_odb_node(path);
    if( node == NULL ){
@@ -492,10 +512,14 @@ Xml_node *get_odb_node(char *path)
                }
             }
          }
-         if( (node = node->next) == NULL ){ break; } // not found
+         if( (node = node->next) == NULL ){
+            printf("get_odb_node: %s not found at %s\n", path, ptr); return(NULL);
+         }
       }
       if( sep == NULL || strlen(sep+1) == 0 ){ break; }
-      if( (node = node->child_head) == NULL){ break; }
+      if( (node = node->child_head) == NULL){
+         printf("get_odb_node: [%s] not found at %s\n", path, ptr); return(NULL);
+      }
       ptr = sep+1;
    }
    return(node);

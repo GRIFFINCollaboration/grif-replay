@@ -23,10 +23,12 @@ struct xml_node_struct {
 extern Xml_node *odb_tree;
 
 int read_odb_tree(int bank_len, int *bank_data);
-// basic data access ...
-void *get_odb_value(char *path, int *type);
+
+//basic data access ...
 int get_odb_array(char *path, void **value, int *type, int *nvalues, int *size);
-// more convenient data access with type conversion ...
+// (get_odb_val uses internal datatype to store value)
+
+// convenient data access with type conversion ...
 int odbval_int(char *key, int *dst);
 int odbval_float(char *key, float *dst);
 int odbarray_int(char *key, int *dst, int maxlen);

@@ -165,6 +165,13 @@ void midas_main(Sort_status *arg)
          arg->odb_ready = 2; // missing
       }
       if( err == 0 && evok ){
+         // use odb tables to copy adc/tdc data to appropriate detector slots
+         // may as well also gainmatch here
+         if(        evt->type == HEAD_EVENT ){
+            unpack_head_event(evt);
+         } else if( evt->type == TAIL_EVENT ){
+            unpack_tail_event(evt);
+         } 
          if( single_thread ){
             // ????????????
          } else { //update wrpos (and handle any buffer overrun)
