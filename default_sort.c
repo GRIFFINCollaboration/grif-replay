@@ -134,10 +134,11 @@ int init_default_histos(Config *cfg, Sort_status *arg)
     }
 
     // Intialize all PRESORT timing windows to their defaults
-    bgo_window_min = addback_window_min = rcmp_fb_window_min = lbl_tac_window_min = zds_tac_window_min = art_tac_window_min = desw_beta_window_min = 0;
+    bgo_window_min = addback_window_min = rcmp_fb_window_min = qed_fb_window_min = lbl_tac_window_min = zds_tac_window_min = art_tac_window_min = desw_beta_window_min = 0;
     bgo_window_max = 20;
     addback_window_max = 20;
     rcmp_fb_window_max = 10;
+    qed_fb_window_max  = 10;
     lbl_tac_window_max = 25;
     art_tac_window_max = 25;
     zds_tac_window_max = 25;
@@ -208,6 +209,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         desw_beta_window_min = global->min; desw_beta_window_max = global->max;
       }else if(strncmp(tmp,"presort_time_diff_suppression",29) == 0){
         bgo_window_min = global->min; bgo_window_max = global->max;
+      }else if(strncmp(tmp,"presort_time_diff_qed_front-back",32) == 0){
+        qed_fb_window_min = global->min; qed_fb_window_max = global->max;
       }else if(strncmp(tmp,"presort_time_diff_rcmp_front-back",33) == 0){
         rcmp_fb_window_min = global->min; rcmp_fb_window_max = global->max;
       }else if(strncmp(tmp,"cycles_bin_size_in_ms",21) == 0){
@@ -427,7 +430,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         int i, j, dt, dt13, tof;
         float q1,integ2,q12,k1,k2,k12,e1,e2,e12,m,c;
         int chan,chan2,found,pos;
-        int clover, ge1, c1,c2,bin;
+        int clover, ge1, c1,c2,bin, p_strip, n_strip;
         float energy,ecal,correction;
         int ct_index[4][4] = {{-1,0,1,2},{0,-1,1,2},{0,1,-1,2},{0,1,2,-1}};
 
@@ -541,12 +544,41 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             // Ensure the energy collected in the front and back is similar
             ptr->esum = -1; // Need to exclude any noise and random coincidences.
             if( alt->subsys == SUBSYS_RCMP && (dt >= rcmp_fb_window_min && dt <= rcmp_fb_window_max) && (ptr->ecal>0 && ptr->ecal<32768)){
-              if((crystal_table[ptr->chan] == crystal_table[alt->chan]) && (polarity_table[ptr->chan] != polarity_table[alt->chan]) && (alt->ecal > 0  && ptr->ecal<32768)){
+              if((crystal_table[ptr->chan] == crystal_table[alt->chan]) && (polarity_table[ptr->chan] != polarity_table[alt->chan]) && (alt->ecal > 0  && alt->ecal<32768)){
                 if( ((ptr->ecal / alt->ecal)<=1.1 && (ptr->ecal / alt->ecal)>=0.9)){
                   // Ensure esum comes from P side, but use this timestamp
                   ptr->esum = polarity_table[ptr->chan]==0 ? ptr->ecal : (polarity_table[ptr->chan]==1 ? alt->ecal : -1);
                   ptr->suppress = alt->suppress = 1;
                 }
+              }
+            }
+            break;
+            case SUBSYS_QED_STRIP:
+            // QED Front-Back coincidence of two QED strips will define a QED pixel
+            // Ensure its the same DSSD and that the two events are front and back strips
+            // The charged particles enter the P side and this has superior energy resolution
+            // Ensure the energy collected in the front and back is similar
+            ptr->esum = -1; // Need to exclude any noise and random coincidences.
+            if( alt->subsys == SUBSYS_QED_STRIP && (dt >= qed_fb_window_min && dt <= qed_fb_window_max) && (ptr->ecal>0 && ptr->ecal<32768)){
+              if((crystal_table[ptr->chan] == crystal_table[alt->chan]) && (polarity_table[ptr->chan] != polarity_table[alt->chan]) && (alt->ecal > 0 && alt->ecal<32768)){
+                //  if( ((ptr->ecal / alt->ecal)<=1.1 && (ptr->ecal / alt->ecal)>=0.9)){ // Energy-sharing only works if both strips are calibrated!
+                // The ptr strip now changes to a PIXEL
+                // Ensure ecal comes from P side, alt_ecal will be N side
+                // Use the timestamp of ptr which came earlier
+                // 32*32 = 1024 pixels in each DSSD.
+                // crystal_table[ptr->chan] is DSSD number [1-6]
+                // ptr->alt_chan is the pixel number within this DSSD [0-1023]
+                // P strip number is Floor(pixel number / N_QED_STRIPS) [0-31]
+                // N strip number is pixel number % N_QED_STRIPS [0-31]
+                if(polarity_table[ptr->chan]==0){ // ptr is P strip, alt is N strip
+                  ptr->alt_ecal = alt->ecal;
+                  ptr->alt_chan = (element_table[ptr->chan] * N_QED_STRIPS) + element_table[alt->chan];
+                }else{ // alt is P strip, ptr is N strip
+                  ptr->alt_ecal = ptr->ecal; ptr->ecal = alt->ecal;
+                  ptr->alt_chan = (element_table[alt->chan] * N_QED_STRIPS) + element_table[ptr->chan];
+                }
+                ptr->subsys = SUBSYS_QED_PIXEL;
+                //  }
               }
             }
             break;
@@ -962,6 +994,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {(void **)&aries_sum,    "ARIES_Sum_Energy",        "",                          SUBSYS_ARIES_A, E_SPECLEN},
         {(void **)&rcmp_sum,     "RCMP_Sum_Energy",         "",                          SUBSYS_RCMP,    E_SPECLEN},
         {(void **)&rcmp_fb_sum,  "RCMP_Sum_FB_Energy",      "",                          SUBSYS_RCMP,    E_SPECLEN},
+        {(void **)&qed_sum,      "QED_Sum_Energy",          "",                          SUBSYS_QED_STRIP, E_SPECLEN},
+        {(void **)&qed_fb_sum,   "QED_Sum_FB_Energy",       "",                          SUBSYS_QED_STRIP, E_SPECLEN},
         {(void **)&desw_sum_e,   "DES_Wall_Sum_Energy",     "",                          SUBSYS_DESWALL, E_SPECLEN},
         {(void **)&desw_sum_tof, "DES_Wall_Sum_TOF",        "",                          SUBSYS_DESWALL, E_SPECLEN},
         {(void **)&desw_sum_psd, "DES_Wall_Sum_PSD",        "",                          SUBSYS_DESWALL, E_SPECLEN},
@@ -1004,6 +1038,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {(void **)&desw_cc_tof,  "DESWall_cc_tof",       "DES_Wall_cc_tof",             SUBSYS_DESWALL, E_2D_SPECLEN, E_2D_SPECLEN},
         {(void **)&desw_psd_zdse, "DES_Wall_PSD_ZDSEn",      "DES_Wall_PSD_ZDSEn",       SUBSYS_DESWALL, E_2D_SPECLEN, E_2D_SPECLEN},
         {(void **) rcmp_strips,  "RCS%02d_E_strips",         "",                         SUBSYS_RCMP,   2*N_RCMP_STRIPS, E_2D_RCMP_SPECLEN, N_RCMP_POS},
+        {(void **)  qed_strips,  "QED%02d_E_strips",         "",                         SUBSYS_QED_STRIP,   2*N_QED_STRIPS, E_2D_QED_SPECLEN, N_QED_POS},
         {NULL,                   "Hits_and_Sums/Pileup",     "",                         },
         {(void **)&gea_self_dt,  "GeA_crystal_vs_self_dt",    "",                         SUBSYS_HPGE_A,  E_2D_SPECLEN, 64},
         {(void **)&geb_self_dt,  "GeB_crystal_vs_self_dt",    "",                         SUBSYS_HPGE_A,  E_2D_SPECLEN, 64},
@@ -1058,6 +1093,10 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {(void **) rcmp_fb,     "RCS%d_Front_Back",  "",   SUBSYS_RCMP, E_2D_RCMP_SPECLEN, E_2D_RCMP_SPECLEN, N_RCMP_POS},
         {(void **)&rcmp_x_ge_hit,"RCS_Xstrips_vs_GeHit","",SUBSYS_RCMP, 192,  64},
         {(void **)&rcmp_y_ge_hit,"RCS_Ystrips_vs_GeHit","",SUBSYS_RCMP, 192,  64},
+        {(void **) qed_hit,    "QED%d_PN_hit",       "",  SUBSYS_QED_PIXEL, N_QED_STRIPS,     N_QED_STRIPS,     N_QED_POS},
+        {(void **) qed_fb,     "QED%d_Front_Back",  "",   SUBSYS_QED_PIXEL, E_2D_QED_SPECLEN, E_2D_QED_SPECLEN, N_QED_POS},
+        {(void **)&qed_p_ge_hit,"QED_Pstrips_vs_GeHit","",SUBSYS_QED_PIXEL, 192,  64},
+        {(void **)&qed_n_ge_hit,"QED_Nstrips_vs_GeHit","",SUBSYS_QED_PIXEL, 192,  64},
         {NULL,                  "Ang_Corr/GG_Ang_Corr",         ""},
         {(void **) gg_angcor_110,"Ge_Ge_110mm_angular_bin%02d", "", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  SYMMETERIZE, N_GE_ANG_CORR},
         {(void **) gg_angcor_145,"Ge_Ge_145mm_angular_bin%02d", "", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  SYMMETERIZE, N_GE_ANG_CORR},
@@ -1124,6 +1163,9 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {NULL,                   "Analysis/Comp_Pol",        ""},
         {(void **) gg_comp_pol_110,"GeGe_110mm_CompPol_bin%02d", "", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  GE_ANGCOR_SPECLEN, N_GE_COMP_POL},
         {(void **) gg_comp_pol_145,"GeGe_145mm_CompPol_bin%02d", "", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  GE_ANGCOR_SPECLEN, N_GE_COMP_POL},
+        {NULL,                   "Analysis/QED",        ""},
+        {(void **) qedp_ge_theta,  "QEDPstrip%03d_E_vs_theta",  qedp_ge_theta_handles[0],   SUBSYS_QED_PIXEL, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
+        {(void **) qedn_ge_theta,  "QEDNstrip%03d_E_vs_theta",  qedn_ge_theta_handles[0],   SUBSYS_QED_PIXEL, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
       }; // Note initialized array variable is CONST (not same as double-pointer)
       // TH1I *hist;  hist = (TH1I *) 0;   ptr = &hist = (TH1I **)addr;  *ptr =
 
@@ -1234,7 +1276,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             subsys_dt[SUBSYS_LABR_L ][SUBSYS_LABR_L  ] = dt_hist[26];
             subsys_dt[SUBSYS_LABR_L ][SUBSYS_ARIES_A ] = dt_hist[11];
             subsys_dt[SUBSYS_LABR_L ][SUBSYS_ZDS_A   ] = dt_hist[17];
-            subsys_dt[SUBSYS_LABR_L ][SUBSYS_TAC_LABR  ] = dt_hist[16];
+            subsys_dt[SUBSYS_LABR_L ][SUBSYS_TAC_LABR] = dt_hist[16];
             subsys_dt[SUBSYS_RCMP   ][SUBSYS_RCMP    ] = dt_hist[ 9];
             subsys_dt[SUBSYS_ARIES_A][SUBSYS_ARIES_A ] = dt_hist[13];
             subsys_dt[SUBSYS_ARIES_A][SUBSYS_TAC_ART ] = dt_hist[14];
@@ -1243,6 +1285,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             subsys_dt[SUBSYS_DESWALL][SUBSYS_DESWALL ] = dt_hist[18];
             subsys_dt[SUBSYS_DESWALL][SUBSYS_ARIES_A ] = dt_hist[20];
             subsys_dt[SUBSYS_DESWALL][SUBSYS_ZDS_A   ] = dt_hist[21];
+            subsys_dt[SUBSYS_HPGE_A ][SUBSYS_QED_PIXEL  ] = dt_hist[27];
+            subsys_dt[SUBSYS_QED_PIXEL][SUBSYS_QED_PIXEL] = dt_hist[28];
             return(0);
           }
 
@@ -1570,6 +1614,17 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                   rcmp_strips[(pos-1)]->Fill(rcmp_strips[(pos-1)], elem, (int)ptr->ecal, 1);
                 }
                 break;
+                case SUBSYS_QED_PIXEL: // QED pixel is a coincidence between a front and back strip
+                qed_sum->Fill(qed_sum, (int)ptr->ecal, 1);     // p strips
+                qed_sum->Fill(qed_sum, (int)ptr->alt_ecal, 1); // n strips
+                qed_fb_sum->Fill(qed_fb_sum, (int)ptr->ecal, 1);     // fb coincidence
+                pos  = crystal_table[ptr->chan]; // QED DSSD number [1-6]
+                elem = ptr->alt_chan; // QED pixel number [0-1023]
+                qed_fb[(pos-1)]->Fill(qed_fb[(pos-1)], (int)ptr->ecal, (int)ptr->alt_ecal, 1); // front-back energy
+                qed_hit[(pos-1)]->Fill(qed_hit[(pos-1)], (int)(elem/N_QED_STRIPS), (elem%N_QED_STRIPS), 1); // QED DSSD hitpattern
+                qed_strips[(pos-1)]->Fill(qed_strips[(pos-1)], (int)(elem/N_QED_STRIPS), (int)ptr->ecal, 1); // p strip energies
+                qed_strips[(pos-1)]->Fill(qed_strips[(pos-1)], (elem%N_QED_STRIPS)+N_QED_STRIPS, (int)ptr->alt_ecal, 1); // n strip energies
+                break;
                 default: break; // Unrecognized or unprocessed dtype
               }// end of switch
               return(0);
@@ -1712,6 +1767,22 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                 if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 <= 192 && ptr->ecal>5 && alt->ecal>5 ){
                   if(polarity_table[alt->chan]==0){ rcmp_x_ge_hit->Fill(rcmp_x_ge_hit, c2, c1, 1); }
                   else{ rcmp_y_ge_hit->Fill(rcmp_y_ge_hit, c2, c1, 1); }
+                }
+                break;
+                case SUBSYS_QED_PIXEL: // ge-QED
+                c1 = crystal_table[ptr->chan]; // HPGe crystal number
+                pos  = crystal_table[alt->chan]; // QED DSSD number [1-6]
+                c2 = alt->alt_chan; // QED pixel number [0-1023]
+                //  (int)(c2/N_QED_STRIPS); // QED p strip number [0-31]
+                //  (c2%N_QED_STRIPS); // QED n strip number [0-31]
+                if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 < 1024 && ptr->ecal>5 && alt->ecal>5 ){
+                  qed_p_ge_hit->Fill(qed_p_ge_hit, (int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS)), c1, 1);
+                  qed_n_ge_hit->Fill(qed_n_ge_hit, (int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS)), c1, 1);
+                  
+                  if((int)(c2/N_QED_STRIPS) == (c2%N_QED_STRIPS)){ // Single pixel theta needed for initial calibration
+                    qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], alt->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
+                    qedn_ge_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qedn_ge_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], alt->alt_ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
+                  }
                 }
                 break;
                 default: break;
@@ -1931,13 +2002,14 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                         #define ODBHANDLE_DSG  13
                         #define ODBHANDLE_DAL  14
                         #define ODBHANDLE_DAT  15
+                        #define ODBHANDLE_QED  16
                         #define ODBHANDLE_UNK  23
                         static char odb_handle[MAX_ODB_SUBSYS][8] = {
                           "GRG", "GRS", "SEP", "PAC",  //  0- 3
                           "LBS", "LBT", "LBL", "DSC",  //  4- 7
                           "ART", "ZDS", "RCS", "XXX",  //  8-11
                           "DSW", "DSG", "DAL", "DAT",  //  12-15
-                          "",    "",    "",    "",
+                          "QED",    "",    "",    "",
                           "",    "",    "",    "UNK"
                         };
 
@@ -2240,6 +2312,10 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                           crystal_table[i] = pos;
                           element_table[i] = reorder_rcmp_strips[pos][polarity_table[i]][element];
                           break;
+                          case ODBHANDLE_QED:
+                          crystal_table[i] = pos;
+                          element_table[i] = element;
+                          break;
                           case ODBHANDLE_GRG: case ODBHANDLE_GRS:
                           element_table[i] = element;
                           pos -= 1; pos *=4;
@@ -2264,6 +2340,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                           case ODBHANDLE_DAL: subsys_table[i] = SUBSYS_LABR_L;    break;
                           case ODBHANDLE_DSC: subsys_table[i] = SUBSYS_DESCANT;   break;
                           case ODBHANDLE_RCS: subsys_table[i] = SUBSYS_RCMP;      break;
+                          case ODBHANDLE_QED: subsys_table[i] = SUBSYS_QED_STRIP; break;
                           case ODBHANDLE_DSW: subsys_table[i] = SUBSYS_DESWALL;  break;
                           case ODBHANDLE_DSG: subsys_table[i] = SUBSYS_DSG;  break;
                           case ODBHANDLE_GRG: subsys_table[i] = (output_type == 1) ? SUBSYS_HPGE_A :SUBSYS_HPGE_B; break;

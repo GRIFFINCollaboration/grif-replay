@@ -7,42 +7,44 @@
 //#######################################################################
 
 // do not alter order without also changing subsys_e_vs_e, subsys_dt
-#define MAX_SUBSYS      24
-#define SUBSYS_HPGE_A    0
-#define SUBSYS_PACES     1
-#define SUBSYS_LABR_L    2
-#define SUBSYS_RCMP      3
-#define SUBSYS_ARIES_A   4 // GRIF16
-#define SUBSYS_ZDS_A     5 // GRIF16
-#define SUBSYS_TAC_LABR  6
-#define SUBSYS_LABR_BGO  7
-#define SUBSYS_BGO       8
-#define SUBSYS_SCEPTAR   9
-#define SUBSYS_DESCANT  10
-#define SUBSYS_DESWALL  11
-#define SUBSYS_DSG      12
-#define SUBSYS_IGNORE   13
-#define SUBSYS_HPGE_B   16
-#define SUBSYS_ARIES_B  17 // CAEN
-#define SUBSYS_ZDS_B    18 // CAEN
-#define SUBSYS_TAC_ZDS  19
-#define SUBSYS_TAC_ART  20
-#define SUBSYS_UNKNOWN  23
+#define MAX_SUBSYS       24
+#define SUBSYS_HPGE_A     0
+#define SUBSYS_PACES      1
+#define SUBSYS_LABR_L     2
+#define SUBSYS_RCMP       3
+#define SUBSYS_ARIES_A    4 // GRIF16
+#define SUBSYS_ZDS_A      5 // GRIF16
+#define SUBSYS_TAC_LABR   6
+#define SUBSYS_LABR_BGO   7
+#define SUBSYS_BGO        8
+#define SUBSYS_SCEPTAR    9
+#define SUBSYS_DESCANT   10
+#define SUBSYS_DESWALL   11
+#define SUBSYS_DSG       12
+#define SUBSYS_QED_STRIP 13
+#define SUBSYS_IGNORE    14
+#define SUBSYS_HPGE_B    16
+#define SUBSYS_ARIES_B   17 // CAEN
+#define SUBSYS_ZDS_B     18 // CAEN
+#define SUBSYS_TAC_ZDS   19
+#define SUBSYS_TAC_ART   20
+#define SUBSYS_QED_PIXEL 22
+#define SUBSYS_UNKNOWN   23
 static char subsys_handle[MAX_SUBSYS][8] = {
   "GRGA", "PAC",  "LBL",  "RCS",
   "ARTA", "ZDSA", "LBT",  "LBS",
   "BGO",  "SEP",  "DSC",  "DSW",
-  "DSG", "XXX1", "XXX2", "XXX3",
+  "DSG",  "QEDs", "XXX2", "XXX3",
   "GRGB", "ARTB", "ZDSB", "", // secondary names start after #16
-  "",     "",     "",     "UNK"
+  "",     "",     "QED",  "UNK"
 };
 static char subsys_name[MAX_SUBSYS][STRING_LEN] = {
-  "Griffin", "PACES",   "LaBrX",   "RCMP",     //  0- 3
-  "ARIES",   "ZDSA",    "TAC_LBL",   "LaBrS",    //  4- 7
-  "BGO",     "Sceptar", "Descant", "DES_WALL", //  8-11
-  "Des_Ancil", "Ignore1", "Ignore2", "Ignore3",  // 12-15
-  "Grif_B",  "ARS_B",   "ZDS_B",   "TAC_ZDS",      // 16-19
-  "TAC_ART",      "",        "",        "Unknown"   // 20-23
+  "Griffin",   "PACES",    "LaBrX",   "RCMP",     //  0- 3
+  "ARIES",     "ZDSA",     "TAC_LBL", "LaBrS",    //  4- 7
+  "BGO",       "Sceptar",  "Descant", "DES_WALL", //  8-11
+  "Des_Ancil", "QEDs", "Ignore2", "Ignore3",  // 12-15
+  "Grif_B",    "ARS_B",    "ZDS_B",   "TAC_ZDS",  // 16-19
+  "TAC_ART",   "",         "QED",     "Unknown"   // 20-23
 }; // final entry will be used if not found - make sure it is not empty
 // #####################################################################
 
@@ -54,6 +56,8 @@ static char subsys_name[MAX_SUBSYS][STRING_LEN] = {
 #define N_TACS 12
 #define N_RCMP_POS 6
 #define N_RCMP_STRIPS 32
+#define N_QED_POS 6
+#define N_QED_STRIPS 32
 #define N_DES_WALL 60
 
 //#######################################################################
@@ -70,6 +74,7 @@ static char subsys_name[MAX_SUBSYS][STRING_LEN] = {
 #define E_2D_TOF_SPECLEN        1024
 #define E_2D_SPECLEN            4096
 #define E_2D_RCMP_SPECLEN       6400
+#define E_2D_QED_SPECLEN        4096
 #define E_3D_LBL_SPECLEN      160000  // 400*400
 #define E_3D_TAC_SPECLEN         512
 //#define T_SPEC_LENGTH     8192
@@ -181,19 +186,21 @@ TH1I  *desw_psd[N_DES_WALL];                // Pulse Shape Discrimination
 // The definition of the time difference gate in 10 nanosecond units.
 // The value is the maximum time difference in 10 nanosecond units.
 // The default values set here are replaced by the Global value at start of sorting.
-static int bgo_window_min = 0;
-static int addback_window_min = 0;
-static int rcmp_fb_window_min = 0;
-static int lbl_tac_window_min = 0;
-static int art_tac_window_min = 0;
-static int zds_tac_window_min = 0;
-static int desw_beta_window_min = 0;
-static int bgo_window_max = 20;
-static int addback_window_max = 20;
-static int rcmp_fb_window_max = 10;
-static int lbl_tac_window_max = 25;
-static int art_tac_window_max = 25;
-static int zds_tac_window_max = 25;
+static int bgo_window_min       =  0;
+static int addback_window_min   =  0;
+static int rcmp_fb_window_min   =  0;
+static int qed_fb_window_min    =  0;
+static int lbl_tac_window_min   =  0;
+static int art_tac_window_min   =  0;
+static int zds_tac_window_min   =  0;
+static int desw_beta_window_min =  0;
+static int bgo_window_max       = 20;
+static int addback_window_max   = 20;
+static int rcmp_fb_window_max   = 10;
+static int qed_fb_window_max    = 10;
+static int lbl_tac_window_max   = 25;
+static int art_tac_window_max   = 25;
+static int zds_tac_window_max   = 25;
 static int desw_beta_window_max = 80;
 
 //#######################################################################
@@ -293,6 +300,102 @@ TH2I  *rcmp_hit[N_RCMP_POS];
 TH2I  *rcmp_fb[N_RCMP_POS];
 TH2I  *rcmp_x_ge_hit, *rcmp_y_ge_hit; // rcmp strips vs Ge hitpatterns
 
+// QED
+TH1I  *qed_sum, *qed_fb_sum;  // qed_sum is sum of strip energies, fb is with front-back coincidence
+TH2I  *qed_strips[N_QED_POS];
+TH2I  *qed_hit[N_QED_POS];
+TH2I  *qed_fb[N_QED_POS];
+TH2I  *qed_p_ge_hit, *qed_n_ge_hit; // qed strips vs Ge hitpatterns
+TH2I  *qedp_ge_theta[N_QED_POS*N_QED_STRIPS], *qedn_ge_theta[N_QED_POS*N_QED_STRIPS]; // qed strip energy vs theta of a qed-Ge hit
+
+char qedp_ge_theta_handles[N_QED_POS*N_QED_STRIPS][HANDLE_LENGTH]={
+"QED1P00_E_vs_theta", "QED1P01_E_vs_theta", "QED1P02_E_vs_theta", "QED1P03_E_vs_theta", "QED1P04_E_vs_theta", "QED1P05_E_vs_theta",
+"QED1P06_E_vs_theta", "QED1P07_E_vs_theta", "QED1P08_E_vs_theta", "QED1P09_E_vs_theta", "QED1P10_E_vs_theta", "QED1P11_E_vs_theta",
+"QED1P12_E_vs_theta", "QED1P13_E_vs_theta", "QED1P14_E_vs_theta", "QED1P15_E_vs_theta", "QED1P16_E_vs_theta", "QED1P17_E_vs_theta",
+"QED1P18_E_vs_theta", "QED1P19_E_vs_theta", "QED1P20_E_vs_theta", "QED1P21_E_vs_theta", "QED1P22_E_vs_theta", "QED1P23_E_vs_theta",
+"QED1P24_E_vs_theta", "QED1P25_E_vs_theta", "QED1P26_E_vs_theta", "QED1P27_E_vs_theta", "QED1P28_E_vs_theta", "QED1P29_E_vs_theta",
+"QED1P30_E_vs_theta", "QED1P31_E_vs_theta",
+
+"QED2P00_E_vs_theta", "QED2P01_E_vs_theta", "QED2P02_E_vs_theta", "QED2P03_E_vs_theta", "QED2P04_E_vs_theta", "QED2P05_E_vs_theta",
+"QED2P06_E_vs_theta", "QED2P07_E_vs_theta", "QED2P08_E_vs_theta", "QED2P09_E_vs_theta", "QED2P10_E_vs_theta", "QED2P11_E_vs_theta",
+"QED2P12_E_vs_theta", "QED2P13_E_vs_theta", "QED2P14_E_vs_theta", "QED2P15_E_vs_theta", "QED2P16_E_vs_theta", "QED2P17_E_vs_theta",
+"QED2P18_E_vs_theta", "QED2P19_E_vs_theta", "QED2P20_E_vs_theta", "QED2P21_E_vs_theta", "QED2P22_E_vs_theta", "QED2P23_E_vs_theta",
+"QED2P24_E_vs_theta", "QED2P25_E_vs_theta", "QED2P26_E_vs_theta", "QED2P27_E_vs_theta", "QED2P28_E_vs_theta", "QED2P29_E_vs_theta",
+"QED2P30_E_vs_theta", "QED2P31_E_vs_theta",
+
+"QED3P00_E_vs_theta", "QED3P01_E_vs_theta", "QED3P02_E_vs_theta", "QED3P03_E_vs_theta", "QED3P04_E_vs_theta", "QED3P05_E_vs_theta",
+"QED3P06_E_vs_theta", "QED3P07_E_vs_theta", "QED3P08_E_vs_theta", "QED3P09_E_vs_theta", "QED3P10_E_vs_theta", "QED3P11_E_vs_theta",
+"QED3P12_E_vs_theta", "QED3P13_E_vs_theta", "QED3P14_E_vs_theta", "QED3P15_E_vs_theta", "QED3P16_E_vs_theta", "QED3P17_E_vs_theta",
+"QED3P18_E_vs_theta", "QED3P19_E_vs_theta", "QED3P20_E_vs_theta", "QED3P21_E_vs_theta", "QED3P22_E_vs_theta", "QED3P23_E_vs_theta",
+"QED3P24_E_vs_theta", "QED3P25_E_vs_theta", "QED3P26_E_vs_theta", "QED3P27_E_vs_theta", "QED3P28_E_vs_theta", "QED3P29_E_vs_theta",
+"QED3P30_E_vs_theta", "QED3P31_E_vs_theta",
+
+"QED4P00_E_vs_theta", "QED4P01_E_vs_theta", "QED4P02_E_vs_theta", "QED4P03_E_vs_theta", "QED4P04_E_vs_theta", "QED4P05_E_vs_theta",
+"QED4P06_E_vs_theta", "QED4P07_E_vs_theta", "QED4P08_E_vs_theta", "QED4P09_E_vs_theta", "QED4P10_E_vs_theta", "QED4P11_E_vs_theta",
+"QED4P12_E_vs_theta", "QED4P13_E_vs_theta", "QED4P14_E_vs_theta", "QED4P15_E_vs_theta", "QED4P16_E_vs_theta", "QED4P17_E_vs_theta",
+"QED4P18_E_vs_theta", "QED4P19_E_vs_theta", "QED4P20_E_vs_theta", "QED4P21_E_vs_theta", "QED4P22_E_vs_theta", "QED4P23_E_vs_theta",
+"QED4P24_E_vs_theta", "QED4P25_E_vs_theta", "QED4P26_E_vs_theta", "QED4P27_E_vs_theta", "QED4P28_E_vs_theta", "QED4P29_E_vs_theta",
+"QED4P30_E_vs_theta", "QED4P31_E_vs_theta",
+
+"QED5P00_E_vs_theta", "QED5P01_E_vs_theta", "QED5P02_E_vs_theta", "QED5P03_E_vs_theta", "QED5P04_E_vs_theta", "QED5P05_E_vs_theta",
+"QED5P06_E_vs_theta", "QED5P07_E_vs_theta", "QED5P08_E_vs_theta", "QED5P09_E_vs_theta", "QED5P10_E_vs_theta", "QED5P11_E_vs_theta",
+"QED5P12_E_vs_theta", "QED5P13_E_vs_theta", "QED5P14_E_vs_theta", "QED5P15_E_vs_theta", "QED5P16_E_vs_theta", "QED5P17_E_vs_theta",
+"QED5P18_E_vs_theta", "QED5P19_E_vs_theta", "QED5P20_E_vs_theta", "QED5P21_E_vs_theta", "QED5P22_E_vs_theta", "QED5P23_E_vs_theta",
+"QED5P24_E_vs_theta", "QED5P25_E_vs_theta", "QED5P26_E_vs_theta", "QED5P27_E_vs_theta", "QED5P28_E_vs_theta", "QED5P29_E_vs_theta",
+"QED5P30_E_vs_theta", "QED5P31_E_vs_theta",
+
+"QED6P00_E_vs_theta", "QED6P01_E_vs_theta", "QED6P02_E_vs_theta", "QED6P03_E_vs_theta", "QED6P04_E_vs_theta", "QED6P05_E_vs_theta",
+"QED6P06_E_vs_theta", "QED6P07_E_vs_theta", "QED6P08_E_vs_theta", "QED6P09_E_vs_theta", "QED6P10_E_vs_theta", "QED6P11_E_vs_theta",
+"QED6P12_E_vs_theta", "QED6P13_E_vs_theta", "QED6P14_E_vs_theta", "QED6P15_E_vs_theta", "QED6P16_E_vs_theta", "QED6P17_E_vs_theta",
+"QED6P18_E_vs_theta", "QED6P19_E_vs_theta", "QED6P20_E_vs_theta", "QED6P21_E_vs_theta", "QED6P22_E_vs_theta", "QED6P23_E_vs_theta",
+"QED6P24_E_vs_theta", "QED6P25_E_vs_theta", "QED6P26_E_vs_theta", "QED6P27_E_vs_theta", "QED6P28_E_vs_theta", "QED6P29_E_vs_theta",
+"QED6P30_E_vs_theta", "QED6P31_E_vs_theta",
+};
+
+char qedn_ge_theta_handles[N_QED_POS*N_QED_STRIPS][HANDLE_LENGTH]={
+"QED1N00_E_vs_theta", "QED1N01_E_vs_theta", "QED1N02_E_vs_theta", "QED1N03_E_vs_theta", "QED1N04_E_vs_theta", "QED1N05_E_vs_theta",
+"QED1N06_E_vs_theta", "QED1N07_E_vs_theta", "QED1N08_E_vs_theta", "QED1N09_E_vs_theta", "QED1N10_E_vs_theta", "QED1N11_E_vs_theta",
+"QED1N12_E_vs_theta", "QED1N13_E_vs_theta", "QED1N14_E_vs_theta", "QED1N15_E_vs_theta", "QED1N16_E_vs_theta", "QED1N17_E_vs_theta",
+"QED1N18_E_vs_theta", "QED1N19_E_vs_theta", "QED1N20_E_vs_theta", "QED1N21_E_vs_theta", "QED1N22_E_vs_theta", "QED1N23_E_vs_theta",
+"QED1N24_E_vs_theta", "QED1N25_E_vs_theta", "QED1N26_E_vs_theta", "QED1N27_E_vs_theta", "QED1N28_E_vs_theta", "QED1N29_E_vs_theta",
+"QED1N30_E_vs_theta", "QED1N31_E_vs_theta",
+
+"QED2N00_E_vs_theta", "QED2N01_E_vs_theta", "QED2N02_E_vs_theta", "QED2N03_E_vs_theta", "QED2N04_E_vs_theta", "QED2N05_E_vs_theta",
+"QED2N06_E_vs_theta", "QED2N07_E_vs_theta", "QED2N08_E_vs_theta", "QED2N09_E_vs_theta", "QED2N10_E_vs_theta", "QED2N11_E_vs_theta",
+"QED2N12_E_vs_theta", "QED2N13_E_vs_theta", "QED2N14_E_vs_theta", "QED2N15_E_vs_theta", "QED2N16_E_vs_theta", "QED2N17_E_vs_theta",
+"QED2N18_E_vs_theta", "QED2N19_E_vs_theta", "QED2N20_E_vs_theta", "QED2N21_E_vs_theta", "QED2N22_E_vs_theta", "QED2N23_E_vs_theta",
+"QED2N24_E_vs_theta", "QED2N25_E_vs_theta", "QED2N26_E_vs_theta", "QED2N27_E_vs_theta", "QED2N28_E_vs_theta", "QED2N29_E_vs_theta",
+"QED2N30_E_vs_theta", "QED2N31_E_vs_theta",
+
+"QED3N00_E_vs_theta", "QED3N01_E_vs_theta", "QED3N02_E_vs_theta", "QED3N03_E_vs_theta", "QED3N04_E_vs_theta", "QED3N05_E_vs_theta",
+"QED3N06_E_vs_theta", "QED3N07_E_vs_theta", "QED3N08_E_vs_theta", "QED3N09_E_vs_theta", "QED3N10_E_vs_theta", "QED3N11_E_vs_theta",
+"QED3N12_E_vs_theta", "QED3N13_E_vs_theta", "QED3N14_E_vs_theta", "QED3N15_E_vs_theta", "QED3N16_E_vs_theta", "QED3N17_E_vs_theta",
+"QED3N18_E_vs_theta", "QED3N19_E_vs_theta", "QED3N20_E_vs_theta", "QED3N21_E_vs_theta", "QED3N22_E_vs_theta", "QED3N23_E_vs_theta",
+"QED3N24_E_vs_theta", "QED3N25_E_vs_theta", "QED3N26_E_vs_theta", "QED3N27_E_vs_theta", "QED3N28_E_vs_theta", "QED3N29_E_vs_theta",
+"QED3N30_E_vs_theta", "QED3N31_E_vs_theta",
+
+"QED4N00_E_vs_theta", "QED4N01_E_vs_theta", "QED4N02_E_vs_theta", "QED4N03_E_vs_theta", "QED4N04_E_vs_theta", "QED4N05_E_vs_theta",
+"QED4N06_E_vs_theta", "QED4N07_E_vs_theta", "QED4N08_E_vs_theta", "QED4N09_E_vs_theta", "QED4N10_E_vs_theta", "QED4N11_E_vs_theta",
+"QED4N12_E_vs_theta", "QED4N13_E_vs_theta", "QED4N14_E_vs_theta", "QED4N15_E_vs_theta", "QED4N16_E_vs_theta", "QED4N17_E_vs_theta",
+"QED4N18_E_vs_theta", "QED4N19_E_vs_theta", "QED4N20_E_vs_theta", "QED4N21_E_vs_theta", "QED4N22_E_vs_theta", "QED4N23_E_vs_theta",
+"QED4N24_E_vs_theta", "QED4N25_E_vs_theta", "QED4N26_E_vs_theta", "QED4N27_E_vs_theta", "QED4N28_E_vs_theta", "QED4N29_E_vs_theta",
+"QED4N30_E_vs_theta", "QED4N31_E_vs_theta",
+
+"QED5N00_E_vs_theta", "QED5N01_E_vs_theta", "QED5N02_E_vs_theta", "QED5N03_E_vs_theta", "QED5N04_E_vs_theta", "QED5N05_E_vs_theta",
+"QED5N06_E_vs_theta", "QED5N07_E_vs_theta", "QED5N08_E_vs_theta", "QED5N09_E_vs_theta", "QED5N10_E_vs_theta", "QED5N11_E_vs_theta",
+"QED5N12_E_vs_theta", "QED5N13_E_vs_theta", "QED5N14_E_vs_theta", "QED5N15_E_vs_theta", "QED5N16_E_vs_theta", "QED5N17_E_vs_theta",
+"QED5N18_E_vs_theta", "QED5N19_E_vs_theta", "QED5N20_E_vs_theta", "QED5N21_E_vs_theta", "QED5N22_E_vs_theta", "QED5N23_E_vs_theta",
+"QED5N24_E_vs_theta", "QED5N25_E_vs_theta", "QED5N26_E_vs_theta", "QED5N27_E_vs_theta", "QED5N28_E_vs_theta", "QED5N29_E_vs_theta",
+"QED5N30_E_vs_theta", "QED5N31_E_vs_theta",
+
+"QED6N00_E_vs_theta", "QED6N01_E_vs_theta", "QED6N02_E_vs_theta", "QED6N03_E_vs_theta", "QED6N04_E_vs_theta", "QED6N05_E_vs_theta",
+"QED6N06_E_vs_theta", "QED6N07_E_vs_theta", "QED6N08_E_vs_theta", "QED6N09_E_vs_theta", "QED6N10_E_vs_theta", "QED6N11_E_vs_theta",
+"QED6N12_E_vs_theta", "QED6N13_E_vs_theta", "QED6N14_E_vs_theta", "QED6N15_E_vs_theta", "QED6N16_E_vs_theta", "QED6N17_E_vs_theta",
+"QED6N18_E_vs_theta", "QED6N19_E_vs_theta", "QED6N20_E_vs_theta", "QED6N21_E_vs_theta", "QED6N22_E_vs_theta", "QED6N23_E_vs_theta",
+"QED6N24_E_vs_theta", "QED6N25_E_vs_theta", "QED6N26_E_vs_theta", "QED6N27_E_vs_theta", "QED6N28_E_vs_theta", "QED6N29_E_vs_theta",
+"QED6N30_E_vs_theta", "QED6N31_E_vs_theta",
+};
+
 // DESCANT WALL
 TH1I  *desw_sum_e, *desw_sum_tof, *desw_sum_psd;  // Sums of energies and corTOF and PSD
 TH1I  *desw_sum_e_b, *desw_sum_tof_b;       // Beta-tagged Sums of energies and corTOF
@@ -324,7 +427,7 @@ TH2I *lbl_lbl_tac;                       // A special 3d histogram disguised as 
 TH2I *ge_xtal, *bgo_xtal, *bgof_xtal, *bgos_xtal, *bgob_xtal, *bgoa_xtal, *labr_xtal;
 TH2I *labr_tac_xtal, *paces_xtal, *sceptar_xtal, *aries_xtal, *art_tac_xtal, *desw_e_xtal, *desw_tof_xtal;
 
-#define N_DT 27   // Time difference
+#define N_DT 29   // Time difference
 char dt_handles[N_DT][HANDLE_LENGTH]={
   "dt_ge_ge",      "dt_ge_bgo",     "dt_ge_sep",             "dt_ge_zds",     // 0-3
   "dt_ge_pac",     "dt_ge_labr",    "dt_ge_rcmp",            "dt_pac_zds",    // 4-7
@@ -332,13 +435,13 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
   "dt_paces_art",  "dt_art_art",    "dt_art_tac",            "dt_zds_tac",    // 12-15
   "dt_labr_tac",   "dt_labr_zds",   "dt_dsw_dsw",            "dt_dsw_ge",     // 16-19
   "dt_dsw_art",    "dt_dsw_zds",    "dt_zds_GRIF_CAEN_10ns", "dt_zds_GRIF_CAEN_2ns", // 20-23
-  "dt_dsw_dsw_2ns","dt_dsw_zds_2ns", "dt_labr_labr"  };                                      // 24-26
+  "dt_dsw_dsw_2ns","dt_dsw_zds_2ns","dt_labr_labr",          "dt_ge_qed",   "dt_qed_qed"  };   // 24-28
   TH1I  *dt_hist[N_DT], *dt_tacs_hist[N_TACS];
 
   // 2D hitpatterns
   TH2I *gg_hit, *bgobgo_hit, *aa_hit, *gea_hit, *lba_hit, *dsw_hit;
 
-  // 2d Energy vs Energy Coincidence matrices
+  // 2D Energy vs Energy Coincidence matrices
   TH2I *gea_self_dt,*geb_self_dt;
   TH2I *gg, *gg_ab, *gg_opp, *gg_ab_opp, *ge_bgo, *ge_paces, *ge_labr, *ge_rcmp, *labr_labr, *labr_zds, *labr_rcmp;
   TH2I *ge_art, *ge_zds, *paces_art, *labr_art, *art_art, *dsw_dsw, *ge_dsw, *art_dsw;
@@ -374,8 +477,8 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
   TH2I  *gg_dt, *gb_dt;
   TH1I  *ge_isomer_popu, *ge_isomer_depop;
 
-    // Crosstalk Analysis
-    TH2I  *ct_e_vs_dt_B[N_HPGE], *ct_e_vs_dt_G[N_HPGE], *ct_e_vs_dt_R[N_HPGE], *ct_e_vs_dt_W[N_HPGE];
+  // Crosstalk Analysis
+  TH2I  *ct_e_vs_dt_B[N_HPGE], *ct_e_vs_dt_G[N_HPGE], *ct_e_vs_dt_R[N_HPGE], *ct_e_vs_dt_W[N_HPGE];
 
   ////////////////////////////////////
   ////////////////////////////////////
