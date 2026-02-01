@@ -1166,6 +1166,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {NULL,                   "Analysis/QED",        ""},
         {(void **) qedp_ge_theta,  "QEDPstrip%03d_E_vs_theta",  qedp_ge_theta_handles[0],   SUBSYS_QED_PIXEL, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
         {(void **) qedn_ge_theta,  "QEDNstrip%03d_E_vs_theta",  qedn_ge_theta_handles[0],   SUBSYS_QED_PIXEL, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
+        {(void **) qed_geE_theta,  "QEDstrip%03d_GeE_vs_theta", qed_geE_theta_handles[0],   SUBSYS_QED_PIXEL, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
       }; // Note initialized array variable is CONST (not same as double-pointer)
       // TH1I *hist;  hist = (TH1I *) 0;   ptr = &hist = (TH1I **)addr;  *ptr =
 
@@ -1778,10 +1779,11 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                 if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 < 1024 && ptr->ecal>5 && alt->ecal>5 ){
                   qed_p_ge_hit->Fill(qed_p_ge_hit, (int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS)), c1, 1);
                   qed_n_ge_hit->Fill(qed_n_ge_hit, (int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS)), c1, 1);
-                  
+
                   if((int)(c2/N_QED_STRIPS) == (c2%N_QED_STRIPS)){ // Single pixel theta needed for initial calibration
                     qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], alt->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
                     qedn_ge_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qedn_ge_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], alt->alt_ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
+                    qed_geE_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qed_geE_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], ptr->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
                   }
                 }
                 break;
