@@ -16,8 +16,9 @@
 
 extern Dragon_event evbuf[EVT_BUFSIZE];
 
-int presort_window_width = 200;  // 2us [May not even need a presort]
-int sort_window_width    = 200;  // 2us - MAXIMUM (indiv. gates can be smaller)
+// NOTE Dragon use 20Mhz clock for the io32 timestamps => 50ns per tick
+int presort_window_width = 200;  // 10us is dragon default window
+int sort_window_width    = 200;  // 10us - MAXIMUM (indiv. gates can be smaller)
 
 // Default sort function declarations
 extern int init_parameters_from_globals(Config *cfg);
@@ -191,9 +192,9 @@ int read_dragon_odb(int bank_len, int *bank_data)
    err += odbarray_int  ("dragon/bgo/variables/tdc/channel",
                          bgo_tdc_chan,     BGO_MAXCHAN);
    err += odbarray_float("dragon/bgo/variables/tdc/slope",
-                         bgo_adc_slope,    BGO_MAXCHAN);
+                         bgo_tdc_slope,    BGO_MAXCHAN);
    err += odbarray_float("dragon/bgo/variables/tdc/offset",
-                         bgo_adc_offset,   BGO_MAXCHAN);
+                         bgo_tdc_offset,   BGO_MAXCHAN);
    err += odbarray_float("dragon/bgo/variables/position/x",
                          bgo_tdc_xposn,    BGO_MAXCHAN);
    err += odbarray_float("dragon/bgo/variables/position/y",
@@ -253,14 +254,18 @@ int read_dragon_odb(int bank_len, int *bank_data)
    memset(ic_tdc_chan,  -1,  IC_MAXCHAN*sizeof(int) );
    err += odbarray_int  ("dragon/ic/variables/adc/channel",
                          ic_adc_chan,      IC_MAXCHAN);
-   err += odbarray_int  ("dragon/ic/variables/adc/channel",
-                         ic_adc_chan,      IC_MAXCHAN);
-   err += odbarray_int  ("dragon/ic/variables/tdc/channel",
-                         ic_tdc_chan,      IC_MAXCHAN);
+   err += odbarray_int  ("dragon/ic/variables/adc/module",
+                         ic_adc_module,      IC_MAXCHAN);
    err += odbarray_float("dragon/ic/variables/adc/slope",
                          ic_adc_slope,     IC_MAXCHAN);
    err += odbarray_float("dragon/ic/variables/adc/offset",
                          ic_adc_offset,   IC_MAXCHAN);
+   err += odbarray_int  ("dragon/ic/variables/tdc/channel",
+                         ic_tdc_chan,      IC_MAXCHAN);
+   err += odbarray_float("dragon/ic/variables/tdc/slope",
+                         ic_tdc_slope,      IC_MAXCHAN);
+   err += odbarray_float("dragon/ic/variables/tdc/offset",
+                         ic_tdc_offset,      IC_MAXCHAN);
 
    memset(mcp_adc_chan,  -1,  MCP_MAXCHAN*sizeof(int) );
    err += odbarray_int  ("dragon/mcp/variables/adc/channel",
@@ -304,9 +309,6 @@ int read_dragon_odb(int bank_len, int *bank_data)
          add_v1190_item(chan, SUBSYS_BGO, i,head_tdc_dettype,head_tdc_dstchan);
       }
    }
-   if( (chan = ge_adc_chan) != -1 ){
-      add_v792_item (chan, 0, SUBSYS_GE, 0,head_adc_dettype,head_adc_dstchan);
-   }
    if( (chan = head_xtdc_chan) != -1 ){
       add_v1190_item(chan, SUBSYS_XTDC, 0,head_tdc_dettype,head_tdc_dstchan);
    }
@@ -315,16 +317,6 @@ int read_dragon_odb(int bank_len, int *bank_data)
    }
    if( (chan = head_tdc0_chan) != -1 ){
       add_v1190_item(chan, SUBSYS_TDC0, 0,head_tdc_dettype,head_tdc_dstchan);
-   }
-   for(i=0; i<SB_MAXCHAN; i++){
-      if( (chan = sb_adc_chan[i]) != -1 ){
-         add_v792_item (chan, sb_adc_module[i], SUBSYS_SB, i, head_adc_dettype, head_adc_dstchan);
-      }
-   }
-   for(i=0; i<NAI_MAXCHAN; i++){
-      if( (chan = nai_adc_chan[i]) != -1 ){
-         add_v792_item (chan, nai_adc_module[i], SUBSYS_NAI, i, head_adc_dettype, head_adc_dstchan);
-      }
    }
    ////////////////////////////////// TAIL ///////////////////////////////////
    if( (chan = tail_xtdc_chan) != -1 ){
@@ -335,6 +327,19 @@ int read_dragon_odb(int bank_len, int *bank_data)
    }
    if( (chan = tail_tdc0_chan) != -1 ){
       add_v1190_item(chan, SUBSYS_TDC0, 0,tail_tdc_dettype, tail_tdc_dstchan);
+   }
+   if( (chan = ge_adc_chan) != -1 ){
+      add_v792_item (chan, 0, SUBSYS_GE, 0,tail_adc_dettype,tail_adc_dstchan);
+   }
+   for(i=0; i<SB_MAXCHAN; i++){
+      if( (chan = sb_adc_chan[i]) != -1 ){
+         add_v792_item (chan, sb_adc_module[i], SUBSYS_SB, i, tail_adc_dettype, tail_adc_dstchan);
+      }
+   }
+   for(i=0; i<NAI_MAXCHAN; i++){
+      if( (chan = nai_adc_chan[i]) != -1 ){
+         add_v792_item (chan, nai_adc_module[i], SUBSYS_NAI, i, tail_adc_dettype, tail_adc_dstchan);
+      }
    }
    for(i=0; i<DSSD_MAXCHAN; i++){
       if( (chan = dssd_adc_chan[i]) == -1 ){ continue; }
@@ -631,7 +636,9 @@ TH1I  *xtofh;  // gamma to hvy-ion
 TH1I  *ic_sum; 
 TH2I  *ic_0v1; 
 TH1I  *bgo_zpat; 
-TH1I  *bgo_e0; 
+TH1I  *bgo_e0;
+
+TH1I  *test; 
 
 int init_histos(Config *cfg)
 {
@@ -651,8 +658,11 @@ int init_histos(Config *cfg)
    xtofh    = H1_BOOK(cfg, "XTOFH",    "Separator TOF (gamma->HI)", 5000, -10000, 9999);
    ic_sum   = H1_BOOK(cfg, "IC_SUM",   "Summed Energy Loss in Ion Chamber", ADC_BINS, 0, ADC_BINS);
    bgo_zpat = H1_BOOK(cfg, "BGO_ZPAT", "BGO Z HITPATTERN", 100, -50, 49);
-   bgo_e0   = H1_BOOK(cfg, "BGO_E0",   "BGO Energy spectrum [chan0]", ADC_BINS, 0, 100);
+   bgo_e0   = H1_BOOK(cfg, "BGO_E0",   "BGO Energy spectrum [chan0]", ADC_BINS, 0, ADC_BINS);
    ic_0v1   = H2_BOOK(cfg, "IC_0v1",   "Ion Chamber Energy 0 vs 1", ADC_BINS, 0, ADC_BINS, ADC_BINS, 0, ADC_BINS);
+
+   test   = H1_BOOK(cfg, "Test",   "Debug histogram", ADC_BINS, 0, ADC_BINS);
+
    close_folder(cfg);
    close_folder(cfg);
 
@@ -667,45 +677,80 @@ int fill_singles_histos(Dragon_event *ptr)
    float v_cal, sum;
 
    if( ptr->type == HEAD_EVENT ){
-      for(i=0; i<BGO_MAXCHAN; i++){
-         if( head->bgo_energy[i] > 1 ){
-            if( i == 0 ){ bgo_e0->Fill(bgo_e0, head->bgo_energy[i], 1); }
-            bgo_zpat->Fill(bgo_zpat, bgo_tdc_zposn[i], 1);
+      //for(i=0; i<BGO_MAXCHAN; i++){ // moved to coinc
+      //   if( head->bgo_energy[i] > 1 ){
+      //      if( i == 0 ){ bgo_e0->Fill(bgo_e0, head->bgo_energy[i], 1); }
+      //      bgo_zpat->Fill(bgo_zpat, bgo_tdc_zposn[i], 1);
+      //   }
+      //}
+   } else if(  ptr->type == TAIL_EVENT ){
+      for(i=0; i<SB_MAXCHAN; i++){
+         sb_ecal[i]->Fill(sb_ecal[i], tail->sb_energy[i], 1);
+      }
+      //sum = 0; for(i=0; i<IC_MAXCHAN; i++){ sum += tail->ic_energy[i]; }  // moved to coinc
+      //ic_sum->Fill(ic_sum, (int)sum, 1);
+      //if( tail->ic_energy[0] > 0 && tail->ic_energy[1] > 0 ){
+      //   ic_0v1->Fill(ic_0v1, tail->ic_energy[0], tail->ic_energy[1], 1 );
+      //}
+   }
+   return(0);
+}
+
+// wget 'http://localhost:9093/?cmd=terminateServer'
+// loop over window and sort all head-tail pairs
+int fill_coinc_histos(int win_idx, int frag_idx)
+{
+   Dragon_event *alt, *ptr = &evbuf[frag_idx];
+   Head_data *head;   Tail_data *tail;
+   int i, max_ch, dt, abs_dt;
+   float sum, max;
+   
+   // histogram of coincwin-size
+   //dt = (frag_idx - win_idx + 2*EVT_BUFSIZE) %  EVT_BUFSIZE; ++frag_hist[dt];
+   while( win_idx != frag_idx ){ alt = &evbuf[win_idx]; // check all conicidences in window
+      if( ptr->type == alt->type ){ continue; }// ignore head-head and tail-tail
+      if( ptr->type == TAIL_EVENT ){ // swap so ptr is always head and alt is always the tail event
+         ptr = &evbuf[win_idx]; alt = &evbuf[frag_idx];
+      }
+      if( ++win_idx == EVT_BUFSIZE ){ win_idx = 0; } // update for next coinc (check for wrap)
+      // apply any time gates (coinditions on dt), and increment head-tail stuff here
+      //
+      //
+      dt = ptr->ts - alt->ts; abs_dt = ( dt < 0 ) ? -1*dt : dt;
+      if( abs_dt > 200 ){ continue; }
+      head = &ptr->head_tail_data.head_data;
+      tail = &alt->head_tail_data.tail_data;
+      printf("Coinc H[ ser %d, t %ld ] --- T[ ser %d, t %ld ]  ", ptr->io32.trig_count, ptr->ts,
+             alt->io32.trig_count, alt->ts);
+
+      for(i=0; i<ptr->v792a.d_count; i++){
+         max_ch = (ptr->v792a.data[i] >> 16) & 0x1f;
+         if( max_ch == 29 || max_ch == 31 ){
+            //printf("ExtraBGO%d=%d ", max_ch, ptr->v792a.data[i] & 0xfff);
          }
       }
-      for(i=0; i<SB_MAXCHAN; i++){
-         sb_ecal[i]->Fill(sb_ecal[i], head->sb_energy[i], 1);
+
+      xtofh->Fill(xtofh, dt, 1);
+      max = max_ch = 0;
+      for(i=0; i<BGO_MAXCHAN; i++){
+         if( head->bgo_energy[i] > 0 ){
+            if( head->bgo_energy[i] > max ){
+               max = head->bgo_energy[i]; max_ch = i;
+            }
+            //bgo_zpat->Fill(bgo_zpat, bgo_tdc_zposn[i], 1);
+         }
       }
-   } else if(  ptr->type == TAIL_EVENT ){
+      if( max > 0 ){
+         printf(" BGO[ch=%d,z=%.1f,e=%.1f] ", max_ch, bgo_tdc_zposn[i], max);
+         bgo_e0->Fill(bgo_e0, (int)10.0*max, 1);
+         bgo_zpat->Fill(bgo_zpat, bgo_tdc_zposn[max_ch], 1);
+      }
+      printf("\n");
       sum = 0; for(i=0; i<IC_MAXCHAN; i++){ sum += tail->ic_energy[i]; }
       ic_sum->Fill(ic_sum, (int)sum, 1);
       if( tail->ic_energy[0] > 0 && tail->ic_energy[1] > 0 ){
          ic_0v1->Fill(ic_0v1, tail->ic_energy[0], tail->ic_energy[1], 1 );
       }
-   }
-   return(0);
-}
-
-// loop over window and sort all head-tail pairs
-int fill_coinc_histos(int win_idx, int frag_idx)
-{
-   int dt, abs_dt,  pos, c1, c2, index, ptr_swap;
-   Dragon_event *alt, *ptr = &evbuf[frag_idx];
-   // histogram of coincwin-size
-   //dt = (frag_idx - win_idx + 2*EVT_BUFSIZE) %  EVT_BUFSIZE; ++frag_hist[dt];
-   while( win_idx != frag_idx ){ // check all conicidences in window
-      if( ++win_idx == EVT_BUFSIZE ){ win_idx = 0; } // wrap
-      alt = &evbuf[win_idx];
-      if( ptr->type == alt->type ){ continue; }// ignore head-head and tail-tail
-      if( ptr->type == TAIL_EVENT ){ // swap so ptr is always head and alt is always the tail event
-         ptr = &evbuf[win_idx]; alt = &evbuf[frag_idx];
-      }
-      // apply any time gates (coinditions on dt), and increment head-tail stuff here
-      //
-      //
-      dt = ptr->ts - alt->ts; abs_dt = ( dt < 0 ) ? -1*dt : dt;
-      if( abs_dt > 10000 ){ continue; }
-      xtofh->Fill(xtofh, dt, 1);
    }
    return(0);
 }

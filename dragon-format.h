@@ -1,4 +1,6 @@
 
+#define BGO_THRESHOLD  10
+
 #define HEAD_EVENT 1
 #define TAIL_EVENT 2
 
@@ -53,15 +55,15 @@ typedef struct v792_event_struct { // 32+2 = 34
 
 typedef struct head_data {
    int  xtdc; int rftdc; int tdc0; 
-   float ge_energy;
    float bgo_energy[BGO_MAXCHAN];
    int   bgo_time  [BGO_MAXCHAN];
-   float sb_energy [SB_MAXCHAN];
-   float nai_energy[NAI_MAXCHAN];
 } Head_data;
 
 typedef struct tail_data {
    int  xtdc; int rftdc; int tdc0; 
+   float ge_energy;
+   float sb_energy  [SB_MAXCHAN];
+   float nai_energy [NAI_MAXCHAN];
    float dssd_energy[DSSD_MAXCHAN];
    int   dssd_time  [DSSD_TDCCHAN]; // front, back
    float ic_energy  [IC_MAXCHAN];

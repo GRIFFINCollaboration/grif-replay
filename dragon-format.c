@@ -269,32 +269,31 @@ int unpack_head_event(Dragon_event *evt)
          srcchan = (val >> 16) & 0x1f;
          badval = (val >> 12) & 0x3; // under/overflow bits
          val &= 0xfff; 
-         if( (dstchan = head_adc_dstchan[srcchan]) == -1 ){ continue; } // unassigned
+         if( (dstchan = head_adc_dstchan[srcchan]) == -1 ){
+            //printf("data in head v792 chan%d - ignoring\n", srcchan);
+            continue;
+         } // unassigned
          switch( head_adc_dettype[srcchan] ){
-         case SUBSYS_BGO:
-            if( dstchan >= 0 && dstchan < BGO_MAXCHAN ){ 
-               head->bgo_energy[dstchan] = badval ? 0 :
-                  bgo_adc_offset[dstchan] + bgo_adc_slope[dstchan] * val;
+         case SUBSYS_BGO: // subtract pedestal and zero-suppress threshold 10.0
+                          // [hardcoded as magic number in dragon sort!]
+            if( dstchan >= 0 && dstchan < BGO_MAXCHAN ){
+               if( !badval ){ head->bgo_energy[dstchan] = val; }
             } else { printf("UnpckHead:CodingErr1\n"); } break;
-         case SUBSYS_SB:
-            if( dstchan >= 0 && dstchan < SB_MAXCHAN ){ 
-               head->sb_energy[dstchan] = badval ? 0 :
-                  sb_adc_offset[dstchan] + sb_adc_slope[dstchan] * val;
-            } else {
-               printf("UnpckHead:CodingErr2\n"); } break;
-         case SUBSYS_NAI:
-            if( dstchan >= 0 && dstchan < NAI_MAXCHAN ){ 
-               head->nai_energy[dstchan] = badval ? 0 :
-                  nai_adc_offset[dstchan] + nai_adc_slope[dstchan] * val;
-            } else { printf("UnpckHead:CodingErr3\n"); } break;
-         case SUBSYS_GE:
-            if( dstchan == 0 ){ // only a single channel
-               head->ge_energy = badval ? 0 :ge_adc_offset + ge_adc_slope * val;
-            } else { printf("UnpckHead:CodingErr4\n"); } break;
          default: printf("UnpckHead:CodingErr5\n"); break;
          }
       }
    }
+
+   for(i=0; i<BGO_MAXCHAN; i++){
+      head->bgo_energy[i] -= bgo_adc_pedestal[i];
+   }
+   for(i=0; i<BGO_MAXCHAN; i++){
+      if( head->bgo_energy[i] < BGO_THRESHOLD ){ head->bgo_energy[i] = 0; }
+   }
+   for(i=0; i<BGO_MAXCHAN; i++){
+      head->bgo_energy[i] = bgo_adc_offset[i] + bgo_adc_slope[i] * head->bgo_energy[i];
+   }
+
    // v1190 tdc data words ...
    if( (cnt = evt->v1190.d_count) > 0 ){
       for(i=0; i<cnt; i++){
@@ -358,6 +357,21 @@ int unpack_tail_event(Dragon_event *evt)
             if( dstchan == 0 ){ 
                tail->mcptac_energy = badval ? 0 : mcptac_adc_offset + mcptac_adc_slope * val;
             } else { printf("UnpckTail:CodingErr4\n"); } break;
+         case SUBSYS_SB:
+            if( dstchan >= 0 && dstchan < SB_MAXCHAN ){ 
+               tail->sb_energy[dstchan] = badval ? 0 :
+                  sb_adc_offset[dstchan] + sb_adc_slope[dstchan] * val;
+            } else {
+               printf("UnpckHead:CodingErr2\n"); } break;
+         case SUBSYS_NAI:
+            if( dstchan >= 0 && dstchan < NAI_MAXCHAN ){ 
+               tail->nai_energy[dstchan] = badval ? 0 :
+                  nai_adc_offset[dstchan] + nai_adc_slope[dstchan] * val;
+            } else { printf("UnpckHead:CodingErr3\n"); } break;
+         case SUBSYS_GE:
+            if( dstchan == 0 ){ // only a single channel
+               tail->ge_energy = badval ? 0 :ge_adc_offset + ge_adc_slope * val;
+            } else { printf("UnpckHead:CodingErr4\n"); } break;
          default: printf("UnpckTail:CodingErr5\n"); break;
          }
       }
