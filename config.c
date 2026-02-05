@@ -4087,7 +4087,13 @@ int send_binary_spectrum(int num, char url_args[][URL_STRING_LEN], char *name, i
         }
         put_binary(fd, binaryArray, index ); // Send submatrix type header word
       }else{
-        if(num_nonempty_submatrices==0){ continue; }
+        // First handle completely empty histograms
+        if(num_nonempty_submatrices==0){
+          free(submatrix_ids); free(submatrix_type); free(submatrix_count); // Free the submatrix arrays when done
+          free(binaryArray); // Free the binaryArray when done
+          free(hist_data);                 // Free the memory
+          return(0);                       // End now as no submatrices to transfer
+        }
         // Submatrix type header is a list of submatrix id numbers (coorindates) with the top bit indicating the type
         // This header starts with the first entry being the number of coorindates which follow in the Submatrix type header.
         valCount=coord_size-1;

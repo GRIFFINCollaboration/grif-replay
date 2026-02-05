@@ -307,7 +307,11 @@ TH2I  *qed_hit[N_QED_POS];
 TH2I  *qed_fb[N_QED_POS];
 TH2I  *qed_p_ge_hit, *qed_n_ge_hit; // qed strips vs Ge hitpatterns
 TH2I  *qedp_ge_theta[N_QED_POS*N_QED_STRIPS], *qedn_ge_theta[N_QED_POS*N_QED_STRIPS]; // qed strip energy vs theta of a qed-Ge hit
-TH2I  *qed_geE_theta[N_QED_POS*N_QED_STRIPS];
+TH2I  *qed_geE_theta[N_QED_POS*N_QED_STRIPS], *qedE_ge_theta_sum, *qed_geE_theta_sum;
+
+char qed_strips_handles[N_QED_POS][HANDLE_LENGTH]={"QED01_E_strips", "QED02_E_strips", "QED03_E_strips", "QED04_E_strips", "QED05_E_strips", "QED06_E_strips"};
+char qed_hit_handles[N_QED_POS][HANDLE_LENGTH]={"QED01_PN_hit", "QED02_PN_hit", "QED03_PN_hit", "QED04_PN_hit", "QED05_PN_hit", "QED06_PN_hit"};
+char qed_fb_handles[N_QED_POS][HANDLE_LENGTH]={"QED01_Front_Back", "QED02_Front_Back", "QED03_Front_Back", "QED04_Front_Back", "QED05_Front_Back", "QED06_Front_Back"};
 
 char qedp_ge_theta_handles[N_QED_POS*N_QED_STRIPS][HANDLE_LENGTH]={
 "QED1P00_E_vs_theta", "QED1P01_E_vs_theta", "QED1P02_E_vs_theta", "QED1P03_E_vs_theta", "QED1P04_E_vs_theta", "QED1P05_E_vs_theta",

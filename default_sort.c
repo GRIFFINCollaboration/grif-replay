@@ -1038,7 +1038,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {(void **)&desw_cc_tof,  "DESWall_cc_tof",       "DES_Wall_cc_tof",             SUBSYS_DESWALL, E_2D_SPECLEN, E_2D_SPECLEN},
         {(void **)&desw_psd_zdse, "DES_Wall_PSD_ZDSEn",      "DES_Wall_PSD_ZDSEn",       SUBSYS_DESWALL, E_2D_SPECLEN, E_2D_SPECLEN},
         {(void **) rcmp_strips,  "RCS%02d_E_strips",         "",                         SUBSYS_RCMP,   2*N_RCMP_STRIPS, E_2D_RCMP_SPECLEN, N_RCMP_POS},
-        {(void **)  qed_strips,  "QED%02d_E_strips",         "",                         SUBSYS_QED_STRIP,   2*N_QED_STRIPS, E_2D_QED_SPECLEN, N_QED_POS},
+        {(void **)  qed_strips,  "",                qed_strips_handles[0],               SUBSYS_QED_STRIP,   2*N_QED_STRIPS, E_2D_QED_SPECLEN, N_QED_POS},
         {NULL,                   "Hits_and_Sums/Pileup",     "",                         },
         {(void **)&gea_self_dt,  "GeA_crystal_vs_self_dt",    "",                         SUBSYS_HPGE_A,  E_2D_SPECLEN, 64},
         {(void **)&geb_self_dt,  "GeB_crystal_vs_self_dt",    "",                         SUBSYS_HPGE_A,  E_2D_SPECLEN, 64},
@@ -1093,10 +1093,10 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {(void **) rcmp_fb,     "RCS%d_Front_Back",  "",   SUBSYS_RCMP, E_2D_RCMP_SPECLEN, E_2D_RCMP_SPECLEN, N_RCMP_POS},
         {(void **)&rcmp_x_ge_hit,"RCS_Xstrips_vs_GeHit","",SUBSYS_RCMP, 192,  64},
         {(void **)&rcmp_y_ge_hit,"RCS_Ystrips_vs_GeHit","",SUBSYS_RCMP, 192,  64},
-        {(void **) qed_hit,    "QED%d_PN_hit",       "",  SUBSYS_QED_PIXEL, N_QED_STRIPS,     N_QED_STRIPS,     N_QED_POS},
-        {(void **) qed_fb,     "QED%d_Front_Back",  "",   SUBSYS_QED_PIXEL, E_2D_QED_SPECLEN, E_2D_QED_SPECLEN, N_QED_POS},
-        {(void **)&qed_p_ge_hit,"QED_Pstrips_vs_GeHit","",SUBSYS_QED_PIXEL, 192,  64},
-        {(void **)&qed_n_ge_hit,"QED_Nstrips_vs_GeHit","",SUBSYS_QED_PIXEL, 192,  64},
+        {(void **) qed_hit,    "",    qed_hit_handles[0],  SUBSYS_QED_STRIP, N_QED_STRIPS,     N_QED_STRIPS,     N_QED_POS},
+        {(void **) qed_fb,     "",    qed_fb_handles[0],   SUBSYS_QED_STRIP, E_2D_QED_SPECLEN, E_2D_QED_SPECLEN, N_QED_POS},
+        {(void **)&qed_p_ge_hit,"QED_Pstrips_vs_GeHit","",SUBSYS_QED_STRIP, 192,  64},
+        {(void **)&qed_n_ge_hit,"QED_Nstrips_vs_GeHit","",SUBSYS_QED_STRIP, 192,  64},
         {NULL,                  "Ang_Corr/GG_Ang_Corr",         ""},
         {(void **) gg_angcor_110,"Ge_Ge_110mm_angular_bin%02d", "", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  SYMMETERIZE, N_GE_ANG_CORR},
         {(void **) gg_angcor_145,"Ge_Ge_145mm_angular_bin%02d", "", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  SYMMETERIZE, N_GE_ANG_CORR},
@@ -1164,9 +1164,12 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {(void **) gg_comp_pol_110,"GeGe_110mm_CompPol_bin%02d", "", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  GE_ANGCOR_SPECLEN, N_GE_COMP_POL},
         {(void **) gg_comp_pol_145,"GeGe_145mm_CompPol_bin%02d", "", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  GE_ANGCOR_SPECLEN, N_GE_COMP_POL},
         {NULL,                   "Analysis/QED",        ""},
-        {(void **) qedp_ge_theta,  "QEDPstrip%03d_E_vs_theta",  qedp_ge_theta_handles[0],   SUBSYS_QED_PIXEL, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
-        {(void **) qedn_ge_theta,  "QEDNstrip%03d_E_vs_theta",  qedn_ge_theta_handles[0],   SUBSYS_QED_PIXEL, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
-        {(void **) qed_geE_theta,  "QEDstrip%03d_GeE_vs_theta", qed_geE_theta_handles[0],   SUBSYS_QED_PIXEL, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
+        {(void **)&qedE_ge_theta_sum,  "QED_E_vs_theta",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+        {(void **)&qed_geE_theta_sum,  "QED_GeE_vs_theta",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+        {(void **) qedp_ge_theta,  "",     qedp_ge_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
+        {(void **) qedp_ge_theta,  "",     qedp_ge_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
+        {(void **) qedn_ge_theta,  "",     qedn_ge_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
+        {(void **) qed_geE_theta,  "",     qed_geE_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
       }; // Note initialized array variable is CONST (not same as double-pointer)
       // TH1I *hist;  hist = (TH1I *) 0;   ptr = &hist = (TH1I **)addr;  *ptr =
 
@@ -1619,12 +1622,14 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                 qed_sum->Fill(qed_sum, (int)ptr->ecal, 1);     // p strips
                 qed_sum->Fill(qed_sum, (int)ptr->alt_ecal, 1); // n strips
                 qed_fb_sum->Fill(qed_fb_sum, (int)ptr->ecal, 1);     // fb coincidence
-                pos  = crystal_table[ptr->chan]; // QED DSSD number [1-6]
+                pos  = crystal_table[ptr->chan]-1; // QED DSSD number [1-6]
                 elem = ptr->alt_chan; // QED pixel number [0-1023]
-                qed_fb[(pos-1)]->Fill(qed_fb[(pos-1)], (int)ptr->ecal, (int)ptr->alt_ecal, 1); // front-back energy
-                qed_hit[(pos-1)]->Fill(qed_hit[(pos-1)], (int)(elem/N_QED_STRIPS), (elem%N_QED_STRIPS), 1); // QED DSSD hitpattern
-                qed_strips[(pos-1)]->Fill(qed_strips[(pos-1)], (int)(elem/N_QED_STRIPS), (int)ptr->ecal, 1); // p strip energies
-                qed_strips[(pos-1)]->Fill(qed_strips[(pos-1)], (elem%N_QED_STRIPS)+N_QED_STRIPS, (int)ptr->alt_ecal, 1); // n strip energies
+                qed_fb[pos]->Fill(qed_fb[pos], (int)ptr->ecal, (int)ptr->alt_ecal, 1); // front-back energy
+                if(ptr->ecal>290){
+                qed_hit[pos]->Fill(qed_hit[pos], (int)(elem/N_QED_STRIPS), (elem%N_QED_STRIPS), 1); // QED DSSD hitpattern
+              }
+                qed_strips[pos]->Fill(qed_strips[pos], (int)(elem/N_QED_STRIPS), (int)ptr->ecal, 1); // p strip energies
+                qed_strips[pos]->Fill(qed_strips[pos], (elem%N_QED_STRIPS)+N_QED_STRIPS, (int)ptr->alt_ecal, 1); // n strip energies
                 break;
                 default: break; // Unrecognized or unprocessed dtype
               }// end of switch
@@ -1780,6 +1785,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                   qed_p_ge_hit->Fill(qed_p_ge_hit, (int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS)), c1, 1);
                   qed_n_ge_hit->Fill(qed_n_ge_hit, (int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS)), c1, 1);
 
+                  qedE_ge_theta_sum->Fill(qedE_ge_theta_sum, alt->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
+                  qed_geE_theta_sum->Fill(qed_geE_theta_sum, ptr->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
                   if((int)(c2/N_QED_STRIPS) == (c2%N_QED_STRIPS)){ // Single pixel theta needed for initial calibration
                     qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], alt->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
                     qedn_ge_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qedn_ge_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], alt->alt_ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
@@ -2316,7 +2323,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                           break;
                           case ODBHANDLE_QED:
                           crystal_table[i] = pos;
-                          element_table[i] = element;
+                          element_table[i] = reorder_rcmp_strips[pos][polarity_table[i]][element];
                           break;
                           case ODBHANDLE_GRG: case ODBHANDLE_GRS:
                           element_table[i] = element;
