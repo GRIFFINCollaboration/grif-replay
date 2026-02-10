@@ -6740,16 +6740,23 @@ float grif_crystal_cartesian_110mm[64][3]={
         }
 
         // Calculate angular difference between one QED pixel and one HPGe
-        // pos is DSSD number [1-6], qed is pixel number [0-1023]
+        // pos is DSSD number [1-6], qed is pixel number [0-1023], ge is crystal number [0-63]
         double angular_diff_QEDGe(int pos, int qed, int ge){
-          double vec1[3], vec2[3], dot, mag, angle;
+          double vec1[3], vec2[3], vec3[3], dot, mag, angle;
 
-          pos--;
+          pos--;// pos is now 0-5 within this function
           vec1[0] = qed_cartesian[pos][qed][0]; vec1[1] = qed_cartesian[pos][qed][1]; vec1[2] = qed_cartesian[pos][qed][2];
-          vec2[0] = grif_crystal_cartesian_110mm[ge][0]; vec2[1] = grif_crystal_cartesian_110mm[ge][1]; vec2[2] = grif_crystal_cartesian_110mm[ge][2];
+          // vec2[0] = grif_crystal_cartesian_110mm[ge][0]; vec2[1] = grif_crystal_cartesian_110mm[ge][1]; vec2[2] = grif_crystal_cartesian_110mm[ge][2];
+          // vec1 is the vector from origin to DSSD pixel
+          // vec2 is the vector from origin to HPGe crystal
+          // The dot product of vec1 and vec2 would give the angular difference between these - as required for angualr correlations
+          // Here we want the Compton scattering angle so we want the dot product of vec1 and vec 3 where vec3 passes through the DSSD pixel and HPGe crystal
+          vec3[0] = grif_crystal_cartesian_110mm[ge][0] - qed_cartesian[pos][qed][0];
+          vec3[1] = grif_crystal_cartesian_110mm[ge][1] - qed_cartesian[pos][qed][1];
+          vec3[2] = grif_crystal_cartesian_110mm[ge][2] - qed_cartesian[pos][qed][2];
 
-          dot = dot_product(vec1,vec2);
-          mag = vector_magnitude_product(vec1,vec2);
+          dot = dot_product(vec1,vec3);
+          mag = vector_magnitude_product(vec1,vec3);
           angle = RADIANS_TO_DEGREES*acos( dot / mag );
 
           return angle;

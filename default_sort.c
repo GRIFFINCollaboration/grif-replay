@@ -559,8 +559,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             // The charged particles enter the P side and this has superior energy resolution
             // Ensure the energy collected in the front and back is similar
             ptr->esum = -1; // Need to exclude any noise and random coincidences.
-            if( alt->subsys == SUBSYS_QED_STRIP && (dt >= qed_fb_window_min && dt <= qed_fb_window_max) && (ptr->ecal>0 && ptr->ecal<32768)){
-              if((crystal_table[ptr->chan] == crystal_table[alt->chan]) && (polarity_table[ptr->chan] != polarity_table[alt->chan]) && (alt->ecal > 0 && alt->ecal<32768)){
+            if( alt->subsys == SUBSYS_QED_STRIP && (dt >= qed_fb_window_min && dt <= qed_fb_window_max) && (ptr->ecal>100 && ptr->ecal<32768)){
+              if((crystal_table[ptr->chan] == crystal_table[alt->chan]) && (polarity_table[ptr->chan] != polarity_table[alt->chan]) && (alt->ecal > 100 && alt->ecal<32768)){
                 //  if( ((ptr->ecal / alt->ecal)<=1.1 && (ptr->ecal / alt->ecal)>=0.9)){ // Energy-sharing only works if both strips are calibrated!
                 // The ptr strip now changes to a PIXEL
                 // Ensure ecal comes from P side, alt_ecal will be N side
@@ -1164,9 +1164,13 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {(void **) gg_comp_pol_110,"GeGe_110mm_CompPol_bin%02d", "", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  GE_ANGCOR_SPECLEN, N_GE_COMP_POL},
         {(void **) gg_comp_pol_145,"GeGe_145mm_CompPol_bin%02d", "", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  GE_ANGCOR_SPECLEN, N_GE_COMP_POL},
         {NULL,                   "Analysis/QED",        ""},
-        {(void **)&qedE_ge_theta_sum,  "QED_E_vs_theta",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
-        {(void **)&qed_geE_theta_sum,  "QED_GeE_vs_theta",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
-        {(void **) qedp_ge_theta,  "",     qedp_ge_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
+        {(void **)&qed_angle_test,  "QED_angle_test",         "",SUBSYS_QED_STRIP, N_HPGE,   192},
+        {(void **) qed_psd_e,      "",           qed_psd_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN, E_2D_SPECLEN, N_QED_POS},
+        {(void **)&qedE_ge_theta_sum_b,  "QED_E_vs_theta_beta",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+        {(void **)&qed_geE_theta_sum_b,  "QED_GeE_vs_theta_beta",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+        {(void **)&qedE_ge_theta_sum_g,  "QED_E_vs_theta_gam",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+        {(void **)&qed_geE_theta_sum_g,  "QED_GeE_vs_theta_gam",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+        {(void **) qed_geE_theta_clov_g,  "",qed_geE_theta_clov_g_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_CLOVER},
         {(void **) qedp_ge_theta,  "",     qedp_ge_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
         {(void **) qedn_ge_theta,  "",     qedn_ge_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
         {(void **) qed_geE_theta,  "",     qed_geE_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
@@ -1291,6 +1295,17 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             subsys_dt[SUBSYS_DESWALL][SUBSYS_ZDS_A   ] = dt_hist[21];
             subsys_dt[SUBSYS_HPGE_A ][SUBSYS_QED_PIXEL  ] = dt_hist[27];
             subsys_dt[SUBSYS_QED_PIXEL][SUBSYS_QED_PIXEL] = dt_hist[28];
+
+            // Fill QED-HPGe angles test histogram
+            // Pixel 0 of QED02 is pixel number 1024
+            // Theta	Phi:	120.47244	187.97244
+            //	x	y	z: -52.176271	-7.307309	-31.000000
+            // pixels looked at; 371, 496
+            if(subsystem == SUBSYS_QED_STRIP){
+              for(i=0; i<N_HPGE; i++){
+                qed_angle_test->Fill(qed_angle_test, (int)(i/4), (int)(angular_diff_QEDGe(2,496,i)), (i+1));
+              }
+            }
             return(0);
           }
 
@@ -1625,9 +1640,10 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                 pos  = crystal_table[ptr->chan]-1; // QED DSSD number [1-6]
                 elem = ptr->alt_chan; // QED pixel number [0-1023]
                 qed_fb[pos]->Fill(qed_fb[pos], (int)ptr->ecal, (int)ptr->alt_ecal, 1); // front-back energy
-                if(ptr->ecal>290){
-                qed_hit[pos]->Fill(qed_hit[pos], (int)(elem/N_QED_STRIPS), (elem%N_QED_STRIPS), 1); // QED DSSD hitpattern
-              }
+                qed_psd_e[pos]->Fill(qed_psd_e[pos], (int)ptr->ecal, ptr->psd, 1); // qed psd
+                if(ptr->ecal>100){
+                  qed_hit[pos]->Fill(qed_hit[pos], (int)(elem/N_QED_STRIPS), (elem%N_QED_STRIPS), 1); // QED DSSD hitpattern
+                }
                 qed_strips[pos]->Fill(qed_strips[pos], (int)(elem/N_QED_STRIPS), (int)ptr->ecal, 1); // p strip energies
                 qed_strips[pos]->Fill(qed_strips[pos], (elem%N_QED_STRIPS)+N_QED_STRIPS, (int)ptr->alt_ecal, 1); // n strip energies
                 break;
@@ -1785,9 +1801,18 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                   qed_p_ge_hit->Fill(qed_p_ge_hit, (int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS)), c1, 1);
                   qed_n_ge_hit->Fill(qed_n_ge_hit, (int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS)), c1, 1);
 
-                  qedE_ge_theta_sum->Fill(qedE_ge_theta_sum, alt->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
-                  qed_geE_theta_sum->Fill(qed_geE_theta_sum, ptr->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
+                  if((c2%N_QED_STRIPS)<6){
+                    qedE_ge_theta_sum_b->Fill(qedE_ge_theta_sum_b, alt->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
+                    qed_geE_theta_sum_b->Fill(qed_geE_theta_sum_b, ptr->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
+                  }
+                //  if((c2%N_QED_STRIPS)==15 && (int)(c2/N_QED_STRIPS)==15){
+                    qedE_ge_theta_sum_g->Fill(qedE_ge_theta_sum_g, alt->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
+                    qed_geE_theta_sum_g->Fill(qed_geE_theta_sum_g, ptr->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
+                    qed_geE_theta_clov_g[(int)(c1/4)]->Fill(qed_geE_theta_clov_g[(int)(c1/4)], ptr->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
+                  //}
+
                   if((int)(c2/N_QED_STRIPS) == (c2%N_QED_STRIPS)){ // Single pixel theta needed for initial calibration
+                    //  fprintf(stdout,"Fill theta plot[%d] for QED%2d Pixel [%d,%d] and HPGe %d at theta=%d\n",(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS)),pos,(int)(c2/N_QED_STRIPS),(c2%N_QED_STRIPS),c1,(int)(angular_diff_QEDGe(pos,c2,c1)));
                     qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], alt->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
                     qedn_ge_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qedn_ge_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], alt->alt_ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
                     qed_geE_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qed_geE_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], ptr->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
@@ -1865,6 +1890,32 @@ int init_default_histos(Config *cfg, Sort_status *arg)
               {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // RCS5 Y
               {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // RCS6 X
               {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}  // RCS6 Y
+            };
+
+            // This lookup table reorders strips that have already been reordered in the ODB...
+            // Per GRIFFIN elog, https://grsilog.triumf.ca/GRIFFIN/25966
+            // Per GRIFFIN elog, https://grsilog.triumf.ca/GRIFFIN/25968
+            int reorder_qed_strips[7][2][32] = {
+              {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+              {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+              {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED1 P
+              {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // QED1 N
+
+              //  {{1,3,5,7,9,11,13,15,31,29,27,25,23,21,19,17,16,18,20,22,24,26,28,30,14,12,10,8,6,4,2,0},  // QED2 P
+              //{{31,0,30,1,  29,2,28,3,  27,4,26,5, 25,6,24,7, 16,15,17,14, 18,13,19,12, 20,11,21,10, 22,9,23,8},  // QED2 P
+              {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED2 P
+              {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}, // QED2 N
+              //{16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15}}, // QED2 N
+              // {31,0,30,1,  29,2,28,3,  27,4,26,5, 25,6,24,7, 16,15,17,14, 18,13,19,12, 20,11,21,10, 22,9,23,8}}, // QED2 N
+
+              {{1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30},  // QED3 P
+              {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // QED3 N
+              {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED4 P
+              {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // QED4 N
+              {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED5 P
+              {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // QED5 N
+              {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED6 P
+              {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}  // QED6 N
             };
 
             int frag_hist[PTR_BUFSIZE];
@@ -2323,7 +2374,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                           break;
                           case ODBHANDLE_QED:
                           crystal_table[i] = pos;
-                          element_table[i] = reorder_rcmp_strips[pos][polarity_table[i]][element];
+                          element_table[i] = reorder_qed_strips[pos][polarity_table[i]][element];
                           break;
                           case ODBHANDLE_GRG: case ODBHANDLE_GRS:
                           element_table[i] = element;
