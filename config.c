@@ -2634,7 +2634,7 @@ int queue_sum_histo_list(Config *cfg, int num, char url_args[][URL_STRING_LEN], 
     fprintf(stderr,"Sum histo list: expected \"inputDirectory\" at %s\n", url_args[4]);
     return(-1);
   }
-  strncpy(path,url_args[5],strlen(url_args[5]) );
+  strncpy(path,url_args[5],strlen(url_args[5])+1 );
   fprintf(stdout,"Sum histo list: skipping check of directory %s\n", path);
   /*
   if( (d=opendir(path)) == NULL ){
