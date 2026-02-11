@@ -720,8 +720,8 @@ int fill_coinc_histos(int win_idx, int frag_idx)
       if( abs_dt > 200 ){ continue; }
       head = &ptr->head_tail_data.head_data;
       tail = &alt->head_tail_data.tail_data;
-      printf("Coinc H[ ser %d, t %ld ] --- T[ ser %d, t %ld ]  ", ptr->io32.trig_count, ptr->ts,
-             alt->io32.trig_count, alt->ts);
+      //printf("Coinc H[ ser %d, t %ld ] --- T[ ser %d, t %ld ]  ", ptr->io32.trig_count, ptr->ts,
+      //       alt->io32.trig_count, alt->ts);
 
       for(i=0; i<ptr->v792a.d_count; i++){
          max_ch = (ptr->v792a.data[i] >> 16) & 0x1f;
@@ -741,11 +741,11 @@ int fill_coinc_histos(int win_idx, int frag_idx)
          }
       }
       if( max > 0 ){
-         printf(" BGO[ch=%d,z=%.1f,e=%.1f] ", max_ch, bgo_tdc_zposn[i], max);
+         //printf(" BGO[ch=%d,z=%.1f,e=%.1f] ", max_ch, bgo_tdc_zposn[i], max);
          bgo_e0->Fill(bgo_e0, (int)10.0*max, 1);
          bgo_zpat->Fill(bgo_zpat, bgo_tdc_zposn[max_ch], 1);
       }
-      printf("\n");
+      //printf("\n");
       sum = 0; for(i=0; i<IC_MAXCHAN; i++){ sum += tail->ic_energy[i]; }
       ic_sum->Fill(ic_sum, (int)sum, 1);
       if( tail->ic_energy[0] > 0 && tail->ic_energy[1] > 0 ){

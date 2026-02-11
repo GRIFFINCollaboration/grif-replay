@@ -76,6 +76,7 @@ void midas_main(Sort_status *arg)
    extern int process_grif3_bank(unsigned *buf, int len); // if single thread
    extern int read_dragon_odb(int bank_len, int *bank_data);
 
+   unpack_io32_fifobank(NULL, NULL, 0, HEAD_EVENT); // reset timestamp check
    bankbuf_wrpos = bankbuf_rdpos = 0;
    recbufpos = recordlen = 0;
    while(1){
@@ -584,18 +585,22 @@ int next_bank(Sort_status *arg, char **bank_name) // loop over banks in event
       printf("  size : %d\n",  bank_head.data_size );
    }
    switch( bank_head.data_type ){
-   case 4:
+   case 4: case 5: // 2 byte integer
       if( swap_required ){ swapShort(recbuf+recbufpos, bank_head.data_size ); }
       if( arg->debug ){ sprintf(format,"    %%s[%%2d] = %%6u (0x%%04x)"); }
       items = bank_head.data_size/sizeof(short); break;
-   case 6: /* scaler byte order seems to be wrong */
+   case 6: case 7: case 8: /* scaler byte order seems to be wrong */
       if( swap_required  ){ swapInt(recbuf+recbufpos, bank_head.data_size ); }
       if( arg->debug ){ sprintf(format,"    %%s[%%2d] = %%10u (0x%%08x)"); }
       items = bank_head.data_size/sizeof(int); break;
-   case 9:
+   case 9: // 4byte float
       if( swap_required ){ swapInt(recbuf+recbufpos, bank_head.data_size ); }
       if( arg->debug ){ sprintf(format,"    %%s[%%2d] = %%6.2f (0x%%08x)"); }
       items = bank_head.data_size/sizeof(int); break;
+   case 10: // 8byte double
+      if( swap_required ){ swapInt(recbuf+recbufpos, bank_head.data_size ); }
+      if( arg->debug ){ sprintf(format,"    %%s[%%2d] = %%6.2f (0x%%08x)"); }
+      items = bank_head.data_size/sizeof(int)/2; break;
    default:
       fprintf(stderr,"%s bank has unknown type: %d ... ignoring\n",
               bank_head.name, bank_head.data_type );

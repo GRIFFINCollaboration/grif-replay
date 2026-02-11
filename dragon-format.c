@@ -62,10 +62,13 @@ int unpack_io32_bank(Dragon_event *evt, int *ptr, int len, int type)
        
 int unpack_io32_fifobank(Dragon_event *evt, int *ptr, int len, int type)
 {
-   Io32_fifo *io_ptr = &evt->io32_ts;
    static unsigned long max_ts;
+   Io32_fifo *io_ptr;
    unsigned long tshi;
    int i;
+
+   if( evt == NULL && ptr == NULL && len == 0 ){ max_ts=0; return(0); }
+   io_ptr = &evt->io32_ts;
    if( evt->type == 0 ){ evt->type = type; }
    else if( evt->type != type ){
       printf("Mixture of head.tail banks in single event\n"); return(-1);
