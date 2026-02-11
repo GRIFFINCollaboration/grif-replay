@@ -2634,7 +2634,7 @@ int queue_sum_histo_list(Config *cfg, int num, char url_args[][URL_STRING_LEN], 
     fprintf(stderr,"Sum histo list: expected \"inputDirectory\" at %s\n", url_args[4]);
     return(-1);
   }
-  strncpy(path,url_args[5],strlen(url_args[5]) );
+  strncpy(path,url_args[5],strlen(url_args[5])+1 );
   fprintf(stdout,"Sum histo list: skipping check of directory %s\n", path);
   /*
   if( (d=opendir(path)) == NULL ){
@@ -3867,6 +3867,7 @@ int send_binary_spectrum(int num, char url_args[][URL_STRING_LEN], char *name, i
   Config *cfg = configs[1];
   TH1I *hist;
   int8_t *binaryArray=NULL;
+  fprintf(stdout,"Start of function\n");
 
   // The variables for the matrix are currently 32 bits.
   int bitMask_coord[4] ={ 0x0000007F, 0x00007F00, 0x007F0000, 0x7F000000 }; // 7, 15, 23, 31 bits
@@ -3985,6 +3986,7 @@ int send_binary_spectrum(int num, char url_args[][URL_STRING_LEN], char *name, i
       short *submatrix_count = calloc(num_submatrices, sizeof(short));
       //int8_t *binaryArray = calloc(((num_submatrices+1)*coord_size), sizeof(int8_t));
       binaryArray = calloc(((num_submatrices+1)*coord_size), sizeof(int8_t));
+      fprintf(stdout,"Create memory with size %d from %d submatrices of unit size %d, for histogram dimensions %d,%d\n",((num_submatrices+1)*coord_size),(num_submatrices+1),coord_size,xbins,ybins);
 
       // Determine the number of non-zero values in each submatrix.
       num_nonempty_submatrices = 0;
@@ -4071,6 +4073,7 @@ int send_binary_spectrum(int num, char url_args[][URL_STRING_LEN], char *name, i
           free(submatrix_ids); free(submatrix_type); free(submatrix_count); // Free the submatrix arrays when done
           free(binaryArray); // Free the binaryArray when done
           binaryArray = NULL;
+          fprintf(stdout,"Free the memory for transfer_method=1\n");
           free(hist_data);                 // Free the memory
           return(0);                       // End now as no submatrices to transfer
         }
@@ -4095,6 +4098,7 @@ int send_binary_spectrum(int num, char url_args[][URL_STRING_LEN], char *name, i
           free(submatrix_ids); free(submatrix_type); free(submatrix_count); // Free the submatrix arrays when done
           free(binaryArray); // Free the binaryArray when done
           binaryArray = NULL;
+          fprintf(stdout,"Free the memory for transfer_method=1\n");
           free(hist_data);                 // Free the memory
           return(0);                       // End now as no submatrices to transfer
         }
@@ -4224,6 +4228,6 @@ int send_binary_spectrum(int num, char url_args[][URL_STRING_LEN], char *name, i
     } // End of else if( hist->type == INT_2D || hist->type == INT_2D_SYMM )
   }
 }
-if(binaryArray){ free(binaryArray); binaryArray = NULL; }
+if(binaryArray!=NULL){ fprintf(stdout,"Free the memory at end of function\n\n"); free(binaryArray); binaryArray = NULL; }
 return(0);
 }
