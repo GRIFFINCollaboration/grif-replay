@@ -19,7 +19,7 @@
 #define MAX_ADDRESS    0x10000
 #define MAX_CONFIGS        256
 #define MAX_CONDS         1024
-#define MAX_DAQSIZE       1200 // max #channels that can be defined in odb
+#define MAX_DAQSIZE       1500 // max #channels that can be defined in odb
 #define CHAN_NAMELEN        32 // size of midas odb strings
 #define MAX_GATE_CONDS      64
 #define MAX_GATES          256

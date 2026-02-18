@@ -559,8 +559,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             // The charged particles enter the P side and this has superior energy resolution
             // Ensure the energy collected in the front and back is similar
             ptr->esum = -1; // Need to exclude any noise and random coincidences.
-            if( alt->subsys == SUBSYS_QED_STRIP && (dt >= qed_fb_window_min && dt <= qed_fb_window_max) && (ptr->ecal>100 && ptr->ecal<32768)){
-              if((crystal_table[ptr->chan] == crystal_table[alt->chan]) && (polarity_table[ptr->chan] != polarity_table[alt->chan]) && (alt->ecal > 100 && alt->ecal<32768)){
+            if( alt->subsys == SUBSYS_QED_STRIP && (dt >= qed_fb_window_min && dt <= qed_fb_window_max) && (ptr->ecal>60 && ptr->ecal<32768)){
+              if((crystal_table[ptr->chan] == crystal_table[alt->chan]) && (polarity_table[ptr->chan] != polarity_table[alt->chan]) && (alt->ecal > 60 && alt->ecal<32768)){
                 //  if( ((ptr->ecal / alt->ecal)<=1.1 && (ptr->ecal / alt->ecal)>=0.9)){ // Energy-sharing only works if both strips are calibrated!
                 // The ptr strip now changes to a PIXEL
                 // Ensure ecal comes from P side, alt_ecal will be N side
@@ -1093,7 +1093,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {(void **) rcmp_fb,     "RCS%d_Front_Back",  "",   SUBSYS_RCMP, E_2D_RCMP_SPECLEN, E_2D_RCMP_SPECLEN, N_RCMP_POS},
         {(void **)&rcmp_x_ge_hit,"RCS_Xstrips_vs_GeHit","",SUBSYS_RCMP, 192,  64},
         {(void **)&rcmp_y_ge_hit,"RCS_Ystrips_vs_GeHit","",SUBSYS_RCMP, 192,  64},
-        {(void **) qed_hit,    "",    qed_hit_handles[0],  SUBSYS_QED_STRIP, N_QED_STRIPS,     N_QED_STRIPS,     N_QED_POS},
+        {(void **) qed_hit,    "",    qed_hit_handles[0],  SUBSYS_QED_STRIP, N_QED_STRIPS*2,     N_QED_STRIPS*2,     N_QED_POS},
         {(void **) qed_fb,     "",    qed_fb_handles[0],   SUBSYS_QED_STRIP, E_2D_QED_SPECLEN, E_2D_QED_SPECLEN, N_QED_POS},
         {(void **)&qed_p_ge_hit,"QED_Pstrips_vs_GeHit","",SUBSYS_QED_STRIP, 192,  64},
         {(void **)&qed_n_ge_hit,"QED_Nstrips_vs_GeHit","",SUBSYS_QED_STRIP, 192,  64},
@@ -1166,11 +1166,15 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {NULL,                   "Analysis/QED",        ""},
         {(void **)&qed_angle_test,  "QED_angle_test",         "",SUBSYS_QED_STRIP, N_HPGE,   192},
         {(void **) qed_psd_e,      "",           qed_psd_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN, E_2D_SPECLEN, N_QED_POS},
-        {(void **)&qedE_ge_theta_sum_b,  "QED_E_vs_theta_beta",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
-        {(void **)&qed_geE_theta_sum_b,  "QED_GeE_vs_theta_beta",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
-        {(void **)&qedE_ge_theta_sum_g,  "QED_E_vs_theta_gam",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
-        {(void **)&qed_geE_theta_sum_g,  "QED_GeE_vs_theta_gam",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
-        {(void **) qed_geE_theta_clov_g,  "",qed_geE_theta_clov_g_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_CLOVER},
+        {(void **)&qedE_ge_theta_sum,  "QED_E_vs_theta",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+        {(void **)&qed_geE_theta_sum,  "QED_GeE_vs_theta",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+        {(void **)&qed_totE_theta_sum,  "QED_totalE_vs_theta",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+        {(void **)&qed_E_totE_sum_t,     "QED_E_vs_totEgated",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN, E_2D_QED_SPECLEN},
+        {(void **)&qed_geE_totE_sum_t,   "QED_GeE_vs_totEgated",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN, E_2D_QED_SPECLEN},
+        {(void **)&qedE_ge_theta_sum_t,  "QED_E_vs_theta_totEgated",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+        {(void **)&qed_geE_theta_sum_t,  "QED_GeE_vs_theta_totEgated",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+        {(void **) qed_geE_theta_clov,    "",qed_geE_theta_clov_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_CLOVER},
+        {(void **) qed_geE_theta_clov_t,  "",qed_geE_theta_clov_t_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_CLOVER},
         {(void **) qedp_ge_theta,  "",     qedp_ge_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
         {(void **) qedn_ge_theta,  "",     qedn_ge_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
         {(void **) qed_geE_theta,  "",     qed_geE_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
@@ -1641,11 +1645,11 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                 elem = ptr->alt_chan; // QED pixel number [0-1023]
                 qed_fb[pos]->Fill(qed_fb[pos], (int)ptr->ecal, (int)ptr->alt_ecal, 1); // front-back energy
                 qed_psd_e[pos]->Fill(qed_psd_e[pos], (int)ptr->ecal, ptr->psd, 1); // qed psd
-                if(ptr->ecal>100){
+                if(ptr->ecal>60){
                   qed_hit[pos]->Fill(qed_hit[pos], (int)(elem/N_QED_STRIPS), (elem%N_QED_STRIPS), 1); // QED DSSD hitpattern
+                  qed_strips[pos]->Fill(qed_strips[pos], (int)(elem/N_QED_STRIPS), (int)ptr->ecal, 1); // p strip energies
+                  qed_strips[pos]->Fill(qed_strips[pos], (elem%N_QED_STRIPS)+N_QED_STRIPS, (int)ptr->alt_ecal, 1); // n strip energies
                 }
-                qed_strips[pos]->Fill(qed_strips[pos], (int)(elem/N_QED_STRIPS), (int)ptr->ecal, 1); // p strip energies
-                qed_strips[pos]->Fill(qed_strips[pos], (elem%N_QED_STRIPS)+N_QED_STRIPS, (int)ptr->alt_ecal, 1); // n strip energies
                 break;
                 default: break; // Unrecognized or unprocessed dtype
               }// end of switch
@@ -1654,7 +1658,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
 
             int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
             {
-              int c1, c2, c3, pos, bin, angle_idx, coinc_ecal, scatt_esum;
+              int c1, c2, c3, pos, bin, angle_idx, coinc_ecal, scatt_esum, totalEnergy;
               double angle;
               switch(alt->subsys){
                 case SUBSYS_HPGE_A:
@@ -1797,25 +1801,27 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                 c2 = alt->alt_chan; // QED pixel number [0-1023]
                 //  (int)(c2/N_QED_STRIPS); // QED p strip number [0-31]
                 //  (c2%N_QED_STRIPS); // QED n strip number [0-31]
-                if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 < 1024 && ptr->ecal>5 && alt->ecal>5 ){
+                if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 < 1024 && ptr->ecal>5 && alt->ecal>100 ){
                   qed_p_ge_hit->Fill(qed_p_ge_hit, (int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS)), c1, 1);
                   qed_n_ge_hit->Fill(qed_n_ge_hit, (int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS)), c1, 1);
 
-                  if((c2%N_QED_STRIPS)<6){
-                    qedE_ge_theta_sum_b->Fill(qedE_ge_theta_sum_b, alt->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
-                    qed_geE_theta_sum_b->Fill(qed_geE_theta_sum_b, ptr->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
-                  }
-                //  if((c2%N_QED_STRIPS)==15 && (int)(c2/N_QED_STRIPS)==15){
-                    qedE_ge_theta_sum_g->Fill(qedE_ge_theta_sum_g, alt->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
-                    qed_geE_theta_sum_g->Fill(qed_geE_theta_sum_g, ptr->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
-                    qed_geE_theta_clov_g[(int)(c1/4)]->Fill(qed_geE_theta_clov_g[(int)(c1/4)], ptr->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
-                  //}
+                  qedE_ge_theta_sum->Fill(qedE_ge_theta_sum, alt->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
+                  qed_geE_theta_sum->Fill(qed_geE_theta_sum, ptr->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
+                  qed_geE_theta_clov[(int)(c1/4)]->Fill(qed_geE_theta_clov[(int)(c1/4)], ptr->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
+                  totalEnergy = (int)(ptr->ecal+alt->ecal);
+                  qed_totE_theta_sum->Fill(qed_totE_theta_sum, totalEnergy, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
+                  qed_E_totE_sum_t->Fill(qed_E_totE_sum_t, alt->ecal, totalEnergy, 1);
+                  qed_geE_totE_sum_t->Fill(qed_geE_totE_sum_t, ptr->ecal, totalEnergy, 1);
+                  if(totalEnergy>625 && totalEnergy<675){
+                    qedE_ge_theta_sum_t->Fill(qedE_ge_theta_sum_t, alt->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
+                    qed_geE_theta_sum_t->Fill(qed_geE_theta_sum_t, ptr->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
+                    qed_geE_theta_clov_t[(int)(c1/4)]->Fill(qed_geE_theta_clov_t[(int)(c1/4)], ptr->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
 
-                  if((int)(c2/N_QED_STRIPS) == (c2%N_QED_STRIPS)){ // Single pixel theta needed for initial calibration
-                    //  fprintf(stdout,"Fill theta plot[%d] for QED%2d Pixel [%d,%d] and HPGe %d at theta=%d\n",(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS)),pos,(int)(c2/N_QED_STRIPS),(c2%N_QED_STRIPS),c1,(int)(angular_diff_QEDGe(pos,c2,c1)));
-                    qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], alt->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
-                    qedn_ge_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qedn_ge_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], alt->alt_ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
-                    qed_geE_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qed_geE_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], ptr->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
+                    if((int)(c2/N_QED_STRIPS) == (c2%N_QED_STRIPS)){ // Single pixel theta needed for initial calibration
+                      qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], alt->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
+                      qedn_ge_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qedn_ge_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], alt->alt_ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
+                      qed_geE_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qed_geE_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], ptr->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
+                    }
                   }
                 }
                 break;
@@ -1912,7 +1918,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
               {{1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30},  // QED3 P
               {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // QED3 N
               {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED4 P
-              {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // QED4 N
+              {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}, // QED4 N
               {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED5 P
               {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // QED5 N
               {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED6 P

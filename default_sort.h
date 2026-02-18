@@ -74,7 +74,7 @@ static char subsys_name[MAX_SUBSYS][STRING_LEN] = {
 #define E_2D_TOF_SPECLEN        1024
 #define E_2D_SPECLEN            4096
 #define E_2D_RCMP_SPECLEN       6400
-#define E_2D_QED_SPECLEN        4096
+#define E_2D_QED_SPECLEN        2048
 #define E_3D_LBL_SPECLEN      160000  // 400*400
 #define E_3D_TAC_SPECLEN         512
 //#define T_SPEC_LENGTH     8192
@@ -308,8 +308,8 @@ TH2I  *qed_fb[N_QED_POS];
 TH2I  *qed_psd_e[N_QED_POS];
 TH2I  *qed_p_ge_hit, *qed_n_ge_hit; // qed strips vs Ge hitpatterns
 TH2I  *qedp_ge_theta[N_QED_POS*N_QED_STRIPS], *qedn_ge_theta[N_QED_POS*N_QED_STRIPS]; // qed strip energy vs theta of a qed-Ge hit
-TH2I  *qed_geE_theta[N_QED_POS*N_QED_STRIPS], *qedE_ge_theta_sum_b, *qed_geE_theta_sum_b, *qedE_ge_theta_sum_g, *qed_geE_theta_sum_g;
-TH2I  *qed_geE_theta_clov_g[N_CLOVER];
+TH2I  *qed_geE_theta[N_QED_POS*N_QED_STRIPS], *qedE_ge_theta_sum, *qed_geE_theta_sum, *qed_totE_theta_sum, *qed_E_totE_sum_t, *qed_geE_totE_sum_t, *qedE_ge_theta_sum_t, *qed_geE_theta_sum_t;
+TH2I  *qed_geE_theta_clov[N_CLOVER], *qed_geE_theta_clov_t[N_CLOVER];
 TH2I  *qed_angle_test;
 
 char qed_psd_handles[N_QED_POS][HANDLE_LENGTH] = {"QED01_E_vs_psd","QED02_E_vs_psd","QED03_E_vs_psd","QED04_E_vs_psd","QED05_E_vs_psd","QED06_E_vs_psd"};
@@ -317,11 +317,18 @@ char qed_strips_handles[N_QED_POS][HANDLE_LENGTH]={"QED01_E_strips", "QED02_E_st
 char qed_hit_handles[N_QED_POS][HANDLE_LENGTH]={"QED01_PN_hit", "QED02_PN_hit", "QED03_PN_hit", "QED04_PN_hit", "QED05_PN_hit", "QED06_PN_hit"};
 char qed_fb_handles[N_QED_POS][HANDLE_LENGTH]={"QED01_Front_Back", "QED02_Front_Back", "QED03_Front_Back", "QED04_Front_Back", "QED05_Front_Back", "QED06_Front_Back"};
 
-char qed_geE_theta_clov_g_handles[N_CLOVER][HANDLE_LENGTH] = {
-  "QED_Clover01E_vs_theta_gam","QED_Clover02E_vs_theta_gam","QED_Clover03E_vs_theta_gam","QED_Clover04E_vs_theta_gam",
-  "QED_Clover05E_vs_theta_gam","QED_Clover06E_vs_theta_gam","QED_Clover07E_vs_theta_gam","QED_Clover08E_vs_theta_gam",
-  "QED_Clover09E_vs_theta_gam","QED_Clover10E_vs_theta_gam","QED_Clover11E_vs_theta_gam","QED_Clover12E_vs_theta_gam",
-  "QED_Clover13E_vs_theta_gam","QED_Clover14E_vs_theta_gam","QED_Clover15E_vs_theta_gam","QED_Clover16E_vs_theta_gam"
+char qed_geE_theta_clov_handles[N_CLOVER][HANDLE_LENGTH] = {
+  "QED_Clover01E_vs_theta","QED_Clover02E_vs_theta","QED_Clover03E_vs_theta","QED_Clover04E_vs_theta",
+  "QED_Clover05E_vs_theta","QED_Clover06E_vs_theta","QED_Clover07E_vs_theta","QED_Clover08E_vs_theta",
+  "QED_Clover09E_vs_theta","QED_Clover10E_vs_theta","QED_Clover11E_vs_theta","QED_Clover12E_vs_theta",
+  "QED_Clover13E_vs_theta","QED_Clover14E_vs_theta","QED_Clover15E_vs_theta","QED_Clover16E_vs_theta"
+};
+
+char qed_geE_theta_clov_t_handles[N_CLOVER][HANDLE_LENGTH] = {
+  "QED_Clover01E_vs_theta_totEgated","QED_Clover02E_vs_theta_totEgated","QED_Clover03E_vs_theta_totEgated","QED_Clover04E_vs_theta_totEgated",
+  "QED_Clover05E_vs_theta_totEgated","QED_Clover06E_vs_theta_totEgated","QED_Clover07E_vs_theta_totEgated","QED_Clover08E_vs_theta_totEgated",
+  "QED_Clover09E_vs_theta_totEgated","QED_Clover10E_vs_theta_totEgated","QED_Clover11E_vs_theta_totEgated","QED_Clover12E_vs_theta_totEgated",
+  "QED_Clover13E_vs_theta_totEgated","QED_Clover14E_vs_theta_totEgated","QED_Clover15E_vs_theta_totEgated","QED_Clover16E_vs_theta_totEgated"
 };
 
 char qedp_ge_theta_handles[N_QED_POS*N_QED_STRIPS][HANDLE_LENGTH]={
