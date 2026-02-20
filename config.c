@@ -3867,7 +3867,7 @@ int send_binary_spectrum(int num, char url_args[][URL_STRING_LEN], char *name, i
   Config *cfg = configs[1];
   TH1I *hist;
   int8_t *binaryArray=NULL;
-  fprintf(stdout,"Start of function\n");
+//  fprintf(stdout,"Start of function\n");
 
   // The variables for the matrix are currently 32 bits.
   int bitMask_coord[4] ={ 0x0000007F, 0x00007F00, 0x007F0000, 0x7F000000 }; // 7, 15, 23, 31 bits
@@ -3987,8 +3987,8 @@ int send_binary_spectrum(int num, char url_args[][URL_STRING_LEN], char *name, i
       //int8_t *binaryArray = calloc(((num_submatrices+1)*coord_size), sizeof(int8_t));
     //  binaryArray = calloc(((num_submatrices+2)*coord_size), sizeof(int8_t));
       binaryArray = calloc(((131072+1)*coord_size), sizeof(int8_t)); // enough for 8192x8192
-      fprintf(stdout,"Create memory with size %d from %d submatrices of unit size %d, for histogram dimensions %d,%d\n",((num_submatrices+1)*coord_size),(num_submatrices+1),coord_size,xbins,ybins);
-      fprintf(stdout,"Size is %d\n",(sizeof(binaryArray) / sizeof(binaryArray[0])));
+    //  fprintf(stdout,"Create memory with size %d from %d submatrices of unit size %d, for histogram dimensions %d,%d\n",((num_submatrices+1)*coord_size),(num_submatrices+1),coord_size,xbins,ybins);
+    //  fprintf(stdout,"Size is %d\n",(sizeof(binaryArray) / sizeof(binaryArray[0])));
 
       // Determine the number of non-zero values in each submatrix.
       num_nonempty_submatrices = 0;
@@ -4078,7 +4078,7 @@ int send_binary_spectrum(int num, char url_args[][URL_STRING_LEN], char *name, i
           free(submatrix_ids); free(submatrix_type); free(submatrix_count); // Free the submatrix arrays when done
           free(binaryArray); // Free the binaryArray when done
           binaryArray = NULL;
-          fprintf(stdout,"Free the memory for transfer_method=1\n");
+      //    fprintf(stdout,"Free the memory for transfer_method=1\n");
           free(hist_data);                 // Free the memory
           return(0);                       // End now as no submatrices to transfer
         }
@@ -4103,7 +4103,7 @@ int send_binary_spectrum(int num, char url_args[][URL_STRING_LEN], char *name, i
           free(submatrix_ids); free(submatrix_type); free(submatrix_count); // Free the submatrix arrays when done
           free(binaryArray); // Free the binaryArray when done
           binaryArray = NULL;
-          fprintf(stdout,"Free the memory for transfer_method=1\n");
+        //  fprintf(stdout,"Free the memory for transfer_method=1\n");
           free(hist_data);                 // Free the memory
           return(0);                       // End now as no submatrices to transfer
         }
@@ -4189,7 +4189,7 @@ int send_binary_spectrum(int num, char url_args[][URL_STRING_LEN], char *name, i
               // Build the list of data value sizes
               // Array types, 0 (8-bit), 1 (16-bit), 2 (24-bit), 3 (32-bit)
               // First find the maximum value per 4 subsubmatrices
-              fprintf(stdout,"submatrix_type[%d] == 2\n",pos);
+            //  fprintf(stdout,"submatrix_type[%d] == 2\n",pos);
               index=0;
               list_max[0]=list_max[1]=list_max[2]=list_max[3]=0;
               for(m=0; m<16; m++){
@@ -4198,7 +4198,7 @@ int send_binary_spectrum(int num, char url_args[][URL_STRING_LEN], char *name, i
                   index++;
                 }
               }
-              fprintf(stdout,"list_max[%d,%d,%d,%d]\n",list_max[0],list_max[1],list_max[2],list_max[3]);
+            //  fprintf(stdout,"list_max[%d,%d,%d,%d]\n",list_max[0],list_max[1],list_max[2],list_max[3]);
               // Assign value size for each subsubmatrix based on maximum value
               for(m=0; m<4; m++){
                 if     ( list_max[m] <= 0x100     ){ list_valueSize[m]=0; } //  8-bit values
@@ -4206,7 +4206,7 @@ int send_binary_spectrum(int num, char url_args[][URL_STRING_LEN], char *name, i
                 else if( list_max[m] <= 0x1000000 ){ list_valueSize[m]=2; } // 24-bit values
                 else                               { list_valueSize[m]=3; } // 32-bit values
               }
-              fprintf(stdout,"list_valueSize[%d,%d,%d,%d]\n",list_valueSize[0],list_valueSize[1],list_valueSize[2],list_valueSize[3]);
+            //  fprintf(stdout,"list_valueSize[%d,%d,%d,%d]\n",list_valueSize[0],list_valueSize[1],list_valueSize[2],list_valueSize[3]);
               // Build array submatrix header word.
               index=0;
               binaryArray[index] = list_valueSize[0]<<6;
@@ -4219,7 +4219,7 @@ int send_binary_spectrum(int num, char url_args[][URL_STRING_LEN], char *name, i
               for(m=0; m<16; m++){
                 for(l=0; l<16; l++){val=hist_data[i+l+(k+m)*xbins];
                   valCount=list_valueSize[(int)((16*m+l)/64)];
-                  fprintf(stdout,"%d,%d valCount = %d\n",m,l,valCount);
+                //  fprintf(stdout,"%d,%d valCount = %d\n",m,l,valCount);
 
                   while(valCount>=0){
                     if(valCount == -1){ break; }
@@ -4242,8 +4242,8 @@ int send_binary_spectrum(int num, char url_args[][URL_STRING_LEN], char *name, i
   }
 }
 if(binaryArray!=NULL){
-  fprintf(stdout,"Free the memory at end of function\n\n");
-  fprintf(stdout,"Size is %d\n",(sizeof(binaryArray) / sizeof(binaryArray[0])));
+//  fprintf(stdout,"Free the memory at end of function\n\n");
+//  fprintf(stdout,"Size is %d\n",(sizeof(binaryArray) / sizeof(binaryArray[0])));
 free(binaryArray); binaryArray = NULL;
 }
 return(0);
