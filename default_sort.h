@@ -308,7 +308,7 @@ TH2I  *qed_fb[N_QED_POS];
 TH2I  *qed_psd_e[N_QED_POS];
 TH2I  *qed_p_ge_hit, *qed_n_ge_hit; // qed strips vs Ge hitpatterns
 TH2I  *qedp_ge_theta[N_QED_POS*N_QED_STRIPS], *qedn_ge_theta[N_QED_POS*N_QED_STRIPS]; // qed strip energy vs theta of a qed-Ge hit
-TH2I  *qed_geE_theta[N_QED_POS*N_QED_STRIPS], *qedE_ge_theta_sum, *qed_geE_theta_sum, *qed_totE_theta_sum, *qed_E_totE_sum_t, *qed_geE_totE_sum_t, *qedE_ge_theta_sum_t, *qed_geE_theta_sum_t;
+TH2I  *qed_geE_theta[N_QED_POS*N_QED_STRIPS], *qedE_ge_theta_sum, *qed_geE_theta_sum, *qed_totE_theta_sum, *qed_E_totE_sum_t, *qed_geE_totE_sum_t, *qedE_ge_theta_sum_t, *qed_geE_theta_sum_t, *qedE_ge_thetaI_sum_t, *qed_geE_thetaDiff_sum_t, *qed_geE_thetaI_sum_t;
 TH2I  *qed_geE_theta_clov[N_CLOVER], *qed_geE_theta_clov_t[N_CLOVER];
 TH2I  *qed_angle_test;
 
@@ -511,7 +511,7 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
   // 2D Energy vs Energy Coincidence matrices
   TH2I *gea_self_dt,*geb_self_dt;
   TH2I *gg, *gg_ab, *gg_opp, *gg_ab_opp, *ge_bgo, *ge_paces, *ge_labr, *ge_rcmp, *labr_labr, *labr_zds, *labr_rcmp;
-  TH2I *ge_art, *ge_zds, *paces_art, *labr_art, *art_art, *dsw_dsw, *ge_dsw, *art_dsw;
+  TH2I *ge_art, *ge_zds, *paces_art, *labr_art, *art_art, *dsw_dsw, *ge_dsw, *art_dsw, *ge_qed, *qed_qed;
   TH1I *gg_energy[N_HPGE];
   char gg_energy_handles[N_HPGE][HANDLE_LENGTH]={
     "GRG01BN00A_GGEnergy","GRG01GN00A_GGEnergy","GRG01RN00A_GGEnergy","GRG01WN00A_GGEnergy", "GRG02BN00A_GGEnergy","GRG02GN00A_GGEnergy","GRG02RN00A_GGEnergy","GRG02WN00A_GGEnergy",

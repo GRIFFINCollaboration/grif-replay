@@ -1070,6 +1070,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {(void **)&ge_labr,     "GeLabr",             "",  SUBSYS_LABR_L,  E_2D_SPECLEN, E_2D_SPECLEN},
         {(void **)&ge_zds,      "GeZds",              "",  SUBSYS_ZDS_A,   E_2D_SPECLEN, E_2D_SPECLEN},
         {(void **)&ge_art,      "GeAries",            "",  SUBSYS_ARIES_A, E_2D_SPECLEN, E_2D_SPECLEN},
+        {(void **)&ge_qed,      "GeQED",            "",  SUBSYS_QED_STRIP, E_2D_SPECLEN, E_2D_SPECLEN},
+        {(void **)&qed_qed,      "QEDQED",            "",  SUBSYS_QED_STRIP, E_2D_SPECLEN, E_2D_SPECLEN},
         {(void **)&labr_art,    "LaBrAries",          "",  SUBSYS_LABR_L,  E_2D_SPECLEN, E_2D_SPECLEN},
         {(void **)&paces_art,   "PacesAries",         "",  SUBSYS_PACES,   E_2D_SPECLEN, E_2D_SPECLEN},
         {(void **)&art_art,     "AriesAries",         "",  SUBSYS_ARIES_A, E_2D_SPECLEN, SYMMETERIZE},
@@ -1173,6 +1175,9 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {(void **)&qed_geE_totE_sum_t,   "QED_GeE_vs_totEgated",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN, E_2D_QED_SPECLEN},
         {(void **)&qedE_ge_theta_sum_t,  "QED_E_vs_theta_totEgated",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
         {(void **)&qed_geE_theta_sum_t,  "QED_GeE_vs_theta_totEgated",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+        {(void **)&qedE_ge_thetaI_sum_t,  "QED_E_vs_thetaI_totEgated",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+        {(void **)&qed_geE_thetaI_sum_t,  "QED_GeE_vs_thetaI_totEgated",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+        {(void **)&qed_geE_thetaDiff_sum_t,  "QED_GeE_vs_thetaDiff_totEgated",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
         {(void **) qed_geE_theta_clov,    "",qed_geE_theta_clov_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_CLOVER},
         {(void **) qed_geE_theta_clov_t,  "",qed_geE_theta_clov_t_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_CLOVER},
         {(void **) qedp_ge_theta,  "",     qedp_ge_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
@@ -1268,6 +1273,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             subsys_e_vs_e[SUBSYS_HPGE_A ][SUBSYS_LABR_L ] = ge_labr;
             subsys_e_vs_e[SUBSYS_HPGE_A ][SUBSYS_RCMP   ] = ge_rcmp;
             subsys_e_vs_e[SUBSYS_HPGE_A ][SUBSYS_ZDS_A  ] = ge_zds;
+            subsys_e_vs_e[SUBSYS_HPGE_A ][SUBSYS_QED_PIXEL  ] = ge_qed;
+            subsys_e_vs_e[SUBSYS_QED_PIXEL ][SUBSYS_QED_PIXEL  ] = qed_qed;
             subsys_e_vs_e[SUBSYS_PACES  ][SUBSYS_ARIES_A] = paces_art;
             subsys_e_vs_e[SUBSYS_LABR_L ][SUBSYS_LABR_L ] = labr_labr;
             subsys_e_vs_e[SUBSYS_LABR_L ][SUBSYS_ARIES_A] = labr_art;
@@ -1307,7 +1314,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             // pixels looked at; 371, 496
             if(subsystem == SUBSYS_QED_STRIP){
               for(i=0; i<N_HPGE; i++){
-                qed_angle_test->Fill(qed_angle_test, (int)(i/4), (int)(angular_diff_QEDGe(2,496,i)), (i+1));
+                qed_angle_test->Fill(qed_angle_test, (int)(i/4), (int)(scattering_angle_QEDGe(2,496,i)), (i+1));
               }
             }
             return(0);
@@ -1805,22 +1812,28 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                   qed_p_ge_hit->Fill(qed_p_ge_hit, (int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS)), c1, 1);
                   qed_n_ge_hit->Fill(qed_n_ge_hit, (int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS)), c1, 1);
 
-                  qedE_ge_theta_sum->Fill(qedE_ge_theta_sum, alt->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
-                  qed_geE_theta_sum->Fill(qed_geE_theta_sum, ptr->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
-                  qed_geE_theta_clov[(int)(c1/4)]->Fill(qed_geE_theta_clov[(int)(c1/4)], ptr->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
+//fprintf(stdout,"Theta Geometric,idealized: %d,%d\n",(int)(scattering_angle_QEDGe(pos,c2,c1)),compton_angle(ptr->ecal,662.0));
+                  qedE_ge_theta_sum->Fill(qedE_ge_theta_sum, alt->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
+                  qed_geE_theta_sum->Fill(qed_geE_theta_sum, ptr->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
+                  qed_geE_theta_clov[(int)(c1/4)]->Fill(qed_geE_theta_clov[(int)(c1/4)], ptr->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
                   totalEnergy = (int)(ptr->ecal+alt->ecal);
-                  qed_totE_theta_sum->Fill(qed_totE_theta_sum, totalEnergy, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
+                  qed_totE_theta_sum->Fill(qed_totE_theta_sum, totalEnergy, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
                   qed_E_totE_sum_t->Fill(qed_E_totE_sum_t, alt->ecal, totalEnergy, 1);
                   qed_geE_totE_sum_t->Fill(qed_geE_totE_sum_t, ptr->ecal, totalEnergy, 1);
                   if(totalEnergy>625 && totalEnergy<675){
-                    qedE_ge_theta_sum_t->Fill(qedE_ge_theta_sum_t, alt->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
-                    qed_geE_theta_sum_t->Fill(qed_geE_theta_sum_t, ptr->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
-                    qed_geE_theta_clov_t[(int)(c1/4)]->Fill(qed_geE_theta_clov_t[(int)(c1/4)], ptr->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
+                    qedE_ge_theta_sum_t->Fill(qedE_ge_theta_sum_t, alt->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
+                    qed_geE_theta_sum_t->Fill(qed_geE_theta_sum_t, ptr->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
+                    qed_geE_theta_clov_t[(int)(c1/4)]->Fill(qed_geE_theta_clov_t[(int)(c1/4)], ptr->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
+
+
+                      qedE_ge_thetaI_sum_t->Fill(qedE_ge_thetaI_sum_t, alt->ecal, compton_angle(ptr->ecal,662.0), 1);
+                      qed_geE_thetaI_sum_t->Fill(qed_geE_thetaI_sum_t, ptr->ecal, compton_angle(ptr->ecal,662.0), 1);
+                      qed_geE_thetaDiff_sum_t->Fill(qed_geE_thetaDiff_sum_t, ptr->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1) - compton_angle(ptr->ecal,662.0))+90, 1);
 
                     if((int)(c2/N_QED_STRIPS) == (c2%N_QED_STRIPS)){ // Single pixel theta needed for initial calibration
-                      qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], alt->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
-                      qedn_ge_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qedn_ge_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], alt->alt_ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
-                      qed_geE_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qed_geE_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], ptr->ecal, (int)(angular_diff_QEDGe(pos,c2,c1)), 1);
+                      qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], alt->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
+                      qedn_ge_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qedn_ge_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], alt->alt_ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
+                      qed_geE_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qed_geE_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], ptr->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
                     }
                   }
                 }
