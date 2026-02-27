@@ -82,6 +82,7 @@ static char subsys_name[MAX_SUBSYS][STRING_LEN] = {
 #define DT_SPEC_LENGTH          1024
 #define GE_ANGCOR_SPECLEN       4096
 #define DSW_ANGCOR_SPECLEN      4096
+#define QED_STRIP_THRESHOLD       30  // 30keV in all strips is required
 
 //#######################################################################
 //########             PPG variables and patterns              ##########

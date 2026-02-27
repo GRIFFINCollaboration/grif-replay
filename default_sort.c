@@ -559,8 +559,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             // The charged particles enter the P side and this has superior energy resolution
             // Ensure the energy collected in the front and back is similar
             ptr->esum = -1; // Need to exclude any noise and random coincidences.
-            if( alt->subsys == SUBSYS_QED_STRIP && (dt >= qed_fb_window_min && dt <= qed_fb_window_max) && (ptr->ecal>60 && ptr->ecal<32768)){
-              if((crystal_table[ptr->chan] == crystal_table[alt->chan]) && (polarity_table[ptr->chan] != polarity_table[alt->chan]) && (alt->ecal > 60 && alt->ecal<32768)){
+            if( alt->subsys == SUBSYS_QED_STRIP && (dt >= qed_fb_window_min && dt <= qed_fb_window_max) && (ptr->ecal>QED_STRIP_THRESHOLD && ptr->ecal<32768)){
+              if((crystal_table[ptr->chan] == crystal_table[alt->chan]) && (polarity_table[ptr->chan] != polarity_table[alt->chan]) && (alt->ecal > QED_STRIP_THRESHOLD && alt->ecal<32768)){
                 //  if( ((ptr->ecal / alt->ecal)<=1.1 && (ptr->ecal / alt->ecal)>=0.9)){ // Energy-sharing only works if both strips are calibrated!
                 // The ptr strip now changes to a PIXEL
                 // Ensure ecal comes from P side, alt_ecal will be N side
@@ -1652,7 +1652,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                 elem = ptr->alt_chan; // QED pixel number [0-1023]
                 qed_fb[pos]->Fill(qed_fb[pos], (int)ptr->ecal, (int)ptr->alt_ecal, 1); // front-back energy
                 qed_psd_e[pos]->Fill(qed_psd_e[pos], (int)ptr->ecal, ptr->psd, 1); // qed psd
-                if(ptr->ecal>60){
+                if(ptr->ecal>QED_STRIP_THRESHOLD){
                   qed_hit[pos]->Fill(qed_hit[pos], (int)(elem/N_QED_STRIPS), (elem%N_QED_STRIPS), 1); // QED DSSD hitpattern
                   qed_strips[pos]->Fill(qed_strips[pos], (int)(elem/N_QED_STRIPS), (int)ptr->ecal, 1); // p strip energies
                   qed_strips[pos]->Fill(qed_strips[pos], (elem%N_QED_STRIPS)+N_QED_STRIPS, (int)ptr->alt_ecal, 1); // n strip energies
@@ -1808,7 +1808,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                 c2 = alt->alt_chan; // QED pixel number [0-1023]
                 //  (int)(c2/N_QED_STRIPS); // QED p strip number [0-31]
                 //  (c2%N_QED_STRIPS); // QED n strip number [0-31]
-                if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 < 1024 && ptr->ecal>5 && alt->ecal>100 ){
+                if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 < 1024 && ptr->ecal>5 && alt->ecal>QED_STRIP_THRESHOLD ){
                   qed_p_ge_hit->Fill(qed_p_ge_hit, (int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS)), c1, 1);
                   qed_n_ge_hit->Fill(qed_n_ge_hit, (int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS)), c1, 1);
 
@@ -1918,7 +1918,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
               {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
               {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
               {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED1 P
-              {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // QED1 N
+              {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}, // QED1 N
 
               //  {{1,3,5,7,9,11,13,15,31,29,27,25,23,21,19,17,16,18,20,22,24,26,28,30,14,12,10,8,6,4,2,0},  // QED2 P
               //{{31,0,30,1,  29,2,28,3,  27,4,26,5, 25,6,24,7, 16,15,17,14, 18,13,19,12, 20,11,21,10, 22,9,23,8},  // QED2 P
@@ -1930,8 +1930,20 @@ int init_default_histos(Config *cfg, Sort_status *arg)
 
               {{1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30},  // QED3 P
               {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // QED3 N
+
               {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED4 P
-              {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}, // QED4 N
+            //  {{15,14,13,12,11,10, 9, 8,  1, 0, 3, 2, 5, 4, 7, 6,  17,16,19,18,21,20,23,22, 25,24,27,26,29,28,31,30,  },  // QED4 P
+
+            // A 1, 0, 3, 2, 5, 4, 7, 6,
+            // B 9, 8,11,10,13,12,15,14,
+            // C 17,16,19,18,21,20,23,22,
+            // D 25,24,27,26,29,28,31,30
+// A, B, C, D
+// B  D  C  A
+
+              {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // QED4
+
+
               {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED5 P
               {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // QED5 N
               {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED6 P

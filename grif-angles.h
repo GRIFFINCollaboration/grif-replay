@@ -6765,7 +6765,7 @@ float grif_crystal_cartesian_110mm[64][3]={
         // Calculate the scattering angle from a HPGe energy (keV) assuming it is
         // the secondary photon from a single Compton scatter of an initial_energy gamma ray
         int compton_angle(float ecal, float initial_energy){
-          return (int)( RADIANS_TO_DEGREES*acos( 1 - (511.0/ecal) * (511.0/initial_energy) ) );
+          return (int)( RADIANS_TO_DEGREES*acos( 1 - (511.0/ecal) + (511.0/initial_energy) ) );
         }
 
         // NEEDS UPDATEING
