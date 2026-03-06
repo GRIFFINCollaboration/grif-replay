@@ -83,6 +83,7 @@ static char subsys_name[MAX_SUBSYS][STRING_LEN] = {
 #define GE_ANGCOR_SPECLEN       4096
 #define DSW_ANGCOR_SPECLEN      4096
 #define QED_STRIP_THRESHOLD       30  // 30keV in all strips is required
+#define NUM_QED_REORDERS          10
 
 //#######################################################################
 //########             PPG variables and patterns              ##########
@@ -154,6 +155,8 @@ TH2I   *cycle_num_vs_ge_b_sh_g;                 // 2D histogram of cycle # vs th
 TH2I   *cycle_num_vs_ge_b_dt;                   // 2D histogram of cycle # vs the cycle time for deadtime . GRGB
 TH2I   *cycle_num_vs_sh_b;                      // 2D histogram of cycle # vs the cycle time for NP. GRGB
 TH2I   *cycle_num_vs_pu_b;                      // 2D histogram of cycle # vs the cycle time for PU. GRGB
+TH2I   *cycle_num_vs_geEnergy[N_HPGE];          // 2D histogram of cycle # vs the Ge energy spectrum for that cycle (Use for monitoring gain drifts).
+TH2I   *cycle_num_vs_qedEnergy[N_QED_POS];      // 2D histogram of cycle # vs the Ge energy spectrum for that cycle (Use for monitoring gain drifts).
 
 //#######################################################################
 //########        Individual channel singles HISTOGRAMS        ##########
@@ -304,19 +307,23 @@ TH2I  *rcmp_x_ge_hit, *rcmp_y_ge_hit; // rcmp strips vs Ge hitpatterns
 // QED
 TH1I  *qed_sum, *qed_fb_sum;  // qed_sum is sum of strip energies, fb is with front-back coincidence
 TH2I  *qed_strips[N_QED_POS];
-TH2I  *qed_hit[N_QED_POS];
+TH2I  *qed_hit[N_QED_POS], *qed_hit_trial[NUM_QED_REORDERS], *qed_hit_trials[N_QED_POS];
 TH2I  *qed_fb[N_QED_POS];
 TH2I  *qed_psd_e[N_QED_POS];
 TH2I  *qed_p_ge_hit, *qed_n_ge_hit; // qed strips vs Ge hitpatterns
 TH2I  *qedp_ge_theta[N_QED_POS*N_QED_STRIPS], *qedn_ge_theta[N_QED_POS*N_QED_STRIPS]; // qed strip energy vs theta of a qed-Ge hit
 TH2I  *qed_geE_theta[N_QED_POS*N_QED_STRIPS], *qedE_ge_theta_sum, *qed_geE_theta_sum, *qed_totE_theta_sum, *qed_E_totE_sum_t, *qed_geE_totE_sum_t, *qedE_ge_theta_sum_t, *qed_geE_theta_sum_t, *qedE_ge_thetaI_sum_t, *qed_geE_thetaDiff_sum_t, *qed_geE_thetaI_sum_t;
-TH2I  *qed_geE_theta_clov[N_CLOVER], *qed_geE_theta_clov_t[N_CLOVER];
+TH2I  *qed_totE_theta[N_QED_POS], *qed_geE_theta_clov[N_CLOVER], *qed_geE_theta_clov_t[N_CLOVER], *qed_E_theta_dssd[N_QED_POS], *qed_geE_theta_dssd[N_QED_POS];
 TH2I  *qed_angle_test;
 
 char qed_psd_handles[N_QED_POS][HANDLE_LENGTH] = {"QED01_E_vs_psd","QED02_E_vs_psd","QED03_E_vs_psd","QED04_E_vs_psd","QED05_E_vs_psd","QED06_E_vs_psd"};
 char qed_strips_handles[N_QED_POS][HANDLE_LENGTH]={"QED01_E_strips", "QED02_E_strips", "QED03_E_strips", "QED04_E_strips", "QED05_E_strips", "QED06_E_strips"};
 char qed_hit_handles[N_QED_POS][HANDLE_LENGTH]={"QED01_PN_hit", "QED02_PN_hit", "QED03_PN_hit", "QED04_PN_hit", "QED05_PN_hit", "QED06_PN_hit"};
 char qed_fb_handles[N_QED_POS][HANDLE_LENGTH]={"QED01_Front_Back", "QED02_Front_Back", "QED03_Front_Back", "QED04_Front_Back", "QED05_Front_Back", "QED06_Front_Back"};
+char qed_totE_theta_handles[N_QED_POS][HANDLE_LENGTH]={"QED01_totalE_vs_theta", "QED02_totalE_vs_theta", "QED03_totalE_vs_theta", "QED04_totalE_vs_theta", "QED05_totalE_vs_theta", "QED06_totalE_vs_theta"};
+char qed_E_theta_handles[N_QED_POS][HANDLE_LENGTH]={"QED01_E_vs_theta", "QED02_E_vs_theta", "QED03_E_vs_theta", "QED04_E_vs_theta", "QED05_E_vs_theta", "QED06_E_vs_theta"};
+char qed_geE_theta_handles[N_QED_POS][HANDLE_LENGTH]={"QED01_geE_vs_theta", "QED02_geE_vs_theta", "QED03_geE_vs_theta", "QED04_geE_vs_theta", "QED05_geE_vs_theta", "QED06_geE_vs_theta"};
+char qed_E_cycle_handles[N_QED_POS][HANDLE_LENGTH]={"cycle_vs_QED01_Energy", "cycle_vs_QED02_Energy", "cycle_vs_QED03_Energy", "cycle_vs_QED04_Energy", "cycle_vs_QED05_Energy", "cycle_vs_QED06_Energy", };
 
 char qed_geE_theta_clov_handles[N_CLOVER][HANDLE_LENGTH] = {
   "QED_Clover01E_vs_theta","QED_Clover02E_vs_theta","QED_Clover03E_vs_theta","QED_Clover04E_vs_theta",
@@ -420,7 +427,7 @@ char qedn_ge_theta_handles[N_QED_POS*N_QED_STRIPS][HANDLE_LENGTH]={
   "QED6N30_E_vs_theta", "QED6N31_E_vs_theta",
 };
 
-char qed_geE_theta_handles[N_QED_POS*N_QED_STRIPS][HANDLE_LENGTH]={
+char qed_each_geE_theta_handles[N_QED_POS*N_QED_STRIPS][HANDLE_LENGTH]={
   "QED1N00_GeE_vs_theta", "QED1N01_GeE_vs_theta", "QED1N02_GeE_vs_theta", "QED1N03_GeE_vs_theta", "QED1N04_GeE_vs_theta", "QED1N05_GeE_vs_theta",
   "QED1N06_GeE_vs_theta", "QED1N07_GeE_vs_theta", "QED1N08_GeE_vs_theta", "QED1N09_GeE_vs_theta", "QED1N10_GeE_vs_theta", "QED1N11_GeE_vs_theta",
   "QED1N12_GeE_vs_theta", "QED1N13_GeE_vs_theta", "QED1N14_GeE_vs_theta", "QED1N15_GeE_vs_theta", "QED1N16_GeE_vs_theta", "QED1N17_GeE_vs_theta",

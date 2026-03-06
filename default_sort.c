@@ -321,7 +321,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         ppg_current_pattern = ppg_cycle_pattern_code[ppg_cycle_step]; // Index of the current PPG cycle pattern for use with the ppg_patterns array
         ppg_pattern_end = ppg_pattern_start + ppg_cycle_pattern_duration[ppg_cycle_step]; // Timestamp of the end of the current pattern
         //  fprintf(stdout,"Cycle %04d, start/finish [%ld/%ld]: step %d, %s, start/finish [%ld/%ld]\n",
-        //  ppg_cycle_number, ppg_cycle_start, ppg_cycle_end, ppg_cycle_step, ppg_handles[ppg_current_pattern], ppg_pattern_start, ppg_pattern_end);
+        //        ppg_cycle_number, ppg_cycle_start, ppg_cycle_end, ppg_cycle_step, ppg_handles[ppg_current_pattern], ppg_pattern_start, ppg_pattern_end);
       }
       ppg_last_ptr_ts = ptr->ts; // Remember this timestamp for checking at the next event. Avoids rare bug where single events are out of order.
 
@@ -460,9 +460,15 @@ int init_default_histos(Config *cfg, Sort_status *arg)
               if( (dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_HPGE_A]) && (dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_HPGE_A]) ){
                 ++ptr->multiplicity;
               }
+            }else if(ptr->subsys == SUBSYS_QED_STRIP){
+              // Same DSSD and Prompt coincidence window for QED multiplicity
+              if( (crystal_table[ptr->chan] == crystal_table[alt->chan]) && (dt >= qed_fb_window_min) && (dt <= qed_fb_window_max) ){
+                ++ptr->multiplicity;
+              }
             }else{ // 2 microseconds presort window for multiplicity of all other subsystem types
               ++ptr->multiplicity;
             }
+
           }
 
           // SubSystem-specific pre-processing
@@ -579,6 +585,32 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                 }
                 ptr->subsys = SUBSYS_QED_PIXEL;
                 //  }
+              }
+            }
+            break;
+            case SUBSYS_QED_PIXEL:
+            // Check for any additional neighbouring strips in this DSSD to use in addback
+            // If a neighbour strip has higher energy then change the pixel to that one, otherwise just add the energy
+            if( alt->subsys == SUBSYS_QED_STRIP && (dt >= qed_fb_window_min && dt <= qed_fb_window_max) && (alt->ecal>QED_STRIP_THRESHOLD && alt->ecal<32768)){
+              if((crystal_table[ptr->chan] == crystal_table[alt->chan])){ // same DSSD
+
+
+                if(polarity_table[alt->chan]==0){ // alt is P strip
+
+                  if( abs((ptr->alt_chan / N_QED_STRIPS) - element_table[alt->chan]) == 1 ){ // neighbour strip
+                    if(alt->ecal > ptr->ecal){
+                      // Change pixel to this akt strip
+                      ptr->ecal += alt->ecal;
+                    }else{ // just add the energies
+                      ptr->ecal += alt->ecal;
+                    }
+                  }
+                }else{ // alt is N strip
+                  // This could change the pixel number, but pixel energy came from p strips
+
+                }
+
+
               }
             }
             break;
@@ -1095,6 +1127,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {(void **) rcmp_fb,     "RCS%d_Front_Back",  "",   SUBSYS_RCMP, E_2D_RCMP_SPECLEN, E_2D_RCMP_SPECLEN, N_RCMP_POS},
         {(void **)&rcmp_x_ge_hit,"RCS_Xstrips_vs_GeHit","",SUBSYS_RCMP, 192,  64},
         {(void **)&rcmp_y_ge_hit,"RCS_Ystrips_vs_GeHit","",SUBSYS_RCMP, 192,  64},
+        {(void **) qed_hit_trials,    "QED%d_TRIALS",    "",  SUBSYS_QED_STRIP, 2048,     2048, N_QED_POS},
+        {(void **) qed_hit_trial,    "QED_TRIAL%d",    "",  SUBSYS_QED_STRIP, N_QED_STRIPS*2,     N_QED_STRIPS*2,     NUM_QED_REORDERS},
         {(void **) qed_hit,    "",    qed_hit_handles[0],  SUBSYS_QED_STRIP, N_QED_STRIPS*2,     N_QED_STRIPS*2,     N_QED_POS},
         {(void **) qed_fb,     "",    qed_fb_handles[0],   SUBSYS_QED_STRIP, E_2D_QED_SPECLEN, E_2D_QED_SPECLEN, N_QED_POS},
         {(void **)&qed_p_ge_hit,"QED_Pstrips_vs_GeHit","",SUBSYS_QED_STRIP, 192,  64},
@@ -1157,6 +1191,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {(void **) geb_cycle_num_dt,  "HPGeB_DT_cycle%03d",      "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
         {(void **) geb_cycle_num_g,   "HPGeB_GeE_cycle%03d",     "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
         {(void **) geb_cycle_num_sh_g,"HPGeB_GeE_NPU_cycle%03d", "", SUBSYS_HPGE_A,CYCLE_SPEC_LENGTH, 0, MAX_CYCLES },
+        {(void **) cycle_num_vs_geEnergy,"cycle_vs_Ge%02d_Energy",      "", SUBSYS_HPGE_A, MAX_CYCLES, E_2D_SPECLEN, N_HPGE},
+        {(void **) cycle_num_vs_qedEnergy,"",    qed_E_cycle_handles[0], SUBSYS_QED_STRIP, MAX_CYCLES, E_2D_QED_SPECLEN, N_QED_POS},
         {NULL,                   "Analysis/Crosstalk",        ""},
         {(void **) ct_e_vs_dt_B,       "Crosstalk_Blue_E_vs_dt_Ge%02d",  "", SUBSYS_HPGE_A, 864, 128, N_HPGE },
         {(void **) ct_e_vs_dt_G,       "Crosstalk_Green_E_vs_dt_Ge%02d", "", SUBSYS_HPGE_A, 864, 128, N_HPGE },
@@ -1171,6 +1207,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {(void **)&qedE_ge_theta_sum,  "QED_E_vs_theta",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
         {(void **)&qed_geE_theta_sum,  "QED_GeE_vs_theta",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
         {(void **)&qed_totE_theta_sum,  "QED_totalE_vs_theta",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+        {(void **) qed_totE_theta,  "",       qed_totE_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS},
         {(void **)&qed_E_totE_sum_t,     "QED_E_vs_totEgated",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN, E_2D_QED_SPECLEN},
         {(void **)&qed_geE_totE_sum_t,   "QED_GeE_vs_totEgated",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN, E_2D_QED_SPECLEN},
         {(void **)&qedE_ge_theta_sum_t,  "QED_E_vs_theta_totEgated",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
@@ -1178,11 +1215,13 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {(void **)&qedE_ge_thetaI_sum_t,  "QED_E_vs_thetaI_totEgated",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
         {(void **)&qed_geE_thetaI_sum_t,  "QED_GeE_vs_thetaI_totEgated",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
         {(void **)&qed_geE_thetaDiff_sum_t,  "QED_GeE_vs_thetaDiff_totEgated",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+        {(void **) qed_E_theta_dssd,    "",qed_E_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS},
+        {(void **) qed_geE_theta_dssd,    "",qed_geE_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS},
         {(void **) qed_geE_theta_clov,    "",qed_geE_theta_clov_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_CLOVER},
         {(void **) qed_geE_theta_clov_t,  "",qed_geE_theta_clov_t_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_CLOVER},
         {(void **) qedp_ge_theta,  "",     qedp_ge_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
         {(void **) qedn_ge_theta,  "",     qedn_ge_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
-        {(void **) qed_geE_theta,  "",     qed_geE_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
+        {(void **) qed_geE_theta,  "",     qed_each_geE_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
       }; // Note initialized array variable is CONST (not same as double-pointer)
       // TH1I *hist;  hist = (TH1I *) 0;   ptr = &hist = (TH1I **)addr;  *ptr =
 
@@ -1325,6 +1364,29 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             int i, j, dt, pu, nhits, chan, pos, sys, elem, clover, c1,c2, index, offset, bin;
             char *name, c;
 
+            int quick_reorder_qed_strips[NUM_QED_REORDERS][32] = {
+              // A B C D
+              {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},
+              {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30},
+
+              // A B C D, A reversed
+              {7, 6, 5, 4, 3, 2, 1, 0,   8, 9,10,11,12,13,14,15,  16,17,18,19,20,21,22,23,  24,25,26,27,28,29,30,31},
+              {6, 7, 4, 5, 2, 1, 0, 1,   9, 8,11,10,13,12,15,14,  17,16,19,18,21,20,23,22,  25,24,27,26,29,28,31,30},
+
+              // A B C D, B reversed
+              {0, 1, 2, 3, 4, 5, 6, 7,  15,14,13,12,11,10, 9, 8,  16,17,18,19,20,21,22,23,  24,25,26,27,28,29,30,31},
+              {1, 0, 3, 2, 5, 4, 7, 6,  14,15,12,13,10,11, 8, 9,  17,16,19,18,21,20,23,22,  25,24,27,26,29,28,31,30},
+
+              // A B C D, C reversed
+              {0, 1, 2, 3, 4, 5, 6, 7,   8, 9,10,11,12,13,14,15,  23,22,21,20,19,18,17,16,  24,25,26,27,28,29,30,31},
+              {1, 0, 3, 2, 5, 4, 7, 6,   9, 8,11,10,13,12,15,14,  22,23,20,21,18,19,16,17,  25,24,27,26,29,28,31,30},
+
+              // A B C D
+              {0, 1, 2, 3, 4, 5, 6, 7,   8, 9,10,11,12,13,14,15,  16,17,18,19,20,21,22,23,  31,30,29,28,27,26,25,24},
+              {1, 0, 3, 2, 5, 4, 7, 6,   9, 8,11,10,13,12,15,14,  17,16,19,18,21,20,23,22,  30,31,28,29,26,27,24,25},
+
+            };
+
             chan = ptr->chan;
             // Check for invalid channel numbers, prossibly due to data corruption
             if( chan < 0 || chan > odb_daqsize ){
@@ -1334,9 +1396,9 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             sys = ptr->subsys;
             // Check this is a valid susbsytem type
             if( sys <0 || sys > MAX_SUBSYS ){
-              if( mult_hist[sys] != NULL && sys>=0 && sys<MAX_SUBSYS){ mult_hist[sys]->Fill(mult_hist[sys], ptr->multiplicity, 1);  }
               return(-1);
             }
+            if( mult_hist[sys] != NULL && sys>=0 && sys<MAX_SUBSYS){ mult_hist[sys]->Fill(mult_hist[sys], ptr->multiplicity, 1);  } // Fill multiplicity histograms
             // Get the position for this fragment
             pos  = crystal_table[ptr->chan];
 
@@ -1435,6 +1497,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                   if(ppg_cycle_number<MAX_CYCLES){
                     gea_cycle_num[ppg_cycle_number]->Fill(gea_cycle_num[ppg_cycle_number], bin, 1);
                     cycle_num_vs_ge->Fill(cycle_num_vs_ge, ppg_cycle_number, bin, 1);
+                    cycle_num_vs_geEnergy[pos]->Fill(cycle_num_vs_geEnergy[pos], ppg_cycle_number, (int)ptr->ecal, 1);
                     if(ptr->pu_class == PU_SINGLE_HIT){
                       gea_cycle_num_sh[ppg_cycle_number]->Fill(gea_cycle_num_sh[ppg_cycle_number], bin, 1);
                       cycle_num_vs_sh->Fill(cycle_num_vs_sh, ppg_cycle_number, bin, 1);
@@ -1656,6 +1719,26 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                   qed_hit[pos]->Fill(qed_hit[pos], (int)(elem/N_QED_STRIPS), (elem%N_QED_STRIPS), 1); // QED DSSD hitpattern
                   qed_strips[pos]->Fill(qed_strips[pos], (int)(elem/N_QED_STRIPS), (int)ptr->ecal, 1); // p strip energies
                   qed_strips[pos]->Fill(qed_strips[pos], (elem%N_QED_STRIPS)+N_QED_STRIPS, (int)ptr->alt_ecal, 1); // n strip energies
+
+                  // Channel mapping, strip reorder trials.
+                  for(i=0; i<NUM_QED_REORDERS; i++){
+                    if(pos==1){
+                      qed_hit_trial[i]->Fill(qed_hit_trial[i], (int)(quick_reorder_qed_strips[i][elem/N_QED_STRIPS]), (quick_reorder_qed_strips[i][elem%N_QED_STRIPS]), 1); // QED DSSD hitpattern
+                    }
+                    for(j=0; j<NUM_QED_REORDERS; j++){
+                      qed_hit_trials[pos]->Fill(qed_hit_trials[pos], (int)(quick_reorder_qed_strips[i][elem/N_QED_STRIPS])+(i*64), (quick_reorder_qed_strips[j][elem%N_QED_STRIPS])+(j*64), 1); // QED DSSD hitpattern
+                    }
+                  }
+
+                  // PPG Cycles histograms
+                  if(ppg_cycles_active==1){
+                    if(ppg_cycle_number<MAX_CYCLES){
+                      if((int)(elem/N_QED_STRIPS) == 10){
+                        cycle_num_vs_qedEnergy[pos]->Fill(cycle_num_vs_qedEnergy[pos], ppg_cycle_number, (int)ptr->ecal, 1);
+                      }
+                    }
+                  }
+
                 }
                 break;
                 default: break; // Unrecognized or unprocessed dtype
@@ -1693,6 +1776,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                       gg_opp->Fill(gg_opp, (int)ptr->ecal, (int)alt->ecal, 1);
                       gg_ab_opp->Fill(gg_ab_opp, (int)ptr->esum, (int)alt->esum, 1);
                     }
+
                     // Ge-Ge angular correlations
                     // Fill the appropriate angular bin spectrum
                     // c1 and c2 run from 0 to 63 for ge_angles_145mm.
@@ -1812,23 +1896,25 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                   qed_p_ge_hit->Fill(qed_p_ge_hit, (int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS)), c1, 1);
                   qed_n_ge_hit->Fill(qed_n_ge_hit, (int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS)), c1, 1);
 
-//fprintf(stdout,"Theta Geometric,idealized: %d,%d\n",(int)(scattering_angle_QEDGe(pos,c2,c1)),compton_angle(ptr->ecal,662.0));
+                  //fprintf(stdout,"Theta Geometric,idealized: %d,%d\n",(int)(scattering_angle_QEDGe(pos,c2,c1)),compton_angle(ptr->ecal,662.0));
                   qedE_ge_theta_sum->Fill(qedE_ge_theta_sum, alt->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
                   qed_geE_theta_sum->Fill(qed_geE_theta_sum, ptr->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
                   qed_geE_theta_clov[(int)(c1/4)]->Fill(qed_geE_theta_clov[(int)(c1/4)], ptr->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
                   totalEnergy = (int)(ptr->ecal+alt->ecal);
                   qed_totE_theta_sum->Fill(qed_totE_theta_sum, totalEnergy, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
+                  qed_totE_theta[pos-1]->Fill(qed_totE_theta[pos-1], totalEnergy, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
                   qed_E_totE_sum_t->Fill(qed_E_totE_sum_t, alt->ecal, totalEnergy, 1);
                   qed_geE_totE_sum_t->Fill(qed_geE_totE_sum_t, ptr->ecal, totalEnergy, 1);
                   if(totalEnergy>625 && totalEnergy<675){
                     qedE_ge_theta_sum_t->Fill(qedE_ge_theta_sum_t, alt->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
                     qed_geE_theta_sum_t->Fill(qed_geE_theta_sum_t, ptr->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
+                    qed_E_theta_dssd[pos-1]->Fill(qed_E_theta_dssd[pos-1], alt->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
+                    qed_geE_theta_dssd[pos-1]->Fill(qed_geE_theta_dssd[pos-1], ptr->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
                     qed_geE_theta_clov_t[(int)(c1/4)]->Fill(qed_geE_theta_clov_t[(int)(c1/4)], ptr->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
 
-
-                      qedE_ge_thetaI_sum_t->Fill(qedE_ge_thetaI_sum_t, alt->ecal, compton_angle(ptr->ecal,662.0), 1);
-                      qed_geE_thetaI_sum_t->Fill(qed_geE_thetaI_sum_t, ptr->ecal, compton_angle(ptr->ecal,662.0), 1);
-                      qed_geE_thetaDiff_sum_t->Fill(qed_geE_thetaDiff_sum_t, ptr->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1) - compton_angle(ptr->ecal,662.0))+90, 1);
+                    qedE_ge_thetaI_sum_t->Fill(qedE_ge_thetaI_sum_t, alt->ecal, compton_angle(ptr->ecal,662.0), 1);
+                    qed_geE_thetaI_sum_t->Fill(qed_geE_thetaI_sum_t, ptr->ecal, compton_angle(ptr->ecal,662.0), 1);
+                    qed_geE_thetaDiff_sum_t->Fill(qed_geE_thetaDiff_sum_t, ptr->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1) - compton_angle(ptr->ecal,662.0))+90, 1);
 
                     if((int)(c2/N_QED_STRIPS) == (c2%N_QED_STRIPS)){ // Single pixel theta needed for initial calibration
                       qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], alt->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
@@ -1920,34 +2006,20 @@ int init_default_histos(Config *cfg, Sort_status *arg)
               {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED1 P
               {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}, // QED1 N
 
-              //  {{1,3,5,7,9,11,13,15,31,29,27,25,23,21,19,17,16,18,20,22,24,26,28,30,14,12,10,8,6,4,2,0},  // QED2 P
-              //{{31,0,30,1,  29,2,28,3,  27,4,26,5, 25,6,24,7, 16,15,17,14, 18,13,19,12, 20,11,21,10, 22,9,23,8},  // QED2 P
-              //{{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED2 P
               {{1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30},  // QED2 P
-              {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}, // QED2 N
-              //{16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15}}, // QED2 N
-              // {31,0,30,1,  29,2,28,3,  27,4,26,5, 25,6,24,7, 16,15,17,14, 18,13,19,12, 20,11,21,10, 22,9,23,8}}, // QED2 N
+              {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // QED2 N
 
-              {{1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30},  // QED3 P
-              {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // QED3 N
+              {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED3 P
+              {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}, // QED3 N
 
               {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED4 P
-            //  {{15,14,13,12,11,10, 9, 8,  1, 0, 3, 2, 5, 4, 7, 6,  17,16,19,18,21,20,23,22, 25,24,27,26,29,28,31,30,  },  // QED4 P
-
-            // A 1, 0, 3, 2, 5, 4, 7, 6,
-            // B 9, 8,11,10,13,12,15,14,
-            // C 17,16,19,18,21,20,23,22,
-            // D 25,24,27,26,29,28,31,30
-// A, B, C, D
-// B  D  C  A
-
-              {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // QED4
-
+              {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}, // QED4
 
               {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED5 P
-              {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // QED5 N
+              {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}, // QED5 N
+
               {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED6 P
-              {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}  // QED6 N
+              {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}  // QED6 N
             };
 
             int frag_hist[PTR_BUFSIZE];
@@ -2307,6 +2379,9 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                             fprintf(stdout,"Setting PPG cycle duration to 15 seconds for diagnostics\n");
                             ppg_cycle_duration = 1500000000; // 15 seconds
                             ppg_cycle_pattern_duration[0] = 1500000000; // 15 seconds
+                            //  fprintf(stdout,"Setting PPG cycle duration to 5 minutes for diagnostics\n");
+                            //  ppg_cycle_duration = 30000000000; // 5 minutes
+                            //  ppg_cycle_pattern_duration[0] = 30000000000; // 5 minutes
                             ppg_cycles_active = 1;
                             ppg_cycle_length = odb_ppg_cycle[index].length;
                           }else{
