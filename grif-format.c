@@ -147,15 +147,23 @@ int process_grif3_bank(unsigned *evntbuf, int length)
    return(0);
 }
 
+// Waveform analysis parameters
+// The analysis finds the steepest gradient of the risetime
+#define WF_WINDOW_WIDTH 14  // 140ns for window width
+#define WF_WINDOW_GAP   24  // 240ns gap time between start time of each window
+
 extern short address_chan[MAX_ADDRESS];
 extern int reorder_events_read;
 // header different - no multi qt's, integral bits changed
 int unpack_grif3_event(unsigned *evntbuf, int evlen, Grif_event *ptr, int process_waveforms)
 {
-   int i, ebad, type, value, qtcount, master_port, grifc_port, done=0;
+   int i, k, ebad, type, value, qtcount, master_port, grifc_port, done=0;
    unsigned int val32, *evstrt = evntbuf;
    static int savelen, prevtrig, errcount;
-   int *wave_ptr = NULL;  int discard = 0;
+   int discard = 0;
+   int wave_ptr = 0, wave_sample = 0, waveform_first_sample;
+   int wf_window1[WF_WINDOW_WIDTH], wf_window2[WF_WINDOW_WIDTH], wf_ptr;
+   float wf_sum1, wf_sum2, wf_filter, wf_filter_max=0;
 
    if( debug ){ printf("--CLR EVT[%4ld]\n", ptr - grif_event ); }
    memset(ptr, 0, sizeof(Grif_event) );
@@ -220,14 +228,44 @@ int unpack_grif3_event(unsigned *evntbuf, int evlen, Grif_event *ptr, int proces
          ptr->ts = ptr->ts;
 	 break;
       case 0xc:                                             /* waveform data */
-         if( wave_ptr == NULL){
-          //  fprintf(stderr,"griffin_decode: no memory for waveform\n");
-         } else if( process_waveforms == 1 ){/* + 14->16bit sign extension */
-	    waveform[(*wave_ptr)  ]   = value & 0x3fff;
-            waveform[(*wave_ptr)++] |= ((value>>13) & 1) ? 0xC000 : 0;
-	    waveform[(*wave_ptr)  ]   =(value & 0xfffc000) >> 14;
-            waveform[(*wave_ptr)++] |= ((value>>27) & 1) ? 0xC000 : 0;
-	 }
+    if( process_waveforms == 1 ){/* + 14->16bit sign extension */
+
+      // QED Waveforms use 100 samples with pre-trigger of 50
+      if(wave_sample>-1 && wave_sample<100){
+        waveform[wave_ptr  ]  = value & 0x3fff;
+        waveform[wave_ptr  ] |= ((value>>13) & 1) ? 0xC000 : 0;
+        if(wave_ptr==0){ waveform_first_sample = waveform[0]; }
+        waveform[wave_ptr++] -= waveform_first_sample;
+        waveform[wave_ptr  ]  = (value & 0xfffc000) >> 14;
+        waveform[wave_ptr  ] |= ((value>>27) & 1) ? 0xC000 : 0;
+        waveform[wave_ptr++] -= waveform_first_sample;
+        if(wave_ptr>=MAX_SAMPLE_LEN){ printf("Waveform overflow error\n"); wave_ptr=0; }
+      }
+      wave_sample+=2;
+
+      // Use two windows separated by a gap
+      // 140ns for window width
+      // 240ns gap time between starts of each window
+      wf_sum1 = wf_sum2 = 0;
+      wf_ptr = (wave_ptr-2-WF_WINDOW_GAP-WF_WINDOW_WIDTH-WF_WINDOW_WIDTH);
+      if(wf_ptr>=0){
+        for(k=0; k<WF_WINDOW_WIDTH; k++){
+          wf_window1[wf_ptr+k]   = waveform[wf_ptr+k];
+          wf_window2[wf_ptr+k]   = waveform[wf_ptr+WF_WINDOW_GAP+k];
+          wf_sum1 += waveform[wf_ptr+k];
+          wf_sum2 += waveform[wf_ptr+WF_WINDOW_GAP+k];
+        }
+        wf_filter = (wf_sum2/WF_WINDOW_WIDTH) - (wf_sum1/WF_WINDOW_WIDTH);
+        if(wf_filter > wf_filter_max){
+          wf_filter_max = wf_filter;
+          // TBRAGG uses ptr->alt_ecal = wf_filter;
+          // QED uses ptr->psd = (int)wf_filter;
+          ptr->psd = (int)wf_filter;  // TBRAGG used ptr->alt_ecal = wf_filter;
+        }
+      //  printf("%d WF filter = %f with max = %f, ",ptr->ts,wf_filter,wf_filter_max);
+      //  printf("sum1 = %f, sum2 = %f\n",wf_sum1,wf_sum2);
+      }
+    }
 	 break;
       case 0xd:                                   /* network packet counter */
          ptr->net_id = val32;
