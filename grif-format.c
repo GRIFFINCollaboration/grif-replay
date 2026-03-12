@@ -149,8 +149,10 @@ int process_grif3_bank(unsigned *evntbuf, int length)
 
 // Waveform analysis parameters
 // The analysis finds the steepest gradient of the risetime
-#define WF_WINDOW_WIDTH 14  // 140ns for window width
-#define WF_WINDOW_GAP   24  // 240ns gap time between start time of each window
+//#define WF_WINDOW_WIDTH 14  // 140ns for window width (TBragg)
+//#define WF_WINDOW_GAP   24  // 240ns gap time between start time of each window (TBragg)
+#define WF_WINDOW_WIDTH  4  // 40ns for window width (DSSD)
+#define WF_WINDOW_GAP   10  // 100ns gap time between start time of each window (DSSD)
 
 extern short address_chan[MAX_ADDRESS];
 extern int reorder_events_read;

@@ -584,11 +584,12 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                   ptr->alt_chan = (element_table[alt->chan] * N_QED_STRIPS) + element_table[ptr->chan];
                 }
                 ptr->subsys = SUBSYS_QED_PIXEL;
+                --ptr->multiplicity; // Adjust multiplicity because we are combining two strips into one pixel.
                 //  }
               }
             }
             break;
-            /*
+
             case SUBSYS_QED_PIXEL:
             // Check for any additional neighbouring strips in this DSSD to use in addback
             // If a neighbour strip has higher energy then change the pixel to that one, otherwise just add the energy
@@ -597,10 +598,10 @@ int init_default_histos(Config *cfg, Sort_status *arg)
 
 
                 if(polarity_table[alt->chan]==0){ // alt is P strip
-
                   if( abs((ptr->alt_chan / N_QED_STRIPS) - element_table[alt->chan]) == 1 ){ // neighbour strip
                     if(alt->ecal > ptr->ecal){
-                      // Change pixel to this akt strip
+                      // Change pixel number to use this alt strip
+                      ptr->alt_chan = (element_table[ptr->chan] * N_QED_STRIPS) + element_table[ptr->alt_chan% N_QED_STRIPS];
                       ptr->ecal += alt->ecal;
                     }else{ // just add the energies
                       ptr->ecal += alt->ecal;
@@ -608,14 +609,18 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                   }
                 }else{ // alt is N strip
                   // This could change the pixel number, but pixel energy came from p strips
-
+                  if(alt->ecal > ptr->alt_ecal){
+                    // Change pixel number to use this alt strip
+                    ptr->alt_chan = (element_table[ptr->alt_chan/N_QED_STRIPS] * N_QED_STRIPS) + element_table[ptr->chan];
+                    ptr->alt_ecal += alt->ecal;
+                  }else{
+                    ptr->alt_ecal += alt->ecal;
+                  }
                 }
-
-
               }
             }
             break;
-            */
+
             case SUBSYS_TAC_ZDS:
             // ZDS TAC spectra
             if( alt->subsys == SUBSYS_ZDS_A ){

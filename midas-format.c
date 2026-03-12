@@ -331,6 +331,7 @@ int next_record(Sort_status *arg)
    // printf("Read %ld bytes\n", diagnostics.midas_file_bytes);
    if( bytes <= 0 ){
       fprintf(stderr,"EOF at %ld on data_fp [%ld]\n", ftell(arg->data_fp), diagnostics.midas_file_bytes );
+      reorder_status(0);
    }
    return(bytes);
 }
