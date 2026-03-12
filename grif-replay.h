@@ -64,7 +64,7 @@ extern Sort_status *get_sort_status();
 
 //////////////////////////// diagnostics ////////////////////////////////
 
-#define REORDER_ERRTYPES 9
+#define REORDER_ERRTYPES 10
 #define ERR_FORMAT_IN 0
 #define ERR_WORDS_IN  1
 #define ERR_INIT_IN   2
@@ -74,6 +74,7 @@ extern Sort_status *get_sort_status();
 #define ERR_LATE_OUT  6
 #define ERR_UNKNOWN_ORDER_IN  7
 #define ERR_TS_DESYNC_IN      8
+#define EVT_SCALAR_IN 9
 
 typedef struct sortmetrics_struct {
    int reorder_error[REORDER_ERRTYPES];
