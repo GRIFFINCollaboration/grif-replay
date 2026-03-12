@@ -589,7 +589,6 @@ int init_default_histos(Config *cfg, Sort_status *arg)
               }
             }
             break;
-
             case SUBSYS_QED_PIXEL:
             // Check for any additional neighbouring strips in this DSSD to use in addback
             // If a neighbour strip has higher energy then change the pixel to that one, otherwise just add the energy
