@@ -78,7 +78,7 @@ void grif_main(Sort_status *arg)
    printf("starting grif thread ...\n");
    while(1){ ptr = &grif_event[wrpos];
       // if( arg->shutdown_midas != 0 ){  break; }
-      rd_avail =eventbuf_wrpos - eventbuf_rdpos;
+      rd_avail =eventbuf_wrpos - eventbuf_rdpos - wcnt;
       if( rd_avail < 10 ){  // leave some margin
          if( arg->reorder_out_done ){ break; }
           usleep(usecs); continue;
