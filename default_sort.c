@@ -1133,12 +1133,11 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {(void **) rcmp_fb,     "RCS%d_Front_Back",  "",   SUBSYS_RCMP, E_2D_RCMP_SPECLEN, E_2D_RCMP_SPECLEN, N_RCMP_POS},
         {(void **)&rcmp_x_ge_hit,"RCS_Xstrips_vs_GeHit","",SUBSYS_RCMP, 192,  64},
         {(void **)&rcmp_y_ge_hit,"RCS_Ystrips_vs_GeHit","",SUBSYS_RCMP, 192,  64},
-        {(void **) qed_hit_trials,    "QED%d_TRIALS",    "",  SUBSYS_QED_STRIP, 2048,     2048, N_QED_POS},
-        {(void **) qed_hit_trial,    "QED_TRIAL%d",    "",  SUBSYS_QED_STRIP, N_QED_STRIPS*2,     N_QED_STRIPS*2,     NUM_QED_REORDERS},
         {(void **) qed_hit,    "",    qed_hit_handles[0],  SUBSYS_QED_STRIP, N_QED_STRIPS*2,     N_QED_STRIPS*2,     N_QED_POS},
         {(void **) qed_fb,     "",    qed_fb_handles[0],   SUBSYS_QED_STRIP, E_2D_QED_SPECLEN, E_2D_QED_SPECLEN, N_QED_POS},
         {(void **)&qed_p_ge_hit,"QED_Pstrips_vs_GeHit","",SUBSYS_QED_STRIP, 192,  64},
         {(void **)&qed_n_ge_hit,"QED_Nstrips_vs_GeHit","",SUBSYS_QED_STRIP, 192,  64},
+        {(void **) qed_hit_trials,    "QED%d_TRIALS",    "",  SUBSYS_QED_STRIP, 2048,     2048, N_QED_POS},
         {NULL,                  "Ang_Corr/GG_Ang_Corr",         ""},
         {(void **) gg_angcor_110,"Ge_Ge_110mm_angular_bin%02d", "", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  SYMMETERIZE, N_GE_ANG_CORR},
         {(void **) gg_angcor_145,"Ge_Ge_145mm_angular_bin%02d", "", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  SYMMETERIZE, N_GE_ANG_CORR},
@@ -1207,27 +1206,31 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {NULL,                   "Analysis/Comp_Pol",        ""},
         {(void **) gg_comp_pol_110,"GeGe_110mm_CompPol_bin%02d", "", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  GE_ANGCOR_SPECLEN, N_GE_COMP_POL},
         {(void **) gg_comp_pol_145,"GeGe_145mm_CompPol_bin%02d", "", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  GE_ANGCOR_SPECLEN, N_GE_COMP_POL},
-        {NULL,                   "Analysis/QED",        ""},
-        {(void **)&qed_angle_test,  "QED_angle_test",         "",SUBSYS_QED_STRIP, N_HPGE,   192},
-        {(void **) qed_psd_e,      "",           qed_psd_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN, E_2D_SPECLEN, N_QED_POS},
+        {NULL,                   "QED/DSSD-Ge",        ""},
         {(void **)&qedE_ge_theta_sum,  "QED_E_vs_theta",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
         {(void **)&qed_geE_theta_sum,  "QED_GeE_vs_theta",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
         {(void **)&qed_totE_theta_sum,  "QED_totalE_vs_theta",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
-        {(void **) qed_totE_theta,  "",       qed_totE_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS},
+        {(void **) qed_E_theta_dssd,    "",qed_E_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS},
+        {(void **) qed_geE_theta_dssd,  "",qed_geE_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS},
+        {(void **) qed_totE_theta,      "",qed_totE_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS},
+        {NULL,                   "QED/TotE_Gated",        ""},
         {(void **)&qed_E_totE_sum_t,     "QED_E_vs_totEgated",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN, E_2D_QED_SPECLEN},
         {(void **)&qed_geE_totE_sum_t,   "QED_GeE_vs_totEgated",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN, E_2D_QED_SPECLEN},
         {(void **)&qedE_ge_theta_sum_t,  "QED_E_vs_theta_totEgated",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
         {(void **)&qed_geE_theta_sum_t,  "QED_GeE_vs_theta_totEgated",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
-        {(void **)&qedE_ge_thetaI_sum_t,  "QED_E_vs_thetaI_totEgated",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
         {(void **)&qed_geE_thetaI_sum_t,  "QED_GeE_vs_thetaI_totEgated",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+        {(void **)&qedE_ge_thetaI_sum_t,  "QED_E_vs_thetaI_totEgated",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
         {(void **)&qed_geE_thetaDiff_sum_t,  "QED_GeE_vs_thetaDiff_totEgated",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
-        {(void **) qed_E_theta_dssd,    "",qed_E_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS},
-        {(void **) qed_geE_theta_dssd,    "",qed_geE_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS},
+        {NULL,                   "QED/Calibrations",        ""},
         {(void **) qed_geE_theta_clov,    "",qed_geE_theta_clov_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_CLOVER},
         {(void **) qed_geE_theta_clov_t,  "",qed_geE_theta_clov_t_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_CLOVER},
         {(void **) qedp_ge_theta,  "",     qedp_ge_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
         {(void **) qedn_ge_theta,  "",     qedn_ge_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
         {(void **) qed_geE_theta,  "",     qed_each_geE_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
+        {NULL,                   "QED/PSD",        ""},
+        {(void **) qed_psd_e,      "",           qed_psd_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN, E_2D_SPECLEN, N_QED_POS},
+        {NULL,                   "QED/Misc.",        ""},
+        {(void **)&qed_angle_test,  "QED_angle_test",         "",SUBSYS_QED_STRIP, N_HPGE,   192},
       }; // Note initialized array variable is CONST (not same as double-pointer)
       // TH1I *hist;  hist = (TH1I *) 0;   ptr = &hist = (TH1I **)addr;  *ptr =
 
@@ -1728,9 +1731,6 @@ int init_default_histos(Config *cfg, Sort_status *arg)
 
                   // Channel mapping, strip reorder trials.
                   for(i=0; i<NUM_QED_REORDERS; i++){
-                    if(pos==1){
-                      qed_hit_trial[i]->Fill(qed_hit_trial[i], (int)(quick_reorder_qed_strips[i][elem/N_QED_STRIPS]), (quick_reorder_qed_strips[i][elem%N_QED_STRIPS]), 1); // QED DSSD hitpattern
-                    }
                     for(j=0; j<NUM_QED_REORDERS; j++){
                       qed_hit_trials[pos]->Fill(qed_hit_trials[pos], (int)(quick_reorder_qed_strips[i][elem/N_QED_STRIPS])+(i*64), (quick_reorder_qed_strips[j][elem%N_QED_STRIPS])+(j*64), 1); // QED DSSD hitpattern
                     }
