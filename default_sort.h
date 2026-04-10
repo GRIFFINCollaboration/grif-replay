@@ -317,8 +317,8 @@ TH2I  *qedp_ge_theta[N_QED_POS*N_QED_STRIPS], *qedn_ge_theta[N_QED_POS*N_QED_STR
 TH2I  *qed_geE_theta[N_QED_POS*N_QED_STRIPS], *qedE_ge_theta_sum, *qed_geE_theta_sum, *qed_totE_theta_sum, *qed_E_totE_sum_t, *qed_geE_totE_sum_t, *qedE_ge_theta_sum_t, *qed_geE_theta_sum_t, *qedE_ge_thetaI_sum_t, *qed_geE_thetaDiff_sum_t, *qed_geE_thetaI_sum_t;
 TH2I  *qedE_ge_theta_sum_c, *qed_geE_theta_sum_c, *ge_qed_c;
 TH2I  *qed_totE_theta[N_QED_POS], *qed_geE_theta_clov[N_CLOVER], *qed_geE_theta_clov_t[N_CLOVER], *qed_E_theta_dssd[N_QED_POS], *qed_geE_theta_dssd[N_QED_POS];
-TH2I  *qed_angle_test, *qedE_ge_dt, *qed_geE_dt;
-TH1I  *qed_dcs_azi;
+TH2I  *qed_angle_test, *qedE_ge_dt, *qed_geE_dt, *qed_dcs_omega_dt, *qedx_dcs_omega_dt[N_QED_POS];
+TH1I  *qed_dcs_omega, *qed_dcs_azi;
 
 char qed_psd_handles[N_QED_POS][HANDLE_LENGTH] = {"QED01_E_vs_psd","QED02_E_vs_psd","QED03_E_vs_psd","QED04_E_vs_psd","QED05_E_vs_psd","QED06_E_vs_psd"};
 char qed_strips_handles[N_QED_POS][HANDLE_LENGTH]={"QED01_E_strips", "QED02_E_strips", "QED03_E_strips", "QED04_E_strips", "QED05_E_strips", "QED06_E_strips"};
@@ -328,6 +328,7 @@ char qed_totE_theta_handles[N_QED_POS][HANDLE_LENGTH]={"QED01_totalE_vs_theta", 
 char qed_E_theta_handles[N_QED_POS][HANDLE_LENGTH]={"QED01_E_vs_theta", "QED02_E_vs_theta", "QED03_E_vs_theta", "QED04_E_vs_theta", "QED05_E_vs_theta", "QED06_E_vs_theta"};
 char qed_geE_theta_handles[N_QED_POS][HANDLE_LENGTH]={"QED01_geE_vs_theta", "QED02_geE_vs_theta", "QED03_geE_vs_theta", "QED04_geE_vs_theta", "QED05_geE_vs_theta", "QED06_geE_vs_theta"};
 char qed_E_cycle_handles[N_QED_POS][HANDLE_LENGTH]={"cycle_vs_QED01_Energy", "cycle_vs_QED02_Energy", "cycle_vs_QED03_Energy", "cycle_vs_QED04_Energy", "cycle_vs_QED05_Energy", "cycle_vs_QED06_Energy", };
+char qedx_dcs_omega_dt_handles[N_QED_POS][HANDLE_LENGTH] = {"QED01_DCS_omega_vs_dt","QED02_DCS_omega_vs_dt","QED03_DCS_omega_vs_dt","QED04_DCS_omega_vs_dt","QED05_DCS_omega_vs_dt","QED06_DCS_omega_vs_dt"};
 
 char qed_geE_theta_clov_handles[N_CLOVER][HANDLE_LENGTH] = {
   "QED_Clover01E_vs_theta","QED_Clover02E_vs_theta","QED_Clover03E_vs_theta","QED_Clover04E_vs_theta",
