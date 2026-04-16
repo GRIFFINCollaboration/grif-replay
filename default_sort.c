@@ -434,7 +434,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         float q1,integ2,q12,k1,k2,k12,e1,e2,e12,m,c;
         int chan,chan2,found,pos;
         int clover, ge1, c1,c2,bin, p_strip, n_strip;
-        float energy,ecal,correction;
+        float energy,ecal,correction,angle;
         int ct_index[4][4] = {{-1,0,1,2},{0,-1,1,2},{0,1,-1,2},{0,1,2,-1}};
 
         if(ptr->ts>10663580856){ DEBUG_OUTPUT=0; } // Only save some debugging info otherwise a >5GB file!
@@ -545,7 +545,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             // Look to build Compton events (a QED-Ge coincidence with energy of 511keV)
             // Just tag the Ge information into the strip as this Ge leaves the presort window
             if( alt->subsys == SUBSYS_QED_STRIP ){
-              if(alt->ecal>QED_STRIP_THRESHOLD && ((ptr->ecal+alt->ecal) > 496) && ((ptr->ecal+alt->ecal) < 526) ){
+              if(alt->ecal>QED_PIXEL_THRESHOLD && ((ptr->ecal+alt->ecal) > 496) && ((ptr->ecal+alt->ecal) < 526) ){
                 // Here ptr is Ge and alt is QED_PIXEL
                 // In COMPTON event, ecal will be Ge and alt_ecal will be QED_PIXEL
                 // In COMPTON event, chan will be Ge, alt_chan will be packed with DSSD and PIXEL numbers
@@ -599,7 +599,12 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                 // P strip number is Floor(pixel number / N_QED_STRIPS) [0-31]
                 // N strip number is pixel number % N_QED_STRIPS [0-31]
                 if(polarity_table[ptr->chan]==0){ // ptr is P strip, alt is N strip
-                  if(ptr->alt_ecal>0){ // Already have a Ge tag to this strip
+
+                  if(ptr->net_id>-1 && ptr->net_id<64){
+                    angle = scattering_angle_QEDGe(crystal_table[ptr->chan],(((element_table[ptr->chan] * N_QED_STRIPS) + element_table[alt->chan])%1024),ptr->net_id);
+                  }else{ angle=0; }
+
+                  if(ptr->alt_ecal>0 && (angle>=compton_angle(ptr->alt_ecal,511.0)-12) && (angle<=compton_angle(ptr->alt_ecal,511.0)+12)){ // Already have a Ge tag to this strip
                     // esum and alt_ecal already set to P strip + Ge values
                     ptr->subsys = SUBSYS_COMPTON;
                     if(DEBUG_OUTPUT){ fprintf(stdout," --> QED_STRIP_P to COMPTON: esum=%.1f, ecal=%.1f, alt_ecal=%.1f",ptr->esum,ptr->ecal,ptr->alt_ecal); }
@@ -612,7 +617,10 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                   ptr->alt_chan = (element_table[ptr->chan] * N_QED_STRIPS) + element_table[alt->chan];
                 }else{ // alt is P strip, ptr is N strip
 
-                  if(ptr->alt_ecal>0){ // Already have a Ge tag to this strip but it is the N
+                  if(ptr->net_id>-1 && ptr->net_id<64){
+                    angle = scattering_angle_QEDGe(crystal_table[ptr->chan],(((element_table[alt->chan] * N_QED_STRIPS) + element_table[ptr->chan])%1024),ptr->net_id);
+                  }else{ angle=0; }
+                  if(ptr->alt_ecal>0 && (angle>=compton_angle(ptr->alt_ecal,511.0)-12) && (angle<=compton_angle(ptr->alt_ecal,511.0)+12)){ // Already have a Ge tag to this strip but it is the N
                     // alt_ecal already set Ge value. Change esum to use P strip energy
                     ptr->esum = ptr->alt_ecal + alt->ecal;
                     ptr->subsys = SUBSYS_COMPTON;
@@ -661,21 +669,24 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                 }
               }
             }
-
+            
             // Look to build Compton events (a QED-Ge coincidence with energy of 511keV)
             if( alt->subsys == SUBSYS_HPGE_A ){
-              if(ptr->ecal+alt->ecal > 496 && ptr->ecal+alt->ecal < 526){
-                // Here alt is Ge and ptr is QED_PIXEL
-                // In COMPTON event, ecal will be Ge and alt_ecal will be QED_PIXEL
-                // In COMPTON event, chan will be Ge, alt_chan will be packed with DSSD and PIXEL numbers
-                // OR
-                // 13 bits needed for array pixel number [0-6143] (Can just be treated as a decimal)
-                ptr->alt_ecal = alt->ecal;
-                ptr->esum += alt->ecal; // Add this Ge energy to the pixel energy
-                ptr->net_id = crystal_table[alt->chan];
-                ptr->delta_t = alt->ts-ptr->ts;
-                ptr->subsys = SUBSYS_COMPTON;
-                if(DEBUG_OUTPUT){ fprintf(stdout," --> QED_PIXEL to COMPTON: esum=%.1f, ecal=%.1f, alt_ecal=%.1f",ptr->esum,ptr->ecal,ptr->alt_ecal); }
+              if(ptr->ecal>QED_PIXEL_THRESHOLD && ptr->ecal+alt->ecal > 496 && ptr->ecal+alt->ecal < 526){
+                angle = scattering_angle_QEDGe(crystal_table[ptr->chan],(ptr->alt_chan%1024),crystal_table[alt->chan]);
+                if( (angle>=compton_angle(alt->ecal,511.0)-12) && (angle<=compton_angle(alt->ecal,511.0)+12) ){
+                  // Here alt is Ge and ptr is QED_PIXEL
+                  // In COMPTON event, ecal will be Ge and alt_ecal will be QED_PIXEL
+                  // In COMPTON event, chan will be Ge, alt_chan will be packed with DSSD and PIXEL numbers
+                  // OR
+                  // 13 bits needed for array pixel number [0-6143] (Can just be treated as a decimal)
+                  ptr->alt_ecal = alt->ecal;
+                  ptr->esum += alt->ecal; // Add this Ge energy to the pixel energy
+                  ptr->net_id = crystal_table[alt->chan];
+                  ptr->delta_t = alt->ts-ptr->ts;
+                  ptr->subsys = SUBSYS_COMPTON;
+                  if(DEBUG_OUTPUT){ fprintf(stdout," --> QED_PIXEL to COMPTON: esum=%.1f, ecal=%.1f, alt_ecal=%.1f",ptr->esum,ptr->ecal,ptr->alt_ecal); }
+                }
               }
             }
 
@@ -1274,10 +1285,15 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {(void **)&ge_qed_c,      "GeQED_COMP",        "",                 SUBSYS_QED_STRIP,  E_2D_SPECLEN, E_2D_SPECLEN},
         {(void **)&qedE_ge_theta_sum_c,  "COMP_QED_E_vs_theta",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
         {(void **)&qed_geE_theta_sum_c,  "COMP_QED_GeE_vs_theta",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+        {(void **)&qedE_ge_theta_sum_c_s,  "COMP_QED_E_vs_theta_Si_first",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+        {(void **)&qed_geE_theta_sum_c_s,  "COMP_QED_GeE_vs_theta_Si_first",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+        {(void **)&qedE_ge_theta_sum_c_g,  "COMP_QED_E_vs_theta_Ge_first",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+        {(void **)&qed_geE_theta_sum_c_g,  "COMP_QED_GeE_vs_theta_Ge_first",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
         {(void **)&qed_dcs_omega_dt,  "QED_DCS_omega_vs_dt",     "", SUBSYS_QED_STRIP, 1024,   192},
         {(void **) qedx_dcs_omega_dt,  "",qedx_dcs_omega_dt_handles[0], SUBSYS_QED_STRIP, 1024,   192, N_QED_POS},
         {(void **)&qed_dcs_omega,     "QED_DCS_omega",           "", SUBSYS_QED_STRIP, 200},
         {(void **)&qed_dcs_azi,       "QED_DCS_azimuth",         "", SUBSYS_QED_STRIP, 200},
+        {(void **)&qed_theta1_vs_theta2,"COMP_QED_theta1_vs_theta2",  "",SUBSYS_QED_STRIP, 192,   192},
         {NULL,                   "QED/DSSD-Ge",        ""},
         {(void **)&qedE_ge_theta_sum,  "QED_E_vs_theta",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
         {(void **)&qed_geE_theta_sum,  "QED_GeE_vs_theta",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
@@ -1305,6 +1321,9 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {(void **)&qed_angle_test,  "QED_angle_test",         "",SUBSYS_QED_STRIP, N_HPGE,   192},
         {(void **)&qedE_ge_dt,  "QED_Ge_E_vs_dt",       "",SUBSYS_QED_STRIP, 1024, E_2D_QED_SPECLEN},
         {(void **)&qed_geE_dt,  "QED_GeE_vs_dt",        "",SUBSYS_QED_STRIP, 1024, E_2D_QED_SPECLEN},
+        {(void **)&qed_theta_dt,  "QED_theta_vs_dt",        "",SUBSYS_QED_STRIP, 1024, 192},
+        {(void **)&qedE_ge_dt_c,  "QED_COMP_E_vs_dt",        "",SUBSYS_QED_STRIP, 1024, E_2D_QED_SPECLEN},
+        {(void **)&qed_geE_dt_c,  "QED_COMP_GeE_vs_dt",        "",SUBSYS_QED_STRIP, 1024, E_2D_QED_SPECLEN},
       }; // Note initialized array variable is CONST (not same as double-pointer)
       // TH1I *hist;  hist = (TH1I *) 0;   ptr = &hist = (TH1I **)addr;  *ptr =
 
@@ -1447,6 +1466,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
           int fill_singles_histos(Grif_event *ptr)
           {
             int i, j, dt, pu, nhits, chan, pos, sys, elem, clover, c1,c2, index, offset, bin;
+            float angle;
             char *name, c;
 
             int quick_reorder_qed_strips[NUM_QED_REORDERS][32] = {
@@ -1831,6 +1851,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                 pos  = crystal_table[ptr->chan]; // QED DSSD number [1-6]
                 c2 = (ptr->alt_chan%1024);        // Pixel number [0-1023]
                 c1 = ptr->net_id; // HPGe crystal number
+                angle = scattering_angle_QEDGe(pos,c2,c1);
                 /*
                 if(pos==13){
                 fprintf(stdout,"SINGLE: %d %f %d %ld\n",pos,ptr->ecal,ptr->trig_acc,ptr->ts);
@@ -1838,877 +1859,902 @@ int init_default_histos(Config *cfg, Sort_status *arg)
               }
               */
               if(DEBUG_OUTPUT){ fprintf(stdout,"\nfill_singles_histos(): COMPTON FILL HISTOS: %d %d %ld | %.1f %.1f %.1f | %d dt=%d\n",ptr->subsys,ptr->chan,ptr->ts,ptr->ecal,ptr->alt_ecal,ptr->esum,ptr->net_id,ptr->delta_t); }
+              //fprintf(stdout,"\nfill_singles_histos(): COMPTON FILL HISTOS: %d %d %ld | %.1f %.1f %.1f | %d dt=%d | %d %d %d %d\n",ptr->subsys,ptr->chan,ptr->ts,ptr->ecal,ptr->alt_ecal,ptr->esum,ptr->net_id,ptr->delta_t,(int)(scattering_angle_QEDGe(pos,c2,c1)),(int)(scattering_angle_GeQED(pos,c2,c1)),(int)compton_angle(ptr->alt_ecal,511.0),(int)compton_angle(ptr->ecal,511.0));
+
+              qedE_ge_dt_c->Fill(qedE_ge_dt_c, ptr->delta_t+512, (int)ptr->ecal, 1);
+              qed_geE_dt_c->Fill(qed_geE_dt_c, ptr->delta_t+512, (int)ptr->alt_ecal, 1);
               ge_qed_c->Fill(ge_qed_c, (int)ptr->alt_ecal, (int)ptr->ecal, 1);
               qedE_ge_theta_sum_c->Fill(qedE_ge_theta_sum_c, (int)ptr->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
               qed_geE_theta_sum_c->Fill(qed_geE_theta_sum_c, (int)ptr->alt_ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
 
-              break;
-              default: break; // Unrecognized or unprocessed dtype
-            }// end of switch
-            return(0);
-          }
-
-          int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
-          {
-            int c1, c2, c3, pos, bin, angle_idx, coinc_ecal, scatt_esum, totalEnergy;
-            double angle;
-            switch(alt->subsys){
-              case SUBSYS_HPGE_A:
-              gg_dt->Fill(gg_dt, (int)((ptr->ts - alt->ts)+DT_SPEC_LENGTH/2), (int)ptr->ecal, 1); // This dt result is always negative
-              gg_dt->Fill(gg_dt, (int)((alt->ts - ptr->ts)+DT_SPEC_LENGTH/2), (int)alt->ecal, 1); // This dt result is always positive
-              if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_HPGE_A]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_HPGE_A]) ){
-
-                // PPG Cycles histograms
-                if(ppg_cycles_active==1){
-                  gg_cycle_code[ppg_current_pattern]->Fill(gg_cycle_code[ppg_current_pattern], (int)ptr->ecal, (int)alt->ecal, 1);
-                }
-
-                c1 = crystal_table[ptr->chan];
-                c2 = crystal_table[alt->chan];
-                if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 < 64 ){
-                  if(ptr->ecal < 5 &&  alt->ecal < 5){ break; } // Both crystals must have a valid energy
-                  gg_hit->Fill(gg_hit, c1, c2, 1); // 2d crystal hitpattern
-
-                  // Individual Ge crystal energy in coincidence, used for angular correlations weighting factors
-                  gg_energy[c1]->Fill(gg_energy[c1], (int)ptr->ecal, 1);
-                  gg_energy[c2]->Fill(gg_energy[c2], (int)alt->ecal, 1);
-
-                  if( c2 == grif_opposite[c1] ){
-                    // 180 degree coinc matrix for summing corrections
-                    gg_opp->Fill(gg_opp, (int)ptr->ecal, (int)alt->ecal, 1);
-                    gg_ab_opp->Fill(gg_ab_opp, (int)ptr->esum, (int)alt->esum, 1);
-                  }
-
-                  // Ge-Ge angular correlations
-                  // Fill the appropriate angular bin spectrum
-                  // c1 and c2 run from 0 to 63 for ge_angles_145mm.
-                  angle_idx = ge_angles_110mm[c1][c2];
-                  gg_angcor_110[angle_idx]->Fill(gg_angcor_110[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
-                  //fprintf(stdout,"%d %d have angular difference of: calculate %lf [%f]\n",c1,c2,angular_diff_GeGe(c1,c2,110),angular_bins_110mm[angle_idx]);
-                  // double atan2(double y, double x);
-                  angle_idx = ge_angles_145mm[c1][c2];
-                  gg_angcor_145[angle_idx]->Fill(gg_angcor_145[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
-
-                  if( ptr->esum > 5 ||  alt->esum > 5 ){ // addback energies
-                    gg_ab->Fill(gg_ab, (int)ptr->esum, (int)alt->esum, 1);
-                    // Fill Compton polarimetry matrices Here
-                    // c1 and c2 are the same as for angular correlations. These define the plane.
-                    // c3 is another crystal in one of the clovers.
-                    // The azimuthal scattering angle is between c3 and the plane of polarization.
-                    if(angle_idx>11 && angle_idx<41){ // Only look at Compton Polarimetry for clovers at 90 degrees to each other. (Always checked with 145mm)
-                      c3 = ptr->alt_chan;
-                      if(c3<0){ // c1 is coincident, c2+c3 are the scattering event
-                        c3 = alt->alt_chan; scatt_esum = (int)alt->esum; coinc_ecal = (int)ptr->esum;
-                      }else{ // c2 is coincident, c1+c3 are the scattering event
-                        scatt_esum = (int)ptr->esum; coinc_ecal = (int)alt->esum;
-                      }
-                      // Determine angle_idx from azimuthal.
-                      angle = azimuthal_GeGeGe(c1,c2,c3,110);
-                      angle_idx = (int)(angle / 15);
-                      if(angle_idx==12){ angle_idx=11; } // Put 180 degree scatters into the last valid bin
-                      if(angle_idx>=0 && angle_idx<N_GE_COMP_POL){
-                        gg_comp_pol_110[angle_idx]->Fill(gg_comp_pol_110[angle_idx], coinc_ecal, scatt_esum, 1); // Asymmetric matrix
-                      }
-                    }
-                  }
-                }
+              if((angle>=compton_angle(ptr->alt_ecal,511.0)-5) && (angle<=compton_angle(ptr->alt_ecal,511.0)+5)){
+                qedE_ge_theta_sum_c_s->Fill(qedE_ge_theta_sum_c_s, (int)ptr->ecal, (int)(angle), 1);
+                qed_geE_theta_sum_c_s->Fill(qed_geE_theta_sum_c_s, (int)ptr->alt_ecal, (int)(angle), 1);
+              }else if(((int)(scattering_angle_GeQED(pos,c2,c1))>=compton_angle(ptr->ecal,511.0)-5) && ((int)(scattering_angle_GeQED(pos,c2,c1))<=compton_angle(ptr->ecal,511.0)+5)){
+                qedE_ge_theta_sum_c_g->Fill(qedE_ge_theta_sum_c_g, (int)ptr->ecal, (int)(angle), 1);
+                qed_geE_theta_sum_c_g->Fill(qed_geE_theta_sum_c_g, (int)ptr->alt_ecal, (int)(angle), 1);
               }
-              break;
-              case SUBSYS_BGO:
-              if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_BGO]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_BGO]) ){
-                c1 = crystal_table[ptr->chan];
-                c2 = crystal_table[alt->chan];
-                if( c1 >= 0 && c1 < 64 && c1==c2 && ptr->ecal>5 && alt->ecal>5){
-                  bin = (c2*5)+(element_table[alt->chan]-1);
-                  if(bin>=0 && bin<N_BGO){
-                    ge_bgo_gated[bin]->Fill(ge_bgo_gated[bin], (int)alt->ecal, 1);
-                  }
-                }
-              }
-              break;
-              case SUBSYS_SCEPTAR:
-              gb_dt->Fill(gb_dt, (int)((ptr->ts - alt->ts)+DT_SPEC_LENGTH/2), (int)ptr->esum, 1);
-              if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_SCEPTAR]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_SCEPTAR]) ){
-                //  ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1); // beta-gated Ge sum energy spectrum
-                //  ge_sum_b_sep->Fill(ge_sum_b_sep, (int)ptr->ecal, 1); // Sceptar-gated Ge sum energy spectrum
-              }else if((ptr->ts - alt->ts)<-25){
-                ge_isomer_popu->Fill(ge_isomer_popu, (int)ptr->ecal, 1); // Early gamma rays appearing earlier in time than the prompt
-              }else if((ptr->ts - alt->ts)>25){
-                ge_isomer_depop->Fill(ge_isomer_depop, (int)ptr->ecal, 1); // Delayed gamma rays appearing later in time than the prompt
-              }
-              break;
-              case SUBSYS_ARIES_A:
-              gb_dt->Fill(gb_dt, (int)((ptr->ts - alt->ts)+DT_SPEC_LENGTH/2), (int)ptr->esum, 1);
-              if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_ARIES_A]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_ARIES_A]) ){
-                if(ptr->ecal > 10 && alt->ecal > 10){
-                  //  ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1);         // beta-gated Ge sum energy spectrum
-                  //  ge_sum_b_art->Fill(ge_sum_b_art, (int)ptr->ecal, 1); // Aries-gated Ge sum energy spectrum
-                  ge_art->Fill(ge_art, (int)ptr->ecal, (int)alt->esum, 1);
-                  c1 = crystal_table[ptr->chan];
-                  c2 = crystal_table[alt->chan];
-                  if( c1 >= 0 && c1 < 64 && c2 >= 1 && c2 <= 76 ){
-                    gea_hit->Fill(gea_hit, c2, c1, 1); // c's start at zero
-                    // Ge-ARIES angular correlations
-                    // Fill the appropriate angular bin spectrum
-                    angle_idx = GRG_ART_angles_110mm[c1][c2-1];
-                    ge_art_angcor[angle_idx]->Fill(ge_art_angcor[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
 
-                    // Angle veto method for Bremmstrahlung veto. Angle >30 degrees
-                    if(angle_idx>8){
-                      ge_sum_b_art_brems->Fill(ge_sum_b_art_brems, (int)ptr->ecal, 1); // Aries-gated Ge sum energy spectrum with Bremmstrahlung veto
-                    }
-                  }
-                }
-              }else if((ptr->ts - alt->ts)<0){
-                ge_isomer_popu->Fill(ge_isomer_popu, (int)ptr->ecal, 1); // Early gamma rays appearing earlier in time than the prompt
-              }else if((ptr->ts - alt->ts)>0){
-                ge_isomer_depop->Fill(ge_isomer_depop, (int)ptr->ecal, 1); // Delayed gamma rays appearing later in time than the prompt
-              }
-              break;
-              case SUBSYS_ZDS_A:
-              gb_dt->Fill(gb_dt, (int)((ptr->ts - alt->ts)+DT_SPEC_LENGTH/2), (int)ptr->esum, 1);
-              if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_ZDS_A]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_ZDS_A]) ){
-                //  ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1);         // beta-gated Ge sum energy spectrum
-                //  ge_sum_b_zds->Fill(ge_sum_b_zds, (int)ptr->ecal, 1); // Zds-gated Ge sum energy spectrum
-              }else if((ptr->ts - alt->ts)<0){
-                ge_isomer_popu->Fill(ge_isomer_popu, (int)ptr->ecal, 1); // Early gamma rays appearing earlier in time than the prompt
-              }else if((ptr->ts - alt->ts)>0){
-                ge_isomer_depop->Fill(ge_isomer_depop, (int)ptr->ecal, 1); // Delayed gamma rays appearing later in time than the prompt
-              }
-              break;
-              case SUBSYS_DESWALL: // ge-DSW
-              ge_dsw->Fill(ge_dsw, (int)ptr->ecal, (int)alt->alt_ecal, 1); // alt_ecal = DSW corrected time-of-flight
-              break;
-              case SUBSYS_RCMP: // ge-RCMP
-              c1 = crystal_table[ptr->chan]; // HPGe crystal number
-              pos  = crystal_table[alt->chan]; // RCMP DSSD number
-              c2 = (int)(element_table[alt->chan] + (int)((pos-1)*N_RCMP_STRIPS)); // RCMP strip number
-              if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 <= 192 && ptr->ecal>5 && alt->ecal>5 ){
-                if(polarity_table[alt->chan]==0){ rcmp_x_ge_hit->Fill(rcmp_x_ge_hit, c2, c1, 1); }
-                else{ rcmp_y_ge_hit->Fill(rcmp_y_ge_hit, c2, c1, 1); }
-              }
-              break;
-              case SUBSYS_QED_PIXEL: // ge-QED
-              c1 = crystal_table[ptr->chan]; // HPGe crystal number
-              pos  = crystal_table[alt->chan]; // QED DSSD number [1-6]
-              c2 = alt->alt_chan; // QED pixel number [0-1023]
-              //  (int)(c2/N_QED_STRIPS); // QED p strip number [0-31]
-              //  (c2%N_QED_STRIPS); // QED n strip number [0-31]
-              if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 < 1024 && ptr->ecal>5 && (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_QED_PIXEL]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_QED_PIXEL])){
-                qed_p_ge_hit->Fill(qed_p_ge_hit, (int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS)), c1, 1);
-                qed_n_ge_hit->Fill(qed_n_ge_hit, (int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS)), c1, 1);
-
-                //  fprintf(stdout,"Theta Geometric,idealized: %d,%d\n",(int)(scattering_angle_QEDGe(pos,c2,c1)),compton_angle(ptr->ecal,662.0));
-                qedE_ge_theta_sum->Fill(qedE_ge_theta_sum, alt->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
-                qed_geE_theta_sum->Fill(qed_geE_theta_sum, ptr->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
-                qed_geE_theta_clov[(int)(c1/4)]->Fill(qed_geE_theta_clov[(int)(c1/4)], ptr->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
-                totalEnergy = (int)(ptr->ecal+alt->ecal);
-                qed_totE_theta_sum->Fill(qed_totE_theta_sum, totalEnergy, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
-                qed_totE_theta[pos-1]->Fill(qed_totE_theta[pos-1], totalEnergy, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
-                qed_E_totE_sum_t->Fill(qed_E_totE_sum_t, alt->ecal, totalEnergy, 1);
-                qed_geE_totE_sum_t->Fill(qed_geE_totE_sum_t, ptr->ecal, totalEnergy, 1);
-                if(totalEnergy>496 && totalEnergy<526){
-
-                  //    fprintf(stdout,"ge-QED coinc. [%d][%d,%d,%d,%d], dt = %ld - %ld = %ld\n",crystal_table[ptr->chan],crystal_table[alt->chan],alt->alt_chan,(int)(alt->alt_chan/N_QED_STRIPS),(int)(alt->alt_chan%N_QED_STRIPS),ptr->ts,alt->ts,ptr->ts - alt->ts);
-                  /*
-                  if(c1==13){
-                  fprintf(stdout,"COINCS: %d %f %d %ld %d %ld\n",c1,ptr->ecal,ptr->trig_acc,ptr->ts,alt->trig_acc,alt->ts);
-                  fprintf(stdout,"COINC, %d %d scattering_angle_QEDGe(%d,%d,%d) %f\n",(int)ptr->ecal,(int)alt->ecal,pos,c2,c1,scattering_angle_QEDGe(pos,c2,c1));
-                }
-                */
-                if(DEBUG_OUTPUT){ fprintf(stdout,"\nCOINC PIXEL: %d %d %ld | %.1f %.1f %.1f | %d vs %d %d %ld | %.1f %.1f %.1f | %d, dt=%d, sumE=%.1f\n",ptr->subsys,ptr->chan,ptr->ts,ptr->ecal,ptr->alt_ecal,ptr->esum,ptr->net_id,alt->subsys,alt->chan,alt->ts,alt->ecal,alt->alt_ecal,alt->esum,alt->net_id,(ptr->ts-alt->ts),(ptr->ecal+alt->ecal)); }
-                qedE_ge_dt->Fill(qedE_ge_dt, (int)(alt->ts-ptr->ts)+512, alt->ecal, 1);
-                qed_geE_dt->Fill(qed_geE_dt, (int)(alt->ts-ptr->ts)+512, ptr->ecal, 1);
-                qedE_ge_theta_sum_t->Fill(qedE_ge_theta_sum_t, alt->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
-                qed_geE_theta_sum_t->Fill(qed_geE_theta_sum_t, ptr->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
-                qed_E_theta_dssd[pos-1]->Fill(qed_E_theta_dssd[pos-1], alt->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
-                qed_geE_theta_dssd[pos-1]->Fill(qed_geE_theta_dssd[pos-1], ptr->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
-                qed_geE_theta_clov_t[(int)(c1/4)]->Fill(qed_geE_theta_clov_t[(int)(c1/4)], ptr->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
-
-                qedE_ge_thetaI_sum_t->Fill(qedE_ge_thetaI_sum_t, alt->ecal, compton_angle(ptr->ecal,662.0), 1);
-                qed_geE_thetaI_sum_t->Fill(qed_geE_thetaI_sum_t, ptr->ecal, compton_angle(ptr->ecal,662.0), 1);
-                qed_geE_thetaDiff_sum_t->Fill(qed_geE_thetaDiff_sum_t, ptr->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1) - compton_angle(ptr->ecal,662.0))+90, 1);
-
-                if((int)(c2/N_QED_STRIPS) == (c2%N_QED_STRIPS)){ // Single pixel theta needed for initial calibration
-                  qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], alt->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
-                  qedn_ge_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qedn_ge_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], alt->alt_ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
-                  qed_geE_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qed_geE_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], ptr->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
-                }
-              }
+              /*
+              // Investigate the band of events across the top of the E vs theta plots
+              if(scattering_angle_QEDGe(pos,c2,c1)>172 && scattering_angle_QEDGe(pos,c2,c1)<178){
+              fprintf(stdout,"COMPTON FILL HISTOS: theta=%.1f: (%d,%d,%d) %d %d %ld | %.1f %.1f %.1f | %d dt=%d\n",scattering_angle_QEDGe(pos,c2,c1),pos,c2,c1,ptr->subsys,ptr->chan,ptr->ts,ptr->ecal,ptr->alt_ecal,ptr->esum,ptr->net_id,ptr->delta_t);
             }
+            */
             break;
-            case SUBSYS_COMPTON: // ge-COMPTON where is a coincidence between a DSSD pixel and a HPGE with sum energy of 511keV
-            // QED COMPTON EVENTS
-            // Identified as subsys==HPGE_A and pu_class==QED_COMPTON
-            // pos is HPGE crystal number
-            // In COMPTON event, ecal will be Ge and alt_ecal will be QED_PIXEL
-            // In COMPTON event, crystal_table[chan]=pos will be Ge, alt_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
-            //  pos  = crystal_table[ptr->chan]; // QED DSSD number [1-6]
-            //  c2 = (ptr->alt_chan%1024);        // Pixel number [0-1023]
-            //  c1 = ptr->net_id; // HPGe crystal number
-            pos  = crystal_table[alt->chan]; // QED DSSD number [1-6]
-            c2 = (alt->alt_chan%1024);        // Pixel number [0-1023]
-            c1 = alt->net_id; // HPGe crystal number
-
-            ge_comp->Fill(ge_comp, (int)ptr->ecal, (int)(alt->esum), 1);
-
-            if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 < 1024 && ptr->ecal>5 && (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_QED_PIXEL]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_QED_PIXEL])){
-              if(alt->esum>496 && alt->esum<526){
-
-                if(DEBUG_OUTPUT){ fprintf(stdout,"\nCOINC COMPTON: %d %d %ld | %.1f %.1f %.1f | %d vs %d %d %ld | %.1f %.1f %.1f | %d, dt=%d, sumE=%.1f\n",ptr->subsys,ptr->chan,ptr->ts,ptr->ecal,ptr->alt_ecal,ptr->esum,ptr->net_id,alt->subsys,alt->chan,alt->ts,alt->ecal,alt->alt_ecal,alt->esum,alt->net_id,(ptr->ts-alt->ts),(ptr->ecal+alt->ecal)); }
-
-                qedE_ge_theta_sum_t->Fill(qedE_ge_theta_sum_t, alt->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
-                qed_geE_theta_sum_t->Fill(qed_geE_theta_sum_t, ptr->ecal, (int)(scattering_angle_QEDGe(pos,c2,c1)), 1);
-              }
-            }
-
-            break;
-            default: break;
-          }
+            default: break; // Unrecognized or unprocessed dtype
+          }// end of switch
           return(0);
         }
 
-        int fill_labr_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
+        int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
         {
-          int lbl_tac_gate=15, tac_offset[8] = {-7300,-5585,-6804,0,-6488,-5682,-5416,0};
-          int g_aries_upper_gate=25, c1, c2, dt, corrected_tac_value;
+          int c1, c2, c3, pos, bin, angle_idx, coinc_ecal, scatt_esum, totalEnergy;
+          double angle;
           switch(alt->subsys){
-            case SUBSYS_ARIES_A:
-            if( (abs_dt >= time_diff_gate_min[SUBSYS_LABR_L][SUBSYS_ARIES_A]) && (abs_dt <= time_diff_gate_max[SUBSYS_LABR_L][SUBSYS_ARIES_A]) ){
+            case SUBSYS_HPGE_A:
+            gg_dt->Fill(gg_dt, (int)((ptr->ts - alt->ts)+DT_SPEC_LENGTH/2), (int)ptr->ecal, 1); // This dt result is always negative
+            gg_dt->Fill(gg_dt, (int)((alt->ts - ptr->ts)+DT_SPEC_LENGTH/2), (int)alt->ecal, 1); // This dt result is always positive
+            if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_HPGE_A]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_HPGE_A]) ){
+
+              // PPG Cycles histograms
+              if(ppg_cycles_active==1){
+                gg_cycle_code[ppg_current_pattern]->Fill(gg_cycle_code[ppg_current_pattern], (int)ptr->ecal, (int)alt->ecal, 1);
+              }
+
               c1 = crystal_table[ptr->chan];
               c2 = crystal_table[alt->chan];
-              if(c1 >= 1 && c1 <=8 && c2 >= 1 && c2 <=76 ){
-                lba_hit->Fill(lba_hit, c1, c2, 1);
-              }
-            } break;
-            case SUBSYS_TAC_LABR:
-            c1=crystal_table[alt->chan]-1;  // assign c1 as TAC number
-            if(c1 >= 0 && c1 < N_TACS ){ // 8 LBL + 1 ZDS + 4 ARIES
-              dt_tacs_hist[c1]->Fill(dt_tacs_hist[c1], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
-              tac_lbl_ts_diff[c1]->Fill(tac_lbl_ts_diff[c1], (int)((alt->ts-ptr->ts)+DT_SPEC_LENGTH/2), 1);
-              if(((abs_dt >= time_diff_gate_min[SUBSYS_LABR_L][SUBSYS_TAC_LABR]) && (abs_dt <= time_diff_gate_max[SUBSYS_LABR_L][SUBSYS_TAC_LABR])) && c1 == 8){ // labr-tac with the ARIES TAC
-                c2 = crystal_table[ptr->chan] - 1; // assign c2 as LBL number
-                if(c2 >= 0 && c2 < 8 ){ // 8 LBL detectors
-                  corrected_tac_value = (int)alt->ecal + tac_offset[c2];
-                  tac_aries_lbl[c2]->Fill(tac_aries_lbl[c2], corrected_tac_value, 1); // tac spectrum per LBL
-                  tac_aries_lbl_sum->Fill(tac_aries_lbl_sum, corrected_tac_value, 1); // sum tac spectrum including all LBL
-                  if(ptr->ecal >1225 && ptr->ecal <1315){ // gate on LaBr3 energy 1275keV
-                    aries_tac->Fill(aries_tac, (int)corrected_tac_value, 1); // tac spectrum gated on 1275keV
-                    aries_tac_artEn->Fill(aries_tac_artEn, alt->alt_ecal, 1); // ARIES energy spectrum in coincidence with TAC
-                    if(alt->alt_ecal >24 && alt->alt_ecal <36){ // gate on ARIES energy
-                      aries_tac_Egate->Fill(aries_tac_Egate, corrected_tac_value, 1); // tac spectrum gated on 1275keV
+              if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 < 64 ){
+                if(ptr->ecal < 5 &&  alt->ecal < 5){ break; } // Both crystals must have a valid energy
+                gg_hit->Fill(gg_hit, c1, c2, 1); // 2d crystal hitpattern
+
+                // Individual Ge crystal energy in coincidence, used for angular correlations weighting factors
+                gg_energy[c1]->Fill(gg_energy[c1], (int)ptr->ecal, 1);
+                gg_energy[c2]->Fill(gg_energy[c2], (int)alt->ecal, 1);
+
+                if( c2 == grif_opposite[c1] ){
+                  // 180 degree coinc matrix for summing corrections
+                  gg_opp->Fill(gg_opp, (int)ptr->ecal, (int)alt->ecal, 1);
+                  gg_ab_opp->Fill(gg_ab_opp, (int)ptr->esum, (int)alt->esum, 1);
+                }
+
+                // Ge-Ge angular correlations
+                // Fill the appropriate angular bin spectrum
+                // c1 and c2 run from 0 to 63 for ge_angles_145mm.
+                angle_idx = ge_angles_110mm[c1][c2];
+                gg_angcor_110[angle_idx]->Fill(gg_angcor_110[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
+                //fprintf(stdout,"%d %d have angular difference of: calculate %lf [%f]\n",c1,c2,angular_diff_GeGe(c1,c2,110),angular_bins_110mm[angle_idx]);
+                // double atan2(double y, double x);
+                angle_idx = ge_angles_145mm[c1][c2];
+                gg_angcor_145[angle_idx]->Fill(gg_angcor_145[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
+
+                if( ptr->esum > 5 ||  alt->esum > 5 ){ // addback energies
+                  gg_ab->Fill(gg_ab, (int)ptr->esum, (int)alt->esum, 1);
+                  // Fill Compton polarimetry matrices Here
+                  // c1 and c2 are the same as for angular correlations. These define the plane.
+                  // c3 is another crystal in one of the clovers.
+                  // The azimuthal scattering angle is between c3 and the plane of polarization.
+                  if(angle_idx>11 && angle_idx<41){ // Only look at Compton Polarimetry for clovers at 90 degrees to each other. (Always checked with 145mm)
+                    c3 = ptr->alt_chan;
+                    if(c3<0){ // c1 is coincident, c2+c3 are the scattering event
+                      c3 = alt->alt_chan; scatt_esum = (int)alt->esum; coinc_ecal = (int)ptr->esum;
+                    }else{ // c2 is coincident, c1+c3 are the scattering event
+                      scatt_esum = (int)ptr->esum; coinc_ecal = (int)alt->esum;
+                    }
+                    // Determine angle_idx from azimuthal.
+                    angle = azimuthal_GeGeGe(c1,c2,c3,110);
+                    angle_idx = (int)(angle / 15);
+                    if(angle_idx==12){ angle_idx=11; } // Put 180 degree scatters into the last valid bin
+                    if(angle_idx>=0 && angle_idx<N_GE_COMP_POL){
+                      gg_comp_pol_110[angle_idx]->Fill(gg_comp_pol_110[angle_idx], coinc_ecal, scatt_esum, 1); // Asymmetric matrix
                     }
                   }
                 }
               }
-            } break;
-            case SUBSYS_TAC_ZDS:
-            c1=crystal_table[alt->chan]-1;  // assign c1 as TAC number
-            if(c1 == 7){ // 8 LBL + 1 ZDS + 4 ARIES
-              tac_lbl_ts_diff[c1]->Fill(tac_lbl_ts_diff[c1], (int)((alt->ts-ptr->ts)+DT_SPEC_LENGTH/2), 1);
-            } break;
-            case SUBSYS_TAC_ART:
-            c1=crystal_table[alt->chan]-1;  // assign c1 as TAC number
-            if(c1 >= 9 && c1 < N_TACS ){ // 8 LBL + 1 ZDS + 4 ARIES
-              tac_lbl_ts_diff[c1]->Fill(tac_lbl_ts_diff[c1], (int)((alt->ts-ptr->ts)+DT_SPEC_LENGTH/2), 1);
-            } break;
-          }
-          return(0);
-        }
-
-        // This lookup table reorders strips that have already been reordered in the ODB...
-        // Per GRIFFIN elog, https://grsilog.triumf.ca/GRIFFIN/25966
-        // Per GRIFFIN elog, https://grsilog.triumf.ca/GRIFFIN/25968
-        int reorder_rcmp_strips[7][2][32] = {
-          {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-          {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-          {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // RCS1 X
-          {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // RCS1 Y
-          {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // RCS2 X
-          {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}, // RCS2 X
-          {{1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30},  // RCS3 X
-          {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // RCS3 Y
-          {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // RCS4 X
-          {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}, // RCS4 Y
-          {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // RCS5 X
-          {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // RCS5 Y
-          {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // RCS6 X
-          {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}  // RCS6 Y
-        };
-
-        // This lookup table reorders strips that have already been reordered in the ODB...
-        // Per GRIFFIN elog, https://grsilog.triumf.ca/GRIFFIN/25966
-        // Per GRIFFIN elog, https://grsilog.triumf.ca/GRIFFIN/25968
-        int reorder_qed_strips[7][2][32] = {
-          {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-          {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-          {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED1 P
-          {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}, // QED1 N
-
-          {{1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30},  // QED2 P
-          {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // QED2 N
-
-          {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED3 P
-          {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}, // QED3 N
-
-          {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED4 P
-          {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}, // QED4
-
-          {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED5 P
-          {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}, // QED5 N
-
-          {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED6 P
-          {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}  // QED6 N
-        };
-
-        int frag_hist[PTR_BUFSIZE];
-        int fill_coinc_histos(int win_idx, int frag_idx)
-        {
-          int global_window_size = (int)(sort_window_width/2); // size in grif-replay should be double this
-          Grif_event *alt, *ptr = &grif_event[win_idx], *tmp;
-          int dt, abs_dt,  pos, c1, c2, index, ptr_swap;
-          int pos1, qed1, ge1, pos2, qed2, ge2;  // QED variables
-          double omega, theta1, theta2, azimuthal; // QED variables
-          TH2I *hist_ee; TH1I *hist_dt;
-
-          // histogram of coincwin-size
-          dt = (frag_idx - win_idx + 2*PTR_BUFSIZE) %  PTR_BUFSIZE; ++frag_hist[dt];
-
-          while( win_idx != frag_idx ){ // check all conicidences in window
-            if( ++win_idx == PTR_BUFSIZE ){ win_idx = 0; } // wrap
-            alt = &grif_event[win_idx];
-            if( ptr->subsys > alt->subsys ){ tmp = ptr; ptr = alt; alt = tmp; ptr_swap = 1; }
-
-            abs_dt = dt = ptr->ts - alt->ts; if( dt < 0 ){ abs_dt = -1*dt; }
-            if( abs_dt > global_window_size ){ break; }
-
-            // the usual subsys-vs-subsys 1d-time-diff and 2d-EvsE
-            if( (hist_dt = subsys_dt[ptr->subsys][alt->subsys]) != NULL ){
-              hist_dt->Fill(hist_dt, (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
             }
-            if( (hist_ee = subsys_e_vs_e[ptr->subsys][alt->subsys]) != NULL ){
-              if((abs_dt >= time_diff_gate_min[ptr->subsys][alt->subsys]) && (abs_dt <= time_diff_gate_max[ptr->subsys][alt->subsys]) ){
-                /*
-                if(ptr->subsys == SUBSYS_QED_PIXEL){
-
-                //  (int)(c2/N_QED_STRIPS); // QED p strip number [0-31]
-                //  (c2%N_QED_STRIPS); // QED n strip number [0-31]
-                fprintf(stdout,"Breakpoint QED-QED [%d,%d,%d,%d] [%d,%d,%d,%d] %d, %d, %d %d\n",crystal_table[ptr->chan],ptr->alt_chan,(int)(ptr->alt_chan/N_QED_STRIPS),
-                crystal_table[alt->chan],alt->alt_chan,alt->alt_chan%N_QED_STRIPS,
-                ptr->trig_acc,alt->trig_acc,(int)ptr->ecal, (int)alt->ecal);
-              }
-              */
-              hist_ee->Fill(hist_ee, (int)ptr->ecal, (int)alt->ecal, 1);
-            }
-          }
-          switch(ptr->subsys){ // No Nested switch - use separate functions if needed
-            case SUBSYS_HPGE_A: fill_ge_coinc_histos(ptr,   alt, abs_dt); break;
-            case SUBSYS_LABR_L: fill_labr_coinc_histos(ptr, alt, abs_dt); break;
+            break;
             case SUBSYS_BGO:
-            if(alt->subsys == SUBSYS_BGO){
-              if((abs_dt >= time_diff_gate_min[SUBSYS_BGO][SUBSYS_BGO]) && (abs_dt <= time_diff_gate_max[SUBSYS_BGO][SUBSYS_BGO]) ){
+            if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_BGO]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_BGO]) ){
+              c1 = crystal_table[ptr->chan];
+              c2 = crystal_table[alt->chan];
+              if( c1 >= 0 && c1 < 64 && c1==c2 && ptr->ecal>5 && alt->ecal>5){
+                bin = (c2*5)+(element_table[alt->chan]-1);
+                if(bin>=0 && bin<N_BGO){
+                  ge_bgo_gated[bin]->Fill(ge_bgo_gated[bin], (int)alt->ecal, 1);
+                }
+              }
+            }
+            break;
+            case SUBSYS_SCEPTAR:
+            gb_dt->Fill(gb_dt, (int)((ptr->ts - alt->ts)+DT_SPEC_LENGTH/2), (int)ptr->esum, 1);
+            if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_SCEPTAR]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_SCEPTAR]) ){
+              //  ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1); // beta-gated Ge sum energy spectrum
+              //  ge_sum_b_sep->Fill(ge_sum_b_sep, (int)ptr->ecal, 1); // Sceptar-gated Ge sum energy spectrum
+            }else if((ptr->ts - alt->ts)<-25){
+              ge_isomer_popu->Fill(ge_isomer_popu, (int)ptr->ecal, 1); // Early gamma rays appearing earlier in time than the prompt
+            }else if((ptr->ts - alt->ts)>25){
+              ge_isomer_depop->Fill(ge_isomer_depop, (int)ptr->ecal, 1); // Delayed gamma rays appearing later in time than the prompt
+            }
+            break;
+            case SUBSYS_ARIES_A:
+            gb_dt->Fill(gb_dt, (int)((ptr->ts - alt->ts)+DT_SPEC_LENGTH/2), (int)ptr->esum, 1);
+            if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_ARIES_A]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_ARIES_A]) ){
+              if(ptr->ecal > 10 && alt->ecal > 10){
+                //  ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1);         // beta-gated Ge sum energy spectrum
+                //  ge_sum_b_art->Fill(ge_sum_b_art, (int)ptr->ecal, 1); // Aries-gated Ge sum energy spectrum
+                ge_art->Fill(ge_art, (int)ptr->ecal, (int)alt->esum, 1);
                 c1 = crystal_table[ptr->chan];
                 c2 = crystal_table[alt->chan];
-                bgobgo_hit->Fill(bgobgo_hit, c1, c2, 1);
-              }}
-              break;
-              case SUBSYS_RCMP:
-              if(alt->subsys == SUBSYS_RCMP){
-                if( (abs_dt >= time_diff_gate_min[SUBSYS_RCMP][SUBSYS_RCMP]) && (abs_dt <= time_diff_gate_max[SUBSYS_RCMP][SUBSYS_RCMP]) ){
-                  if((pos = crystal_table[ptr->chan]) == crystal_table[alt->chan] &&
-                  polarity_table[ptr->chan] != polarity_table[alt->chan] ){ // front and back of same DSSD
-                    c1 = element_table[ptr->chan];
-                    c2 = element_table[alt->chan];
-                    rcmp_fb[(pos-1)]->Fill(rcmp_fb[(pos-1)], (int)ptr->ecal, (int)alt->ecal, 1);
-                    if(polarity_table[ptr->chan]==0){ rcmp_hit[(pos-1)]->Fill(rcmp_hit[(pos-1)], c1, c2, 1);
-                    }else{
-                      rcmp_hit[(pos-1)]->Fill(rcmp_hit[(pos-1)], c2, c1, 1);
-                    }
-                  }}} break;
-                  case SUBSYS_ARIES_A:
-                  if( alt->subsys == SUBSYS_ARIES_A && ptr->ecal>0 && alt->ecal>0 ){
-                    if((abs_dt >= time_diff_gate_min[SUBSYS_ARIES_A][SUBSYS_ARIES_A]) && (abs_dt <= time_diff_gate_max[SUBSYS_ARIES_A][SUBSYS_ARIES_A])){
-                      c1 = crystal_table[ptr->chan];
-                      c2 = crystal_table[alt->chan];
-                      if( c1 >= 1 && c1 <=76 && c2 >= 1 && c2 <=76 ){
-                        aa_hit->Fill(aa_hit, c1, c2, 1);
-                      }
-                    }}
-                    if( alt->subsys == SUBSYS_TAC_LABR && crystal_table[alt->chan] == 8 ){ // ARIES TAC
-                      // sum tac spectrum including all art
-                      tac_aries_art_sum->Fill(tac_aries_art_sum, (int)alt->ecal, 1);
-                      c2 = crystal_table[ptr->chan]-1;
-                      if( c2>=0 && c2<N_ARIES ){ // tac spectrum per ART tiles
-                        tac_aries_art[c2]->Fill(tac_aries_art
-                          [c2], (int)alt->ecal, 1);
-                        }
-                      } break;
-                      case SUBSYS_ARIES_B:// ARIES Fast Output in CAEN
-                      if(alt->subsys == SUBSYS_DESWALL){ // aries-DSW
-                        art_dsw->Fill(art_dsw, (int)ptr->ecal, (int)alt->alt_ecal, 1);
-                        desw_sum_e_b->Fill(desw_sum_e_b, (int)alt->ecal, 1);
-                        desw_sum_tof_b->Fill(desw_sum_tof_b, (int)alt->alt_ecal, 1); // alt_ecal = corrected time-of-flight
-                      } break;
-                      case SUBSYS_ZDS_A: // grif16 zds
-                      if(alt->subsys == SUBSYS_ZDS_B ){ // ZDS GRIF-CAEN coincidence
-                        gc_hist->Fill(gc_hist, 3, 1);
-                        gc_hist->Fill(gc_hist, 5, 1);
-                        dt_hist[23]->Fill(dt_hist[23], (int)(abs(ptr->cfd - alt->cfd)+DT_SPEC_LENGTH/2), 1);
-                      } break;
-                      case SUBSYS_DESWALL:
-                      if( alt->subsys == SUBSYS_DESWALL ){
-                        dt_hist[24]->Fill(dt_hist[24], (int)(abs(ptr->cfd - alt->cfd)+DT_SPEC_LENGTH/2), 1);
-                        c1 = crystal_table[ptr->chan]-1; c2 = crystal_table[alt->chan]-1;
-                        if( c1 >= 0 && c1 < 60 && c2 >= 0 && c2 < 60 ){
-                          dsw_hit->Fill(dsw_hit, c1, c2, 1);
-                          dsw_dsw->Fill(dsw_dsw, (int)ptr->alt_ecal, (int)alt->alt_ecal, 1);
-                          // Fold 2 sum spectra
-                          desw_sum_e_nn->Fill(desw_sum_e_nn, (int)ptr->ecal, 1);
-                          desw_sum_tof_nn->Fill(desw_sum_tof_nn, (int)ptr->alt_ecal, 1);// alt_ecal = corrected time-of-flight
-                          // DSW-DSW angular correlations
-                          // Fill the appropriate angular bin spectrum with the corrected time-of-flight value
-                          index = DSW_DSW_angles[c1][c2];
-                          dsw_angcor[index]->Fill(dsw_angcor
-                            [index],(int)ptr->alt_ecal,(int)alt->alt_ecal, 1);
-                            // Fold 2, angle greater than 60 degrees, sum spectra
-                            // index 13 = 58.555, index 14 = 61.535
-                            if( index > 13 ){                                         // alt_ecal = corrected time-of-flight
-                              desw_sum_e_nn_a->Fill(desw_sum_e_nn_a, (int)ptr->ecal, 1);
-                              desw_sum_tof_nn_a->Fill(desw_sum_tof_nn_a, (int)ptr->alt_ecal, 1);
-                            }
-                          }
-                        }
-                        if( alt->subsys == SUBSYS_ZDS_B ){ // ZDS-DSW
-                          dt_hist[25]->Fill(dt_hist[25], (int)(abs(ptr->cfd - alt->cfd)+DT_SPEC_LENGTH/2), 1);
-                          desw_sum_e_b->Fill(desw_sum_e_b, (int)ptr->ecal, 1);
-                          desw_sum_tof_b->Fill(desw_sum_tof_b, (int)ptr->alt_ecal, 1); // alt_ecal = corrected time-of-flight
+                if( c1 >= 0 && c1 < 64 && c2 >= 1 && c2 <= 76 ){
+                  gea_hit->Fill(gea_hit, c2, c1, 1); // c's start at zero
+                  // Ge-ARIES angular correlations
+                  // Fill the appropriate angular bin spectrum
+                  angle_idx = GRG_ART_angles_110mm[c1][c2-1];
+                  ge_art_angcor[angle_idx]->Fill(ge_art_angcor[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
 
-                          desw_q_tof->Fill(desw_q_tof, (int)ptr->q1, (int)ptr->alt_ecal, 1);
-                          desw_cc_tof->Fill(desw_cc_tof, (int)ptr->cc_short, (int)ptr->alt_ecal, 1);
-                        } break;
-                        case SUBSYS_COMPTON:
-                        if( alt->subsys == SUBSYS_COMPTON ){ // COMPTON-COMPTON where is a coincidence between a DSSD pixel and a HPGE with sum energy of 511keV
-                          // QED COMPTON EVENTS
-                          // Identified as subsys==HPGE_A and pu_class==QED_COMPTON
-                          // pos is HPGE crystal number
-                          // In COMPTON event, ecal will be Ge and alt_ecal will be QED_PIXEL
-                          // In COMPTON event, crystal_table[chan]=pos will be Ge, alt_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
-                          //  pos  = crystal_table[ptr->chan]; // QED DSSD number [1-6]
-                          //  c2 = (ptr->alt_chan%1024);        // Pixel number [0-1023]
-                          //  c1 = ptr->net_id; // HPGe crystal number
-
-                          pos1 = crystal_table[ptr->chan];
-                          qed1 = (ptr->alt_chan%1024);
-                          ge1 = ptr->net_id;
-                          qed2 = (alt->alt_chan%1024);
-                          pos2 = crystal_table[alt->chan];
-                          ge2 = alt->net_id;
-                          omega = angular_diff_QEDQED(pos1, qed1, pos2, qed2);
-                          qed_dcs_omega->Fill(qed_dcs_omega, (int)omega, 1);
-                          qed_dcs_omega_dt->Fill(qed_dcs_omega_dt, (int)(ptr->ts - alt->ts)+512, (int)omega, 1);
-                          qedx_dcs_omega_dt[pos1-1]->Fill(qedx_dcs_omega_dt[pos1-1], (int)(ptr->ts - alt->ts)+512, (int)omega, 1);
-                          if(omega>170){
-                            theta1 = scattering_angle_QEDGe(pos1, qed1, ge1);
-                            theta2 = scattering_angle_QEDGe(pos2, qed2, ge2);
-                            if(theta1>69 && theta1<111 && theta2>69 && theta2<111){
-                              comp_comp->Fill(comp_comp, (int)ptr->esum, (int)(alt->esum), 1);
-                              azimuthal = azimuthal_DCS(pos1, qed1, ge1, pos2, qed2, ge2);
-                              //  fprintf(stdout,"omega = %f, theta1 = %f, theta2 = %f, azimuth = %f, for [%d %d %d] - [%d %d %d]\n",omega,theta1,theta2,azimuthal,pos1, qed1, ge1, pos2, qed2, ge2);
-                              qed_dcs_azi->Fill(qed_dcs_azi, (int)azimuthal, 1);
-                            }
-                          }
-                        }
-                        break;
-                      } // end switch
-                    }
-                    return(0);
+                  // Angle veto method for Bremmstrahlung veto. Angle >30 degrees
+                  if(angle_idx>8){
+                    ge_sum_b_art_brems->Fill(ge_sum_b_art_brems, (int)ptr->ecal, 1); // Aries-gated Ge sum energy spectrum with Bremmstrahlung veto
                   }
+                }
+              }
+            }else if((ptr->ts - alt->ts)<0){
+              ge_isomer_popu->Fill(ge_isomer_popu, (int)ptr->ecal, 1); // Early gamma rays appearing earlier in time than the prompt
+            }else if((ptr->ts - alt->ts)>0){
+              ge_isomer_depop->Fill(ge_isomer_depop, (int)ptr->ecal, 1); // Delayed gamma rays appearing later in time than the prompt
+            }
+            break;
+            case SUBSYS_ZDS_A:
+            gb_dt->Fill(gb_dt, (int)((ptr->ts - alt->ts)+DT_SPEC_LENGTH/2), (int)ptr->esum, 1);
+            if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_ZDS_A]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_ZDS_A]) ){
+              //  ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1);         // beta-gated Ge sum energy spectrum
+              //  ge_sum_b_zds->Fill(ge_sum_b_zds, (int)ptr->ecal, 1); // Zds-gated Ge sum energy spectrum
+            }else if((ptr->ts - alt->ts)<0){
+              ge_isomer_popu->Fill(ge_isomer_popu, (int)ptr->ecal, 1); // Early gamma rays appearing earlier in time than the prompt
+            }else if((ptr->ts - alt->ts)>0){
+              ge_isomer_depop->Fill(ge_isomer_depop, (int)ptr->ecal, 1); // Delayed gamma rays appearing later in time than the prompt
+            }
+            break;
+            case SUBSYS_DESWALL: // ge-DSW
+            ge_dsw->Fill(ge_dsw, (int)ptr->ecal, (int)alt->alt_ecal, 1); // alt_ecal = DSW corrected time-of-flight
+            break;
+            case SUBSYS_RCMP: // ge-RCMP
+            c1 = crystal_table[ptr->chan]; // HPGe crystal number
+            pos  = crystal_table[alt->chan]; // RCMP DSSD number
+            c2 = (int)(element_table[alt->chan] + (int)((pos-1)*N_RCMP_STRIPS)); // RCMP strip number
+            if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 <= 192 && ptr->ecal>5 && alt->ecal>5 ){
+              if(polarity_table[alt->chan]==0){ rcmp_x_ge_hit->Fill(rcmp_x_ge_hit, c2, c1, 1); }
+              else{ rcmp_y_ge_hit->Fill(rcmp_y_ge_hit, c2, c1, 1); }
+            }
+            break;
+            case SUBSYS_QED_PIXEL: // ge-QED
+            c1 = crystal_table[ptr->chan]; // HPGe crystal number
+            pos  = crystal_table[alt->chan]; // QED DSSD number [1-6]
+            c2 = alt->alt_chan; // QED pixel number [0-1023]
+            //  (int)(c2/N_QED_STRIPS); // QED p strip number [0-31]
+            //  (c2%N_QED_STRIPS); // QED n strip number [0-31]
+            if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 < 1024 && ptr->ecal>5 && (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_QED_PIXEL]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_QED_PIXEL])){
+              qed_p_ge_hit->Fill(qed_p_ge_hit, (int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS)), c1, 1);
+              qed_n_ge_hit->Fill(qed_n_ge_hit, (int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS)), c1, 1);
 
-                  //#######################################################################
-                  //###########   READ XML ODB DUMP FROM START OF DATA FILE   #############
-                  //#######################################################################
+              //  fprintf(stdout,"Theta Geometric,idealized: %d,%d\n",(int)(scattering_angle_QEDGe(pos,c2,c1)),compton_angle(ptr->ecal,662.0));
+              angle = scattering_angle_QEDGe(pos,c2,c1);
+              qedE_ge_theta_sum->Fill(qedE_ge_theta_sum, alt->ecal, (int)(angle), 1);
+              qed_geE_theta_sum->Fill(qed_geE_theta_sum, ptr->ecal, (int)(angle), 1);
+              qed_geE_theta_clov[(int)(c1/4)]->Fill(qed_geE_theta_clov[(int)(c1/4)], ptr->ecal, (int)(angle), 1);
+              totalEnergy = (int)(ptr->ecal+alt->ecal);
+              qed_totE_theta_sum->Fill(qed_totE_theta_sum, totalEnergy, (int)(angle), 1);
+              qed_totE_theta[pos-1]->Fill(qed_totE_theta[pos-1], totalEnergy, (int)(angle), 1);
+              qed_E_totE_sum_t->Fill(qed_E_totE_sum_t, alt->ecal, totalEnergy, 1);
+              qed_geE_totE_sum_t->Fill(qed_geE_totE_sum_t, ptr->ecal, totalEnergy, 1);
+              qed_theta_dt->Fill(qed_theta_dt, (int)(alt->ts-ptr->ts)+512, (int)(angle), 1);
+              if(totalEnergy>496 && totalEnergy<526){
 
-                  // Note - the odb names do not distinguish between subtypes of detectors
-                  // e.g Ge A and B channels
-                  // the subsystem names will be extended to include this information
-                  // (and the odb-specific names are only used below)
+                //    fprintf(stdout,"ge-QED coinc. [%d][%d,%d,%d,%d], dt = %ld - %ld = %ld\n",crystal_table[ptr->chan],crystal_table[alt->chan],alt->alt_chan,(int)(alt->alt_chan/N_QED_STRIPS),(int)(alt->alt_chan%N_QED_STRIPS),ptr->ts,alt->ts,ptr->ts - alt->ts);
+                /*
+                if(c1==13){
+                fprintf(stdout,"COINCS: %d %f %d %ld %d %ld\n",c1,ptr->ecal,ptr->trig_acc,ptr->ts,alt->trig_acc,alt->ts);
+                fprintf(stdout,"COINC, %d %d scattering_angle_QEDGe(%d,%d,%d) %f\n",(int)ptr->ecal,(int)alt->ecal,pos,c2,c1,angle);
+              }
+              */
+              if(DEBUG_OUTPUT){ fprintf(stdout,"\nCOINC PIXEL: %d %d %ld | %.1f %.1f %.1f | %d vs %d %d %ld | %.1f %.1f %.1f | %d, dt=%d, sumE=%.1f\n",ptr->subsys,ptr->chan,ptr->ts,ptr->ecal,ptr->alt_ecal,ptr->esum,ptr->net_id,alt->subsys,alt->chan,alt->ts,alt->ecal,alt->alt_ecal,alt->esum,alt->net_id,(ptr->ts-alt->ts),(ptr->ecal+alt->ecal)); }
+              qedE_ge_dt->Fill(qedE_ge_dt, (int)(alt->ts-ptr->ts)+512, alt->ecal, 1);
+              qed_geE_dt->Fill(qed_geE_dt, (int)(alt->ts-ptr->ts)+512, ptr->ecal, 1);
+              qedE_ge_theta_sum_t->Fill(qedE_ge_theta_sum_t, alt->ecal, (int)(angle), 1);
+              qed_geE_theta_sum_t->Fill(qed_geE_theta_sum_t, ptr->ecal, (int)(angle), 1);
+              qed_E_theta_dssd[pos-1]->Fill(qed_E_theta_dssd[pos-1], alt->ecal, (int)(angle), 1);
+              qed_geE_theta_dssd[pos-1]->Fill(qed_geE_theta_dssd[pos-1], ptr->ecal, (int)(angle), 1);
+              qed_geE_theta_clov_t[(int)(c1/4)]->Fill(qed_geE_theta_clov_t[(int)(c1/4)], ptr->ecal, (int)(angle), 1);
 
-                  #define MAX_ODB_SUBSYS 24
-                  #define ODBHANDLE_GRG   0
-                  #define ODBHANDLE_GRS   1
-                  #define ODBHANDLE_SEP   2
-                  #define ODBHANDLE_PAC   3
-                  #define ODBHANDLE_LBS   4
-                  #define ODBHANDLE_LBT   5
-                  #define ODBHANDLE_LBL   6
-                  #define ODBHANDLE_DSC   7
-                  #define ODBHANDLE_ART   8
-                  #define ODBHANDLE_ZDS   9
-                  #define ODBHANDLE_RCS  10
-                  #define ODBHANDLE_XXX  11
-                  #define ODBHANDLE_DSW  12
-                  #define ODBHANDLE_DSG  13
-                  #define ODBHANDLE_DAL  14
-                  #define ODBHANDLE_DAT  15
-                  #define ODBHANDLE_QED  16
-                  #define ODBHANDLE_UNK  23
-                  static char odb_handle[MAX_ODB_SUBSYS][8] = {
-                    "GRG", "GRS", "SEP", "PAC",  //  0- 3
-                    "LBS", "LBT", "LBL", "DSC",  //  4- 7
-                    "ART", "ZDS", "RCS", "XXX",  //  8-11
-                    "DSW", "DSG", "DAL", "DAT",  //  12-15
-                    "QED",    "",    "",    "",
-                    "",    "",    "",    "UNK"
-                  };
+              qedE_ge_thetaI_sum_t->Fill(qedE_ge_thetaI_sum_t, alt->ecal, compton_angle(ptr->ecal,662.0), 1);
+              qed_geE_thetaI_sum_t->Fill(qed_geE_thetaI_sum_t, ptr->ecal, compton_angle(ptr->ecal,662.0), 1);
+              qed_geE_thetaDiff_sum_t->Fill(qed_geE_thetaDiff_sum_t, ptr->ecal, (int)(angle - compton_angle(ptr->ecal,662.0))+90, 1);
 
-                  static char   path[256];
-                  static char dirname[64],value[32],type[32];
-                  extern char midas_runtitle[SYS_PATH_LENGTH];
+              if((int)(c2/N_QED_STRIPS) == (c2%N_QED_STRIPS)){ // Single pixel theta needed for initial calibration
+                qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], alt->ecal, (int)(angle), 1);
+                qedn_ge_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qedn_ge_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], alt->alt_ecal, (int)(angle), 1);
+                qed_geE_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qed_geE_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], ptr->ecal, (int)(angle), 1);
+              }
+            }
+          }
+          break;
+          case SUBSYS_COMPTON: // ge-COMPTON where is a coincidence between a DSSD pixel and a HPGE with sum energy of 511keV
+          // QED COMPTON EVENTS
+          // Identified as subsys==HPGE_A and pu_class==QED_COMPTON
+          // pos is HPGE crystal number
+          // In COMPTON event, ecal will be Ge and alt_ecal will be QED_PIXEL
+          // In COMPTON event, crystal_table[chan]=pos will be Ge, alt_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
+          //  pos  = crystal_table[ptr->chan]; // QED DSSD number [1-6]
+          //  c2 = (ptr->alt_chan%1024);        // Pixel number [0-1023]
+          //  c1 = ptr->net_id; // HPGe crystal number
+          pos  = crystal_table[alt->chan]; // QED DSSD number [1-6]
+          c2 = (alt->alt_chan%1024);        // Pixel number [0-1023]
+          c1 = alt->net_id; // HPGe crystal number
+          angle = scattering_angle_QEDGe(pos,c2,c1);
 
-                  static void *arrayptr;
-                  int read_odb_items(int len, int *bank_data)
-                  {
-                    char *path_ptr, *ptr, *str, *odb_data = (char *)bank_data, posn[2], odb_ppg_current[128];
-                    int i, j, c = '<', d = '>', dtype=0, active=0, index=0, ppg_index, odb_ppg_cycle_count=-1;
+          ge_comp->Fill(ge_comp, (int)ptr->ecal, (int)(alt->esum), 1);
 
-                    // The currently set cycle is included in the ODB dump after all cycles are defined.
-                    // So we need to unpack them all and then select the values we need.
-                    ppg_cycles odb_ppg_cycle[MAX_ODB_PPG_CYCLES];
+          if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 < 1024 && ptr->ecal>5 && (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_QED_PIXEL]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_QED_PIXEL])){
+            if(alt->esum>496 && alt->esum<526){
 
-                    ptr = odb_data;  path_ptr = path;
-                    while(1){
-                      if( (str = strchr(ptr,c)) == NULL ){ break; }
-                      ptr = str;
-                      if( (str = strchr(ptr,d)) == NULL ){ break; }
+              if(DEBUG_OUTPUT){ fprintf(stdout,"\nCOINC COMPTON: %d %d %ld | %.1f %.1f %.1f | %d vs %d %d %ld | %.1f %.1f %.1f | %d, dt=%d, sumE=%.1f\n",ptr->subsys,ptr->chan,ptr->ts,ptr->ecal,ptr->alt_ecal,ptr->esum,ptr->net_id,alt->subsys,alt->chan,alt->ts,alt->ecal,alt->alt_ecal,alt->esum,alt->net_id,(ptr->ts-alt->ts),(ptr->ecal+alt->ecal)); }
 
-                      if( strncmp(ptr,"<!--",4) == 0 || strncmp(ptr,"<odb", 4) == 0 ||
-                      strncmp(ptr,"</odb",5) == 0 ){ // comment - skip
-                      } else if( strncmp(ptr,"<dir ",5) == 0 ){
-                        if( strncmp(ptr,"<dir name=\"",11) == 0 ){
-                          i=11; while( *(ptr+i) != '"' && *(ptr+i) != d ){ ++i; }
-                        }
-                        memcpy(dirname, ptr+11, i-11); dirname[i-11] = '\0';
-                        if( *(ptr+1+i) == '/' ){ ptr=str+1; continue; }
-                        //if( sscanf(ptr,"<dir name=\"%s\">", dirname) < 1 ){
-                        //   fprintf(stderr,"can't read dirname\n"); ptr=str+1; continue;
-                        //}
-                        //if( strncmp(dirname+strlen(dirname)-3,"\"/>",3) == 0 ){
-                        //   ptr=str+1; continue;
-                        //}
-                        //if( dirname[strlen(dirname)-1]=='>'  ){
-                        //   dirname[strlen(dirname)-1]='\0';
-                        //}
-                        //if( dirname[strlen(dirname)-1]=='\"' ){
-                        //  dirname[strlen(dirname)-1]='\0';
-                        //}
-                        *path_ptr = '/'; strcpy(path_ptr+1, dirname);
-                        path_ptr += strlen(dirname)+1;
-                        *path_ptr = '\0';
-                        if( strncmp(path,"/PPG/Cycles/",12) == 0 ){
-                          odb_ppg_cycle_count++;
-                          strcpy(odb_ppg_cycle[odb_ppg_cycle_count].name, dirname);
-                        }
-                      } else if( strncmp(ptr,"</dir>",6) == 0 ){
-                        while(1){
-                          if( --path_ptr < path ){ path_ptr = path;  *path_ptr = '\0';  break; }
-                          if( *path_ptr == '/' ){ *path_ptr = '\0';  break; }
-                        }
-                        index=0; // for debugger to stop here
-                      } else if( strncasecmp(ptr,"<key name=\"Run Title\" type=\"STRING\"", 35) == 0 ){
-                        ptr = str+1;
-                        if( (str = strchr(ptr,c)) == NULL ){ break; }
-                        i = (str-ptr) > SYS_PATH_LENGTH-1 ? SYS_PATH_LENGTH-1 : (str-ptr);
-                        memcpy( midas_runtitle, ptr, i ); midas_runtitle[i] = 0;
-                        ptr += i+1;
-                        if( (str = strchr(ptr,d)) == NULL ){ break; }
-                      } else if( strncasecmp(ptr,"<key name=\"Current\"", 19) == 0 &&
-                      strncmp(path,"/PPG",4) == 0 ){
-                        *str = ' '; if( (str = strchr(str,c)) == NULL ){ break; }
-                        *str = ' '; if( (str = strchr(str,d)) == NULL ){ break; }
-                        if( sscanf(ptr,"<key name=\"Current\" type=\"STRING\" size=\"%d\" %s /key>", &dtype, value) < 2 ){
-                          fprintf(stderr,"can't read key name for Current PPG cycle\n"); ptr=str+1; continue;
-                        }
-                        strcpy(odb_ppg_current,value);
-                        ptr += i+1;
-                      } else if( strncasecmp(ptr,"<key name=\"prg_ddtm\"", 20) == 0 &&
-                      strncmp(path,"/DAQ/params/grif16/template/0",29) == 0 ){
-                        if( sscanf(ptr,"<key name=\"prg_ddtm\" type=\"DWORD\">%d</key>", &subsys_prg_ddtm[SUBSYS_HPGE_A]) < 1 ){
-                          fprintf(stderr,"can't read key value for /DAQ/params/grif16/template/0/prg_ddtm\n"); ptr=str+1; continue;
-                        }
-                        fprintf(stdout,"Read in Det type 0 (HPGE A) prg_ddtm as %d\n",subsys_prg_ddtm[SUBSYS_HPGE_A]);
-                        while( *(ptr) != '/' ){ ++ptr; } while( *(ptr) != '<' ){ ++ptr; }
-                      } else if( strncasecmp(ptr,"<key name=\"prg_ddtm\"", 20) == 0 &&
-                      strncmp(path,"/DAQ/params/grif16/template/1",29) == 0 ){
-                        if( sscanf(ptr,"<key name=\"prg_ddtm\" type=\"DWORD\">%d</key>", &subsys_prg_ddtm[SUBSYS_HPGE_B]) < 1 ){
-                          fprintf(stderr,"can't read key value for /DAQ/params/grif16/template/1/prg_ddtm\n"); ptr=str+1; continue;
-                        }
-                        fprintf(stdout,"Read in Det type 1 (HPGE B) prg_ddtm as %d\n",subsys_prg_ddtm[SUBSYS_HPGE_B]);
-                        while( *(ptr) != '/' ){ ++ptr; } while( *(ptr) != '<' ){ ++ptr; }
-                      } else if( strncmp(ptr,"</keyarray>",10) == 0 ){ active = 0; arrayptr = (void *)('\0');
-                      if( strncmp(path,"/PPG/Cycles/",12) == 0 ){ odb_ppg_cycle[odb_ppg_cycle_count].length = index+1; }
-                    } else if( strncmp(ptr,"<keyarray ",10) == 0 ){
-                      if( strncmp(path,"/PPG/Cycles/",12) == 0 ){
-                        if( sscanf(ptr,"<keyarray name=\"%s", value) < 1 ){
-                          fprintf(stderr,"can't read PPG keyarray entry\n"); ptr=str+1; continue;
-                        }
-                        if( value[strlen(value)-1]=='\"' ){ value[strlen(value)-1]='\0'; }
-                        if( strcmp(value,"PPGcodes") == 0 ){
-                          active = 1; arrayptr = (void *)odb_ppg_cycle[odb_ppg_cycle_count].codes; dtype=0;
-                        }
-                        if( strcmp(value,"durations") == 0 ){
-                          active = 1; arrayptr = (void *)odb_ppg_cycle[odb_ppg_cycle_count].durations; dtype=0;
-                        }
-                        ptr=str+1;
-                        continue;
-                      }
-                      if( strcmp(path,"/DAQ/params/MSC") != 0 &&
-                      strcmp(path,"/DAQ/MSC")        != 0 &&
-                      strcmp(path,"/DAQ/PSC")        != 0 ){  ptr=str+1; continue; }
-                      if( sscanf(ptr,"<keyarray name=\"%s", value) < 1 ){
-                        fprintf(stderr,"can't read keyarray entry\n"); ptr=str+1; continue;
-                      }
-                      if( value[strlen(value)-1]=='\"' ){ value[strlen(value)-1]='\0'; }
-                      if( strcmp(value,"PSC") == 0 || strcmp(value,"MSC") == 0 ){
-                        active = 1; arrayptr = (void *)addr_table; dtype=1;
-                      }
-                      if( strcmp(value,"chan") == 0 ){
-                        active = 1; arrayptr = (void *)chan_name; dtype=3;
-                      }
-                      if( strcmp(value,"datatype") == 0 ){
-                        //active = 1; arrayptr = (void *)dtype_table; dtype=1;
-                        active = 1; arrayptr = (void *)dtype_table; dtype=0;
-                      }
-                      if( strcmp(value,"gain") == 0 ){
-                        active = 1; arrayptr = (void *)gain_table; dtype=2;
-                      }
-                      if( strcmp(value,"offset") == 0 ){
-                        active = 1; arrayptr = (void *)offs_table; dtype=2;
-                      }
-                      if( strcmp(value,"quadratic") == 0 ){
-                        active = 1; arrayptr = (void *)quad_table; dtype=2;
-                      }
-                    } else if( strncmp(ptr,"<value index=",13) == 0 ){
-                      if( !active ){ ptr=str+1; continue; }
-                      // remove the >< surrounding the value, and move str to the end of the line
-                      *str = ' '; if( (str = strchr(str,c)) == NULL ){ break; }
-                      *str = ' '; if( (str = strchr(str,d)) == NULL ){ break; }
-                      if( sscanf(ptr,"<value index=\"%d\" %s /value>", &index, value) < 2 ){
-                        fprintf(stderr,"can't read value entry\n");
-                      }
-                      if( index < 0 || index >= MAX_DAQSIZE ){
-                        fprintf(stderr,"index %d out of range\n", index);
-                      }
-                      // index starts at zero, odb_daqsize is count
-                      if( index >= odb_daqsize ){ odb_daqsize = index+1; }
-                      if(        dtype == 0 ){  // int
-                        if( sscanf(value,"%d", (((int *)arrayptr)+index)) < 1 ){
-                          fprintf(stderr,"can't read value %s\n", value);
-                        }
-                      } else if( dtype == 1 ){  // short int
-                        if( sscanf(value,"%hd", (((short *)arrayptr)+index)) < 1 ){
-                          fprintf(stderr,"can't read value %s\n", value);
-                        }
-                      } else if( dtype == 2 ){  // float
-                        if( sscanf(value,"%f", (((float *)arrayptr)+index)) < 1 ){
-                          fprintf(stderr,"can't read value %s\n", value);
-                        }
-                      } else {                 // string
-                        strncpy(arrayptr+index*CHAN_NAMELEN, value, CHAN_NAMELEN);
-                        *((char *)arrayptr+(index+1)*CHAN_NAMELEN - 1) = '\0';
-                      }
-                    }
-                    ptr=str+1;
+              qedE_ge_theta_sum_t->Fill(qedE_ge_theta_sum_t, alt->ecal, (int)(angle), 1);
+              qed_geE_theta_sum_t->Fill(qed_geE_theta_sum_t, ptr->ecal, (int)(angle), 1);
+            }
+          }
+
+          break;
+          default: break;
+        }
+        return(0);
+      }
+
+      int fill_labr_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
+      {
+        int lbl_tac_gate=15, tac_offset[8] = {-7300,-5585,-6804,0,-6488,-5682,-5416,0};
+        int g_aries_upper_gate=25, c1, c2, dt, corrected_tac_value;
+        switch(alt->subsys){
+          case SUBSYS_ARIES_A:
+          if( (abs_dt >= time_diff_gate_min[SUBSYS_LABR_L][SUBSYS_ARIES_A]) && (abs_dt <= time_diff_gate_max[SUBSYS_LABR_L][SUBSYS_ARIES_A]) ){
+            c1 = crystal_table[ptr->chan];
+            c2 = crystal_table[alt->chan];
+            if(c1 >= 1 && c1 <=8 && c2 >= 1 && c2 <=76 ){
+              lba_hit->Fill(lba_hit, c1, c2, 1);
+            }
+          } break;
+          case SUBSYS_TAC_LABR:
+          c1=crystal_table[alt->chan]-1;  // assign c1 as TAC number
+          if(c1 >= 0 && c1 < N_TACS ){ // 8 LBL + 1 ZDS + 4 ARIES
+            dt_tacs_hist[c1]->Fill(dt_tacs_hist[c1], (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+            tac_lbl_ts_diff[c1]->Fill(tac_lbl_ts_diff[c1], (int)((alt->ts-ptr->ts)+DT_SPEC_LENGTH/2), 1);
+            if(((abs_dt >= time_diff_gate_min[SUBSYS_LABR_L][SUBSYS_TAC_LABR]) && (abs_dt <= time_diff_gate_max[SUBSYS_LABR_L][SUBSYS_TAC_LABR])) && c1 == 8){ // labr-tac with the ARIES TAC
+              c2 = crystal_table[ptr->chan] - 1; // assign c2 as LBL number
+              if(c2 >= 0 && c2 < 8 ){ // 8 LBL detectors
+                corrected_tac_value = (int)alt->ecal + tac_offset[c2];
+                tac_aries_lbl[c2]->Fill(tac_aries_lbl[c2], corrected_tac_value, 1); // tac spectrum per LBL
+                tac_aries_lbl_sum->Fill(tac_aries_lbl_sum, corrected_tac_value, 1); // sum tac spectrum including all LBL
+                if(ptr->ecal >1225 && ptr->ecal <1315){ // gate on LaBr3 energy 1275keV
+                  aries_tac->Fill(aries_tac, (int)corrected_tac_value, 1); // tac spectrum gated on 1275keV
+                  aries_tac_artEn->Fill(aries_tac_artEn, alt->alt_ecal, 1); // ARIES energy spectrum in coincidence with TAC
+                  if(alt->alt_ecal >24 && alt->alt_ecal <36){ // gate on ARIES energy
+                    aries_tac_Egate->Fill(aries_tac_Egate, corrected_tac_value, 1); // tac spectrum gated on 1275keV
                   }
-                  fprintf(stdout,"odb record: %d bytes\n", len);
+                }
+              }
+            }
+          } break;
+          case SUBSYS_TAC_ZDS:
+          c1=crystal_table[alt->chan]-1;  // assign c1 as TAC number
+          if(c1 == 7){ // 8 LBL + 1 ZDS + 4 ARIES
+            tac_lbl_ts_diff[c1]->Fill(tac_lbl_ts_diff[c1], (int)((alt->ts-ptr->ts)+DT_SPEC_LENGTH/2), 1);
+          } break;
+          case SUBSYS_TAC_ART:
+          c1=crystal_table[alt->chan]-1;  // assign c1 as TAC number
+          if(c1 >= 9 && c1 < N_TACS ){ // 8 LBL + 1 ZDS + 4 ARIES
+            tac_lbl_ts_diff[c1]->Fill(tac_lbl_ts_diff[c1], (int)((alt->ts-ptr->ts)+DT_SPEC_LENGTH/2), 1);
+          } break;
+        }
+        return(0);
+      }
 
-                  // PPG: Now all cycles were unpacked and we identified Current
-                  // Copy the relevant ODB PPG pattern into the global variables for this run
-                  index=-1;
-                  for(i=0; i<MAX_ODB_PPG_CYCLES; i++){
-                    if( strncmp(odb_ppg_cycle[i].name,odb_ppg_current,strlen(odb_ppg_current)) == 0 ){
-                      index=i;
-                      break;
-                    }
-                  }
-                  if(index<0){
-                    fprintf(stderr,"Failed to locate Current PPG Cycle in ODB Cycles\n");
+      // This lookup table reorders strips that have already been reordered in the ODB...
+      // Per GRIFFIN elog, https://grsilog.triumf.ca/GRIFFIN/25966
+      // Per GRIFFIN elog, https://grsilog.triumf.ca/GRIFFIN/25968
+      int reorder_rcmp_strips[7][2][32] = {
+        {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+        {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // RCS1 X
+        {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // RCS1 Y
+        {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // RCS2 X
+        {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}, // RCS2 X
+        {{1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30},  // RCS3 X
+        {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // RCS3 Y
+        {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // RCS4 X
+        {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}, // RCS4 Y
+        {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // RCS5 X
+        {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // RCS5 Y
+        {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // RCS6 X
+        {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}  // RCS6 Y
+      };
+
+      // This lookup table reorders strips that have already been reordered in the ODB...
+      // Per GRIFFIN elog, https://grsilog.triumf.ca/GRIFFIN/25966
+      // Per GRIFFIN elog, https://grsilog.triumf.ca/GRIFFIN/25968
+      int reorder_qed_strips[7][2][32] = {
+        {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+        {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED1 P
+        {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}, // QED1 N
+
+        {{1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30},  // QED2 P
+        {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // QED2 N
+
+        {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED3 P
+        {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}, // QED3 N
+
+        {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED4 P
+        {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}, // QED4
+
+        {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED5 P
+        {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}, // QED5 N
+
+        {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED6 P
+        {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}  // QED6 N
+      };
+
+      int frag_hist[PTR_BUFSIZE];
+      int fill_coinc_histos(int win_idx, int frag_idx)
+      {
+        int global_window_size = (int)(sort_window_width/2); // size in grif-replay should be double this
+        Grif_event *alt, *ptr = &grif_event[win_idx], *tmp;
+        int dt, abs_dt,  pos, c1, c2, index, ptr_swap;
+        int pos1, qed1, ge1, pos2, qed2, ge2;  // QED variables
+        double omega, theta1, theta2, azimuthal; // QED variables
+        TH2I *hist_ee; TH1I *hist_dt;
+
+        // histogram of coincwin-size
+        dt = (frag_idx - win_idx + 2*PTR_BUFSIZE) %  PTR_BUFSIZE; ++frag_hist[dt];
+
+        while( win_idx != frag_idx ){ // check all conicidences in window
+          if( ++win_idx == PTR_BUFSIZE ){ win_idx = 0; } // wrap
+          alt = &grif_event[win_idx];
+          if( ptr->subsys > alt->subsys ){ tmp = ptr; ptr = alt; alt = tmp; ptr_swap = 1; }
+
+          abs_dt = dt = ptr->ts - alt->ts; if( dt < 0 ){ abs_dt = -1*dt; }
+          if( abs_dt > global_window_size ){ break; }
+
+          // the usual subsys-vs-subsys 1d-time-diff and 2d-EvsE
+          if( (hist_dt = subsys_dt[ptr->subsys][alt->subsys]) != NULL ){
+            hist_dt->Fill(hist_dt, (int)(abs_dt+DT_SPEC_LENGTH/2), 1);
+          }
+          if( (hist_ee = subsys_e_vs_e[ptr->subsys][alt->subsys]) != NULL ){
+            if((abs_dt >= time_diff_gate_min[ptr->subsys][alt->subsys]) && (abs_dt <= time_diff_gate_max[ptr->subsys][alt->subsys]) ){
+              /*
+              if(ptr->subsys == SUBSYS_QED_PIXEL){
+
+              //  (int)(c2/N_QED_STRIPS); // QED p strip number [0-31]
+              //  (c2%N_QED_STRIPS); // QED n strip number [0-31]
+              fprintf(stdout,"Breakpoint QED-QED [%d,%d,%d,%d] [%d,%d,%d,%d] %d, %d, %d %d\n",crystal_table[ptr->chan],ptr->alt_chan,(int)(ptr->alt_chan/N_QED_STRIPS),
+              crystal_table[alt->chan],alt->alt_chan,alt->alt_chan%N_QED_STRIPS,
+              ptr->trig_acc,alt->trig_acc,(int)ptr->ecal, (int)alt->ecal);
+            }
+            */
+            hist_ee->Fill(hist_ee, (int)ptr->ecal, (int)alt->ecal, 1);
+          }
+        }
+        switch(ptr->subsys){ // No Nested switch - use separate functions if needed
+          case SUBSYS_HPGE_A: fill_ge_coinc_histos(ptr,   alt, abs_dt); break;
+          case SUBSYS_LABR_L: fill_labr_coinc_histos(ptr, alt, abs_dt); break;
+          case SUBSYS_BGO:
+          if(alt->subsys == SUBSYS_BGO){
+            if((abs_dt >= time_diff_gate_min[SUBSYS_BGO][SUBSYS_BGO]) && (abs_dt <= time_diff_gate_max[SUBSYS_BGO][SUBSYS_BGO]) ){
+              c1 = crystal_table[ptr->chan];
+              c2 = crystal_table[alt->chan];
+              bgobgo_hit->Fill(bgobgo_hit, c1, c2, 1);
+            }}
+            break;
+            case SUBSYS_RCMP:
+            if(alt->subsys == SUBSYS_RCMP){
+              if( (abs_dt >= time_diff_gate_min[SUBSYS_RCMP][SUBSYS_RCMP]) && (abs_dt <= time_diff_gate_max[SUBSYS_RCMP][SUBSYS_RCMP]) ){
+                if((pos = crystal_table[ptr->chan]) == crystal_table[alt->chan] &&
+                polarity_table[ptr->chan] != polarity_table[alt->chan] ){ // front and back of same DSSD
+                  c1 = element_table[ptr->chan];
+                  c2 = element_table[alt->chan];
+                  rcmp_fb[(pos-1)]->Fill(rcmp_fb[(pos-1)], (int)ptr->ecal, (int)alt->ecal, 1);
+                  if(polarity_table[ptr->chan]==0){ rcmp_hit[(pos-1)]->Fill(rcmp_hit[(pos-1)], c1, c2, 1);
                   }else{
-                    strcpy(ppg_cycle_name,odb_ppg_cycle[index].name);
-                    fprintf(stdout,"PPG cycle for this run is named %s:\n",ppg_cycle_name);
-                    ppg_cycle_duration=0;
-                    for(i=0; i<odb_ppg_cycle[index].length; i++){
-                      ppg_index=-1;
-                      for(j=0; j<N_PPG_PATTERNS; j++){ if( (odb_ppg_cycle[index].codes[i] & 0xFFFF) == ppg_patterns[j] ){ ppg_index = j; break; } }
-                      if(ppg_index<0){
-                        fprintf(stderr,"unrecognized ppg pattern, 0x%04X\n", (odb_ppg_cycle[index].codes[i] & 0xFFFF));
-                        gen_derived_odb_tables();
-                        return(-1);
-                      }
-                      ppg_cycle_pattern_code[i] = ppg_index;
-
-                      if(odb_ppg_cycle[index].durations[i] == -1){
-                        // Infinte duration
-                        odb_ppg_cycle[index].length = i+1;
-                      }else{
-                        ppg_cycles_active = 1;
-                        ppg_cycle_length = odb_ppg_cycle[index].length;
-                        ppg_cycle_pattern_duration[i] = (long)odb_ppg_cycle[index].durations[i]*100; // Convert from ODB microseconds to timestamp 10 nanosecond units
-                        ppg_cycle_duration += ppg_cycle_pattern_duration[i];
-                      }
-                      fprintf(stdout,"PPG PATTERN %d: %s (%s) for %10.4f milliseconds (%015ld timestamps)\n", i,
-                      ppg_handles[ppg_cycle_pattern_code[i]], ppg_names[ppg_cycle_pattern_code[i]],(double)(ppg_cycle_pattern_duration[i]/100000),ppg_cycle_pattern_duration[i]);
-                    }
-                    if(ppg_cycle_duration == 0){
-                      fprintf(stdout,"PPG cycle duration is infinite, ie. no cycles\n");
-                      fprintf(stdout,"Setting PPG cycle duration to 15 seconds for diagnostics\n");
-                      ppg_cycle_duration = 1500000000; // 15 seconds
-                      ppg_cycle_pattern_duration[0] = 1500000000; // 15 seconds
-                      //  fprintf(stdout,"Setting PPG cycle duration to 5 minutes for diagnostics\n");
-                      //  ppg_cycle_duration = 30000000000; // 5 minutes
-                      //  ppg_cycle_pattern_duration[0] = 30000000000; // 5 minutes
-                      ppg_cycles_active = 1;
-                      ppg_cycle_length = odb_ppg_cycle[index].length;
-                    }else{
-                      fprintf(stdout,"PPG cycle duration is %10.4f seconds\n",(double)(ppg_cycle_duration/100000000));
-                    }
-                    // Set the initial cycle settings
-                    ppg_current_pattern = ppg_cycle_pattern_code[0];  // Index of the current PPG cycle pattern for use with the ppg_patterns array
-                    ppg_cycle_number = 0;                             // Current cycle number. Cycles counted from zero at beginning of run
-                    ppg_cycle_start = 0;                              // Timestamp of the start of the current cycle
-                    ppg_cycle_end = ppg_cycle_duration;               // Timestamp of the end of the current cycle
-                    ppg_cycle_step = 0;                               // Current pattern number within this cycle. Patterns counted from zero at beginning of cycle
-                    ppg_pattern_start = 0;                            // Timestamp of the start of the current pattern
-                    ppg_pattern_end = ppg_cycle_pattern_duration[0];  // Timestamp of the end of the current pattern
-                    fprintf(stdout,"Cycle %04d, start/finish [%ld/%ld]: step %d, %s, start/finish [%ld/%ld], ppg_current_pattern=%d\n",
-                    ppg_cycle_number, ppg_cycle_start, ppg_cycle_end, ppg_cycle_step, ppg_handles[ppg_current_pattern], ppg_pattern_start, ppg_pattern_end, ppg_current_pattern);
+                    rcmp_hit[(pos-1)]->Fill(rcmp_hit[(pos-1)], c2, c1, 1);
                   }
+                }}} break;
+                case SUBSYS_ARIES_A:
+                if( alt->subsys == SUBSYS_ARIES_A && ptr->ecal>0 && alt->ecal>0 ){
+                  if((abs_dt >= time_diff_gate_min[SUBSYS_ARIES_A][SUBSYS_ARIES_A]) && (abs_dt <= time_diff_gate_max[SUBSYS_ARIES_A][SUBSYS_ARIES_A])){
+                    c1 = crystal_table[ptr->chan];
+                    c2 = crystal_table[alt->chan];
+                    if( c1 >= 1 && c1 <=76 && c2 >= 1 && c2 <=76 ){
+                      aa_hit->Fill(aa_hit, c1, c2, 1);
+                    }
+                  }}
+                  if( alt->subsys == SUBSYS_TAC_LABR && crystal_table[alt->chan] == 8 ){ // ARIES TAC
+                    // sum tac spectrum including all art
+                    tac_aries_art_sum->Fill(tac_aries_art_sum, (int)alt->ecal, 1);
+                    c2 = crystal_table[ptr->chan]-1;
+                    if( c2>=0 && c2<N_ARIES ){ // tac spectrum per ART tiles
+                      tac_aries_art[c2]->Fill(tac_aries_art
+                        [c2], (int)alt->ecal, 1);
+                      }
+                    } break;
+                    case SUBSYS_ARIES_B:// ARIES Fast Output in CAEN
+                    if(alt->subsys == SUBSYS_DESWALL){ // aries-DSW
+                      art_dsw->Fill(art_dsw, (int)ptr->ecal, (int)alt->alt_ecal, 1);
+                      desw_sum_e_b->Fill(desw_sum_e_b, (int)alt->ecal, 1);
+                      desw_sum_tof_b->Fill(desw_sum_tof_b, (int)alt->alt_ecal, 1); // alt_ecal = corrected time-of-flight
+                    } break;
+                    case SUBSYS_ZDS_A: // grif16 zds
+                    if(alt->subsys == SUBSYS_ZDS_B ){ // ZDS GRIF-CAEN coincidence
+                      gc_hist->Fill(gc_hist, 3, 1);
+                      gc_hist->Fill(gc_hist, 5, 1);
+                      dt_hist[23]->Fill(dt_hist[23], (int)(abs(ptr->cfd - alt->cfd)+DT_SPEC_LENGTH/2), 1);
+                    } break;
+                    case SUBSYS_DESWALL:
+                    if( alt->subsys == SUBSYS_DESWALL ){
+                      dt_hist[24]->Fill(dt_hist[24], (int)(abs(ptr->cfd - alt->cfd)+DT_SPEC_LENGTH/2), 1);
+                      c1 = crystal_table[ptr->chan]-1; c2 = crystal_table[alt->chan]-1;
+                      if( c1 >= 0 && c1 < 60 && c2 >= 0 && c2 < 60 ){
+                        dsw_hit->Fill(dsw_hit, c1, c2, 1);
+                        dsw_dsw->Fill(dsw_dsw, (int)ptr->alt_ecal, (int)alt->alt_ecal, 1);
+                        // Fold 2 sum spectra
+                        desw_sum_e_nn->Fill(desw_sum_e_nn, (int)ptr->ecal, 1);
+                        desw_sum_tof_nn->Fill(desw_sum_tof_nn, (int)ptr->alt_ecal, 1);// alt_ecal = corrected time-of-flight
+                        // DSW-DSW angular correlations
+                        // Fill the appropriate angular bin spectrum with the corrected time-of-flight value
+                        index = DSW_DSW_angles[c1][c2];
+                        dsw_angcor[index]->Fill(dsw_angcor
+                          [index],(int)ptr->alt_ecal,(int)alt->alt_ecal, 1);
+                          // Fold 2, angle greater than 60 degrees, sum spectra
+                          // index 13 = 58.555, index 14 = 61.535
+                          if( index > 13 ){                                         // alt_ecal = corrected time-of-flight
+                            desw_sum_e_nn_a->Fill(desw_sum_e_nn_a, (int)ptr->ecal, 1);
+                            desw_sum_tof_nn_a->Fill(desw_sum_tof_nn_a, (int)ptr->alt_ecal, 1);
+                          }
+                        }
+                      }
+                      if( alt->subsys == SUBSYS_ZDS_B ){ // ZDS-DSW
+                        dt_hist[25]->Fill(dt_hist[25], (int)(abs(ptr->cfd - alt->cfd)+DT_SPEC_LENGTH/2), 1);
+                        desw_sum_e_b->Fill(desw_sum_e_b, (int)ptr->ecal, 1);
+                        desw_sum_tof_b->Fill(desw_sum_tof_b, (int)ptr->alt_ecal, 1); // alt_ecal = corrected time-of-flight
 
-                  // arrays typically around 500 entries [one per "chan"] each entry with ...
-                  //   daq-address, name, type, gains etc.
-                  //
-                  gen_derived_odb_tables();
+                        desw_q_tof->Fill(desw_q_tof, (int)ptr->q1, (int)ptr->alt_ecal, 1);
+                        desw_cc_tof->Fill(desw_cc_tof, (int)ptr->cc_short, (int)ptr->alt_ecal, 1);
+                      } break;
+                      case SUBSYS_COMPTON:
+                      if( alt->subsys == SUBSYS_COMPTON ){ // COMPTON-COMPTON where is a coincidence between a DSSD pixel and a HPGE with sum energy of 511keV
+                        // QED COMPTON EVENTS
+                        // Identified as subsys==HPGE_A and pu_class==QED_COMPTON
+                        // pos is HPGE crystal number
+                        // In COMPTON event, ecal will be Ge and alt_ecal will be QED_PIXEL
+                        // In COMPTON event, crystal_table[chan]=pos will be Ge, alt_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
+                        //  pos  = crystal_table[ptr->chan]; // QED DSSD number [1-6]
+                        //  c2 = (ptr->alt_chan%1024);        // Pixel number [0-1023]
+                        //  c1 = ptr->net_id; // HPGe crystal number
 
+                        pos1 = crystal_table[ptr->chan];
+                        qed1 = (ptr->alt_chan%1024);
+                        ge1 = ptr->net_id;
+                        pos2 = crystal_table[alt->chan];
+                        qed2 = (alt->alt_chan%1024);
+                        ge2 = alt->net_id;
+                        omega = angular_diff_QEDQED(pos1, qed1, pos2, qed2);
+                        qed_dcs_omega->Fill(qed_dcs_omega, (int)omega, 1);
+                        qed_dcs_omega_dt->Fill(qed_dcs_omega_dt, (int)(ptr->ts - alt->ts)+512, (int)omega, 1);
+                        qedx_dcs_omega_dt[pos1-1]->Fill(qedx_dcs_omega_dt[pos1-1], (int)(ptr->ts - alt->ts)+512, (int)omega, 1);
+                        theta1 = scattering_angle_QEDGe(pos1, qed1, ge1);
+                        theta2 = scattering_angle_QEDGe(pos2, qed2, ge2);
+                        //if(omega>45){
+                        if(pos1 != pos2 && ge1 != ge2){
+                          qed_theta1_vs_theta2->Fill(qed_theta1_vs_theta2, theta1, theta2, 1);
+                        }
+                        if(omega>170){
+                          if(theta1>69 && theta1<111 && theta2>69 && theta2<111){
+                            comp_comp->Fill(comp_comp, (int)ptr->esum, (int)(alt->esum), 1);
+                            azimuthal = azimuthal_DCS(pos1, qed1, ge1, pos2, qed2, ge2);
+                            //  fprintf(stdout,"omega = %f, theta1 = %f, theta2 = %f, azimuth = %f, for [%d %d %d] - [%d %d %d]\n",omega,theta1,theta2,azimuthal,pos1, qed1, ge1, pos2, qed2, ge2);
+                            qed_dcs_azi->Fill(qed_dcs_azi, (int)azimuthal, 1);
+                          }
+                        }
+                      }
+                      break;
+                    } // end switch
+                  }
                   return(0);
                 }
 
-                // original odb arrays were read into {addr_table,chan_name,dtype_table(+gains)}
-                // extract extra details stored in channel names (and record for later)
-                // (these details include crystal/element numbers and polarities)
-                // [use above for subsystem (no longer use datatype to determine subsystems)]
-                extern int read_caen_odb_addresses(int odb_daqsize, unsigned short *addr_table);
-                int gen_derived_odb_tables()
+                //#######################################################################
+                //###########   READ XML ODB DUMP FROM START OF DATA FILE   #############
+                //#######################################################################
+
+                // Note - the odb names do not distinguish between subtypes of detectors
+                // e.g Ge A and B channels
+                // the subsystem names will be extended to include this information
+                // (and the odb-specific names are only used below)
+
+                #define MAX_ODB_SUBSYS 24
+                #define ODBHANDLE_GRG   0
+                #define ODBHANDLE_GRS   1
+                #define ODBHANDLE_SEP   2
+                #define ODBHANDLE_PAC   3
+                #define ODBHANDLE_LBS   4
+                #define ODBHANDLE_LBT   5
+                #define ODBHANDLE_LBL   6
+                #define ODBHANDLE_DSC   7
+                #define ODBHANDLE_ART   8
+                #define ODBHANDLE_ZDS   9
+                #define ODBHANDLE_RCS  10
+                #define ODBHANDLE_XXX  11
+                #define ODBHANDLE_DSW  12
+                #define ODBHANDLE_DSG  13
+                #define ODBHANDLE_DAL  14
+                #define ODBHANDLE_DAT  15
+                #define ODBHANDLE_QED  16
+                #define ODBHANDLE_UNK  23
+                static char odb_handle[MAX_ODB_SUBSYS][8] = {
+                  "GRG", "GRS", "SEP", "PAC",  //  0- 3
+                  "LBS", "LBT", "LBL", "DSC",  //  4- 7
+                  "ART", "ZDS", "RCS", "XXX",  //  8-11
+                  "DSW", "DSG", "DAL", "DAT",  //  12-15
+                  "QED",    "",    "",    "",
+                  "",    "",    "",    "UNK"
+                };
+
+                static char   path[256];
+                static char dirname[64],value[32],type[32];
+                extern char midas_runtitle[SYS_PATH_LENGTH];
+
+                static void *arrayptr;
+                int read_odb_items(int len, int *bank_data)
                 {
-                  int i, j, tmp, subsys, pos, element, output_type;
-                  char sys_name[64], crystal, polarity, type;
+                  char *path_ptr, *ptr, *str, *odb_data = (char *)bank_data, posn[2], odb_ppg_current[128];
+                  int i, j, c = '<', d = '>', dtype=0, active=0, index=0, ppg_index, odb_ppg_cycle_count=-1;
 
-                  read_caen_odb_addresses(odb_daqsize, (unsigned short *)addrs);
+                  // The currently set cycle is included in the ODB dump after all cycles are defined.
+                  // So we need to unpack them all and then select the values we need.
+                  ppg_cycles odb_ppg_cycle[MAX_ODB_PPG_CYCLES];
 
-                  // generate reverse mapping of address to channel number
-                  //  (most of this array is undefined and stays at -1)
-                  memset(address_chan, 0xFF, sizeof(address_chan)); // set to -1
-                  for(i=0; i<MAX_ADDRESS && i<odb_daqsize; i++){
-                    address_chan[ (unsigned short)chan_address[i] ] = i;
-                  }
+                  ptr = odb_data;  path_ptr = path;
+                  while(1){
+                    if( (str = strchr(ptr,c)) == NULL ){ break; }
+                    ptr = str;
+                    if( (str = strchr(ptr,d)) == NULL ){ break; }
 
-                  memset(crystal_table,  0xff, MAX_DAQSIZE*sizeof(int)); // initialise all to -1
-                  memset(element_table,  0xff, MAX_DAQSIZE*sizeof(int));
-                  memset(polarity_table, 0xff, MAX_DAQSIZE*sizeof(int));
-                  memset(subsys_table,   0xff, MAX_DAQSIZE*sizeof(int));
-                  for(i=0; i<MAX_DAQSIZE && i<odb_daqsize; i++){
-                    if( (tmp=sscanf(chan_name[i], "%3c%d%c%c%d%c", sys_name, &pos, &crystal, &polarity, &element, &type)) != 6 ){
-                      fprintf(stderr,"can't decode name[%s] decoded %d of 6 items\n", chan_name[i], tmp );
+                    if( strncmp(ptr,"<!--",4) == 0 || strncmp(ptr,"<odb", 4) == 0 ||
+                    strncmp(ptr,"</odb",5) == 0 ){ // comment - skip
+                    } else if( strncmp(ptr,"<dir ",5) == 0 ){
+                      if( strncmp(ptr,"<dir name=\"",11) == 0 ){
+                        i=11; while( *(ptr+i) != '"' && *(ptr+i) != d ){ ++i; }
+                      }
+                      memcpy(dirname, ptr+11, i-11); dirname[i-11] = '\0';
+                      if( *(ptr+1+i) == '/' ){ ptr=str+1; continue; }
+                      //if( sscanf(ptr,"<dir name=\"%s\">", dirname) < 1 ){
+                      //   fprintf(stderr,"can't read dirname\n"); ptr=str+1; continue;
+                      //}
+                      //if( strncmp(dirname+strlen(dirname)-3,"\"/>",3) == 0 ){
+                      //   ptr=str+1; continue;
+                      //}
+                      //if( dirname[strlen(dirname)-1]=='>'  ){
+                      //   dirname[strlen(dirname)-1]='\0';
+                      //}
+                      //if( dirname[strlen(dirname)-1]=='\"' ){
+                      //  dirname[strlen(dirname)-1]='\0';
+                      //}
+                      *path_ptr = '/'; strcpy(path_ptr+1, dirname);
+                      path_ptr += strlen(dirname)+1;
+                      *path_ptr = '\0';
+                      if( strncmp(path,"/PPG/Cycles/",12) == 0 ){
+                        odb_ppg_cycle_count++;
+                        strcpy(odb_ppg_cycle[odb_ppg_cycle_count].name, dirname);
+                      }
+                    } else if( strncmp(ptr,"</dir>",6) == 0 ){
+                      while(1){
+                        if( --path_ptr < path ){ path_ptr = path;  *path_ptr = '\0';  break; }
+                        if( *path_ptr == '/' ){ *path_ptr = '\0';  break; }
+                      }
+                      index=0; // for debugger to stop here
+                    } else if( strncasecmp(ptr,"<key name=\"Run Title\" type=\"STRING\"", 35) == 0 ){
+                      ptr = str+1;
+                      if( (str = strchr(ptr,c)) == NULL ){ break; }
+                      i = (str-ptr) > SYS_PATH_LENGTH-1 ? SYS_PATH_LENGTH-1 : (str-ptr);
+                      memcpy( midas_runtitle, ptr, i ); midas_runtitle[i] = 0;
+                      ptr += i+1;
+                      if( (str = strchr(ptr,d)) == NULL ){ break; }
+                    } else if( strncasecmp(ptr,"<key name=\"Current\"", 19) == 0 &&
+                    strncmp(path,"/PPG",4) == 0 ){
+                      *str = ' '; if( (str = strchr(str,c)) == NULL ){ break; }
+                      *str = ' '; if( (str = strchr(str,d)) == NULL ){ break; }
+                      if( sscanf(ptr,"<key name=\"Current\" type=\"STRING\" size=\"%d\" %s /key>", &dtype, value) < 2 ){
+                        fprintf(stderr,"can't read key name for Current PPG cycle\n"); ptr=str+1; continue;
+                      }
+                      strcpy(odb_ppg_current,value);
+                      ptr += i+1;
+                    } else if( strncasecmp(ptr,"<key name=\"prg_ddtm\"", 20) == 0 &&
+                    strncmp(path,"/DAQ/params/grif16/template/0",29) == 0 ){
+                      if( sscanf(ptr,"<key name=\"prg_ddtm\" type=\"DWORD\">%d</key>", &subsys_prg_ddtm[SUBSYS_HPGE_A]) < 1 ){
+                        fprintf(stderr,"can't read key value for /DAQ/params/grif16/template/0/prg_ddtm\n"); ptr=str+1; continue;
+                      }
+                      fprintf(stdout,"Read in Det type 0 (HPGE A) prg_ddtm as %d\n",subsys_prg_ddtm[SUBSYS_HPGE_A]);
+                      while( *(ptr) != '/' ){ ++ptr; } while( *(ptr) != '<' ){ ++ptr; }
+                    } else if( strncasecmp(ptr,"<key name=\"prg_ddtm\"", 20) == 0 &&
+                    strncmp(path,"/DAQ/params/grif16/template/1",29) == 0 ){
+                      if( sscanf(ptr,"<key name=\"prg_ddtm\" type=\"DWORD\">%d</key>", &subsys_prg_ddtm[SUBSYS_HPGE_B]) < 1 ){
+                        fprintf(stderr,"can't read key value for /DAQ/params/grif16/template/1/prg_ddtm\n"); ptr=str+1; continue;
+                      }
+                      fprintf(stdout,"Read in Det type 1 (HPGE B) prg_ddtm as %d\n",subsys_prg_ddtm[SUBSYS_HPGE_B]);
+                      while( *(ptr) != '/' ){ ++ptr; } while( *(ptr) != '<' ){ ++ptr; }
+                    } else if( strncmp(ptr,"</keyarray>",10) == 0 ){ active = 0; arrayptr = (void *)('\0');
+                    if( strncmp(path,"/PPG/Cycles/",12) == 0 ){ odb_ppg_cycle[odb_ppg_cycle_count].length = index+1; }
+                  } else if( strncmp(ptr,"<keyarray ",10) == 0 ){
+                    if( strncmp(path,"/PPG/Cycles/",12) == 0 ){
+                      if( sscanf(ptr,"<keyarray name=\"%s", value) < 1 ){
+                        fprintf(stderr,"can't read PPG keyarray entry\n"); ptr=str+1; continue;
+                      }
+                      if( value[strlen(value)-1]=='\"' ){ value[strlen(value)-1]='\0'; }
+                      if( strcmp(value,"PPGcodes") == 0 ){
+                        active = 1; arrayptr = (void *)odb_ppg_cycle[odb_ppg_cycle_count].codes; dtype=0;
+                      }
+                      if( strcmp(value,"durations") == 0 ){
+                        active = 1; arrayptr = (void *)odb_ppg_cycle[odb_ppg_cycle_count].durations; dtype=0;
+                      }
+                      ptr=str+1;
                       continue;
                     }
-                    for(j=0; j<MAX_ODB_SUBSYS; j++){
-                      if( strncmp(sys_name, odb_handle[j], 3) == 0 ){ subsys = j; break; }
+                    if( strcmp(path,"/DAQ/params/MSC") != 0 &&
+                    strcmp(path,"/DAQ/MSC")        != 0 &&
+                    strcmp(path,"/DAQ/PSC")        != 0 ){  ptr=str+1; continue; }
+                    if( sscanf(ptr,"<keyarray name=\"%s", value) < 1 ){
+                      fprintf(stderr,"can't read keyarray entry\n"); ptr=str+1; continue;
                     }
-                    if( j == MAX_ODB_SUBSYS ){ subsys = j-1; // use final entry: "unknown"
-                    fprintf(stderr,"Unknown subsystem[%s] in %s\n", sys_name, chan_name[i]);
+                    if( value[strlen(value)-1]=='\"' ){ value[strlen(value)-1]='\0'; }
+                    if( strcmp(value,"PSC") == 0 || strcmp(value,"MSC") == 0 ){
+                      active = 1; arrayptr = (void *)addr_table; dtype=1;
+                    }
+                    if( strcmp(value,"chan") == 0 ){
+                      active = 1; arrayptr = (void *)chan_name; dtype=3;
+                    }
+                    if( strcmp(value,"datatype") == 0 ){
+                      //active = 1; arrayptr = (void *)dtype_table; dtype=1;
+                      active = 1; arrayptr = (void *)dtype_table; dtype=0;
+                    }
+                    if( strcmp(value,"gain") == 0 ){
+                      active = 1; arrayptr = (void *)gain_table; dtype=2;
+                    }
+                    if( strcmp(value,"offset") == 0 ){
+                      active = 1; arrayptr = (void *)offs_table; dtype=2;
+                    }
+                    if( strcmp(value,"quadratic") == 0 ){
+                      active = 1; arrayptr = (void *)quad_table; dtype=2;
+                    }
+                  } else if( strncmp(ptr,"<value index=",13) == 0 ){
+                    if( !active ){ ptr=str+1; continue; }
+                    // remove the >< surrounding the value, and move str to the end of the line
+                    *str = ' '; if( (str = strchr(str,c)) == NULL ){ break; }
+                    *str = ' '; if( (str = strchr(str,d)) == NULL ){ break; }
+                    if( sscanf(ptr,"<value index=\"%d\" %s /value>", &index, value) < 2 ){
+                      fprintf(stderr,"can't read value entry\n");
+                    }
+                    if( index < 0 || index >= MAX_DAQSIZE ){
+                      fprintf(stderr,"index %d out of range\n", index);
+                    }
+                    // index starts at zero, odb_daqsize is count
+                    if( index >= odb_daqsize ){ odb_daqsize = index+1; }
+                    if(        dtype == 0 ){  // int
+                      if( sscanf(value,"%d", (((int *)arrayptr)+index)) < 1 ){
+                        fprintf(stderr,"can't read value %s\n", value);
+                      }
+                    } else if( dtype == 1 ){  // short int
+                      if( sscanf(value,"%hd", (((short *)arrayptr)+index)) < 1 ){
+                        fprintf(stderr,"can't read value %s\n", value);
+                      }
+                    } else if( dtype == 2 ){  // float
+                      if( sscanf(value,"%f", (((float *)arrayptr)+index)) < 1 ){
+                        fprintf(stderr,"can't read value %s\n", value);
+                      }
+                    } else {                 // string
+                      strncpy(arrayptr+index*CHAN_NAMELEN, value, CHAN_NAMELEN);
+                      *((char *)arrayptr+(index+1)*CHAN_NAMELEN - 1) = '\0';
+                    }
                   }
+                  ptr=str+1;
+                }
+                fprintf(stdout,"odb record: %d bytes\n", len);
 
-                  // Mention bad detector types (no longer relied on for subsystem id)
-                  if( dtype_table[i] < 0 || dtype_table[i] >= 16 ){
-                    fprintf(stderr,"bad datatype[%d] at table position %d\n", dtype_table[i], i);
-                  }
-
-                  // Some detector elements have more than one output (HPGe A and B)
-                  // 1 is A, 0 is B, -1 is X or unknown
-                  output_type = type=='A' ? 1 : (type=='B' ? 0 : -1);
-                  if(subsys == ODBHANDLE_ZDS){ if(type=='X'){ output_type = 1; } } // Older ZDS convention
-
-                  // Polarity: 1 is N, 0 is P or T or S, -1 is anything else
-                  if(        polarity == 'N' ){ polarity_table[i] = 1;
-                  } else if( polarity == 'P' ){ polarity_table[i] = 0;
-                  } else if( polarity == 'T' ){ polarity_table[i] = 0; // TAC signal
-                  } else if( polarity == 'S' ){ polarity_table[i] = 1; // ARIES Standard Ouput signal
-                  } else if( polarity == 'F' ){ polarity_table[i] = 0; // ARIES Fast Output signal
-                  } else if( polarity == 'X' ){ polarity_table[i] = 0; // XXX type
-                  } else { fprintf(stderr,"unknown polarity[=%c] in %s\n", polarity, chan_name[i]); }
-
-                  // Record crystal and element numbers [** Naming schemes are subsystem-dependant **]
-                  switch(subsys){
-                    case ODBHANDLE_LBL: case ODBHANDLE_LBS: // LaBr,Paces, Aries and Zds
-                    case ODBHANDLE_LBT: case ODBHANDLE_SEP: case ODBHANDLE_ART:
-                    case ODBHANDLE_DAL: case ODBHANDLE_DAT:
-                    case ODBHANDLE_PAC: case ODBHANDLE_ZDS: case ODBHANDLE_DSW:
-                    crystal_table[i] = pos;
-                    if(        crystal == 'A' ){ element_table[i] = 1;
-                    } else if( crystal == 'B' ){ element_table[i] = 2;
-                    } else if( crystal == 'C' ){ element_table[i] = 3;
-                    } else if( crystal == 'X' ){ element_table[i] = -1; // just one crystal for LaBr3, ZDS, ART, LBT, SEP
-                    } else {
-                      fprintf(stderr,"unknown crystal for ancillary[=%c] in %s\n", crystal, chan_name[i]);
-                    } break;
-                    case ODBHANDLE_RCS:
-                    crystal_table[i] = pos;
-                    element_table[i] = reorder_rcmp_strips[pos][polarity_table[i]][element];
-                    break;
-                    case ODBHANDLE_QED:
-                    crystal_table[i] = pos;
-                    element_table[i] = reorder_qed_strips[pos][polarity_table[i]][element];
-                    break;
-                    case ODBHANDLE_GRG: case ODBHANDLE_GRS:
-                    element_table[i] = element;
-                    pos -= 1; pos *=4;
-                    if(        crystal == 'B' ){ crystal_table[i] = pos;
-                    } else if( crystal == 'G' ){ crystal_table[i] = pos+1;
-                    } else if( crystal == 'R' ){ crystal_table[i] = pos+2;
-                    } else if( crystal == 'W' ){ crystal_table[i] = pos+3;
-                    } else if( crystal == 'X' ){ crystal_table[i] = -1; // crystal undefined
-                    } else {
-                      fprintf(stderr,"unknown crystal[=%c] in %s\n", crystal, chan_name[i]);
-                    } break;
-                    default: break;
-                  }
-
-                  // set full subsystem id (including polarity/output-type etc)
-                  switch(subsys){
-                    case ODBHANDLE_GRS: subsys_table[i] = SUBSYS_BGO;       break;
-                    case ODBHANDLE_SEP: subsys_table[i] = SUBSYS_SCEPTAR;   break;
-                    case ODBHANDLE_PAC: subsys_table[i] = SUBSYS_PACES;     break;
-                    case ODBHANDLE_LBS: subsys_table[i] = SUBSYS_LABR_BGO;  break;
-                    case ODBHANDLE_LBL: subsys_table[i] = SUBSYS_LABR_L;    break;
-                    case ODBHANDLE_DAL: subsys_table[i] = SUBSYS_LABR_L;    break;
-                    case ODBHANDLE_DSC: subsys_table[i] = SUBSYS_DESCANT;   break;
-                    case ODBHANDLE_RCS: subsys_table[i] = SUBSYS_RCMP;      break;
-                    case ODBHANDLE_QED: subsys_table[i] = SUBSYS_QED_STRIP; break;
-                    case ODBHANDLE_DSW: subsys_table[i] = SUBSYS_DESWALL;  break;
-                    case ODBHANDLE_DSG: subsys_table[i] = SUBSYS_DSG;  break;
-                    case ODBHANDLE_GRG: subsys_table[i] = (output_type == 1) ? SUBSYS_HPGE_A :SUBSYS_HPGE_B; break;
-                    case ODBHANDLE_ZDS: subsys_table[i] = (output_type == 1) ? SUBSYS_ZDS_A  :SUBSYS_ZDS_B;  break;
-                    case ODBHANDLE_ART: subsys_table[i] = (polarity_table[i] == 1) ? SUBSYS_ARIES_A:SUBSYS_ARIES_B;break;
-                    case ODBHANDLE_XXX: subsys_table[i] = SUBSYS_IGNORE;    break;
-                    case ODBHANDLE_UNK: subsys_table[i] = SUBSYS_UNKNOWN;   break;
-                    case ODBHANDLE_DAT: if(crystal_table[i]<8){ subsys_table[i] = SUBSYS_TAC_LABR;
-                    }else{ subsys_table[i] = SUBSYS_TAC_ZDS; }
-                    break;
-                    case ODBHANDLE_LBT: if(crystal_table[i]<8){ subsys_table[i] = SUBSYS_TAC_LABR;
-                    }else if(crystal_table[i]>8){ subsys_table[i] = SUBSYS_TAC_ART;
-                    }else{ subsys_table[i] = SUBSYS_TAC_ZDS; }
+                // PPG: Now all cycles were unpacked and we identified Current
+                // Copy the relevant ODB PPG pattern into the global variables for this run
+                index=-1;
+                for(i=0; i<MAX_ODB_PPG_CYCLES; i++){
+                  if( strncmp(odb_ppg_cycle[i].name,odb_ppg_current,strlen(odb_ppg_current)) == 0 ){
+                    index=i;
                     break;
                   }
                 }
-                memset(subsys_initialized, 0, sizeof(int)*MAX_SUBSYS );
+                if(index<0){
+                  fprintf(stderr,"Failed to locate Current PPG Cycle in ODB Cycles\n");
+                }else{
+                  strcpy(ppg_cycle_name,odb_ppg_cycle[index].name);
+                  fprintf(stdout,"PPG cycle for this run is named %s:\n",ppg_cycle_name);
+                  ppg_cycle_duration=0;
+                  for(i=0; i<odb_ppg_cycle[index].length; i++){
+                    ppg_index=-1;
+                    for(j=0; j<N_PPG_PATTERNS; j++){ if( (odb_ppg_cycle[index].codes[i] & 0xFFFF) == ppg_patterns[j] ){ ppg_index = j; break; } }
+                    if(ppg_index<0){
+                      fprintf(stderr,"unrecognized ppg pattern, 0x%04X\n", (odb_ppg_cycle[index].codes[i] & 0xFFFF));
+                      gen_derived_odb_tables();
+                      return(-1);
+                    }
+                    ppg_cycle_pattern_code[i] = ppg_index;
+
+                    if(odb_ppg_cycle[index].durations[i] == -1){
+                      // Infinte duration
+                      odb_ppg_cycle[index].length = i+1;
+                    }else{
+                      ppg_cycles_active = 1;
+                      ppg_cycle_length = odb_ppg_cycle[index].length;
+                      ppg_cycle_pattern_duration[i] = (long)odb_ppg_cycle[index].durations[i]*100; // Convert from ODB microseconds to timestamp 10 nanosecond units
+                      ppg_cycle_duration += ppg_cycle_pattern_duration[i];
+                    }
+                    fprintf(stdout,"PPG PATTERN %d: %s (%s) for %10.4f milliseconds (%015ld timestamps)\n", i,
+                    ppg_handles[ppg_cycle_pattern_code[i]], ppg_names[ppg_cycle_pattern_code[i]],(double)(ppg_cycle_pattern_duration[i]/100000),ppg_cycle_pattern_duration[i]);
+                  }
+                  if(ppg_cycle_duration == 0){
+                    fprintf(stdout,"PPG cycle duration is infinite, ie. no cycles\n");
+                    fprintf(stdout,"Setting PPG cycle duration to 15 seconds for diagnostics\n");
+                    ppg_cycle_duration = 1500000000; // 15 seconds
+                    ppg_cycle_pattern_duration[0] = 1500000000; // 15 seconds
+                    //  fprintf(stdout,"Setting PPG cycle duration to 5 minutes for diagnostics\n");
+                    //  ppg_cycle_duration = 30000000000; // 5 minutes
+                    //  ppg_cycle_pattern_duration[0] = 30000000000; // 5 minutes
+                    ppg_cycles_active = 1;
+                    ppg_cycle_length = odb_ppg_cycle[index].length;
+                  }else{
+                    fprintf(stdout,"PPG cycle duration is %10.4f seconds\n",(double)(ppg_cycle_duration/100000000));
+                  }
+                  // Set the initial cycle settings
+                  ppg_current_pattern = ppg_cycle_pattern_code[0];  // Index of the current PPG cycle pattern for use with the ppg_patterns array
+                  ppg_cycle_number = 0;                             // Current cycle number. Cycles counted from zero at beginning of run
+                  ppg_cycle_start = 0;                              // Timestamp of the start of the current cycle
+                  ppg_cycle_end = ppg_cycle_duration;               // Timestamp of the end of the current cycle
+                  ppg_cycle_step = 0;                               // Current pattern number within this cycle. Patterns counted from zero at beginning of cycle
+                  ppg_pattern_start = 0;                            // Timestamp of the start of the current pattern
+                  ppg_pattern_end = ppg_cycle_pattern_duration[0];  // Timestamp of the end of the current pattern
+                  fprintf(stdout,"Cycle %04d, start/finish [%ld/%ld]: step %d, %s, start/finish [%ld/%ld], ppg_current_pattern=%d\n",
+                  ppg_cycle_number, ppg_cycle_start, ppg_cycle_end, ppg_cycle_step, ppg_handles[ppg_current_pattern], ppg_pattern_start, ppg_pattern_end, ppg_current_pattern);
+                }
+
+                // arrays typically around 500 entries [one per "chan"] each entry with ...
+                //   daq-address, name, type, gains etc.
+                //
+                gen_derived_odb_tables();
 
                 return(0);
               }
+
+              // original odb arrays were read into {addr_table,chan_name,dtype_table(+gains)}
+              // extract extra details stored in channel names (and record for later)
+              // (these details include crystal/element numbers and polarities)
+              // [use above for subsystem (no longer use datatype to determine subsystems)]
+              extern int read_caen_odb_addresses(int odb_daqsize, unsigned short *addr_table);
+              int gen_derived_odb_tables()
+              {
+                int i, j, tmp, subsys, pos, element, output_type;
+                char sys_name[64], crystal, polarity, type;
+
+                read_caen_odb_addresses(odb_daqsize, (unsigned short *)addrs);
+
+                // generate reverse mapping of address to channel number
+                //  (most of this array is undefined and stays at -1)
+                memset(address_chan, 0xFF, sizeof(address_chan)); // set to -1
+                for(i=0; i<MAX_ADDRESS && i<odb_daqsize; i++){
+                  address_chan[ (unsigned short)chan_address[i] ] = i;
+                }
+
+                memset(crystal_table,  0xff, MAX_DAQSIZE*sizeof(int)); // initialise all to -1
+                memset(element_table,  0xff, MAX_DAQSIZE*sizeof(int));
+                memset(polarity_table, 0xff, MAX_DAQSIZE*sizeof(int));
+                memset(subsys_table,   0xff, MAX_DAQSIZE*sizeof(int));
+                for(i=0; i<MAX_DAQSIZE && i<odb_daqsize; i++){
+                  if( (tmp=sscanf(chan_name[i], "%3c%d%c%c%d%c", sys_name, &pos, &crystal, &polarity, &element, &type)) != 6 ){
+                    fprintf(stderr,"can't decode name[%s] decoded %d of 6 items\n", chan_name[i], tmp );
+                    continue;
+                  }
+                  for(j=0; j<MAX_ODB_SUBSYS; j++){
+                    if( strncmp(sys_name, odb_handle[j], 3) == 0 ){ subsys = j; break; }
+                  }
+                  if( j == MAX_ODB_SUBSYS ){ subsys = j-1; // use final entry: "unknown"
+                  fprintf(stderr,"Unknown subsystem[%s] in %s\n", sys_name, chan_name[i]);
+                }
+
+                // Mention bad detector types (no longer relied on for subsystem id)
+                if( dtype_table[i] < 0 || dtype_table[i] >= 16 ){
+                  fprintf(stderr,"bad datatype[%d] at table position %d\n", dtype_table[i], i);
+                }
+
+                // Some detector elements have more than one output (HPGe A and B)
+                // 1 is A, 0 is B, -1 is X or unknown
+                output_type = type=='A' ? 1 : (type=='B' ? 0 : -1);
+                if(subsys == ODBHANDLE_ZDS){ if(type=='X'){ output_type = 1; } } // Older ZDS convention
+
+                // Polarity: 1 is N, 0 is P or T or S, -1 is anything else
+                if(        polarity == 'N' ){ polarity_table[i] = 1;
+                } else if( polarity == 'P' ){ polarity_table[i] = 0;
+                } else if( polarity == 'T' ){ polarity_table[i] = 0; // TAC signal
+                } else if( polarity == 'S' ){ polarity_table[i] = 1; // ARIES Standard Ouput signal
+                } else if( polarity == 'F' ){ polarity_table[i] = 0; // ARIES Fast Output signal
+                } else if( polarity == 'X' ){ polarity_table[i] = 0; // XXX type
+                } else { fprintf(stderr,"unknown polarity[=%c] in %s\n", polarity, chan_name[i]); }
+
+                // Record crystal and element numbers [** Naming schemes are subsystem-dependant **]
+                switch(subsys){
+                  case ODBHANDLE_LBL: case ODBHANDLE_LBS: // LaBr,Paces, Aries and Zds
+                  case ODBHANDLE_LBT: case ODBHANDLE_SEP: case ODBHANDLE_ART:
+                  case ODBHANDLE_DAL: case ODBHANDLE_DAT:
+                  case ODBHANDLE_PAC: case ODBHANDLE_ZDS: case ODBHANDLE_DSW:
+                  crystal_table[i] = pos;
+                  if(        crystal == 'A' ){ element_table[i] = 1;
+                  } else if( crystal == 'B' ){ element_table[i] = 2;
+                  } else if( crystal == 'C' ){ element_table[i] = 3;
+                  } else if( crystal == 'X' ){ element_table[i] = -1; // just one crystal for LaBr3, ZDS, ART, LBT, SEP
+                  } else {
+                    fprintf(stderr,"unknown crystal for ancillary[=%c] in %s\n", crystal, chan_name[i]);
+                  } break;
+                  case ODBHANDLE_RCS:
+                  crystal_table[i] = pos;
+                  element_table[i] = reorder_rcmp_strips[pos][polarity_table[i]][element];
+                  break;
+                  case ODBHANDLE_QED:
+                  crystal_table[i] = pos;
+                  element_table[i] = reorder_qed_strips[pos][polarity_table[i]][element];
+                  break;
+                  case ODBHANDLE_GRG: case ODBHANDLE_GRS:
+                  element_table[i] = element;
+                  pos -= 1; pos *=4;
+                  if(        crystal == 'B' ){ crystal_table[i] = pos;
+                  } else if( crystal == 'G' ){ crystal_table[i] = pos+1;
+                  } else if( crystal == 'R' ){ crystal_table[i] = pos+2;
+                  } else if( crystal == 'W' ){ crystal_table[i] = pos+3;
+                  } else if( crystal == 'X' ){ crystal_table[i] = -1; // crystal undefined
+                  } else {
+                    fprintf(stderr,"unknown crystal[=%c] in %s\n", crystal, chan_name[i]);
+                  } break;
+                  default: break;
+                }
+
+                // set full subsystem id (including polarity/output-type etc)
+                switch(subsys){
+                  case ODBHANDLE_GRS: subsys_table[i] = SUBSYS_BGO;       break;
+                  case ODBHANDLE_SEP: subsys_table[i] = SUBSYS_SCEPTAR;   break;
+                  case ODBHANDLE_PAC: subsys_table[i] = SUBSYS_PACES;     break;
+                  case ODBHANDLE_LBS: subsys_table[i] = SUBSYS_LABR_BGO;  break;
+                  case ODBHANDLE_LBL: subsys_table[i] = SUBSYS_LABR_L;    break;
+                  case ODBHANDLE_DAL: subsys_table[i] = SUBSYS_LABR_L;    break;
+                  case ODBHANDLE_DSC: subsys_table[i] = SUBSYS_DESCANT;   break;
+                  case ODBHANDLE_RCS: subsys_table[i] = SUBSYS_RCMP;      break;
+                  case ODBHANDLE_QED: subsys_table[i] = SUBSYS_QED_STRIP; break;
+                  case ODBHANDLE_DSW: subsys_table[i] = SUBSYS_DESWALL;  break;
+                  case ODBHANDLE_DSG: subsys_table[i] = SUBSYS_DSG;  break;
+                  case ODBHANDLE_GRG: subsys_table[i] = (output_type == 1) ? SUBSYS_HPGE_A :SUBSYS_HPGE_B; break;
+                  case ODBHANDLE_ZDS: subsys_table[i] = (output_type == 1) ? SUBSYS_ZDS_A  :SUBSYS_ZDS_B;  break;
+                  case ODBHANDLE_ART: subsys_table[i] = (polarity_table[i] == 1) ? SUBSYS_ARIES_A:SUBSYS_ARIES_B;break;
+                  case ODBHANDLE_XXX: subsys_table[i] = SUBSYS_IGNORE;    break;
+                  case ODBHANDLE_UNK: subsys_table[i] = SUBSYS_UNKNOWN;   break;
+                  case ODBHANDLE_DAT: if(crystal_table[i]<8){ subsys_table[i] = SUBSYS_TAC_LABR;
+                  }else{ subsys_table[i] = SUBSYS_TAC_ZDS; }
+                  break;
+                  case ODBHANDLE_LBT: if(crystal_table[i]<8){ subsys_table[i] = SUBSYS_TAC_LABR;
+                  }else if(crystal_table[i]>8){ subsys_table[i] = SUBSYS_TAC_ART;
+                  }else{ subsys_table[i] = SUBSYS_TAC_ZDS; }
+                  break;
+                }
+              }
+              memset(subsys_initialized, 0, sizeof(int)*MAX_SUBSYS );
+
+              return(0);
+            }

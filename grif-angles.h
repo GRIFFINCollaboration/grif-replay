@@ -6762,6 +6762,29 @@ float grif_crystal_cartesian_110mm[64][3]={
           return angle;
         }
 
+                // Calculate Compton scattering angle between one HPGe and one QED pixel from their cartesian coordinates
+                // pos is DSSD number [1-6], qed is pixel number [0-1023], ge is crystal number [0-63]
+                double scattering_angle_GeQED(int pos, int qed, int ge){
+                  double vec1[3], vec2[3], vec3[3], dot, mag, angle;
+
+                  pos--; // pos is now 0-5 within this function
+                  //vec1[0] = qed_cartesian[pos][qed][0]; vec1[1] = qed_cartesian[pos][qed][1]; vec1[2] = qed_cartesian[pos][qed][2];
+                  vec2[0] = grif_crystal_cartesian_110mm[ge][0]; vec2[1] = grif_crystal_cartesian_110mm[ge][1]; vec2[2] = grif_crystal_cartesian_110mm[ge][2];
+                  // vec1 is the vector from origin to DSSD pixel
+                  // vec2 is the vector from origin to HPGe crystal
+                  // The dot product of vec1 and vec2 would give the angular difference between these - as required for angular correlations
+                  // Here we want the Compton scattering angle so we want the dot product of vec2 and vec3 where vec3 passes through the DSSD pixel and HPGe crystal
+                  vec3[0] = qed_cartesian[pos][qed][0] - grif_crystal_cartesian_110mm[ge][0];
+                  vec3[1] = qed_cartesian[pos][qed][1] - grif_crystal_cartesian_110mm[ge][1];
+                  vec3[2] = qed_cartesian[pos][qed][2] - grif_crystal_cartesian_110mm[ge][2];
+
+                  dot = dot_product(vec2,vec3);
+                  mag = vector_magnitude_product(vec2,vec3);
+                  angle = RADIANS_TO_DEGREES*acos( dot / mag );
+
+                  return angle;
+                }
+
         // Double Compton Scatter (DCS) - delta phi, angle between the two scattering planes
         // Calculate the azimuthal angle between the two scattering planes defined by two QED-HPGe scatter events
         // c1 and c2 are the QED pixel and HPGe of one event. These define the scattering plane.
@@ -6786,7 +6809,7 @@ float grif_crystal_cartesian_110mm[64][3]={
         }
 
         // Calculate the scattering angle from a HPGe energy (keV) assuming it is
-        // the secondary photon from a single Compton scatter of an initial_energy gamma ray
+        // the secondary (final) photon from a single Compton scatter of an initial_energy gamma ray
         int compton_angle(float ecal, float initial_energy){
           return (int)( RADIANS_TO_DEGREES*acos( 1 - (511.0/ecal) + (511.0/initial_energy) ) );
         }
