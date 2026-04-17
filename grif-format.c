@@ -168,6 +168,13 @@ int unpack_grif3_event(unsigned *evntbuf, int evlen, Grif_event *ptr, int proces
   int tbragg_window1[TBRAGG_WINDOW_WIDTH],tbragg_window2[TBRAGG_WINDOW_WIDTH], tbragg_ptr;
   int discard = 0;
   int start;
+  /*
+  FILE *wave_fpt = fopen("run02678_waveforms.dat", "a");
+   if (wave_fpt == NULL) {
+       perror("Error opening file");
+       return 1;
+   }
+   */
 
   if( debug ){ printf("--CLR EVT[%4ld]\n", ptr - grif_event ); }
   memset(ptr, 0, sizeof(Grif_event) );
@@ -244,10 +251,12 @@ int unpack_grif3_event(unsigned *evntbuf, int evlen, Grif_event *ptr, int proces
       if(wave_sample>-1 && wave_sample<300){
         waveform[wave_ptr  ]  = value & 0x3fff;
         waveform[wave_ptr  ] |= ((value>>13) & 1) ? 0xC000 : 0;
+      //  fprintf(wave_fpt,"%d,",waveform[wave_ptr]);
         if(wave_ptr==0){ waveform_first_sample = waveform[0]; }
         waveform[wave_ptr++] -= waveform_first_sample;
         waveform[wave_ptr  ]  = (value & 0xfffc000) >> 14;
         waveform[wave_ptr  ] |= ((value>>27) & 1) ? 0xC000 : 0;
+      //  fprintf(wave_fpt,"%d,",waveform[wave_ptr]);
         waveform[wave_ptr++] -= waveform_first_sample;
         if(wave_ptr>=MAX_SAMPLE_LEN){ printf("Waveform overflow error\n"); wave_ptr=0; }
       }
@@ -368,5 +377,9 @@ int unpack_grif3_event(unsigned *evntbuf, int evlen, Grif_event *ptr, int proces
   }
 }
 
+/*
+fprintf(wave_fpt,"\n");
+fclose(wave_fpt);
+*/
 return( discard ); // discard scalars other than ppg-"scalar"
 }
