@@ -1293,6 +1293,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {(void **) qedx_dcs_omega_dt,  "",qedx_dcs_omega_dt_handles[0], SUBSYS_QED_STRIP, 1024,   192, N_QED_POS},
         {(void **)&qed_dcs_omega,     "QED_DCS_omega",           "", SUBSYS_QED_STRIP, 200},
         {(void **)&qed_dcs_azi,       "QED_DCS_azimuth",         "", SUBSYS_QED_STRIP, 200},
+        {(void **)&qed_dcs_omega_t,     "QED_DCS_omega_t",           "", SUBSYS_QED_STRIP, 200},
+        {(void **)&qed_dcs_azi_t,       "QED_DCS_azimuth_t",         "", SUBSYS_QED_STRIP, 200},
         {(void **)&qed_theta1_vs_theta2,"COMP_QED_theta1_vs_theta2",  "",SUBSYS_QED_STRIP, 192,   192},
         {NULL,                   "QED/DSSD-Ge",        ""},
         {(void **)&qedE_ge_theta_sum,  "QED_E_vs_theta",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
@@ -2360,6 +2362,9 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                         //if(omega>45){
                         if(pos1 != pos2 && ge1 != ge2){
                           qed_theta1_vs_theta2->Fill(qed_theta1_vs_theta2, theta1, theta2, 1);
+                          qed_dcs_omega_t->Fill(qed_dcs_omega_t, (int)omega, 1);
+                          azimuthal = azimuthal_DCS(pos1, qed1, ge1, pos2, qed2, ge2);
+                          qed_dcs_azi_t->Fill(qed_dcs_azi_t, (int)azimuthal, 1);
                         }
                         if(omega>170){
                           if(theta1>69 && theta1<111 && theta2>69 && theta2<111){

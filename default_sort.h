@@ -319,7 +319,7 @@ TH2I  *qed_geE_theta[N_QED_POS*N_QED_STRIPS], *qedE_ge_theta_sum, *qed_geE_theta
 TH2I  *qedE_ge_theta_sum_c, *qed_geE_theta_sum_c, *qedE_ge_theta_sum_c_g, *qed_geE_theta_sum_c_g, *qedE_ge_theta_sum_c_s, *qed_geE_theta_sum_c_s, *ge_qed_c;
 TH2I  *qed_totE_theta[N_QED_POS], *qed_geE_theta_clov[N_CLOVER], *qed_geE_theta_clov_t[N_CLOVER], *qed_E_theta_dssd[N_QED_POS], *qed_geE_theta_dssd[N_QED_POS];
 TH2I  *qed_angle_test_g, *qed_angle_test_s, *qedE_ge_dt, *qed_geE_dt, *qedE_ge_dt_c, *qed_geE_dt_c, *qed_theta_dt, *qed_dcs_omega_dt, *qedx_dcs_omega_dt[N_QED_POS], *qed_theta1_vs_theta2;
-TH1I  *qed_dcs_omega, *qed_dcs_azi;
+TH1I  *qed_dcs_omega, *qed_dcs_omega_t, *qed_dcs_azi, *qed_dcs_azi_t;
 
 char qed_psd_handles[N_QED_POS][HANDLE_LENGTH] = {"QED01_E_vs_psd","QED02_E_vs_psd","QED03_E_vs_psd","QED04_E_vs_psd","QED05_E_vs_psd","QED06_E_vs_psd"};
 char qed_strips_handles[N_QED_POS][HANDLE_LENGTH]={"QED01_E_strips", "QED02_E_strips", "QED03_E_strips", "QED04_E_strips", "QED05_E_strips", "QED06_E_strips"};
