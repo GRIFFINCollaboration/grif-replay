@@ -669,7 +669,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                 }
               }
             }
-            
+
             // Look to build Compton events (a QED-Ge coincidence with energy of 511keV)
             if( alt->subsys == SUBSYS_HPGE_A ){
               if(ptr->ecal>QED_PIXEL_THRESHOLD && ptr->ecal+alt->ecal > 496 && ptr->ecal+alt->ecal < 526){
@@ -1318,7 +1318,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {NULL,                   "QED/PSD",        ""},
         {(void **) qed_psd_e,      "",           qed_psd_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN, E_2D_SPECLEN, N_QED_POS},
         {NULL,                   "QED/Misc.",        ""},
-        {(void **)&qed_angle_test,  "QED_angle_test",         "",SUBSYS_QED_STRIP, N_HPGE,   192},
+        {(void **)&qed_angle_test_s,  "QED_angle_test_Si_first",         "",SUBSYS_QED_STRIP, N_HPGE,   192},
+        {(void **)&qed_angle_test_g,  "QED_angle_test_Ge_first",         "",SUBSYS_QED_STRIP, N_HPGE,   192},
         {(void **)&qedE_ge_dt,  "QED_Ge_E_vs_dt",       "",SUBSYS_QED_STRIP, 1024, E_2D_QED_SPECLEN},
         {(void **)&qed_geE_dt,  "QED_GeE_vs_dt",        "",SUBSYS_QED_STRIP, 1024, E_2D_QED_SPECLEN},
         {(void **)&qed_theta_dt,  "QED_theta_vs_dt",        "",SUBSYS_QED_STRIP, 1024, 192},
@@ -1457,7 +1458,12 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             // pixels looked at; 371, 496
             if(subsystem == SUBSYS_QED_STRIP){
               for(i=0; i<N_HPGE; i++){
-                qed_angle_test->Fill(qed_angle_test, (int)(i/4), (int)(scattering_angle_QEDGe(2,496,i)), (i+1));
+                for(j=1; j<=N_QED_POS; j++){
+                  for(k=0; k<(N_QED_STRIPS*N_QED_STRIPS); k++){
+                    qed_angle_test_s->Fill(qed_angle_test_s, i, (int)(scattering_angle_QEDGe(j,k,i)), 1);
+                    qed_angle_test_g->Fill(qed_angle_test_g, i, (int)(scattering_angle_GeQED(j,k,i)), 1);
+                  }
+                }
               }
             }
             return(0);
