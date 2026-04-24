@@ -29,23 +29,24 @@
 #define SUBSYS_TAC_ZDS   19
 #define SUBSYS_TAC_ART   20
 #define SUBSYS_COMPTON   21
+#define SUBSYS_DCOMPTON  15
 #define SUBSYS_QED_PIXEL 22
 #define SUBSYS_UNKNOWN   23
 static char subsys_handle[MAX_SUBSYS][8] = {
   "GRGA", "PAC",  "LBL",  "RCS",
   "ARTA", "ZDSA", "LBT",  "LBS",
   "BGO",  "SEP",  "DSC",  "DSW",
-  "DSG",  "QEDs", "XXX2", "XXX3",
+  "DSG",  "QEDs", "XXX2", "DCS",
   "GRGB", "ARTB", "ZDSB", "", // secondary names start after #16
-  "",     "",     "QED",  "UNK"
+  "",     "CS",     "QED",  "UNK"
 };
 static char subsys_name[MAX_SUBSYS][STRING_LEN] = {
   "Griffin",   "PACES",    "LaBrX",   "RCMP",     //  0- 3
   "ARIES",     "ZDSA",     "TAC_LBL", "LaBrS",    //  4- 7
   "BGO",       "Sceptar",  "Descant", "DES_WALL", //  8-11
-  "Des_Ancil", "QEDs", "Ignore2", "Ignore3",  // 12-15
+  "Des_Ancil", "QEDs", "Ignore2", "DCS",  // 12-15
   "Grif_B",    "ARS_B",    "ZDS_B",   "TAC_ZDS",  // 16-19
-  "TAC_ART",   "",         "QED",     "Unknown"   // 20-23
+  "TAC_ART",   "CS",         "QED",     "Unknown"   // 20-23
 }; // final entry will be used if not found - make sure it is not empty
 // #####################################################################
 
@@ -319,7 +320,11 @@ TH2I  *qed_geE_theta[N_QED_POS*N_QED_STRIPS], *qedE_ge_theta_sum, *qed_geE_theta
 TH2I  *qedE_ge_theta_sum_c, *qed_geE_theta_sum_c, *qedE_ge_theta_sum_c_g, *qed_geE_theta_sum_c_g, *qedE_ge_theta_sum_c_s, *qed_geE_theta_sum_c_s, *ge_qed_c;
 TH2I  *qed_totE_theta[N_QED_POS], *qed_geE_theta_clov[N_CLOVER], *qed_geE_theta_clov_t[N_CLOVER], *qed_E_theta_dssd[N_QED_POS], *qed_geE_theta_dssd[N_QED_POS];
 TH2I  *qed_angle_test_g, *qed_angle_test_s, *qedE_ge_dt, *qed_geE_dt, *qedE_ge_dt_c, *qed_geE_dt_c, *qed_theta_dt, *qed_dcs_omega_dt, *qedx_dcs_omega_dt[N_QED_POS], *qed_theta1_vs_theta2;
-TH1I  *qed_dcs_omega, *qed_dcs_omega_t, *qed_dcs_azi, *qed_dcs_azi_t;
+TH1I  *qed_dcs_omega, *qed_dcs_omega_t, *qed_dcs_azi, *qed_dcs_azi_t, *qed_dcs_azi_tg, *qed_dcs_azi_b, *qed_dcs_azi_tb, *qed_dcs_azi_tgb;
+TH1I  *dcs_theta, *dcs_cs_omega;
+TH2I  *dcsE_ge_theta, *dcs_geE_theta, *dcs_theta_azi;
+TH1I  *dcs_cs_omega_ge;
+TH2I  *dcs_theta_azi_ge;
 
 char qed_psd_handles[N_QED_POS][HANDLE_LENGTH] = {"QED01_E_vs_psd","QED02_E_vs_psd","QED03_E_vs_psd","QED04_E_vs_psd","QED05_E_vs_psd","QED06_E_vs_psd"};
 char qed_strips_handles[N_QED_POS][HANDLE_LENGTH]={"QED01_E_strips", "QED02_E_strips", "QED03_E_strips", "QED04_E_strips", "QED05_E_strips", "QED06_E_strips"};
@@ -526,7 +531,7 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
   // 2D Energy vs Energy Coincidence matrices
   TH2I *gea_self_dt,*geb_self_dt;
   TH2I *gg, *gg_ab, *gg_opp, *gg_ab_opp, *ge_bgo, *ge_paces, *ge_labr, *ge_rcmp, *labr_labr, *labr_zds, *labr_rcmp;
-  TH2I *ge_art, *ge_zds, *paces_art, *labr_art, *art_art, *dsw_dsw, *ge_dsw, *art_dsw, *ge_qed, *qed_qed, *comp_comp, *ge_comp;
+  TH2I *ge_art, *ge_zds, *paces_art, *labr_art, *art_art, *dsw_dsw, *ge_dsw, *art_dsw, *ge_qed, *qed_qed, *comp_comp, *ge_comp, *ge_dcs, *comp_dcs;
   TH1I *gg_energy[N_HPGE];
   char gg_energy_handles[N_HPGE][HANDLE_LENGTH]={
     "GRG01BN00A_GGEnergy","GRG01GN00A_GGEnergy","GRG01RN00A_GGEnergy","GRG01WN00A_GGEnergy", "GRG02BN00A_GGEnergy","GRG02GN00A_GGEnergy","GRG02RN00A_GGEnergy","GRG02WN00A_GGEnergy",

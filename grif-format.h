@@ -20,7 +20,8 @@ typedef struct griffin_fragment_struct { // was 74 bytes, now ?            //OFF
 // items below are derived from items above ...
    float      ecal;  int           chan; int      subsys;   int suppress;  //20
    float      esum;  int   multiplicity; int     delta_t;   int alt_chan;  //24
-   float  alt_ecal;  int            tof; int    pu_class;                  //28
+   float  alt_ecal;  int            tof; int    pu_class;   int alt2_chan; //28
+   float alt2_ecal;
 } Grif_event;
 
 // NOTES on Grif_event ...
@@ -49,6 +50,7 @@ extern int insert_presort_win(Grif_event *ptr, int slot);
 extern int insert_sort_win(Grif_event *ptr, int slot);
 extern int pre_sort_enter(int start_idx, int frag_idx);
 extern int pre_sort_exit(int frag_idx, int end_idx);
+extern int pre_sort_triples(int frag_idx, int end_idx);
 
 // User sort function declarations
 extern int calc_coincvars(Grif_event *ptr1, Grif_event *ptr2);
