@@ -530,18 +530,6 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                 ptr->esum += alt->esum; alt->esum = -1; ptr->alt_chan = alt->chan; if(alt->suppress==1){ ptr->suppress = 1; }
               }
             }
-            // Tag HPGe events which have a beta-coincidence
-            // Use the ptr->tof
-            // ptr->tof = 0 = No beta coincidence
-            // ptr->tof > 0 = Beta coincidence with any beta detector
-            // ptr->tof = 1 = Beta coincidence with SCEPTAR only
-            // ptr->tof = 2 = Beta coincidence with ZDS only
-            // ptr->tof = 4 = Beta coincidence with ARIES only
-            // The bit assignments are cumulative eg. pt->tof = 5 = Beta coincidence with both SCEPTAR and ARIES.
-            if( alt->subsys == SUBSYS_SCEPTAR && (dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_SCEPTAR]) && (dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_SCEPTAR]) ){ ptr->tof = ptr->tof | 1; break; }
-            if( alt->subsys == SUBSYS_ZDS_A   && (dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_ZDS_A])   && (dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_ZDS_A])   ){ ptr->tof = ptr->tof | 2; break; }
-            if( alt->subsys == SUBSYS_ARIES_A && (dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_ARIES_A]) && (dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_ARIES_A]) ){ ptr->tof = ptr->tof | 4; break; }
-
             // Look to build Compton events (a QED-Ge coincidence with energy of 511keV)
             // Just tag the Ge information into the strip as this Ge leaves the presort window
             if( alt->subsys == SUBSYS_QED_STRIP ){
@@ -563,6 +551,52 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                   alt->alt2_chan = -1;
                 }
                 if(DEBUG_OUTPUT){ fprintf(stdout," --> COMPTON GE INFO SAVED INTO QED_STRIP: esum=%.1f, ecal=%.1f, alt_ecal=%.1f",alt->esum,alt->ecal,alt->alt_ecal); }
+              }
+            }
+            // Tag HPGe events which have a beta-coincidence
+            // Use the ptr->tof
+            // ptr->tof = 0 = No beta coincidence
+            // ptr->tof > 0 = Beta coincidence with any beta detector
+            // ptr->tof = 1 = Beta coincidence with SCEPTAR only
+            // ptr->tof = 2 = Beta coincidence with ZDS only
+            // ptr->tof = 4 = Beta coincidence with ARIES only
+            // The bit assignments are cumulative eg. pt->tof = 5 = Beta coincidence with both SCEPTAR and ARIES.
+            if( alt->subsys == SUBSYS_SCEPTAR && (dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_SCEPTAR]) && (dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_SCEPTAR]) ){ ptr->tof = ptr->tof | 1; break; }
+            if( alt->subsys == SUBSYS_ZDS_A   && (dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_ZDS_A])   && (dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_ZDS_A])   ){ ptr->tof = ptr->tof | 2; break; }
+            if( alt->subsys == SUBSYS_ARIES_A && (dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_ARIES_A]) && (dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_ARIES_A]) ){
+              ptr->tof = ptr->tof | 4;
+              pos = crystal_table[alt->chan];
+              if((pos>12 && pos<17) || (pos>64 && pos<69)){
+                // Triangles
+                ptr->tof = ptr->tof | 8;
+              }else if(pos<25 || pos>56){
+                // Squares
+                ptr->tof = ptr->tof | 16;
+              }else{
+                // Rectangles
+                ptr->tof = ptr->tof | 32;
+              }break;
+            }
+            break;
+            case SUBSYS_SCEPTAR:
+            if(alt->subsys == SUBSYS_HPGE_A && (dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_SCEPTAR]) && (dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_SCEPTAR]) ){ alt->tof = alt->tof | 1; }
+            break;
+            case SUBSYS_ZDS_A:
+            if(alt->subsys == SUBSYS_HPGE_A && (dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_ZDS_A])   && (dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_ZDS_A])   ){ alt->tof = alt->tof | 2; }
+            break;
+            case SUBSYS_ARIES_A:
+            if(alt->subsys == SUBSYS_HPGE_A && (dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_ARIES_A]) && (dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_ARIES_A]) ){
+              alt->tof = alt->tof | 4;
+              pos = crystal_table[alt->chan];
+              if((pos>12 && pos<17) || (pos>64 && pos<69)){
+                // Triangles
+                alt->tof = alt->tof | 8;
+              }else if(pos<25 || pos>56){
+                // Squares
+                alt->tof = alt->tof | 16;
+              }else{
+                // Rectangles
+                alt->tof = alt->tof | 32;
               }
             }
             break;
@@ -1186,7 +1220,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
       // default handles derived from title with the following substitutions
       //    "Energy"->"E", "CrystalNum"->"Xtal", "Des_Wall"->"DESW"
       //    "Upstream"->"US", "Downstream"->"DS", ""->"", ""->"",
-      #define HISTO_DEF_SIZE 256
+      #define HISTO_DEF_SIZE 512
       Histogram_definition histodef_array[HISTO_DEF_SIZE] = {
         // Singles
         {NULL,                   "Hits_and_Sums/Sums",                                   },
@@ -1199,6 +1233,9 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {(void **)&ge_sum_b_sep, "Ge_Sum_En_SceptarTagged", "Ge_Sum_E_B_SEP",            SUBSYS_HPGE_A,  E_SPECLEN},
         {(void **)&ge_sum_b_zds, "Ge_Sum_En_ZdsTagged",     "Ge_Sum_E_B_ZDS",            SUBSYS_HPGE_A,  E_SPECLEN},
         {(void **)&ge_sum_b_art, "Ge_Sum_En_AriesTagged",   "Ge_Sum_E_B_ART",            SUBSYS_HPGE_A,  E_SPECLEN},
+        {(void **)&ge_sum_b_artT, "Ge_Sum_En_Aries_Tri",   "Ge_Sum_E_B_ART",            SUBSYS_HPGE_A,  E_SPECLEN},
+        {(void **)&ge_sum_b_artR, "Ge_Sum_En_Aries_Rec",   "Ge_Sum_E_B_ART",            SUBSYS_HPGE_A,  E_SPECLEN},
+        {(void **)&ge_sum_b_artS, "Ge_Sum_En_Aries_Sqr",   "Ge_Sum_E_B_ART",            SUBSYS_HPGE_A,  E_SPECLEN},
         {(void **)&ge_sum_b_art_brems, "Ge_Sum_En_AriesTagged_Brems",   "Ge_Sum_E_B_ART_Brems",SUBSYS_HPGE_A,  E_SPECLEN},
         {(void **)&ge_sum_b_sep_brems, "Ge_Sum_En_SceptarTagged_Brems", "Ge_Sum_E_B_SEP_Brems",SUBSYS_HPGE_A,  E_SPECLEN},
         {(void **)&ge_sum_b_ab_sep_brems, "AB_Sum_En_SceptarTagged_Brems", "AB_Sum_E_B_SEP_Brems",SUBSYS_HPGE_A,  E_SPECLEN},
@@ -1286,8 +1323,10 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {(void **)&ge_qed,      "GeQED",            "",  SUBSYS_QED_STRIP, E_2D_SPECLEN, E_2D_SPECLEN},
         {(void **)&qed_qed,      "QEDQED",            "",  SUBSYS_QED_STRIP, E_2D_SPECLEN, E_2D_SPECLEN},
         {(void **)&ge_comp,      "GeCOMP",            "",  SUBSYS_QED_STRIP, E_2D_SPECLEN, E_2D_SPECLEN},
+        {(void **)&geadd_comp,   "GeAddCOMP",         "",  SUBSYS_QED_STRIP, E_2D_SPECLEN, E_2D_SPECLEN},
         {(void **)&comp_comp,    "COMPCOMP",          "",  SUBSYS_QED_STRIP, E_2D_SPECLEN, E_2D_SPECLEN},
         {(void **)&ge_dcs,      "GeDCS",              "",  SUBSYS_QED_STRIP, E_2D_SPECLEN, E_2D_SPECLEN},
+        {(void **)&geadd_dcs,   "GeAddDCS",           "",  SUBSYS_QED_STRIP, E_2D_SPECLEN, E_2D_SPECLEN},
         {(void **)&comp_dcs,    "COMP_DCS",           "",  SUBSYS_QED_STRIP, E_2D_SPECLEN, E_2D_SPECLEN},
         {(void **)&labr_art,    "LaBrAries",          "",  SUBSYS_LABR_L,  E_2D_SPECLEN, E_2D_SPECLEN},
         {(void **)&paces_art,   "PacesAries",         "",  SUBSYS_PACES,   E_2D_SPECLEN, E_2D_SPECLEN},
@@ -1403,7 +1442,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {(void **)&qed_dcs_azi_b,       "QED_DCS_azimuth_70_110_binned",         "", SUBSYS_QED_STRIP, 384},
         {(void **)&qed_dcs_azi_tg,       "QED_DCS_azimuth_93_103",         "", SUBSYS_QED_STRIP, 384},
         {(void **)&qed_dcs_azi_tgb,       "QED_DCS_azimuth_93_103_binned",         "", SUBSYS_QED_STRIP, 384},
-        {(void **)&qed_theta1_vs_theta2,"COMP_QED_theta1_vs_theta2",  "",SUBSYS_QED_STRIP, 192,   192},
+        {(void **)&qed_theta1_vs_theta2,"COMP_QED_theta1_vs_theta2",  "",SUBSYS_QED_STRIP, 192, SYMMETERIZE},
         {NULL,                   "QED/DCS",        ""},
         {(void **)&dcs_theta,        "DCS_theta",          "", SUBSYS_QED_STRIP, 200},
         {(void **)&dcs_cs_omega,     "DCS_CS_omega_SiGeSiGe",           "", SUBSYS_QED_STRIP, 200},
@@ -1652,6 +1691,9 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                 if(ptr->tof & 1){ ge_sum_b_sep->Fill(ge_sum_b_sep, (int)ptr->ecal, 1); } // Sceptar-gated Ge sum energy spectrum
                 if(ptr->tof & 2){ ge_sum_b_zds->Fill(ge_sum_b_zds, (int)ptr->ecal, 1); } // Zds-gated Ge sum energy spectrum
                 if(ptr->tof & 4){ ge_sum_b_art->Fill(ge_sum_b_art, (int)ptr->ecal, 1); } // Aries-gated Ge sum energy spectrum
+                if(ptr->tof & 8){ ge_sum_b_artT->Fill(ge_sum_b_artT, (int)ptr->ecal, 1); } // Aries-gated Ge sum energy spectrum
+                if(ptr->tof & 16){ ge_sum_b_artR->Fill(ge_sum_b_artR, (int)ptr->ecal, 1); } // Aries-gated Ge sum energy spectrum
+                if(ptr->tof & 32){ ge_sum_b_artS->Fill(ge_sum_b_artS, (int)ptr->ecal, 1); } // Aries-gated Ge sum energy spectrum
 
                 // Pile-up
                 pu = ptr->pileup;
@@ -2227,6 +2269,9 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             angle = scattering_angle_QEDGe(pos,c2,c1);
 
             ge_comp->Fill(ge_comp, (int)ptr->ecal, (int)(alt->esum), 1);
+            if(ptr->esum>ptr->ecal){
+              geadd_comp->Fill(geadd_comp, (int)ptr->esum, (int)(alt->esum), 1);
+            }
 
             if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 < 1024 && ptr->ecal>5 && (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_QED_PIXEL]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_QED_PIXEL])){
               if(alt->esum>496 && alt->esum<526){
@@ -2250,6 +2295,9 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             //  c1 = ptr->net_id; // HPGe crystal number
 
             ge_dcs->Fill(ge_dcs, (int)ptr->ecal, (int)(alt->esum), 1);
+            if(ptr->esum>ptr->ecal){
+              geadd_dcs->Fill(geadd_dcs, (int)ptr->esum, (int)(alt->esum), 1);
+            }
 
             pos1 = crystal_table[alt->chan];
             qed1 = (alt->alt_chan%1024);
@@ -2520,7 +2568,6 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                           theta1 = scattering_angle_QEDGe(pos1, qed1, ge1);
                           theta2 = scattering_angle_QEDGe(pos2, qed2, ge2);
                           if(pos1 != pos2 && ge1 != ge2){
-                            qed_theta1_vs_theta2->Fill(qed_theta1_vs_theta2, theta1, theta2, 1);
                             qed_dcs_omega_t->Fill(qed_dcs_omega_t, (int)omega, 1);
                             azimuthal = azimuthal_DCS(pos1, qed1, ge1, pos2, qed2, ge2);
                             qed_dcs_azi_t->Fill(qed_dcs_azi_t, (int)azimuthal, 1);
@@ -2529,6 +2576,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                             //  fprintf(stdout,"omega = %f, theta1 = %f, theta2 = %f, azimuth = %f, for [%d %d %d] - [%d %d %d]\n",omega,theta1,theta2,azimuthal,pos1, qed1, ge1, pos2, qed2, ge2);
 
                             if(omega>170){
+                              qed_theta1_vs_theta2->Fill(qed_theta1_vs_theta2, theta1, theta2, 1);
 
                               // Scattering angle 70 to 110
                               if(theta1>69 && theta1<111 && theta2>69 && theta2<111){
@@ -2573,7 +2621,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
 
                           if(pos1 != pos2 && ge1 != ge2){
                             azimuthal = azimuthal_TCS_SiGe_SiGeGe(pos1, qed1, ge1, ge2, ge3);
-                          //  fprintf(stdout,"TCS %d %d %d | %d %d %d %d | %0.1f %0.1f\n",pos1, qed1, ge1, pos2, qed2, ge2, ge3,initial_theta,azimuthal);
+                            //  fprintf(stdout,"TCS %d %d %d | %d %d %d %d | %0.1f %0.1f\n",pos1, qed1, ge1, pos2, qed2, ge2, ge3,initial_theta,azimuthal);
                             comp_dcs->Fill(comp_dcs, (int)ptr->esum, (int)(alt->esum), 1);
 
                             dcs_cs_omega->Fill(dcs_cs_omega, (int)(omega), 1);
