@@ -88,6 +88,7 @@ static char subsys_name[MAX_SUBSYS][STRING_LEN] = {
 #define QED_PIXEL_THRESHOLD       50  // 50keV used in building coincidences
 #define NUM_QED_REORDERS          10
 #define QED_COMPTON              0xF
+#define QED_GAMMA_ENERGY         511  // 511keV
 
 //#######################################################################
 //########             PPG variables and patterns              ##########
@@ -320,8 +321,8 @@ TH2I  *qedp_ge_theta[N_QED_POS*N_QED_STRIPS], *qedn_ge_theta[N_QED_POS*N_QED_STR
 TH2I  *qed_geE_theta[N_QED_POS*N_QED_STRIPS], *qedE_ge_theta_sum, *qed_geE_theta_sum, *qed_totE_theta_sum, *qed_E_totE_sum_t, *qed_geE_totE_sum_t, *qedE_ge_theta_sum_t, *qed_geE_theta_sum_t, *qedE_ge_thetaI_sum_t, *qed_geE_thetaDiff_sum_t, *qed_geE_thetaI_sum_t;
 TH2I  *qedE_ge_theta_sum_c, *qed_geE_theta_sum_c, *qedE_ge_theta_sum_c_g, *qed_geE_theta_sum_c_g, *qedE_ge_theta_sum_c_s, *qed_geE_theta_sum_c_s, *ge_qed_c;
 TH2I  *qed_totE_theta[N_QED_POS], *qed_geE_theta_clov[N_CLOVER], *qed_geE_theta_clov_t[N_CLOVER], *qed_E_theta_dssd[N_QED_POS], *qed_geE_theta_dssd[N_QED_POS];
-TH2I  *qed_angle_test_g, *qed_angle_test_s, *qedE_ge_dt, *qed_geE_dt, *qedE_ge_dt_c, *qed_geE_dt_c, *qed_theta_dt, *qed_dcs_omega_dt, *qedx_dcs_omega_dt[N_QED_POS], *qed_theta1_vs_theta2;
-TH1I  *qed_dcs_omega, *qed_dcs_omega_t, *qed_dcs_azi, *qed_dcs_azi_t, *qed_dcs_azi_tg, *qed_dcs_azi_b, *qed_dcs_azi_tb, *qed_dcs_azi_tgb;
+TH2I  *qed_angle_test_g, *qed_angle_test_s, *qedE_ge_dt, *qed_geE_dt, *qedE_ge_dt_c, *qed_geE_dt_c, *qed_theta_dt, *qed_dcs_omega_dt, *qedx_dcs_omega_dt[N_QED_POS], *qed_theta1_vs_theta2, *qed_theta1_azi, *qed_theta2_azi, *qed2_theta1_vs_theta2, *qed2_theta1_azi, *qed2_theta2_azi;
+TH1I  *qed_dcs_omega, *qed_dcs_omega_t, *qed_dcs_azi, *qed_dcs_azi_t, *qed_dcs_azi_tg, *qed_dcs_azi_b, *qed_dcs_azi_tb, *qed_dcs_azi_tgb, *qed_delta_theta1_theta2, *qed_sum_theta1_theta2, *qed_dcs_azi2, *qed_dcs_azi_tg2;
 TH1I  *dcs_theta, *dcs_cs_omega;
 TH2I  *dcsE_ge_theta, *dcs_geE_theta, *dcs_theta_azi;
 TH1I  *dcs_cs_omega_ge;

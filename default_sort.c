@@ -533,7 +533,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             // Look to build Compton events (a QED-Ge coincidence with energy of 511keV)
             // Just tag the Ge information into the strip as this Ge leaves the presort window
             if( alt->subsys == SUBSYS_QED_STRIP ){
-              if(alt->ecal>QED_PIXEL_THRESHOLD && ((ptr->esum+alt->ecal) > 496) && ((ptr->esum+alt->ecal) < 526) ){
+              if(alt->ecal>QED_PIXEL_THRESHOLD && ((ptr->esum+alt->ecal) > QED_GAMMA_ENERGY-15) && ((ptr->esum+alt->ecal) < QED_GAMMA_ENERGY+15) ){
                 // Here ptr is Ge and alt is QED_PIXEL
                 // In COMPTON event, ecal will be Ge and alt_ecal will be QED_PIXEL
                 // In COMPTON event, chan will be Ge, alt_chan will be packed with DSSD and PIXEL numbers
@@ -645,13 +645,13 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                     angle = scattering_angle_QEDGe(crystal_table[ptr->chan],(((element_table[ptr->chan] * N_QED_STRIPS) + element_table[alt->chan])%1024),ptr->net_id);
                   }else{ angle=0; }
 
-                  if(ptr->alt_ecal>0 && (angle>=compton_angle(ptr->alt_ecal,511.0)-12) && (angle<=compton_angle(ptr->alt_ecal,511.0)+12)){ // Already have a Ge tag to this strip
+                  if(ptr->alt_ecal>0 && (angle>=compton_angle(ptr->alt_ecal,QED_GAMMA_ENERGY)-12) && (angle<=compton_angle(ptr->alt_ecal,QED_GAMMA_ENERGY)+12)){ // Already have a Ge tag to this strip
                     // esum and alt_ecal already set to P strip + Ge values
                     ptr->subsys = SUBSYS_COMPTON;
                     if(ptr->alt2_ecal>0){
                       ptr->subsys = SUBSYS_DCOMPTON;
                     }
-                    if(DEBUG_OUTPUT){ fprintf(stdout," --> QED_STRIP_P to COMPTON: esum=%.1f, ecal=%.1f, alt_ecal=%.1f",ptr->esum,ptr->ecal,ptr->alt_ecal); }
+                    if(DEBUG_OUTPUT){ fprintf(stdout," --> QED_STRIP_P to COMPTON: esum=%.1f, ecal=%.1f, alt_ecal=%.1f, alt_chan=%d",ptr->esum,ptr->ecal,ptr->alt_ecal,((element_table[ptr->chan] * N_QED_STRIPS) + element_table[alt->chan])); }
                   }else{ // PIXEL identified
                     //ptr->esum = ptr->ecal;
                     ptr->alt_ecal = alt->ecal;
@@ -664,14 +664,14 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                   if(ptr->net_id>-1 && ptr->net_id<64){
                     angle = scattering_angle_QEDGe(crystal_table[ptr->chan],(((element_table[alt->chan] * N_QED_STRIPS) + element_table[ptr->chan])%1024),ptr->net_id);
                   }else{ angle=0; }
-                  if(ptr->alt_ecal>0 && (angle>=compton_angle(ptr->alt_ecal,511.0)-12) && (angle<=compton_angle(ptr->alt_ecal,511.0)+12)){ // Already have a Ge tag to this strip but it is the N
+                  if(ptr->alt_ecal>0 && (angle>=compton_angle(ptr->alt_ecal,QED_GAMMA_ENERGY)-12) && (angle<=compton_angle(ptr->alt_ecal,QED_GAMMA_ENERGY)+12)){ // Already have a Ge tag to this strip but it is the N
                     // alt_ecal already set Ge value. Change esum to use P strip energy
                     ptr->esum = ptr->alt_ecal + alt->ecal;
                     ptr->subsys = SUBSYS_COMPTON;
                     if(ptr->alt2_ecal>0){
                       ptr->subsys = SUBSYS_DCOMPTON;
                     }
-                    if(DEBUG_OUTPUT){ fprintf(stdout," --> QED_STRIP_N to COMPTON: esum=%.1f, ecal=%.1f, alt_ecal=%.1f",ptr->esum,ptr->ecal,ptr->alt_ecal); }
+                    if(DEBUG_OUTPUT){ fprintf(stdout," --> QED_STRIP_N to COMPTON: esum=%.1f, ecal=%.1f, alt_ecal=%.1f, alt_chan=%d",ptr->esum,ptr->ecal,ptr->alt_ecal,((element_table[alt->chan] * N_QED_STRIPS) + element_table[ptr->chan])); }
                   }else{
                     ptr->alt_ecal = ptr->ecal;
                     ptr->esum = ptr->ecal = alt->ecal;
@@ -719,9 +719,9 @@ int init_default_histos(Config *cfg, Sort_status *arg)
 
             // Look to build Compton events (a QED-Ge coincidence with energy of 511keV)
             if( alt->subsys == SUBSYS_HPGE_A ){
-              if(ptr->ecal>QED_PIXEL_THRESHOLD && ptr->ecal+alt->esum > 496 && ptr->ecal+alt->esum < 526){
+              if(ptr->ecal>QED_PIXEL_THRESHOLD && ptr->ecal+alt->esum > QED_GAMMA_ENERGY-12 && ptr->ecal+alt->esum < QED_GAMMA_ENERGY+12){
                 angle = scattering_angle_QEDGe(crystal_table[ptr->chan],(ptr->alt_chan%1024),crystal_table[alt->chan]);
-                if( (angle>=compton_angle(alt->esum,511.0)-12) && (angle<=compton_angle(alt->esum,511.0)+12) ){
+                if( (angle>=compton_angle(alt->esum,QED_GAMMA_ENERGY)-12) && (angle<=compton_angle(alt->esum,QED_GAMMA_ENERGY)+12) ){
                   // Here alt is Ge and ptr is QED_PIXEL
                   // In COMPTON event, ecal will be Ge and alt_ecal will be QED_PIXEL
                   // In COMPTON event, chan will be Ge, alt_chan will be packed with DSSD and PIXEL numbers
@@ -740,7 +740,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                     ptr->alt2_ecal = 0;
                     ptr->alt2_chan = -1;
                   }
-                  if(DEBUG_OUTPUT){ fprintf(stdout," --> QED_PIXEL to COMPTON: esum=%.1f, ecal=%.1f, alt_ecal=%.1f",ptr->esum,ptr->ecal,ptr->alt_ecal); }
+                  if(DEBUG_OUTPUT){ fprintf(stdout," --> QED_PIXEL to COMPTON: esum=%.1f, ecal=%.1f, alt_ecal=%.1f, alt_chan=%d",ptr->esum,ptr->ecal,ptr->alt_ecal,ptr->alt_chan); }
                 }
               }
             }
@@ -846,6 +846,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         return(0);
       }
 
+      /*
       // Presort - The final presort to identify triple coincidence events
       //  - frag_idx is about to leave coinc window (which ends at end_idx)
       //    all other events are later than frag_idx
@@ -926,7 +927,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         if(DEBUG_OUTPUT){ fprintf(stdout,"\nEnd of pre_sort_triples\n"); }
         return(0);
       }
-
+      */
+      
       // HPGe pile-up corrections
       // THE PRE_SORT WINDOW SHOULD BE EXTENDED TO COVER THE FULL POSSIBLE TIME DIFFERENCE BETWEEN PILE-UP events
       // THIS IS EQUAL TO THE DIFF PERIOD OF HPGE TYPE
@@ -1442,7 +1444,16 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {(void **)&qed_dcs_azi_b,       "QED_DCS_azimuth_70_110_binned",         "", SUBSYS_QED_STRIP, 384},
         {(void **)&qed_dcs_azi_tg,       "QED_DCS_azimuth_93_103",         "", SUBSYS_QED_STRIP, 384},
         {(void **)&qed_dcs_azi_tgb,       "QED_DCS_azimuth_93_103_binned",         "", SUBSYS_QED_STRIP, 384},
-        {(void **)&qed_theta1_vs_theta2,"COMP_QED_theta1_vs_theta2",  "",SUBSYS_QED_STRIP, 192, SYMMETERIZE},
+        {(void **)&qed_dcs_azi2,       "QED_DCS_azimuth2_70_110",         "", SUBSYS_QED_STRIP, 384},
+        {(void **)&qed_dcs_azi_tg2,       "QED_DCS_azimuth2_93_103",         "", SUBSYS_QED_STRIP, 384},
+        {(void **)&qed_theta1_vs_theta2,"COMP_QED_theta1_vs_theta2",  "",SUBSYS_QED_STRIP, 192, 192},
+        {(void **)&qed_delta_theta1_theta2,"COMP_QED_delta_theta1_theta2",  "",SUBSYS_QED_STRIP, 192},
+        {(void **)&qed_sum_theta1_theta2,"COMP_QED_sum_theta1_theta2",  "",SUBSYS_QED_STRIP, 384},
+        {(void **)&qed_theta1_azi,"COMP_QED_theta1_vs_azi",  "",SUBSYS_QED_STRIP, 192, 192},
+        {(void **)&qed_theta2_azi,"COMP_QED_theta2_vs_azi",  "",SUBSYS_QED_STRIP, 192, 192},
+        {(void **)&qed2_theta1_vs_theta2,"COMP_QED2_theta1_vs_theta2",  "",SUBSYS_QED_STRIP, 192, 192},
+        {(void **)&qed2_theta1_azi,"COMP_QED2_theta1_vs_azi",  "",SUBSYS_QED_STRIP, 192, 192},
+        {(void **)&qed2_theta2_azi,"COMP_QED2_theta2_vs_azi",  "",SUBSYS_QED_STRIP, 192, 192},
         {NULL,                   "QED/DCS",        ""},
         {(void **)&dcs_theta,        "DCS_theta",          "", SUBSYS_QED_STRIP, 200},
         {(void **)&dcs_cs_omega,     "DCS_CS_omega_SiGeSiGe",           "", SUBSYS_QED_STRIP, 200},
@@ -2033,10 +2044,10 @@ int init_default_histos(Config *cfg, Sort_status *arg)
               qedE_ge_theta_sum_c->Fill(qedE_ge_theta_sum_c, (int)ptr->ecal, (int)(angle), 1);
               qed_geE_theta_sum_c->Fill(qed_geE_theta_sum_c, (int)ptr->alt_ecal, (int)(angle), 1);
 
-              if((angle>=compton_angle(ptr->alt_ecal,511.0)-5) && (angle<=compton_angle(ptr->alt_ecal,511.0)+5)){
+              if((angle>=compton_angle(ptr->alt_ecal,QED_GAMMA_ENERGY)-5) && (angle<=compton_angle(ptr->alt_ecal,QED_GAMMA_ENERGY)+5)){
                 qedE_ge_theta_sum_c_s->Fill(qedE_ge_theta_sum_c_s, (int)ptr->ecal, (int)(angle), 1);
                 qed_geE_theta_sum_c_s->Fill(qed_geE_theta_sum_c_s, (int)ptr->alt_ecal, (int)(angle), 1);
-              }else if(((int)(scattering_angle_GeQED(pos,c2,c1))>=compton_angle(ptr->ecal,511.0)-5) && ((int)(scattering_angle_GeQED(pos,c2,c1))<=compton_angle(ptr->ecal,511.0)+5)){
+              }else if(((int)(scattering_angle_GeQED(pos,c2,c1))>=compton_angle(ptr->ecal,QED_GAMMA_ENERGY)-5) && ((int)(scattering_angle_GeQED(pos,c2,c1))<=compton_angle(ptr->ecal,QED_GAMMA_ENERGY)+5)){
                 qedE_ge_theta_sum_c_g->Fill(qedE_ge_theta_sum_c_g, (int)ptr->ecal, (int)(angle), 1);
                 qed_geE_theta_sum_c_g->Fill(qed_geE_theta_sum_c_g, (int)ptr->alt_ecal, (int)(angle), 1);
               }
@@ -2224,7 +2235,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                 qed_E_totE_sum_t->Fill(qed_E_totE_sum_t, alt->ecal, totalEnergy, 1);
                 qed_geE_totE_sum_t->Fill(qed_geE_totE_sum_t, ptr->ecal, totalEnergy, 1);
                 qed_theta_dt->Fill(qed_theta_dt, (int)(alt->ts-ptr->ts)+512, (int)(angle), 1);
-                if(totalEnergy>496 && totalEnergy<526){
+                if(totalEnergy>QED_GAMMA_ENERGY-12 && totalEnergy<QED_GAMMA_ENERGY+12){
 
                   //    fprintf(stdout,"ge-QED coinc. [%d][%d,%d,%d,%d], dt = %ld - %ld = %ld\n",crystal_table[ptr->chan],crystal_table[alt->chan],alt->alt_chan,(int)(alt->alt_chan/N_QED_STRIPS),(int)(alt->alt_chan%N_QED_STRIPS),ptr->ts,alt->ts,ptr->ts - alt->ts);
                   /*
@@ -2242,9 +2253,9 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                 qed_geE_theta_dssd[pos-1]->Fill(qed_geE_theta_dssd[pos-1], ptr->ecal, (int)(angle), 1);
                 qed_geE_theta_clov_t[(int)(c1/4)]->Fill(qed_geE_theta_clov_t[(int)(c1/4)], ptr->ecal, (int)(angle), 1);
 
-                qedE_ge_thetaI_sum_t->Fill(qedE_ge_thetaI_sum_t, alt->ecal, compton_angle(ptr->ecal,662.0), 1);
-                qed_geE_thetaI_sum_t->Fill(qed_geE_thetaI_sum_t, ptr->ecal, compton_angle(ptr->ecal,662.0), 1);
-                qed_geE_thetaDiff_sum_t->Fill(qed_geE_thetaDiff_sum_t, ptr->ecal, (int)(angle - compton_angle(ptr->ecal,662.0))+90, 1);
+                qedE_ge_thetaI_sum_t->Fill(qedE_ge_thetaI_sum_t, alt->ecal, compton_angle(ptr->ecal,QED_GAMMA_ENERGY), 1);
+                qed_geE_thetaI_sum_t->Fill(qed_geE_thetaI_sum_t, ptr->ecal, compton_angle(ptr->ecal,QED_GAMMA_ENERGY), 1);
+                qed_geE_thetaDiff_sum_t->Fill(qed_geE_thetaDiff_sum_t, ptr->ecal, (int)(angle - compton_angle(ptr->ecal,QED_GAMMA_ENERGY))+90, 1);
 
                 if((int)(c2/N_QED_STRIPS) == (c2%N_QED_STRIPS)){ // Single pixel theta needed for initial calibration
                   qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], alt->ecal, (int)(angle), 1);
@@ -2274,12 +2285,18 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             }
 
             if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 < 1024 && ptr->ecal>5 && (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_QED_PIXEL]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_QED_PIXEL])){
-              if(alt->esum>496 && alt->esum<526){
+              if(alt->esum>QED_GAMMA_ENERGY-12 && alt->esum<QED_GAMMA_ENERGY+12){
 
                 if(DEBUG_OUTPUT){ fprintf(stdout,"\nCOINC COMPTON: %d %d %ld | %.1f %.1f %.1f | %d vs %d %d %ld | %.1f %.1f %.1f | %d, dt=%d, sumE=%.1f\n",ptr->subsys,ptr->chan,ptr->ts,ptr->ecal,ptr->alt_ecal,ptr->esum,ptr->net_id,alt->subsys,alt->chan,alt->ts,alt->ecal,alt->alt_ecal,alt->esum,alt->net_id,(ptr->ts-alt->ts),(ptr->ecal+alt->ecal)); }
 
                 qedE_ge_theta_sum_t->Fill(qedE_ge_theta_sum_t, alt->ecal, (int)(angle), 1);
                 qed_geE_theta_sum_t->Fill(qed_geE_theta_sum_t, ptr->ecal, (int)(angle), 1);
+
+                if((int)(c2/N_QED_STRIPS) == (c2%N_QED_STRIPS)){ // Single pixel theta needed for initial calibration
+                  qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], alt->ecal, (int)(angle), 1);
+                  // no information on n strip energy in Subsys_Compton
+                  qed_geE_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qed_geE_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], ptr->ecal, (int)(angle), 1);
+                }
               }
             }
 
@@ -2306,16 +2323,17 @@ int init_default_histos(Config *cfg, Sort_status *arg)
 
             c3 = crystal_table[ptr->chan];
             c4 = crystal_table[ptr->alt_chan];
+            if( c1 >= 0 && c1 < 64 &&  c2 >= 0 && c2 < 64 &&  c3 >= 0 && c3 < 64 &&  c4 >= 0 && c4 < 64 ){
+              if(c1 != c3 && c1 != c4 && c2 != c3 && c2 != c4){
+                initial_theta = scattering_angle_QEDGe(pos1, qed1, c1);
+                omega = angular_diff_QEDGe(pos1,qed1, c3, 110);
+                azimuthal = azimuthal_TCS_GeGe_SiGeGe(c1, c2, c3, c4);
+                //fprintf(stdout,"TCS %d %d %d %d | %d %d | %0.1f %0.1f\n",pos1, qed1, ge1, c2, c3, c4,initial_theta,azimuthal);
 
-            if(c1 != c3 && c1 != c4 && c2 != c3 && c2 != c4){
-              initial_theta = scattering_angle_QEDGe(pos1, qed1, c1);
-              omega = angular_diff_QEDGe(pos1,qed1, c3, 110);
-              azimuthal = azimuthal_TCS_GeGe_SiGeGe(c1, c2, c3, c4);
-              //fprintf(stdout,"TCS %d %d %d %d | %d %d | %0.1f %0.1f\n",pos1, qed1, ge1, c2, c3, c4,initial_theta,azimuthal);
-
-              dcs_cs_omega_ge->Fill(dcs_cs_omega_ge, (int)(omega), 1);
-              if(omega>159){
-                dcs_theta_azi_ge->Fill(dcs_theta_azi_ge, (int)(initial_theta), (int)(azimuthal), 1);
+                dcs_cs_omega_ge->Fill(dcs_cs_omega_ge, (int)(omega), 1);
+                if(omega>159){
+                  dcs_theta_azi_ge->Fill(dcs_theta_azi_ge, (int)(initial_theta), (int)(azimuthal), 1);
+                }
               }
             }
 
@@ -2425,7 +2443,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
           Grif_event *alt, *ptr, *original_ptr = &grif_event[win_idx], *tmp;
           int dt, abs_dt,  pos, c1, c2, index, ptr_swap;
           int pos1, qed1, ge1, pos2, qed2, ge2, ge3;  // QED variables
-          double omega, theta1, theta2, azimuthal, initial_theta; // QED variables
+          double omega, theta1, theta2, delta_theta, azimuthal, azimuthal2, initial_theta; // QED variables
+          double energy_derived_theta1, energy_derived_theta2;
           TH2I *hist_ee; TH1I *hist_dt;
 
           // histogram of coincwin-size
@@ -2561,33 +2580,61 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                           pos2 = crystal_table[alt->chan];
                           qed2 = (alt->alt_chan%1024);
                           ge2 = alt->net_id;
+                          if(DEBUG_OUTPUT){ fprintf(stdout,"COMPTON-COMPTON: pos1,qed1,ge1 %d,%d,%d | pos2,qed2,ge2 %d,%d,%d | %.1f %.1f\n",pos1,qed1,ge1,pos2,qed2,ge2,ptr->esum,alt->esum); }
                           omega = angular_diff_QEDQED(pos1, qed1, pos2, qed2);
                           qed_dcs_omega->Fill(qed_dcs_omega, (int)omega, 1);
                           qed_dcs_omega_dt->Fill(qed_dcs_omega_dt, (int)(ptr->ts - alt->ts)+512, (int)omega, 1);
                           qedx_dcs_omega_dt[pos1-1]->Fill(qedx_dcs_omega_dt[pos1-1], (int)(ptr->ts - alt->ts)+512, (int)omega, 1);
-                          theta1 = scattering_angle_QEDGe(pos1, qed1, ge1);
-                          theta2 = scattering_angle_QEDGe(pos2, qed2, ge2);
                           if(pos1 != pos2 && ge1 != ge2){
                             qed_dcs_omega_t->Fill(qed_dcs_omega_t, (int)omega, 1);
+                            theta1 = scattering_angle_QEDGe(pos1, qed1, ge1);
+                            theta2 = scattering_angle_QEDGe(pos2, qed2, ge2);
                             azimuthal = azimuthal_DCS(pos1, qed1, ge1, pos2, qed2, ge2);
+                            delta_theta = (theta1>theta2) ? theta1-theta2 : theta2-theta1;
                             qed_dcs_azi_t->Fill(qed_dcs_azi_t, (int)azimuthal, 1);
                             qed_dcs_azi_tb->Fill(qed_dcs_azi_tb, (int)(azimuthal/20), 1);
                             //    if(){  }
                             //  fprintf(stdout,"omega = %f, theta1 = %f, theta2 = %f, azimuth = %f, for [%d %d %d] - [%d %d %d]\n",omega,theta1,theta2,azimuthal,pos1, qed1, ge1, pos2, qed2, ge2);
 
                             if(omega>170){
-                              qed_theta1_vs_theta2->Fill(qed_theta1_vs_theta2, theta1, theta2, 1);
+                              azimuthal2 = energy_corrected_azimuthal_DCS(pos1, qed1, ge1, ptr->alt_ecal,pos2, qed2, ge2, alt->alt_ecal);
+                              energy_derived_theta1 = compton_angle(ptr->alt_ecal, 511.0);
+                              energy_derived_theta2 = compton_angle(alt->alt_ecal, 511.0);
+                              if(theta1<theta2){
+                                qed_theta1_vs_theta2->Fill(qed_theta1_vs_theta2, (int)theta1, (int)theta2, 1);
+                              }else{
+                                qed_theta1_vs_theta2->Fill(qed_theta1_vs_theta2, (int)theta2, (int)theta1, 1);
+                              }
+
+                              qed_delta_theta1_theta2->Fill(qed_delta_theta1_theta2, (int)delta_theta, 1);
+                              qed_sum_theta1_theta2->Fill(qed_sum_theta1_theta2, (int)(theta1+theta2), 1);
+                              qed_theta1_azi->Fill(qed_theta1_azi, (int)theta1, (int)azimuthal, 1);
+                              qed_theta2_azi->Fill(qed_theta2_azi, (int)theta2, (int)azimuthal, 1);
+
+                              if(energy_derived_theta1<energy_derived_theta2){
+                                qed2_theta1_vs_theta2->Fill(qed2_theta1_vs_theta2, (int)energy_derived_theta1, (int)energy_derived_theta2, 1);
+                              }else{
+                                qed2_theta1_vs_theta2->Fill(qed2_theta1_vs_theta2, (int)energy_derived_theta2, (int)energy_derived_theta1, 1);
+                              }
+                              qed2_theta1_azi->Fill(qed2_theta1_azi, (int)energy_derived_theta1, (int)azimuthal2, 1);
+                              qed2_theta2_azi->Fill(qed2_theta2_azi, (int)energy_derived_theta2, (int)azimuthal2, 1);
 
                               // Scattering angle 70 to 110
                               if(theta1>69 && theta1<111 && theta2>69 && theta2<111){
                                 comp_comp->Fill(comp_comp, (int)ptr->esum, (int)(alt->esum), 1);
-                                azimuthal = azimuthal_DCS(pos1, qed1, ge1, pos2, qed2, ge2);
                                 qed_dcs_azi->Fill(qed_dcs_azi, (int)azimuthal, 1);
                                 qed_dcs_azi_b->Fill(qed_dcs_azi_b, (int)(azimuthal/20), 1);
                                 // Scattering angle 93 to 103
                                 if(theta1>92 && theta1<104 && theta2>92 && theta2<104){
                                   qed_dcs_azi_tg->Fill(qed_dcs_azi_tg, (int)azimuthal, 1);
                                   qed_dcs_azi_tgb->Fill(qed_dcs_azi_tgb, (int)(azimuthal/20), 1);
+                                }
+                              }
+
+                              if(energy_derived_theta1>69 && energy_derived_theta1<111 && energy_derived_theta2>69 && energy_derived_theta2<111){
+                                qed_dcs_azi2->Fill(qed_dcs_azi2, (int)azimuthal2, 1);
+                                if(energy_derived_theta1>92 && energy_derived_theta1<104 && energy_derived_theta2>92 && energy_derived_theta2<104){
+                                  qed_dcs_azi_tg2->Fill(qed_dcs_azi_tg2, (int)azimuthal2, 1);
                                 }
                               }
 
@@ -2615,17 +2662,18 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                           qed2 = (ptr->alt_chan%1024);
                           ge2 = ptr->net_id;
                           ge3 = ptr->alt2_chan;
-                          omega = angular_diff_QEDQED(pos1, qed1, pos2, qed2);
-                          initial_theta = scattering_angle_QEDGe(pos1, qed1, ge1);
-                          theta2 = scattering_angle_QEDGe(pos2, qed2, ge2);
 
-                          if(pos1 != pos2 && ge1 != ge2){
+                          if(pos1 != pos2 && ge1 != ge2 && ge1 != ge3){
+                            omega = angular_diff_QEDQED(pos1, qed1, pos2, qed2);
+                            initial_theta = scattering_angle_QEDGe(pos1, qed1, ge1);
+                            // Here theta1 could be calculated from the energies in the two Ge crystals.
+                            theta2 = scattering_angle_QEDGe(pos2, qed2, ge2);
                             azimuthal = azimuthal_TCS_SiGe_SiGeGe(pos1, qed1, ge1, ge2, ge3);
                             //  fprintf(stdout,"TCS %d %d %d | %d %d %d %d | %0.1f %0.1f\n",pos1, qed1, ge1, pos2, qed2, ge2, ge3,initial_theta,azimuthal);
                             comp_dcs->Fill(comp_dcs, (int)ptr->esum, (int)(alt->esum), 1);
 
                             dcs_cs_omega->Fill(dcs_cs_omega, (int)(omega), 1);
-                            dcs_theta_azi->Fill(dcs_theta_azi, (int)(initial_theta), (int)(azimuthal), 1);
+                            dcs_theta_azi->Fill(dcs_theta_azi, (int)(initial_theta), (int)(azimuthal), 1); // This one looks good. Endorsement of azimuthal_TCS_SiGe_SiGeGe
                           }
                         }
                         break;
