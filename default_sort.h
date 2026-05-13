@@ -28,23 +28,25 @@
 #define SUBSYS_ZDS_B     18 // CAEN
 #define SUBSYS_TAC_ZDS   19
 #define SUBSYS_TAC_ART   20
+#define SUBSYS_COMPTON   21
+#define SUBSYS_DCOMPTON  15
 #define SUBSYS_QED_PIXEL 22
 #define SUBSYS_UNKNOWN   23
 static char subsys_handle[MAX_SUBSYS][8] = {
   "GRGA", "PAC",  "LBL",  "RCS",
   "ARTA", "ZDSA", "LBT",  "LBS",
   "BGO",  "SEP",  "DSC",  "DSW",
-  "DSG",  "QEDs", "XXX2", "XXX3",
+  "DSG",  "QEDs", "XXX2", "DCS",
   "GRGB", "ARTB", "ZDSB", "", // secondary names start after #16
-  "",     "",     "QED",  "UNK"
+  "",     "CS",     "QED",  "UNK"
 };
 static char subsys_name[MAX_SUBSYS][STRING_LEN] = {
   "Griffin",   "PACES",    "LaBrX",   "RCMP",     //  0- 3
   "ARIES",     "ZDSA",     "TAC_LBL", "LaBrS",    //  4- 7
   "BGO",       "Sceptar",  "Descant", "DES_WALL", //  8-11
-  "Des_Ancil", "QEDs", "Ignore2", "Ignore3",  // 12-15
+  "Des_Ancil", "QEDs", "Ignore2", "DCS",  // 12-15
   "Grif_B",    "ARS_B",    "ZDS_B",   "TAC_ZDS",  // 16-19
-  "TAC_ART",   "",         "QED",     "Unknown"   // 20-23
+  "TAC_ART",   "CS",         "QED",     "Unknown"   // 20-23
 }; // final entry will be used if not found - make sure it is not empty
 // #####################################################################
 
@@ -83,7 +85,10 @@ static char subsys_name[MAX_SUBSYS][STRING_LEN] = {
 #define GE_ANGCOR_SPECLEN       4096
 #define DSW_ANGCOR_SPECLEN      4096
 #define QED_STRIP_THRESHOLD       30  // 30keV in all strips is required
+#define QED_PIXEL_THRESHOLD       50  // 50keV used in building coincidences
 #define NUM_QED_REORDERS          10
+#define QED_COMPTON              0xF
+#define QED_GAMMA_ENERGY         511  // 511keV
 
 //#######################################################################
 //########             PPG variables and patterns              ##########
@@ -290,7 +295,8 @@ TH1I *tac_lbl_ts_diff[N_TACS];
 // HPGe (ge_sum is sum of crystal energies, ge_sum_b is beta-gated)
 TH1I  *ge_ab_e[N_CLOVER], *ge_ab_sup_e[N_CLOVER], *ge_sum_ab, *ge_sum_ab_sup, *ge_sum_ab_sup_rej;
 TH1I  *ge_sum, *ge_sum_us, *ge_sum_ds, *ge_sum_ab_us, *ge_sum_ab_ds;
-TH1I  *ge_sum_b, *ge_sum_b_ab, *ge_sum_b_sep, *ge_sum_b_sep_brems, *ge_sum_b_ab_sep_brems, *ge_sum_b_zds, *ge_sum_b_art, *ge_sum_b_art_brems;
+TH1I  *ge_sum_b, *ge_sum_b_ab, *ge_sum_b_sep, *ge_sum_b_sep_brems, *ge_sum_b_ab_sep_brems, *ge_sum_b_zds;
+TH1I  *ge_sum_b_art, *ge_sum_b_art_brems, *ge_sum_b_artT, *ge_sum_b_artR, *ge_sum_b_artS;
 
 // ARIES, PACES and LaBr3
 TH1I  *aries_sum;  // aries_sum is sum of tile energies
@@ -307,14 +313,20 @@ TH2I  *rcmp_x_ge_hit, *rcmp_y_ge_hit; // rcmp strips vs Ge hitpatterns
 // QED
 TH1I  *qed_sum, *qed_fb_sum;  // qed_sum is sum of strip energies, fb is with front-back coincidence
 TH2I  *qed_strips[N_QED_POS];
-TH2I  *qed_hit[N_QED_POS], *qed_hit_trial[NUM_QED_REORDERS], *qed_hit_trials[N_QED_POS];
+TH2I  *qed_hit[N_QED_POS], *qed_hit_trials[N_QED_POS];
 TH2I  *qed_fb[N_QED_POS];
 TH2I  *qed_psd_e[N_QED_POS];
 TH2I  *qed_p_ge_hit, *qed_n_ge_hit; // qed strips vs Ge hitpatterns
 TH2I  *qedp_ge_theta[N_QED_POS*N_QED_STRIPS], *qedn_ge_theta[N_QED_POS*N_QED_STRIPS]; // qed strip energy vs theta of a qed-Ge hit
 TH2I  *qed_geE_theta[N_QED_POS*N_QED_STRIPS], *qedE_ge_theta_sum, *qed_geE_theta_sum, *qed_totE_theta_sum, *qed_E_totE_sum_t, *qed_geE_totE_sum_t, *qedE_ge_theta_sum_t, *qed_geE_theta_sum_t, *qedE_ge_thetaI_sum_t, *qed_geE_thetaDiff_sum_t, *qed_geE_thetaI_sum_t;
+TH2I  *qedE_ge_theta_sum_c, *qed_geE_theta_sum_c, *qedE_ge_theta_sum_c_g, *qed_geE_theta_sum_c_g, *qedE_ge_theta_sum_c_s, *qed_geE_theta_sum_c_s, *ge_qed_c;
 TH2I  *qed_totE_theta[N_QED_POS], *qed_geE_theta_clov[N_CLOVER], *qed_geE_theta_clov_t[N_CLOVER], *qed_E_theta_dssd[N_QED_POS], *qed_geE_theta_dssd[N_QED_POS];
-TH2I  *qed_angle_test;
+TH2I  *qed_angle_test_g, *qed_angle_test_s, *qedE_ge_dt, *qed_geE_dt, *qedE_ge_dt_c, *qed_geE_dt_c, *qed_theta_dt, *qed_dcs_omega_dt, *qedx_dcs_omega_dt[N_QED_POS], *qed_theta1_vs_theta2, *qed_theta1_azi, *qed_theta2_azi, *qed2_theta1_vs_theta2, *qed2_theta1_azi, *qed2_theta2_azi;
+TH1I  *qed_dcs_omega, *qed_dcs_omega_t, *qed_dcs_azi, *qed_dcs_azi_t, *qed_dcs_azi_tg, *qed_dcs_azi_b, *qed_dcs_azi_tb, *qed_dcs_azi_tgb, *qed_delta_theta1_theta2, *qed_sum_theta1_theta2, *qed_dcs_azi2, *qed_dcs_azi_tg2;
+TH1I  *dcs_theta, *dcs_cs_omega;
+TH2I  *dcsE_ge_theta, *dcs_geE_theta, *dcs_theta_azi;
+TH1I  *dcs_cs_omega_ge;
+TH2I  *dcs_theta_azi_ge;
 
 char qed_psd_handles[N_QED_POS][HANDLE_LENGTH] = {"QED01_E_vs_psd","QED02_E_vs_psd","QED03_E_vs_psd","QED04_E_vs_psd","QED05_E_vs_psd","QED06_E_vs_psd"};
 char qed_strips_handles[N_QED_POS][HANDLE_LENGTH]={"QED01_E_strips", "QED02_E_strips", "QED03_E_strips", "QED04_E_strips", "QED05_E_strips", "QED06_E_strips"};
@@ -324,6 +336,7 @@ char qed_totE_theta_handles[N_QED_POS][HANDLE_LENGTH]={"QED01_totalE_vs_theta", 
 char qed_E_theta_handles[N_QED_POS][HANDLE_LENGTH]={"QED01_E_vs_theta", "QED02_E_vs_theta", "QED03_E_vs_theta", "QED04_E_vs_theta", "QED05_E_vs_theta", "QED06_E_vs_theta"};
 char qed_geE_theta_handles[N_QED_POS][HANDLE_LENGTH]={"QED01_geE_vs_theta", "QED02_geE_vs_theta", "QED03_geE_vs_theta", "QED04_geE_vs_theta", "QED05_geE_vs_theta", "QED06_geE_vs_theta"};
 char qed_E_cycle_handles[N_QED_POS][HANDLE_LENGTH]={"cycle_vs_QED01_Energy", "cycle_vs_QED02_Energy", "cycle_vs_QED03_Energy", "cycle_vs_QED04_Energy", "cycle_vs_QED05_Energy", "cycle_vs_QED06_Energy", };
+char qedx_dcs_omega_dt_handles[N_QED_POS][HANDLE_LENGTH] = {"QED01_DCS_omega_vs_dt","QED02_DCS_omega_vs_dt","QED03_DCS_omega_vs_dt","QED04_DCS_omega_vs_dt","QED05_DCS_omega_vs_dt","QED06_DCS_omega_vs_dt"};
 
 char qed_geE_theta_clov_handles[N_CLOVER][HANDLE_LENGTH] = {
   "QED_Clover01E_vs_theta","QED_Clover02E_vs_theta","QED_Clover03E_vs_theta","QED_Clover04E_vs_theta",
@@ -502,7 +515,7 @@ TH2I *lbl_lbl_tac;                       // A special 3d histogram disguised as 
 TH2I *ge_xtal, *bgo_xtal, *bgof_xtal, *bgos_xtal, *bgob_xtal, *bgoa_xtal, *labr_xtal;
 TH2I *labr_tac_xtal, *paces_xtal, *sceptar_xtal, *aries_xtal, *art_tac_xtal, *desw_e_xtal, *desw_tof_xtal;
 
-#define N_DT 29   // Time difference
+#define N_DT 31   // Time difference
 char dt_handles[N_DT][HANDLE_LENGTH]={
   "dt_ge_ge",      "dt_ge_bgo",     "dt_ge_sep",             "dt_ge_zds",     // 0-3
   "dt_ge_pac",     "dt_ge_labr",    "dt_ge_rcmp",            "dt_pac_zds",    // 4-7
@@ -510,7 +523,8 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
   "dt_paces_art",  "dt_art_art",    "dt_art_tac",            "dt_zds_tac",    // 12-15
   "dt_labr_tac",   "dt_labr_zds",   "dt_dsw_dsw",            "dt_dsw_ge",     // 16-19
   "dt_dsw_art",    "dt_dsw_zds",    "dt_zds_GRIF_CAEN_10ns", "dt_zds_GRIF_CAEN_2ns", // 20-23
-  "dt_dsw_dsw_2ns","dt_dsw_zds_2ns","dt_labr_labr",          "dt_ge_qed",   "dt_qed_qed"  };   // 24-28
+  "dt_dsw_dsw_2ns","dt_dsw_zds_2ns","dt_labr_labr",          "dt_ge_qed",   "dt_qed_qed",   // 24-28
+  "dt_comp_comp", "dt_comp_ge" };
   TH1I  *dt_hist[N_DT], *dt_tacs_hist[N_TACS];
 
   // 2D hitpatterns
@@ -519,7 +533,7 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
   // 2D Energy vs Energy Coincidence matrices
   TH2I *gea_self_dt,*geb_self_dt;
   TH2I *gg, *gg_ab, *gg_opp, *gg_ab_opp, *ge_bgo, *ge_paces, *ge_labr, *ge_rcmp, *labr_labr, *labr_zds, *labr_rcmp;
-  TH2I *ge_art, *ge_zds, *paces_art, *labr_art, *art_art, *dsw_dsw, *ge_dsw, *art_dsw, *ge_qed, *qed_qed;
+  TH2I *ge_art, *ge_zds, *paces_art, *labr_art, *art_art, *dsw_dsw, *ge_dsw, *art_dsw, *ge_qed, *qed_qed, *comp_comp, *ge_comp, *geadd_comp, *ge_dcs, *geadd_dcs, *comp_dcs;
   TH1I *gg_energy[N_HPGE];
   char gg_energy_handles[N_HPGE][HANDLE_LENGTH]={
     "GRG01BN00A_GGEnergy","GRG01GN00A_GGEnergy","GRG01RN00A_GGEnergy","GRG01WN00A_GGEnergy", "GRG02BN00A_GGEnergy","GRG02GN00A_GGEnergy","GRG02RN00A_GGEnergy","GRG02WN00A_GGEnergy",

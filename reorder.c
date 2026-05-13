@@ -248,7 +248,7 @@ void reorder_out(Sort_status *arg)
                reorder_status(0);
                return;
             } else { //  error?
-               printf("REORDER ERROR-VERY-LONG-DATA-GAP\n");
+               //printf("REORDER ERROR-VERY-LONG-DATA-GAP! Obserbed gap is %ld with limit set to %ld\n",(ts - prev_ts),MAX_DATA_GAP);
             }
          }
          ts_slot = (ts >> BUCKET_SIZE_BITS) % REORDER_TSLOTS;

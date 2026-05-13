@@ -341,6 +341,7 @@ int insert_presort_win(Grif_event *ptr, int slot)
       // NOTE event[slot] is out of window - use slot-1 as window-end
       if( (win_end = slot-1) < 0 ){ win_end = PTR_BUFSIZE-1; } // WRAP
       pre_sort_exit(presort_window_start, win_end);
+    //  pre_sort_triples(presort_window_start, win_end); // used in QED development
       insert_sort_win(alt, presort_window_start); // add event to next window
       if( ++presort_window_start >= PTR_BUFSIZE ){ presort_window_start=0; } // WRAP
    }
@@ -431,6 +432,7 @@ int sort_built_event(int window_start, int win_end)
 {
    pre_sort_enter(window_start, win_end);
    pre_sort_exit(window_start, win_end); // only fold of first fragment is set
+  // pre_sort_triples(window_start, win_end); // only fold of first fragment is set  // used in QED development
    default_sort(window_start, win_end, SORT_ALL);
    //user_sort(window_start, win_end, SORT_ALL);
    return(0);
