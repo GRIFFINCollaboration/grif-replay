@@ -6,9 +6,42 @@
 #include "config.h"
 #include "histogram.h"
 
+extern float spread(int val);
+
 //#######################################################################
 //#####              USER SORT - custom user histograms             #####
 //#######################################################################
+
+int user_addto_window(int win_strt, int new_frag){ return(0); }
+
+int user_removefrom_window(int win_strt, int new_frag){ return(0); }
+
+int test_gate(Dragon_event *ptr, Dragon_event *alt, Gate *gate)
+{
+   Sortvar *var;
+   float value;
+   Cond *cond;
+   int i, j;
+
+   for(i=0; i<gate->nconds; i++){ cond = gate->conds[i];
+      if( cond->valid == 0 ){ // not yet tested for this pair
+         var = cond->var;
+         value = var->get_value(ptr, alt, var->subsys1, var->subsys2);
+         switch( cond->op ){
+         case GATEOP_LT: cond->passed = value <  cond->value; break;
+         case GATEOP_LE: cond->passed = value <= cond->value; break;
+         case GATEOP_GT: cond->passed = value >  cond->value; break;
+         case GATEOP_GE: cond->passed = value >= cond->value; break;
+         case GATEOP_EQ: cond->passed = value == cond->value; break;
+         }
+         cond->valid = 1;
+      }
+      if( ! cond->passed ){ break; }
+   }
+   gate->valid  = ( i >= gate->nconds-1 ); // tested all conditions
+   gate->passed = ( i == gate->nconds   );
+   return(0);
+}
 
 int user_sort_init()
 {
@@ -40,10 +73,10 @@ int user_sort(int win_strt, int win_end, int flag)
 
    if( win_strt != win_end ){ // multiple fragments in window
       for(i=0; i<cfg->nuser; i++){ cfg->user_histos[i]->done_flag = 0; }
-   } 
+   }
 
    // when a histo is done for this event, dec user_cnt, and stop when zero
-   if( (win_idx = win_strt+1) == EVT_BUFSIZE ){ win_idx = 0; } 
+   if( (win_idx = win_strt+1) == EVT_BUFSIZE ){ win_idx = 0; }
    if( ++win_end == EVT_BUFSIZE ){ win_end = 0; } // need to include win_end
    while( win_idx != win_end && user_cnt > 0 ){
       alt = &evbuf[win_idx];
@@ -87,36 +120,6 @@ int user_sort(int win_strt, int win_end, int flag)
    user_removefrom_window(win_strt, win_end);
    return(0);
 }
-
-int test_gate(Dragon_event *ptr, Dragon_event *alt, Gate *gate)
-{
-   Sortvar *var;
-   float value;
-   Cond *cond;
-   int i, j;
-
-   for(i=0; i<gate->nconds; i++){ cond = gate->conds[i];
-      if( cond->valid == 0 ){ // not yet tested for this pair
-         var = cond->var;
-         value = var->get_value(ptr, alt, var->subsys1, var->subsys2);
-         switch( cond->op ){
-         case GATEOP_LT: cond->passed = value <  cond->value; break;
-         case GATEOP_LE: cond->passed = value <= cond->value; break;
-         case GATEOP_GT: cond->passed = value >  cond->value; break;
-         case GATEOP_GE: cond->passed = value >= cond->value; break;
-         case GATEOP_EQ: cond->passed = value == cond->value; break;
-         }
-         cond->valid = 1;
-      }
-      if( ! cond->passed ){ break; }
-   }
-   gate->valid  = ( i >= gate->nconds-1 ); // tested all conditions
-   gate->passed = ( i == gate->nconds   );
-   return(0);
-}
-
-int user_addto_window(int win_strt, int new_frag){ return(0); }
-int user_removefrom_window(int win_strt, int new_frag){ return(0); }
 
 //#######################################################################
 //#####                     SORT VARIABLES                          #####

@@ -5,7 +5,7 @@
 // run through the data, saving anything of interest
 // *there is no error recovery from corrupted data*
 //  (no bad odb dumps have been seen so far)
-// 
+//
 // NOTE xml files *can* contain ">" in data - These routines fail in that case
 //    [usually "&gt;" is used instead of ">", but this is not mandatory]
 //    [but midas always uses "&gt;", so these routines are good for midas]
@@ -194,7 +194,8 @@ int get_odb_array(char *path, void **value, int *type, int *nvalues, int *size)
    if( (result = calloc(*nvalues, *size) ) == NULL ){
      printf("get_odb_array: failed malloc for %s\n", path); return(-1);
    }
-   *value = i_array = f_array = result;
+   f_array = (float *)result;
+   *value = i_array = (int *)result;
    if( (node = node->child_head) == NULL ){
       printf("get_odb_array:empty\n", path); return(-1);
    }
@@ -277,7 +278,7 @@ char *read_xml_data(char *xml_file, Xml_node *current, char *name_ptr, int namel
    Xml_node *new_node, *parent = current;
    char *ptr = xml_file, *str, *ptr2;
    int len;
-   
+
    if( (new_node = alloc_odb_element(name_ptr, namelen)) == NULL ){
       return(NULL);
    }
@@ -410,7 +411,7 @@ int free_odb_element(Xml_node *current)
    if( current->type == XML_PTR ){
       if( current->value.p_val != NULL ){free(current->value.p_val); } else {
          printf("free_odb_element NULL value pointer\n");
-      }  
+      }
    }
    if( current->attr != NULL ){ free_odb_attrlist(current->attr); }
    free(current);
@@ -463,7 +464,7 @@ Xml_attr *get_attr(Xml_attr *attr, char *id)
    while( attr != NULL ){
       if( strlen(attr->name) == len &&
           strncmp(attr->name, id, len) == 0 ){ break; }
-      attr = attr->next;   
+      attr = attr->next;
    }
    return(attr);
 }

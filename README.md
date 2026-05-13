@@ -9,11 +9,13 @@ Grif-Replay is composed of two parts; the data-sorting engine and server (writte
 
 ## Installation
 
-Download the repository from GitHub into your chosen working directory. Then in the working directory just run `make`.
+Download the repository from GitHub into your chosen working directory. Then in the working directory just run `make` or `make griffin` in order to sort GRIFFIN data. If you want to alternatively sort DRAGON data use the command `make dragon`.
+
+Data from only one facility (GRIFFIN or DRAGON) can be processed at a time. To process another type you need to recompile with the appropriate argument.
 
 ### Create the Midas shared-object file
 
-(Most users can skip this part and proceed to Running Grif-Replay. This only needs to be done on a TRIUMF DAQ computer.) If this instance of grif-replay is intended to connect to an online Midas experiment then the Midas shared-object file must also be created. This requires two additional files which are deliberately not included in this grif-replay Github repository. The two required files are named libmidas.a and midas.h. They must match the version of Midas installed on the machine that you intend to connect to (which may be a different version than the version of midas that is installed on the local machine where grif-replay is installed.). Copy these two files (libmidas.a and midas.h) to the grif-replay directory.
+(Most users can skip this part and proceed to Running Grif-Replay. This only needs to be done on a TRIUMF DAQ computer for connecting to the GRIFFIN MIDAS.) If this instance of grif-replay is intended to connect to an online Midas experiment then the Midas shared-object file must also be created. This requires two additional files which are deliberately not included in this grif-replay Github repository. The two required files are named libmidas.a and midas.h. They must match the version of Midas installed on the machine that you intend to connect to (which may be a different version than the version of midas that is installed on the local machine where grif-replay is installed.). Copy these two files (libmidas.a and midas.h) to the grif-replay directory.
 
 There is a dependancy in the midas.h file for a file named git-revision.h. This is not required by grif-replay so there are two options; either comment out this line in the midas.h file (#include "git-revision.h"), or alternatively create a blank version of this file in the grif-replay directory ('touch git-revision.h').
 
@@ -34,6 +36,8 @@ Once the code has been successfully compiled you can run it. If you will be runn
 Navigate to the working directory where Grif-Replay was compiled. You can launch Grif-Replay with the command:
 
 `./grif-replay`
+or
+`./dragon-replay`
 
 The output on the terminal does not need to be monitored (you can detach from the screen session now). From this point you will interact with Grif-Replay through the interface in your web browser.
 
@@ -71,7 +75,7 @@ On the `Spectrum Viewer & Analysis` subpage of the Web Interface click on the ti
 ### Convert histogram .tar files to Root format
 
 In a terminal, navigate to the working directory, or any directory containing the tar2root.C script.
-Open `grsisort` or `Root`.
+Open `Root` or `grsisort`.
 run the command
 
 `.x tar2root.C("/tig/grifstore1/grifalt/schedule146/S2232/runXXXX.tar","runXXXX.root)`
@@ -92,4 +96,4 @@ There are a number of options for how to launch a local server, for more details
 
 ## Development
 
-Grif-Replay was originally developed by Chris Pearson (data-sorting engine and server) and Adam Garnsworthy (browser tools) at TRIUMF Inc. during the 2023-2024 time period. The browser tools use much of the infrastructure originally developed by Bill Mills during the 2013-2016 time period.
+Grif-Replay was originally developed by Chris Pearson (data-sorting engine and server) and Adam Garnsworthy (browser tools) at TRIUMF Inc. during the 2023-2024 time period. The browser tools use much of the infrastructure originally developed by Katie Mills during the 2013-2016 time period.

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 #include <string.h>
 
@@ -8,6 +9,8 @@
 
 #define IO32_BANKLEN 9 // this bank is a fixed length
 
+float spread(int val){ return( val + rand()/(1.0*RAND_MAX) ); }
+
 ///////////////////////////////////////////////////////////////////////////
 // griffin scheme, midas   -> bankbuf{_wr/rdpos}[4M-Words] RAW BANK DATA
 //                 reorder -> reorder 65k-events{ts,next,active,len,data}
@@ -15,14 +18,14 @@
 //                             wait till > 32k events before taking events out
 //                         -> event_buffer{_wr/rdpos}[8*1M-words]
 //                  unpack -> grif_event[1k-Events] circ buffer for coincs
-// 
+//
 // *Why only 65k events* ??
 ///////////////////////////////////////////////////////////////////////////
 // dragon/iris, midas   -> unpack -> bankbuf{_wr/rdpos}[4M-Words] UNPACKED DATA
 //              reorder -> reorder 65k-events{ts,next,active,len,data}
 //                               1M-slot-ptrs  @   1us per slot
 //                         wait till > 32k events before taking events out
-//                   
+//
 //                         -> event_buffer{_wr/rdpos}[8*1M-words]
 //
 ///////////////////////////////////////////////////////////////////////////
@@ -59,7 +62,7 @@ int unpack_io32_bank(Dragon_event *evt, int *ptr, int len, int type)
    }
    return(0);
 }
-       
+
 int unpack_io32_fifobank(Dragon_event *evt, int *ptr, int len, int type)
 {
    static unsigned long max_ts;
@@ -254,7 +257,7 @@ int unpack_v792_bank(Dragon_event *evt, int *ptr, int len, int id, int type)
       }
    }
    if( i != len ){ return(-1); } // bank contains errors, unpacking was aborted
-   return(0);   
+   return(0);
 }
 
 // TODO - add single items [eg dssd_tdc_front, odd tacs/tdcs
@@ -271,7 +274,7 @@ int unpack_head_event(Dragon_event *evt)
          val = evt->v792a.data[i];
          srcchan = (val >> 16) & 0x1f;
          badval = (val >> 12) & 0x3; // under/overflow bits
-         val &= 0xfff; 
+         val &= 0xfff;
          if( (dstchan = head_adc_dstchan[srcchan]) == -1 ){
             //printf("data in head v792 chan%d - ignoring\n", srcchan);
             continue;
@@ -307,7 +310,7 @@ int unpack_head_event(Dragon_event *evt)
          if( (dstchan = head_tdc_dstchan[srcchan]) == -1 ){ continue; } // unassigned
          switch( head_tdc_dettype[srcchan] ){
          case SUBSYS_BGO:
-            if( dstchan >= 0 && dstchan < BGO_MAXCHAN ){ 
+            if( dstchan >= 0 && dstchan < BGO_MAXCHAN ){
                head->bgo_time[dstchan] = bgo_tdc_offset[dstchan] +
                   bgo_tdc_slope[dstchan] * val;
             } else { printf("UnpckHead:CodingErr6\n"); } break;
@@ -338,36 +341,36 @@ int unpack_tail_event(Dragon_event *evt)
          val = j ? evt->v792a.data[i] : evt->v792b.data[i];
          srcchan = (V792_MAXCHAN * j) + (val >> 16) & 0x1f;
          badval = (val >> 12) & 0x3; // under/overflow bits
-         val &= 0xfff; 
+         val &= 0xfff;
          if( (dstchan = tail_adc_dstchan[srcchan]) == -1 ){ continue; } // unassigned
          switch( tail_adc_dettype[srcchan] ){
          case SUBSYS_DSSD:
-            if( dstchan >= 0 && dstchan < DSSD_MAXCHAN ){ 
+            if( dstchan >= 0 && dstchan < DSSD_MAXCHAN ){
                tail->dssd_energy[dstchan] = badval ? 0 :
                   dssd_adc_offset[dstchan] + dssd_adc_slope[dstchan] * val;
             } else { printf("UnpckTail:CodingErr1\n"); } break;
          case SUBSYS_IC:
-            if( dstchan >= 0 && dstchan < IC_MAXCHAN ){ 
+            if( dstchan >= 0 && dstchan < IC_MAXCHAN ){
                tail->ic_energy[dstchan] = badval ? 0 :
                   ic_adc_offset[dstchan] + ic_adc_slope[dstchan] * val;
             } else { printf("UnpckTail:CodingErr2\n"); } break;
          case SUBSYS_MCP:
-            if( dstchan >= 0 && dstchan < MCP_MAXCHAN ){ 
+            if( dstchan >= 0 && dstchan < MCP_MAXCHAN ){
                tail->mcp_energy[dstchan] = badval ? 0 :
                   mcp_adc_offset[dstchan] + mcp_adc_slope[dstchan] * val;
             } else { printf("UnpckTail:CodingErr3\n"); } break;
          case SUBSYS_MCPTAC:
-            if( dstchan == 0 ){ 
+            if( dstchan == 0 ){
                tail->mcptac_energy = badval ? 0 : mcptac_adc_offset + mcptac_adc_slope * val;
             } else { printf("UnpckTail:CodingErr4\n"); } break;
          case SUBSYS_SB:
-            if( dstchan >= 0 && dstchan < SB_MAXCHAN ){ 
+            if( dstchan >= 0 && dstchan < SB_MAXCHAN ){
                tail->sb_energy[dstchan] = badval ? 0 :
                   sb_adc_offset[dstchan] + sb_adc_slope[dstchan] * val;
             } else {
                printf("UnpckHead:CodingErr2\n"); } break;
          case SUBSYS_NAI:
-            if( dstchan >= 0 && dstchan < NAI_MAXCHAN ){ 
+            if( dstchan >= 0 && dstchan < NAI_MAXCHAN ){
                tail->nai_energy[dstchan] = badval ? 0 :
                   nai_adc_offset[dstchan] + nai_adc_slope[dstchan] * val;
             } else { printf("UnpckHead:CodingErr3\n"); } break;
@@ -389,17 +392,17 @@ int unpack_tail_event(Dragon_event *evt)
          if( (dstchan = tail_tdc_dstchan[srcchan]) == -1 ){ continue; } // unassigned
          switch( tail_tdc_dettype[srcchan] ){
          case SUBSYS_DSSD:
-            if( dstchan >= 0 && dstchan < DSSD_TDCCHAN ){ 
+            if( dstchan >= 0 && dstchan < DSSD_TDCCHAN ){
                tail->dssd_time[dstchan] = dssd_tdc_offset[dstchan] +
                   dssd_tdc_slope[dstchan] * val;
             } else { printf("UnpckTail:CodingErr6\n"); } break;
          case SUBSYS_IC:
-            if( dstchan >= 0 && dstchan < IC_MAXCHAN ){ 
+            if( dstchan >= 0 && dstchan < IC_MAXCHAN ){
                tail->ic_time[dstchan] = ic_tdc_offset[dstchan] +
                   ic_tdc_slope[dstchan] * val;
             } else { printf("UnpckTail:CodingErr7\n"); } break;
          case SUBSYS_MCP:
-            if( dstchan >= 0 && dstchan < MCP_TDCCHAN ){ 
+            if( dstchan >= 0 && dstchan < MCP_TDCCHAN ){
                tail->mcp_time[dstchan] = mcp_tdc_offset[dstchan] +
                   mcp_tdc_slope[dstchan] * val;
             } else { printf("UnpckTail:CodingErr8\n"); } break;

@@ -21,7 +21,7 @@ typedef struct io32_fifo_struct { // 6+4 = 10 words
 
 #define MAX_V1190_WORDS 40
 typedef struct v1190_event_struct { // 5+16 = 21
-    int ev_count;  short bunch_id; short status; 
+    int ev_count;  short bunch_id; short status;
    int time_tag;  int d_count;     int data[MAX_V1190_WORDS];
 } V1190_event;
 
@@ -54,14 +54,14 @@ typedef struct v792_event_struct { // 32+2 = 34
 #define SUBSYS_TDC0  11
 
 typedef struct head_data {
-   int  xtdc; int rftdc; int tdc0; 
+   int  xtdc; int rftdc; int tdc0;
    float bgo_energy[BGO_MAXCHAN];
    int   bgo_time  [BGO_MAXCHAN];
    float bgo_e0;  int bgo_ch0;
 } Head_data;
 
 typedef struct tail_data {
-   int  xtdc; int rftdc; int tdc0; 
+   int  xtdc; int rftdc; int tdc0;
    float ge_energy;
    float sb_energy  [SB_MAXCHAN];
    float nai_energy [NAI_MAXCHAN];
@@ -81,9 +81,9 @@ typedef union head_tail_data_union {
    Tail_data tail_data;
 } Head_tail_data;
 
-#define DRAGON_EVENT_MARK 0xfedccdef // help recover resync if lost for some reason 
-typedef struct dragon_event_struct {  // raw:110 words - 10x grifevents size 
-   int  begin_marker;                 // full:~190       19x grifevents size 
+#define DRAGON_EVENT_MARK 0xfedccdef // help recover resync if lost for some reason
+typedef struct dragon_event_struct {  // raw:110 words - 10x grifevents size
+   int  begin_marker;                 // full:~190       19x grifevents size
    int  type;         // head or tail
    long ts;           // trigger timestamp from io32_fifo
    Io32_event   io32; //  6 words
@@ -126,7 +126,7 @@ extern float nai_adc_offset  [NAI_MAXCHAN];
 // tail detectors ...
 extern int   tail_xtdc_chan, tail_rftdc_chan, tail_tdc0_chan;
 extern float tail_xtdc_slope, tail_xtdc_offset, tail_rftdc_slope, tail_rftdc_offset;
-extern float tail_tdc0_slope, tail_tdc0_offset; 
+extern float tail_tdc0_slope, tail_tdc0_offset;
 extern int   dssd_adc_chan    [DSSD_MAXCHAN];
 extern int   dssd_adc_module  [DSSD_MAXCHAN]; // 32 dssd chan are in two 16-chan adcs
 extern float dssd_adc_slope   [DSSD_MAXCHAN];
@@ -153,12 +153,20 @@ extern int   mcp_tdc_chan     [MCP_TDCCHAN]; // was called tdc0,tdc1
 extern float mcp_tdc_slope    [MCP_TDCCHAN];
 extern float mcp_tdc_offset   [MCP_TDCCHAN];
 //derived tables
-extern int head_adc_dettype[2*V792_MAXCHAN]; extern int head_adc_dstchan[2*V792_MAXCHAN]; 
-extern int head_tdc_dettype[ V1190_MAXCHAN]; extern int head_tdc_dstchan[ V1190_MAXCHAN]; 
-extern int tail_adc_dettype[2*V792_MAXCHAN]; extern int tail_adc_dstchan[2*V792_MAXCHAN]; 
-extern int tail_tdc_dettype[ V1190_MAXCHAN]; extern int tail_tdc_dstchan[ V1190_MAXCHAN]; 
+extern int head_adc_dettype[2*V792_MAXCHAN]; extern int head_adc_dstchan[2*V792_MAXCHAN];
+extern int head_tdc_dettype[ V1190_MAXCHAN]; extern int head_tdc_dstchan[ V1190_MAXCHAN];
+extern int tail_adc_dettype[2*V792_MAXCHAN]; extern int tail_adc_dstchan[2*V792_MAXCHAN];
+extern int tail_tdc_dettype[ V1190_MAXCHAN]; extern int tail_tdc_dstchan[ V1190_MAXCHAN];
 
 int unpack_io32_bank(Dragon_event *evt, int *ptr, int len, int type);
 int unpack_io32_fifobank(Dragon_event *evt, int *ptr, int len, int type);
 int unpack_v1190_bank(Dragon_event *evt, int *ptr, int len, int type);
 int unpack_v792_bank(Dragon_event *evt, int *ptr, int len, int id, int type);
+
+extern int process_event(Dragon_event *ptr, int slot);
+extern int insert_presort_win(Dragon_event *ptr, int slot);
+extern int insert_sort_win(Dragon_event *ptr, int slot);
+extern int pre_sort_enter(int start_idx, int frag_idx);
+extern int pre_sort_exit(int frag_idx, int end_idx);
+extern int unpack_head_event(Dragon_event *evt);
+extern int unpack_tail_event(Dragon_event *evt);

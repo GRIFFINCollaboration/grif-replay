@@ -21,14 +21,13 @@ int presort_window_width = 200;  // 10us is dragon default window
 int sort_window_width    = 200;  // 10us - MAXIMUM (indiv. gates can be smaller)
 
 // Default sort function declarations
+extern float spread(int val);
 extern int init_parameters_from_globals(Config *cfg);
 extern int init_chan_histos(Config *cfg);
 extern int init_histos(Config *cfg);
 extern int fill_chan_histos(Dragon_event *ptr);
 extern int fill_singles_histos(Dragon_event *ptr);
 extern int fill_coinc_histos(int win_idx, int frag_idx);
-
-float spread(int val){ return( val + rand()/(1.0*RAND_MAX) ); }
 
 /////////////////       ODB TABLES    ////////////////////////
 // read all the detector information [adc/tdc module/channel number]
@@ -50,11 +49,11 @@ float spread(int val){ return( val + rand()/(1.0*RAND_MAX) ); }
 // ge/variables/adc[ch23]
 // head/variables/xtdc[ch50],rftdc[ch48],tdc0[ch49]
 // tail/variables/xtdc[ch10],rftdc[ch8],tdc0[ch9]
-// 
+//
 //    HEAD - BGO SB[target-monitor]             [NaI Ge ?]
 //
 //    TAIL - DSSD[Position,E,Tof], Mcp[Tof], IC[mass]
-// 
+//
 ///////////////////////////////////////////////////////////////////////////
 // head detectors ...
 int   ge_adc_chan, ge_adc_module, head_xtdc_chan, head_rftdc_chan, head_tdc0_chan;
@@ -83,7 +82,7 @@ float nai_adc_offset  [NAI_MAXCHAN];
 // tail detectors ...
 int   tail_xtdc_chan,  tail_rftdc_chan, tail_tdc0_chan;
 float tail_xtdc_slope, tail_xtdc_offset, tail_rftdc_slope, tail_rftdc_offset;
-float tail_tdc0_slope, tail_tdc0_offset; 
+float tail_tdc0_slope, tail_tdc0_offset;
 int   dssd_adc_chan    [DSSD_MAXCHAN];
 int   dssd_adc_module  [DSSD_MAXCHAN]; // 32 dssd chan are in two 16-chan adcs
 float dssd_adc_slope   [DSSD_MAXCHAN];
@@ -112,9 +111,9 @@ float mcp_tdc_offset   [MCP_TDCCHAN];
 // also coinc/variables/window/buffer_time
 
 // derived tables mapping adc/tdc channels to specific detector-type/channel
-int head_adc_dettype[2*V792_MAXCHAN]; int head_adc_dstchan[2*V792_MAXCHAN]; 
-int head_tdc_dettype[ V1190_MAXCHAN]; int head_tdc_dstchan[ V1190_MAXCHAN]; 
-int tail_adc_dettype[2*V792_MAXCHAN]; int tail_adc_dstchan[2*V792_MAXCHAN]; 
+int head_adc_dettype[2*V792_MAXCHAN]; int head_adc_dstchan[2*V792_MAXCHAN];
+int head_tdc_dettype[ V1190_MAXCHAN]; int head_tdc_dstchan[ V1190_MAXCHAN];
+int tail_adc_dettype[2*V792_MAXCHAN]; int tail_adc_dstchan[2*V792_MAXCHAN];
 int tail_tdc_dettype[ V1190_MAXCHAN]; int tail_tdc_dstchan[ V1190_MAXCHAN];
 
 static char subsys_name[16][8]={
@@ -126,11 +125,11 @@ int add_v1190_item(int v1190_chan, int subsys_type, int subsys_chan, int *tdc_de
 {
    if( v1190_chan < 0 || v1190_chan >= V1190_MAXCHAN ){
       printf("read_dragon_odb: invalid %s v1190 channel number:%d\n",
-             subsys_name[subsys_type], v1190_chan); return(-1); 
+             subsys_name[subsys_type], v1190_chan); return(-1);
    }
    if( tdc_dettype[v1190_chan] != -1 ){
       printf("read_dragon_odb: multiple assignments for v1190 chan:%d\n",
-             v1190_chan);  return(-1); 
+             v1190_chan);  return(-1);
    }
    tdc_dettype[v1190_chan] = subsys_type;  tdc_dstchan[v1190_chan] = subsys_chan;
    return(0);
@@ -140,18 +139,18 @@ int add_v792_item(int v792_chan, int v792_module, int subsys_type, int subsys_ch
    printf("Add V792 Chan[%d,%d] Sys[%d] Dstchan[%d]\n", v792_chan, v792_module, subsys_type, subsys_chan);
    if( v792_module < 0 || v792_module > 1 ){
       printf("read_dragon_odb: invalid %s v792 module number:%d\n",
-             subsys_name[subsys_type], v792_module); return(-1); 
+             subsys_name[subsys_type], v792_module); return(-1);
    }
    if( v792_chan < 0 || v792_chan >= V792_MAXCHAN ){
       printf("read_dragon_odb: invalid %s v792 channel number:%d\n",
-             subsys_name[subsys_type], v792_chan); return(-1); 
+             subsys_name[subsys_type], v792_chan); return(-1);
    }
    v792_chan += V792_MAXCHAN*v792_module;
    if( adc_dettype[v792_chan] != -1 ){
       printf("read_dragon_odb: multiple assignments for v792 chan:%d\n",
              v792_chan);
       // since dragon odb is wrong - allow later assignments to overwrite
-      // return(-1); 
+      // return(-1);
    }
    adc_dettype[v792_chan] = subsys_type;  adc_dstchan[v792_chan] = subsys_chan;
    return(0);
@@ -161,9 +160,9 @@ int read_dragon_odb(int bank_len, int *bank_data)
 {
    void *array; int i, chan, mod, type, nval, size, err=0;
    int *i_array; float *f_array;
-   
+
    read_odb_tree(bank_len, bank_data);
-   
+
    ge_adc_chan = ge_adc_module = head_xtdc_chan = head_rftdc_chan = head_tdc0_chan = -1;
    odbval_int  ("dragon/ge/variables/adc/channel",    &ge_adc_chan);
    odbval_int  ("dragon/ge/variables/adc/module",     &ge_adc_module);
@@ -201,7 +200,7 @@ int read_dragon_odb(int bank_len, int *bank_data)
                          bgo_tdc_yposn,    BGO_MAXCHAN);
    err += odbarray_float("dragon/bgo/variables/position/z",
                          bgo_tdc_zposn,    BGO_MAXCHAN);
-   
+
    memset(sb_adc_chan,  -1,  SB_MAXCHAN*sizeof(int) );
    err += odbarray_int  ("dragon/sb/variables/adc/channel",
                          sb_adc_chan,      SB_MAXCHAN);
@@ -277,7 +276,7 @@ int read_dragon_odb(int bank_len, int *bank_data)
    err += odbarray_float("dragon/mcp/variables/adc/offset",
                          mcp_adc_offset,    MCP_MAXCHAN);
 
-   memset(mcp_tdc_chan,  -1,  MCP_MAXCHAN*sizeof(int) );
+   memset(mcp_tdc_chan,  -1,  MCP_TDCCHAN*sizeof(int) );
    err += odbarray_int  ("dragon/mcp/variables/tdc/channel", mcp_tdc_chan, MCP_TDCCHAN);
    err += odbarray_float("dragon/mcp/variables/tdc/slope",   mcp_tdc_slope, MCP_TDCCHAN);
    err += odbarray_float("dragon/mcp/variables/tdc/offset",  mcp_tdc_offset, MCP_TDCCHAN);
@@ -287,7 +286,7 @@ int read_dragon_odb(int bank_len, int *bank_data)
    odbval_int  ("dragon/mcp/variables/tac_adc/module",  &mcptac_adc_module);
    odbval_float("dragon/mcp/variables/tac_adc/slope",   &mcptac_adc_slope);
    odbval_float("dragon/mcp/variables/tac_adc/offset",  &mcptac_adc_offset);
-   
+
    if( err ){ printf("read_dragon_odb: %d errors\n", err); }
 
    // generate derived tables ---------------------------------
@@ -352,14 +351,14 @@ int read_dragon_odb(int bank_len, int *bank_data)
    for(i=0; i<IC_MAXCHAN; i++){
       if( (chan = ic_adc_chan[i]) != -1 ){
          add_v792_item (chan, ic_adc_module[i], SUBSYS_IC, i, tail_adc_dettype, tail_adc_dstchan);
-      }     
+      }
       if( (chan = ic_tdc_chan[i]) != -1 ){
          add_v1190_item(chan, SUBSYS_IC, i,tail_tdc_dettype,tail_tdc_dstchan);
-      }      
+      }
    }
    for(i=0; i<MCP_MAXCHAN; i++){
       if( (chan = mcp_adc_chan[i]) == -1 ){ continue; }
-      add_v792_item (chan, mcp_adc_module[i], SUBSYS_MCP, i, tail_adc_dettype, tail_adc_dstchan);   
+      add_v792_item (chan, mcp_adc_module[i], SUBSYS_MCP, i, tail_adc_dettype, tail_adc_dstchan);
    }
    for(i=0; i<MCP_TDCCHAN; i++){
       if( (chan = mcp_tdc_chan[i]) == -1 ){ continue; }
@@ -400,7 +399,7 @@ int init_parameters_from_globals(Config *cfg)
    // Initialize all time differences between subsystems to the default 250ns
 
    // Intialize all PRESORT timing windows to their defaults
-    
+
    // Search globals for time difference settings and overwrite their values
    for(i=0; i<cfg->nglobal; i++){
       global = cfg->globals[i];
@@ -423,7 +422,7 @@ int init_parameters_from_globals(Config *cfg)
 // The sort-window was used for coincidences, using cleaned up full energies
 // - with partial scatters etc. already removed during the presort
 // The two window arrangement greatly simplified the code
-// 
+//
 // The presort only deals with one event per call - either the first
 // or last event in the presort-window, in order to check coincidences with
 // events preceeding or following the event of interest, so there are separate
@@ -448,7 +447,7 @@ int pre_sort_enter(int start_idx, int frag_idx)
       ;
    } else if( ptr->type == TAIL_EVENT ){
       ;
-   } 
+   }
    return(0);
 }
 
@@ -619,7 +618,7 @@ int fill_chan_histos(Dragon_event *ptr)
          }
       }
    }
-   
+
    return(0);
 }
 
@@ -632,13 +631,13 @@ int fill_chan_histos(Dragon_event *ptr)
 //           -> move to proper section
 
 TH1I  *sb_ecal[2]; char *sb_title="";
-TH1I  *xtofh;  // gamma to hvy-ion 
-TH1I  *ic_sum; 
-TH2I  *ic_0v1; 
-TH1I  *bgo_zpat; 
+TH1I  *xtofh;  // gamma to hvy-ion
+TH1I  *ic_sum;
+TH2I  *ic_0v1;
+TH1I  *bgo_zpat;
 TH1I  *bgo_e0;
 
-TH1I  *test; 
+TH1I  *test;
 
 int init_histos(Config *cfg)
 {
@@ -647,7 +646,7 @@ int init_histos(Config *cfg)
    int i, j, k;
 
    if( cfg == NULL ){ cfg = save_cfg; } else { save_cfg = cfg; }
-   
+
    open_folder(cfg, "Singles");
    open_folder(cfg, "Basic");
    for(i=0; i<2; i++){
@@ -704,7 +703,7 @@ int fill_coinc_histos(int win_idx, int frag_idx)
    Head_data *head;   Tail_data *tail;
    int i, max_ch, dt, abs_dt;
    float sum, max;
-   
+
    // histogram of coincwin-size
    //dt = (frag_idx - win_idx + 2*EVT_BUFSIZE) %  EVT_BUFSIZE; ++frag_hist[dt];
    while( win_idx != frag_idx ){ alt = &evbuf[win_idx]; // check all conicidences in window

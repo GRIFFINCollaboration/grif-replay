@@ -60,6 +60,7 @@ int presort_window_width= 1940;  // 19.4us needed for all crosstalk corrections.
 int sort_window_width   = 200; //  2us - MAXIMUM (indiv. gates can be smaller)
 
 // Default sort function declarations
+extern float spread(int val);
 extern int init_parameters_from_globals(Config *cfg);
 extern int perform_pileup_correction(Grif_event *ptr, Grif_event *alt, int dt, int chan, int chan2, int i, int end_idx);
 extern int init_chan_histos(Config *cfg);
@@ -67,8 +68,6 @@ extern int init_histos(Config *cfg, int subsystem);
 extern int fill_chan_histos(Grif_event *ptr);
 extern int fill_singles_histos(Grif_event *ptr);
 extern int fill_coinc_histos(int win_idx, int frag_idx);
-
-float spread(int val){ return( val + rand()/(1.0*RAND_MAX) ); }
 
 // odb tables need to be transferred into config, which is saved with histos
 int init_default_histos(Config *cfg, Sort_status *arg)
@@ -945,7 +944,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         return(0);
       }
       */
-      
+
       // HPGe pile-up corrections
       // THE PRE_SORT WINDOW SHOULD BE EXTENDED TO COVER THE FULL POSSIBLE TIME DIFFERENCE BETWEEN PILE-UP events
       // THIS IS EQUAL TO THE DIFF PERIOD OF HPGE TYPE

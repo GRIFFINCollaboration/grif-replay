@@ -1,9 +1,12 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include "grif-replay.h"
 #include "grif-format.h"
 #include "midas-format.h"
+
+float spread(int val){ return( val + rand()/(1.0*RAND_MAX) ); }
 
 void dbg_dump_event(unsigned *buf, int len){
    int i; for(i=0; i<len; i++){ printf("0x%08x ", *buf++); } printf("\n");

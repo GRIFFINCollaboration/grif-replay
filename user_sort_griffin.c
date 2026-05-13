@@ -6,6 +6,9 @@
 #include "config.h"
 #include "histogram.h"
 
+extern float spread(int val);
+int test_gate(Grif_event *ptr, Grif_event *alt, Gate *gate);
+
 // example user sort
 //    GeE with BGO>0 and dt<100         [BGO rejected GeE]
 //    GeE gated on background region of dt
@@ -44,9 +47,9 @@ int user_sort(int win_strt, int win_end, int flag)
 
    if( win_strt != win_end ){ // multiple fragments in window
       for(i=0; i<cfg->nuser; i++){ cfg->user_histos[i]->done_flag = 0; }
-   } 
+   }
 
-   if( (win_idx = win_strt+1) == PTR_BUFSIZE ){ win_idx = 0; } 
+   if( (win_idx = win_strt+1) == PTR_BUFSIZE ){ win_idx = 0; }
    if( ++win_end == PTR_BUFSIZE ){ win_end = 0; } // need to include win_end
    while( win_idx != win_end ){
       alt = &grif_event[win_idx];
@@ -100,7 +103,7 @@ int user_sort(int win_strt, int win_end, int flag)
 //
 // For the (never-realized) case of many user histograms, each with many
 // conditions, a more efficient way of doing the user sort would be needed ...
-// 
+//
 // The code below, allows the conditions to be tracked/updated each time events
 // entered or left the main sort window [removing the window-size multiplier]
 //  -> maintain current condn-passed-count and
@@ -272,7 +275,7 @@ float uval_ph    (Grif_event *ptr, Grif_event *alt, int s1, int s2){
    return( ( ptr->integ1 == 0 ) ? ptr->q1 : spread(ptr->q1)/ptr->integ1 );
 }
 float uval_xtl(Grif_event *ptr, Grif_event *alt, int s1, int s2){
-   if( ptr->subsys != s1 || ptr->chan == -1 || ptr->chan >= MAX_DAQSIZE ){ return(-1); } 
+   if( ptr->subsys != s1 || ptr->chan == -1 || ptr->chan >= MAX_DAQSIZE ){ return(-1); }
    return( crystal_table[ptr->chan] );
 }
 float uval_dt(Grif_event *ptr, Grif_event *alt, int s1, int s2){
