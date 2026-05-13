@@ -12,7 +12,7 @@
 #include "grif-format.h"
 #include "histogram.h"
 #include "grif-angles.h"
-#include "griffin_sort.h"
+#include "default_sort_griffin.h"
 
 int DEBUG_OUTPUT=0; // 0 for off, 1 for on
 
