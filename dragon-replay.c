@@ -12,7 +12,7 @@
 #include <pthread.h>
 #include "config.h"
 #include "histogram.h"
-#include "grif-format.h"
+#include "dragon-format.h"
 #include "midas-format.h"
 
 int sort_next_file(Config *cfg, Sort_status *sort);
@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
    exit(0);
 }
 
-extern int frag_hist[PTR_BUFSIZE];
+int frag_hist[EVT_BUFSIZE];
 void show_coinc_stats()
 {
    char tmp[64];
@@ -67,8 +67,8 @@ void show_coinc_stats()
    printf("Coinc[100- 249]:%d\n", sum);
    sum=0; for(; i<500; i++){ sum +=  frag_hist[i]; }
    printf("Coinc[250- 499]:%d\n", sum);
-   sum=0; for(; i<PTR_BUFSIZE; i++){ sum +=  frag_hist[i]; }
-   printf("Coinc[500-%4d]:%d\n", PTR_BUFSIZE, sum);
+   sum=0; for(; i<EVT_BUFSIZE; i++){ sum +=  frag_hist[i]; }
+   printf("Coinc[500-%4d]:%d\n", EVT_BUFSIZE, sum);
 }
 
 static int presort_window_start, sort_window_start;
@@ -90,6 +90,7 @@ int sort_next_file(Config *cfg, Sort_status *sort)
    sort->shutdown_midas = sort->end_of_data = 0;
    sort->reorder_in_done = sort->reorder_out_done = 0;
    sort->grif_sort_done = sort->odb_done = sort->odb_ready = 0;
+   // sort->debug = 1;
    reorder_save = sort->reorder;
    singlethread_save = sort->single_thread;
    sortthread_save = sort->sort_thread;
@@ -115,7 +116,6 @@ int sort_next_file(Config *cfg, Sort_status *sort)
       }
       //user_sort_init();   // user histos already defined, but defaul histos
       init_default_histos(configs[1], sort);     // depend on odb in datafile
-      pthread_create(&grif_thread, NULL,(void* (*)(void*))grif_main, sort);
 
       sort_main(sort); // this exits when sort is done
 
@@ -123,7 +123,6 @@ int sort_next_file(Config *cfg, Sort_status *sort)
       pthread_join(midas_thread, NULL);
       pthread_join(ordthrd, NULL);
       pthread_join(ordthr2, NULL);
-      pthread_join(grif_thread, NULL);
    }
    end=time(NULL);
    cfg->midas_start_time = diagnostics.midas_run_start;
@@ -148,11 +147,6 @@ static void online_loop(Config *cfg, Sort_status *sort)
    pthread_create(&midas_thread, NULL, (void* (*)(void*))midas_module_main, sort);
    sort->odb_ready = 0; // only done on module load atm.
    while(1){
-
-     // quick hack to fix bug - do properly
-      extern int subsys_initialized[24];
-      memset(subsys_initialized, 0, sizeof(int)*24 );
-
       while( !sort->run_in_progress ){ usleep(1); } // wait for run to start
       start =time(NULL);
       done_events = 0;
@@ -160,7 +154,7 @@ static void online_loop(Config *cfg, Sort_status *sort)
       diagnostics.run_sort_start = start;
       sort->shutdown_midas = sort->end_of_data = 0;
       sort->reorder_in_done = sort->reorder_out_done = 0;
-      sort->grif_sort_done = sort->odb_done = 0;
+      sort->odb_done = 0;
       reorder_save = sort->reorder;
       singlethread_save = sort->single_thread;
       sortthread_save = sort->sort_thread;
@@ -175,7 +169,6 @@ static void online_loop(Config *cfg, Sort_status *sort)
       }
       //user_sort_init();   // user histos already defined, but defaul histos
       init_default_histos(configs[1], sort);     // depend on odb in datafile
-      pthread_create(&grif_thread, NULL,(void* (*)(void*))grif_main, sort);
 
       sort_main(sort); // this exits when sort is done
 
@@ -183,7 +176,6 @@ static void online_loop(Config *cfg, Sort_status *sort)
       // DO NOT SHTUDOWN MIDAS THREAD
       pthread_join(ordthrd, NULL);
       pthread_join(ordthr2, NULL);
-      pthread_join(grif_thread, NULL);
 
       end=time(NULL);
       cfg->midas_start_time = diagnostics.midas_run_start;
@@ -215,61 +207,55 @@ static void online_loop(Config *cfg, Sort_status *sort)
    return;
 }
 
-extern volatile long grifevent_wrpos;
-volatile long grifevent_rdpos;
-extern Grif_event grif_event[PTR_BUFSIZE];
+extern volatile unsigned long evbuf_wrpos;
+volatile unsigned long evbuf_rdpos;
+extern Dragon_event evbuf[EVT_BUFSIZE];
 
 extern volatile unsigned long bankbuf_wrpos;
 extern volatile unsigned long bankbuf_rdpos;
 extern volatile long tsevents_in;
 extern long tsevents_out;
-extern volatile unsigned long eventbuf_rdpos;
-extern volatile unsigned long eventbuf_wrpos;
-extern volatile long grif_evcount;
+extern volatile long evbuf_count;
 void show_sort_state()
 {
    int val = sort_status.midas_bytes/1000;
    int v2 = bankbuf_wrpos/1000000, v3 = bankbuf_rdpos/1000000;
    int v4 = tsevents_in/1000, v5 = tsevents_out/1000;
-   int v6 = eventbuf_wrpos/1000000, v7 = eventbuf_rdpos/1000000;
-   int v8 = grifevent_wrpos/1000, v9 = grifevent_rdpos/1000;
-   int v10 = grifevent_wrpos - grifevent_rdpos;
+   int v8 = evbuf_wrpos/1000, v9 = evbuf_rdpos/1000;
+   int v10 = evbuf_wrpos - evbuf_rdpos;
    printf("MIDAS:read %d Mbytes [~%d Kevents]\n", val/1000, val/50);
    printf("      BUF in:%dMbytes out:%dMbytes  [Cap:%5.1f%%]\n",
           4*v2, 4*v3, (100000000.0*(v2-v3))/BANK_BUFSIZE );
    printf("REORDER: In:%dKevents Out%dKevents\n", v4, v5 );
-   printf("     BUF In:%dMbytes  Out:%dMbytes  [Cap:%5.1f%%]\n",
-          4*v6, 4*v7, (100000000.0*(v6-v7))/EVENTBUFSIZE );
-   printf("GRIF: Unpacked:%dKevents  ", (int)(grif_evcount/1000) );
+   printf("GRIF: Unpacked:%dKevents  ", (int)(evbuf_count/1000) );
    printf("      Sorted  :%dKevents\n", done_events/1000 );
    printf("     BUF In:%dKevents Out%dKevents [=%d][Cap:%5.1f%%]\n\n",
-          v8, v9, v10, (100.0*v10)/PTR_BUFSIZE);
+          v8, v9, v10, (100.0*v10)/EVT_BUFSIZE);
 }
 Sort_status *get_sort_status(){ return( &sort_status ); }
 
 void sort_main(Sort_status *arg)
 {
    int i, len, nxtpos, rd_avail;
-   static long grifevent_nxtpos;
+   static long evbuf_nxtpos;
    unsigned int usecs=100;
 
    printf("starting sort_main ...\n");
-   grifevent_rdpos = grifevent_nxtpos = nxtpos = 0;
+   evbuf_rdpos = evbuf_nxtpos = nxtpos = 0;
    while(1){
       // if( arg->shutdown_midas != 0 ){  break; }
-      rd_avail = grifevent_wrpos - grifevent_nxtpos;
-      if( arg->grif_sort_done && rd_avail < 1 ){ break; }
+      rd_avail = evbuf_wrpos - evbuf_nxtpos;
+      if( arg->reorder_out_done && rd_avail < 1 ){ break; }
       if( rd_avail < 1 ){ usleep(usecs); continue; }
-      process_event(&grif_event[nxtpos], nxtpos);
-      nxtpos = ++grifevent_nxtpos % PTR_BUFSIZE;
+      process_event(&evbuf[nxtpos], nxtpos);
+      nxtpos = ++evbuf_nxtpos % EVT_BUFSIZE;
    }
    printf("sort_main finished\n");
-   return;
-}
+   return;}
 
 static int proc_calls, sorted, skipped, prefull, sortfull, completed_events;
 // called when each new event read into ptr -> list[slot]
-int process_event(Grif_event *ptr, int slot)
+int process_event(Dragon_event *ptr, int slot)
 {
    time_t cur_time = time(NULL);
    static int calls, prv_call;
@@ -280,7 +266,7 @@ int process_event(Grif_event *ptr, int slot)
 
    if( cur_time-prv_time >= 10 ){
       printf("----------------------------------------------------------------\n");
-      midas_status(cur_time); reorder_status(cur_time);  grif_status(cur_time);
+      midas_status(cur_time); reorder_status(cur_time);  //grif_status(cur_time);
       printf("ProcEvt: %10d[Good:%3d%% Skip:%3d%% WinFull:%3d%%] %6.3f Mevt/s\n",
              calls, (int)(100.0*(calls-skipped-prefull)/calls),
              (int)(100.0*skipped/calls), (int)(100.0*prefull/calls), (de/(1000000.0*dt))
@@ -294,39 +280,18 @@ int process_event(Grif_event *ptr, int slot)
    return(0);
 }
 
-char *debug_show_ts(long ts)
-{
-   static char tmp[32];
-   int deci_ms = ts/10000;
-   int remain = ts - (deci_ms*10000);
-
-   sprintf(tmp,"%5.1fms+%04d", 00000.1*deci_ms, remain);
-   return(tmp);
-}
-char *debug_show_chan(Grif_event *ptr)
-{
-   static char tmp[32];
-   if( ptr->chan != -1 ){
-      sprintf(tmp," %3d", ptr->chan);
-   } else {
-      sprintf(tmp,"%04x", ptr->address);
-   }
-   return(tmp);
-}
-extern char chan_name[MAX_DAQSIZE][CHAN_NAMELEN];
-
 // add event to presort window (event has just been read in)
 //    recalculate coincwin (sorting any events leaving window)
 // => final win of run won't be sorted, as these events will not leave window
-int insert_presort_win(Grif_event *ptr, int slot)
+int insert_presort_win(Dragon_event *ptr, int slot)
 {
    int win_count, win_end;
-   Grif_event *alt;
+   Dragon_event *alt;
    long dt;
 
    ///////////////// Presort window (used for suppression/addback)
-   while( presort_window_start != slot ){ alt = &grif_event[presort_window_start];
-   win_count = (slot - presort_window_start+2*PTR_BUFSIZE) % PTR_BUFSIZE;
+   while( presort_window_start != slot ){ alt = &evbuf[presort_window_start];
+   win_count = (slot - presort_window_start+2*EVT_BUFSIZE) % EVT_BUFSIZE;
       dt = ptr->ts - alt->ts; if( dt < 0 ){ dt *= -1; }
 
       // should exit while-loop when no more events outside window
@@ -339,11 +304,10 @@ int insert_presort_win(Grif_event *ptr, int slot)
       // event[win_start] is leaving window
       //    ( either because dt > coincwidth OR due to error recovery)
       // NOTE event[slot] is out of window - use slot-1 as window-end
-      if( (win_end = slot-1) < 0 ){ win_end = PTR_BUFSIZE-1; } // WRAP
+      if( (win_end = slot-1) < 0 ){ win_end = EVT_BUFSIZE-1; } // WRAP
       pre_sort_exit(presort_window_start, win_end);
-    //  pre_sort_triples(presort_window_start, win_end); // used in QED development
       insert_sort_win(alt, presort_window_start); // add event to next window
-      if( ++presort_window_start >= PTR_BUFSIZE ){ presort_window_start=0; } // WRAP
+      if( ++presort_window_start >= EVT_BUFSIZE ){ presort_window_start=0; } // WRAP
    }
    // all events outside window have now been removed ...
    pre_sort_enter(presort_window_start, slot);
@@ -351,13 +315,13 @@ int insert_presort_win(Grif_event *ptr, int slot)
 }
 
 // add event to main sort window (event has just left presort window)
-int insert_sort_win(Grif_event *ptr, int slot)
+int insert_sort_win(Dragon_event *ptr, int slot)
 {
    int win_count, win_end, nuser = configs[1]->nuser;
-   Grif_event *alt;
+   Dragon_event *alt;
    long dt;
 
-   /* i = (slot-1-window_start+2*PTR_BUFSIZE) % PTR_BUFSIZE;
+   /* i = (slot-1-window_start+2*EVT_BUFSIZE) % EVT_BUFSIZE;
    printf("MAIN:Chan[%4s:    :     ][%s] [win:%5d[%05d-%05d:%s]\n",
           debug_show_chan(ptr),
 
@@ -365,14 +329,14 @@ int insert_sort_win(Grif_event *ptr, int slot)
           i, window_start, slot-1,
           debug_show_ts(grif_event[window_start].ts) );
    */
-   while( sort_window_start != slot ){ alt = &grif_event[sort_window_start];
-       win_count = (slot - sort_window_start+2*PTR_BUFSIZE) % PTR_BUFSIZE;
+   while( sort_window_start != slot ){ alt = &evbuf[sort_window_start];
+      win_count = (slot - sort_window_start+2*EVT_BUFSIZE) % EVT_BUFSIZE;
       dt = ptr->ts - alt->ts; if( dt < 0 ){ dt *= -1; }
 
       // should exit while-loop when no more events outside window
       //    *BUT* add error recovery - if window too full, dump events
       if( dt < sort_window_width ){
-       //if( win_count >= 0.45*PTR_BUFSIZE ){ ++sortfull; } else {
+       //if( win_count >= 0.45*EVT_BUFSIZE ){ ++sortfull; } else {
          if( win_count > coinc_events_cutoff ){ ++sortfull; } else {
             // now removed all events not in coinc with newly added fragment
             //   so can update coinc window counters with just-added frag
@@ -384,13 +348,12 @@ int insert_sort_win(Grif_event *ptr, int slot)
       // event[win_start] is leaving window
       //    ( either because dt > coincwidth OR due to error recovery)
       // NOTE event[slot] is out of window - use slot-1 as window-end
-      if( (win_end = slot-1) < 0 ){ win_end = PTR_BUFSIZE-1; } // WRAP
-      if( alt->chan != -1 ){ ++sorted;
-         default_sort(sort_window_start, win_end, SORT_ONE);
-         if( nuser > 0 ){ user_sort(sort_window_start, win_end, SORT_ONE); }
-      } else { ++skipped; }
-      if( ++sort_window_start >= PTR_BUFSIZE ){ sort_window_start=0; } // WRAP
-      ++grifevent_rdpos;  ++completed_events;
+      if( (win_end = slot-1) < 0 ){ win_end = EVT_BUFSIZE-1; } // WRAP
+      ++sorted;
+      default_sort(sort_window_start, win_end, SORT_ONE);
+      if( nuser > 0 ){  user_sort(sort_window_start, win_end, SORT_ONE); }
+      if( ++sort_window_start >= EVT_BUFSIZE ){ sort_window_start=0; } // WRAP
+      ++evbuf_rdpos;  ++completed_events;
    }
    return(0);
 }
@@ -406,6 +369,7 @@ int insert_sort_win(Grif_event *ptr, int slot)
 //    (previously would loop over events already in window to see if they are now OUT)
 // NEW method - if first event is OUT ...
 //    build an event with all fragments before current fragment (which starts a new event)
+/*
 int build_event(Grif_event *ptr, int slot)
 {
    int window_width = 200; // 2us - MAXIMUM (indiv. gates can be smaller)
@@ -417,11 +381,11 @@ int build_event(Grif_event *ptr, int slot)
    if( window_start == slot ){ return(0); }
 
    alt = &grif_event[window_start];
-   win_count = (slot - window_start+2*PTR_BUFSIZE) % PTR_BUFSIZE;
+   win_count = (slot - window_start+2*EVT_BUFSIZE) % EVT_BUFSIZE;
    dt = ptr->ts - alt->ts; if( dt < 0 ){ dt *= -1; }
    if( dt < window_width ){ return(0); }
 
-   if( (win_end = slot-1) < 0 ){ win_end = PTR_BUFSIZE-1; } // WRAP
+   if( (win_end = slot-1) < 0 ){ win_end = EVT_BUFSIZE-1; } // WRAP
    sort_built_event(window_start, win_end);
 
    window_start = slot;
@@ -432,8 +396,8 @@ int sort_built_event(int window_start, int win_end)
 {
    pre_sort_enter(window_start, win_end);
    pre_sort_exit(window_start, win_end); // only fold of first fragment is set
-  // pre_sort_triples(window_start, win_end); // only fold of first fragment is set  // used in QED development
    default_sort(window_start, win_end, SORT_ALL);
    //user_sort(window_start, win_end, SORT_ALL);
    return(0);
 }
+*/

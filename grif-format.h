@@ -1,3 +1,5 @@
+#include "grif-replay.h" // STRING_LEN
+
 #define MAX_SAMPLE_LEN  4096
 #define ENERGY_BINS    65536 /* 65536 131072 262144 */
 #define NUM_CHAN        4096
@@ -5,22 +7,18 @@
 #define PTR_BUFSIZE     1024
 
 typedef unsigned short uint_16;
-// **************************************************************************
-// MANY VALUES IN THIS STRUCTURE HAVE TO BE ACCESSED USING A HARDCODED OFFSET
-// FROM THE START OF THE STRUCTURE - DO NOT CHANGE THE ORDERING OR
-// INSERT NEW VALUES, WITHOUT ALSO ADJUSTING THE OFFSETS IN USER_SORT.C
-// **************************************************************************
-typedef struct griffin_fragment_struct { // was 74 bytes, now ?            //OFFSET
-   long        ts;   uint_16    address; short  deadtime;                  //0
-   char      dtype;  char    array_posn; char       nhit;   char  pileup;  //3
-   int          q1;  int         integ1; int          q2;   int   integ2;  //4
-   int          q3;  int         integ3; int          q4;   int   integ4;  //8
-   int         cfd;  int       trig_req; int    trig_acc;   int   net_id;  //12
-   int   master_id;  int master_pattern; int         psd;   int cc_short;  //16
+typedef struct griffin_fragment_struct { // was 74 bytes, now ?            
+   long        ts;   uint_16    address; short  deadtime;                  
+   char      dtype;  char    array_posn; char       nhit;   char  pileup;  
+   int          q1;  int         integ1; int          q2;   int   integ2;  
+   int          q3;  int         integ3; int          q4;   int   integ4;  
+   int         cfd;  int       trig_req; int    trig_acc;   int   net_id;  
+   int   master_id;  int master_pattern; int         psd;   int cc_short;  
 // items below are derived from items above ...
-   float      ecal;  int           chan; int      subsys;   int suppress;  //20
-   float      esum;  int   multiplicity; int     delta_t;   int alt_chan;  //24
-   float  alt_ecal;  int            tof; int    pu_class;   int alt2_chan; //28
+//    esum:is addback energy, alt_chan is addback-otherCrystal
+   float      ecal;  int           chan; int      subsys;   int suppress;  
+   float      esum;  int   multiplicity; int     delta_t;   int alt_chan;  
+   float  alt_ecal;  int            tof; int    pu_class;   int alt2_chan;
    float alt2_ecal;
 } Grif_event;
 
@@ -44,6 +42,55 @@ typedef struct griffin_fragment_struct { // was 74 bytes, now ?            //OFF
 
 // midas-timestamp should be redundant and equal to BOR time+timestamp
 //   can just check this in midas part
+
+//#######################################################################
+//########         Subsystem and Detector definitions          ##########
+//#######################################################################
+
+// do not alter order without also changing subsys_e_vs_e, subsys_dt
+//                                              in default_sort
+#define MAX_SUBSYS       24
+#define SUBSYS_HPGE_A     0
+#define SUBSYS_PACES      1
+#define SUBSYS_LABR_L     2
+#define SUBSYS_RCMP       3
+#define SUBSYS_ARIES_A    4 // GRIF16
+#define SUBSYS_ZDS_A      5 // GRIF16
+#define SUBSYS_TAC_LABR   6
+#define SUBSYS_LABR_BGO   7
+#define SUBSYS_BGO        8
+#define SUBSYS_SCEPTAR    9
+#define SUBSYS_DESCANT   10
+#define SUBSYS_DESWALL   11
+#define SUBSYS_DSG       12
+#define SUBSYS_QED_STRIP 13
+#define SUBSYS_IGNORE    14
+#define SUBSYS_HPGE_B    16
+#define SUBSYS_ARIES_B   17 // CAEN
+#define SUBSYS_ZDS_B     18 // CAEN
+#define SUBSYS_TAC_ZDS   19
+#define SUBSYS_TAC_ART   20
+#define SUBSYS_COMPTON   21
+#define SUBSYS_DCOMPTON  15
+#define SUBSYS_QED_PIXEL 22
+#define SUBSYS_UNKNOWN   23
+
+extern char subsys_handle[MAX_SUBSYS][8];
+extern char subsys_name[MAX_SUBSYS][STRING_LEN];
+
+// #####################################################################
+
+#define N_CLOVER 16
+#define N_HPGE 64
+#define N_BGO 320
+#define N_ARIES 76
+#define N_LABR 8
+#define N_TACS 12
+#define N_RCMP_POS 6
+#define N_RCMP_STRIPS 32
+#define N_QED_POS 6
+#define N_QED_STRIPS 32
+#define N_DES_WALL 60
 
 extern int process_event(Grif_event *ptr, int slot);
 extern int insert_presort_win(Grif_event *ptr, int slot);

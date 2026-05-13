@@ -12,9 +12,26 @@
 #include "grif-format.h"
 #include "histogram.h"
 #include "grif-angles.h"
-#include "default_sort.h"
+#include "griffin_sort.h"
 
 int DEBUG_OUTPUT=0; // 0 for off, 1 for on
+
+char subsys_handle[MAX_SUBSYS][8] = {
+  "GRGA", "PAC",  "LBL",  "RCS",
+  "ARTA", "ZDSA", "LBT",  "LBS",
+  "BGO",  "SEP",  "DSC",  "DSW",
+  "DSG",  "QEDs", "XXX2", "DCS",
+  "GRGB", "ARTB", "ZDSB", "", // secondary names start after #16
+  "",     "CS",     "QED",  "UNK"
+};
+char subsys_name[MAX_SUBSYS][STRING_LEN] = {
+  "Griffin",   "PACES",    "LaBrX",   "RCMP",     //  0- 3
+  "ARIES",     "ZDSA",     "TAC_LBL", "LaBrS",    //  4- 7
+  "BGO",       "Sceptar",  "Descant", "DES_WALL", //  8-11
+  "Des_Ancil", "QEDs", "Ignore2", "DCS",  // 12-15
+  "Grif_B",    "ARS_B",    "ZDS_B",   "TAC_ZDS",  // 16-19
+  "TAC_ART",   "CS",         "QED",     "Unknown"   // 20-23
+}; // final entry will be used if not found - make sure it is not empty
 
 int          odb_daqsize;// number of daq channels currently defined in the odb
 int         subsys_table[MAX_DAQSIZE];

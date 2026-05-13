@@ -57,17 +57,19 @@ typedef struct sortvar_struct {     // sortvars used by histos AND conditions
    int use_count_x;  int valid;   int local;     //  to refer to histo_use
    Histogram *histo_list_x[MAX_HISTOGRAMS];      // (inc/dec in add/rmv_histo)
    char name[STRING_LEN]; char title[STRING_LEN];
+   int subsys1; int subsys2;
+   float (*get_value)(void *, void *, int, int);
 } Sortvar;
 
 typedef struct cond_struct {      // use count inc/dec when un/applying gates
    char name[STRING_LEN]; Sortvar *var; int op; int value;      // (to histos)
-   int use_count;  int veto;
+   int use_count;  int veto;    int valid;
    int passed; int pass_count;  // passed only used during sort
 } Cond;
 
 typedef struct gate_struct {
    char name[STRING_LEN]; int nconds; Cond *conds[MAX_GATE_CONDS];
-   int use_count;  int passed;
+   int use_count;  int passed;  int valid;
 } Gate;
 
 typedef struct histo_folder_struct {
@@ -87,7 +89,7 @@ struct th1i_struct {  long  file_data_offset;    int data_size;
    int      type;  TH1I    *next;   char    path[HISTO_FOLDER_LENGTH];
    int     xbins;  int     ybins;   char          title[TITLE_LENGTH];
    int     *data;  int valid_bins;  char        handle[HANDLE_LENGTH];
-   int underflow;  int   overflow;
+   int underflow;  int   overflow;  Gate    *gatelist[MAX_HISTO_GATES];
    int   entries;  int  num_gates;  char  *gate_names[MAX_HISTO_GATES];
    Sortvar *xvar;  Sortvar  *yvar;  int  *gate_passed[MAX_HISTO_GATES];
    int xmin; int xmax; int ymin; int ymax; int suppress; int user;
@@ -102,7 +104,7 @@ struct th2i_struct {  long  file_data_offset;  int data_size;
    int      type;  TH1I    *next;   char     path[HISTO_FOLDER_LENGTH];
    int     xbins;  int     ybins;   char          title[TITLE_LENGTH];
    int     *data;  int valid_bins;  char        handle[HANDLE_LENGTH];
-   int underflow;  int   overflow;
+   int underflow;  int   overflow;  Gate    *gatelist[MAX_HISTO_GATES];
    int   entries;  int  num_gates;  char  *gate_names[MAX_HISTO_GATES];
    Sortvar *xvar;  Sortvar  *yvar;  int  *gate_passed[MAX_HISTO_GATES];
    int xmin; int xmax; int ymin; int ymax; int suppress;  int user;
