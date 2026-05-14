@@ -28,8 +28,11 @@ static void online_loop(Config *cfg, Sort_status *sort);
 int main(int argc, char *argv[])
 {
    Sort_status *sort = &sort_status;
-   int web_arg=1;  Config *cfg;
+   int web_arg=-1;  Config *cfg;
 
+   if( argc >= 3 && strlen(argv[1]) == 2 && strncmp(argv[1],"-p",2) == 0 ){
+      if( sscanf(argv[2], "%d", &web_arg) < 1 ){ web_arg = -1; }
+   }
    sort->single_thread = 0;
    pthread_create(&web_thread, NULL,(void* (*)(void*))web_main, &web_arg);
    while( !shutdown_server ){ // monitor file queue and sort any added files

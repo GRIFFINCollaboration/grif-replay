@@ -699,7 +699,7 @@ int fill_singles_histos(Dragon_event *ptr)
 // loop over window and sort all head-tail pairs
 int fill_coinc_histos(int win_idx, int frag_idx)
 {
-   Dragon_event *alt, *ptr = &evbuf[frag_idx];
+   Dragon_event *alt, *tmp, *ptr = &evbuf[frag_idx];
    Head_data *head;   Tail_data *tail;
    int i, max_ch, dt, abs_dt;
    float sum, max;
@@ -707,11 +707,11 @@ int fill_coinc_histos(int win_idx, int frag_idx)
    // histogram of coincwin-size
    //dt = (frag_idx - win_idx + 2*EVT_BUFSIZE) %  EVT_BUFSIZE; ++frag_hist[dt];
    while( win_idx != frag_idx ){ alt = &evbuf[win_idx]; // check all conicidences in window
+      if( ++win_idx == EVT_BUFSIZE ){ win_idx = 0; } // update for next coinc (check for wrap)
       if( ptr->type == alt->type ){ continue; }// ignore head-head and tail-tail
       if( ptr->type == TAIL_EVENT ){ // swap so ptr is always head and alt is always the tail event
-         ptr = &evbuf[win_idx]; alt = &evbuf[frag_idx];
+	 tmp = ptr; ptr = alt; alt = tmp;
       }
-      if( ++win_idx == EVT_BUFSIZE ){ win_idx = 0; } // update for next coinc (check for wrap)
       // apply any time gates (coinditions on dt), and increment head-tail stuff here
       //
       //

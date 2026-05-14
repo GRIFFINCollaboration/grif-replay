@@ -1345,7 +1345,7 @@ return(0);
 // *In case no recent config exists, a default config is setup first*
 //  (this is usually immediately overwritten by the recent config)
 //  (could change this to only setup the default, if recent fails)
-int init_config()
+int init_config(int webport)
 {
   char hostname[32];
   int tmp;
@@ -1361,7 +1361,7 @@ clear_calibrations(cfg); // Clear the calibrations to default values following s
 tmp = gethostname(hostname, 32);
 strtok(hostname, ".");
 fprintf(stdout,"Initial setup complete :-)\n\n");
-fprintf(stdout,"Now connect to grif-replay using a web browser at the following URL:\nhttps://griffincollaboration.github.io/SpectrumViewer/analyzerInterface.html?backend=%s&port=9093\n",hostname);
+ fprintf(stdout,"Now connect to grif-replay using a web browser at the following URL:\nhttps://griffincollaboration.github.io/SpectrumViewer/analyzerInterface.html?backend=%s&port=%d\n",hostname,webport);
 return(0);
 }
 
@@ -2914,122 +2914,127 @@ int send_file_details(char *path, int fd)
 
 // split path into name,dir  then get histo and config names
 // also do stat to get size
-int run_number(Sort_status *arg, Sortfile *sort, char *name);
+int run_number(Sortfile *sort, char *name);
 char *subrun_filename(Sortfile *sort, int subrun);
+// When submitting runs ...
+//    A single subrun is submitted as e.g. ./run13187_004.mid
+//    A run of subruns is submitted as e.g. ./run13187
+//    A standalone run is submitted as e.g. ./run13187.mid
 int add_sortfile(char *path, char *histodir, char *confdir, char *calsrc)
 {
-  int i, next, plen, dlen, ext_len, hlen, clen;
-  char ptr, tmp[256], *fname;
-  Sort_status *arg, tmp_stat;
-  Config *cfg = configs[0];
-  Sortfile *sort;
+   int i, next, plen, dlen, ext_len, hlen, clen;
+   char ptr, tmp[256], *fname;
+   Config *cfg = configs[0];
+   Sort_status *arg;
+   Sortfile *sort;
 
-  arg = get_sort_status();
-  if( strcmp(path,"ONLINE" ) == 0 ){
-    if( load_midas_module(confdir, calsrc) ){ return(-1); }
-    arg->online_mode = 1;
-    if( ++arg->final_filenum == FILE_QLEN ){ arg->final_filenum = 0; }
-    return(0);
-  }
-  memset(&tmp_stat, 0, sizeof(Sort_status) );
-  sort = &filelist[arg->final_filenum]; next = arg->final_filenum + 1;
-  if( next >= FILE_QLEN ){ next = 0; }
-  if( next == arg->current_filenum ){
-    fprintf(stderr,"FILE QUEUE FULL"); return(-1);
-  }
-  plen=strlen(path);
-  ext_len = ( strncmp(path+plen-4, ".mid", 4) == 0 ) ? 4 : 0;
-  for(i=plen; i>=0; i--){ if( path[i] == '/' ){ ++i; break; } }
-  if( (dlen = i) == -1 ){ dlen = 0; } // no directory separator in path
-  if( (sort->data_dir = malloc(dlen + 2)) == NULL ){
-    fprintf(stderr,"can't alloc string for data_dir");
-    free_sortfile(&filelist[arg->current_filenum]); return(-1);
-  }
-  if( dlen == 0 ){ sprintf(sort->data_dir, ".");
-} else {
-  memcpy((char *)sort->data_dir, path, dlen-1);
-  *(sort->data_dir+dlen-1) = 0; // overwrite trailing '/'
-  set_directory(cfg, "Data", sort->data_dir);
-}
-if( (sort->data_name = malloc(plen-dlen+1)) == NULL ){
-  fprintf(stderr,"can't alloc string for :%s", path);
-  free_sortfile(&filelist[arg->current_filenum]); return(-1);
-}
-memcpy((char *)sort->data_name, path+dlen, plen-dlen);
-*(sort->data_name+plen-dlen) = 0;
-if( run_number(&tmp_stat, sort, sort->data_name) ){ return(-1); }
-most_recent_calib_file(sort->data_dir, sort->run, sort->recent_cal);
-if( strlen(sort->recent_cal) == 0 && strcmp(calsrc,"file") == 0 ){
-  fprintf(stdout,"No recent calib file found. Switching to ODB parameters from this .mid file instead.\n");
-  sprintf(calsrc,"midas");
-}
-memset(&statbuf, 0, sizeof(struct stat)); sort->data_size = 0;
-if( sort->subrun != -1 ){ // just single subrun
-  fname = subrun_filename(sort, sort->subrun);
-  if( stat(fname, &statbuf) != 0 ){
-    fprintf(stderr,"can't stat single subrun: %s\n", path);
-  }
-  sort->data_size = (long)statbuf.st_size;
-} else {                  // all subruns
-  for(i=0; ; i++){
-    fname = subrun_filename(sort, i);
-    if( stat(fname, &statbuf) != 0 ){
-      fprintf(stderr,"can't stat multi-subrun: %s\n", path); break;
-    }
-    sort->data_size += (long)statbuf.st_size;
-  }
-  sort->num_subruns = i; sort->subrun = 0;
-}
-if( (sort->histo_name = malloc(plen-dlen-ext_len+5)) == NULL ){
-  fprintf(stderr,"can't alloc string for histoname");
-  free_sortfile(&filelist[arg->current_filenum]); return(-1);
-}
-if( (sort->conf_name = malloc(plen-dlen-ext_len+5+1)) == NULL ){ // .json = 5bytes
-  fprintf(stderr,"can't alloc string for configname");
-  free_sortfile(&filelist[arg->current_filenum]); return(-1);
-}
-memcpy((char *)sort->histo_name, path+dlen, plen-dlen-ext_len);
-sprintf(sort->histo_name+plen-dlen-ext_len,".tar");
-memcpy((char *)sort->conf_name, path+dlen, plen-dlen-ext_len);
-sprintf(sort->conf_name+plen-dlen-ext_len,".json");
+   arg = get_sort_status();
+   if( strcmp(path,"ONLINE" ) == 0 ){
+      if( load_midas_module(confdir, calsrc) ){ return(-1); }
+      arg->online_mode = 1;
+      if( ++arg->final_filenum == FILE_QLEN ){ arg->final_filenum = 0; }
+      return(0);
+   }
+   sort = &filelist[arg->final_filenum]; next = arg->final_filenum + 1;
+   if( next >= FILE_QLEN ){ next = 0; }
+   if( next == arg->current_filenum ){
+      fprintf(stderr,"FILE QUEUE FULL"); return(-1);
+   }
+   plen=strlen(path);
+   ext_len = ( strncmp(path+plen-4, ".mid", 4) == 0 ) ? 4 : 0;
+   for(i=plen; i>=0; i--){ if( path[i] == '/' ){ ++i; break; } }
+   if( (dlen = i) == -1 ){ dlen = 0; } // no directory separator in path
+   if( (sort->data_dir = malloc(dlen + 2)) == NULL ){
+      fprintf(stderr,"can't alloc string for data_dir");
+      free_sortfile(&filelist[arg->current_filenum]); return(-1);
+   }
+   if( dlen == 0 ){ sprintf(sort->data_dir, ".");
+   } else {
+      memcpy((char *)sort->data_dir, path, dlen-1);
+      *(sort->data_dir+dlen-1) = 0; // overwrite trailing '/'
+      set_directory(cfg, "Data", sort->data_dir);
+   }
+   if( (sort->data_name = malloc(plen-dlen+1)) == NULL ){
+      fprintf(stderr,"can't alloc string for :%s", path);
+      free_sortfile(&filelist[arg->current_filenum]); return(-1);
+   }
+   memcpy((char *)sort->data_name, path+dlen, plen-dlen);
+   *(sort->data_name+plen-dlen) = 0;
+   if( run_number(sort, sort->data_name) ){ return(-1); }
+   most_recent_calib_file(sort->data_dir, sort->run, sort->recent_cal);
+   if( strlen(sort->recent_cal) == 0 && strcmp(calsrc,"file") == 0 ){
+      fprintf(stdout,"No recent calib file found. Switching to ODB parameters from this .mid file instead.\n");
+      sprintf(calsrc,"midas");
+   }
+   memset(&statbuf, 0, sizeof(struct stat)); sort->data_size = 0;
+   if( sort->subrun != -1 ){ // just single subrun
+      fname = subrun_filename(sort, sort->subrun);
+      if( stat(fname, &statbuf) != 0 ){
+         fprintf(stderr,"can't stat single subrun: %s\n", path);
+      }
+      sort->data_size = (long)statbuf.st_size;
+   } else if( sort->subrun_digits <= 0 ){
+      sort->num_subruns = 0; sort->subrun = 0;
+   } else {   // all subruns
+      for(i=0; ; i++){
+         fname = subrun_filename(sort, i);
+         if( stat(fname, &statbuf) != 0 ){
+            fprintf(stderr,"can't stat multi-subrun: %s\n", path); break;
+         }
+         sort->data_size += (long)statbuf.st_size;
+      }
+      sort->num_subruns = i; sort->subrun = 0;
+   }
+   if( (sort->histo_name = malloc(plen-dlen-ext_len+5)) == NULL ){
+      fprintf(stderr,"can't alloc string for histoname");
+      free_sortfile(&filelist[arg->current_filenum]); return(-1);
+   }
+   if( (sort->conf_name = malloc(plen-dlen-ext_len+5+1)) == NULL ){//.json5bytes
+      fprintf(stderr,"can't alloc string for configname");
+      free_sortfile(&filelist[arg->current_filenum]); return(-1);
+   }
+   memcpy((char *)sort->histo_name, path+dlen, plen-dlen-ext_len);
+   sprintf(sort->histo_name+plen-dlen-ext_len,".tar");
+   memcpy((char *)sort->conf_name, path+dlen, plen-dlen-ext_len);
+   sprintf(sort->conf_name+plen-dlen-ext_len,".json");
 
-if( histodir == NULL ){
-  sort->histo_dir = NULL;
-} else {
-  plen=strlen(histodir);
-  if( (sort->histo_dir = malloc(plen+1)) == NULL ){
-    fprintf(stderr,"can't alloc string for histodir");
-    free_sortfile(&filelist[arg->current_filenum]); return(-1);
-  }
-  memcpy((char *)sort->histo_dir, histodir, plen);
-  *(sort->histo_dir+plen) = 0;
-  set_directory(cfg, "Histo", histodir);
-}
-if( confdir == NULL ){
-  sort->conf_dir = NULL;
-} else {
-  plen=strlen(confdir);
-  if( (sort->conf_dir = malloc(plen+1)) == NULL ){
-    fprintf(stderr,"can't alloc string for configdir");
-    free_sortfile(&filelist[arg->current_filenum]); return(-1);
-  }
-  memcpy((char *)sort->conf_dir, confdir, plen);
-  *(sort->conf_dir+plen) = 0;
-  set_directory(cfg, "Config", confdir);
-}
-if( calsrc == NULL ){
-  sort->cal_src = NULL;
-} else {
-  plen=strlen(calsrc);
-  if( (sort->cal_src = malloc(plen+1)) == NULL ){
-    fprintf(stderr,"can't alloc string for cal_src");
-    free_sortfile(&filelist[arg->current_filenum]); return(-1);
-  }
-  memcpy((char *)sort->cal_src, calsrc, plen);
-  *(sort->cal_src+plen) = 0;
-}
-if( ++arg->final_filenum == FILE_QLEN ){ arg->final_filenum = 0; } //wrap
-return(0);
+   if( histodir == NULL ){
+      sort->histo_dir = NULL;
+   } else {
+      plen=strlen(histodir);
+      if( (sort->histo_dir = malloc(plen+1)) == NULL ){
+         fprintf(stderr,"can't alloc string for histodir");
+         free_sortfile(&filelist[arg->current_filenum]); return(-1);
+      }
+      memcpy((char *)sort->histo_dir, histodir, plen);
+      *(sort->histo_dir+plen) = 0;
+      set_directory(cfg, "Histo", histodir);
+   }
+   if( confdir == NULL ){
+      sort->conf_dir = NULL;
+   } else {
+      plen=strlen(confdir);
+      if( (sort->conf_dir = malloc(plen+1)) == NULL ){
+         fprintf(stderr,"can't alloc string for configdir");
+         free_sortfile(&filelist[arg->current_filenum]); return(-1);
+      }
+      memcpy((char *)sort->conf_dir, confdir, plen);
+      *(sort->conf_dir+plen) = 0;
+      set_directory(cfg, "Config", confdir);
+   }
+   if( calsrc == NULL ){
+      sort->cal_src = NULL;
+   } else {
+      plen=strlen(calsrc);
+      if( (sort->cal_src = malloc(plen+1)) == NULL ){
+         fprintf(stderr,"can't alloc string for cal_src");
+         free_sortfile(&filelist[arg->current_filenum]); return(-1);
+      }
+      memcpy((char *)sort->cal_src, calsrc, plen);
+      *(sort->cal_src+plen) = 0;
+   }
+   if( ++arg->final_filenum == FILE_QLEN ){ arg->final_filenum = 0; } //wrap
+   return(0);
 }
 
 //////////////////////  sorting loop /////////////////////
@@ -3045,80 +3050,80 @@ return(0);
 //////////////////////////////////////////////////////////
 int open_next_sortfiles(Sort_status *arg)
 {
-  Sortfile *sort = &filelist[arg->current_filenum];
-  Config *tmp_cfg;
-  char ptr, tmp[256];
-  if( arg->online_mode ){ return(0); } // no files in this mode
+   Sortfile *sort = &filelist[arg->current_filenum];
+   Config *tmp_cfg;
+   char ptr, tmp[256];
+   if( arg->online_mode ){ return(0); } // no files in this mode
 
-  if( sort->data_name == NULL ){ // this is a histogram summing command
-    arg->sum_mode = 1;
-    sum_histos(configs[0], sort); return(1); // return non-zero => dont try to sort
-  } else { arg->sum_mode = 0; }
+   if( sort->data_name == NULL ){ // this is a histogram summing command
+      arg->sum_mode = 1;
+      sum_histos(configs[0], sort); return(1); // return non-zero => dont try to sort
+   } else { arg->sum_mode = 0; }
 
-  if( sort->histo_dir == NULL ){
-    sprintf(tmp, "%s/%s", sort->data_dir, sort->histo_name);
-  } else {
-    sprintf(tmp, "%s/%s", sort->histo_dir, sort->histo_name);
-  }
-  // first check if target has already been written
-  if( (arg->histo_fp=fopen(tmp,"r")) != NULL ){
-    fprintf(stderr,"histo file %s already exits overwriting\n", tmp);
-    //sleep(1);
-    fclose(arg->histo_fp);
-    unlink(tmp);
-  }
-  // then check target is writable
-  if( (arg->histo_fp=fopen(tmp,"w+")) == NULL ){ // can't write - switch to current directory
-  sprintf(tmp, "./%s", sort->histo_name);
-} else {
-  fclose(arg->histo_fp);
-}
-if( (arg->histo_fp=fopen(tmp,"w")) == NULL ){ // can't write ?
-fprintf(stderr,"can't open %s to write\n", tmp); return(-1);
-}
-if( sort->num_subruns == 0 ){
-  sprintf(tmp, "%s/%s", sort->data_dir, sort->data_name);
-} else {
-  sprintf(tmp, "%s", subrun_filename(sort, 0) );
-}
-if( (arg->data_fp=fopen(tmp,"r")) == NULL ){
-  fprintf(stderr,"can't open %s to read\n", tmp);  return(-1);
-}
-fprintf(stdout,"sorting file %d %s\n", arg->current_filenum, tmp);
-if( strcmp(sort->cal_src, "file") == 0 ){
-  // first subrun - open cal file or most recent
-  memcpy(tmp+strlen(tmp)-8, ".json", 6);
-  if( (arg->cal_fp=fopen(tmp,"r")) == NULL ){
-    fprintf(stdout,"No BOR calib file - ");
-    sprintf(tmp, "%s/%s", sort->data_dir, sort->recent_cal);
-    if( strlen(sort->recent_cal) != 0 && (arg->cal_fp=fopen(tmp,"r")) != NULL ){
-      fprintf(stdout,"using most recent: %s\n", sort->recent_cal);
-    } else {
-      fprintf(stdout,"No recent calib file found either. Switching to ODB parameters from this .mid file instead.\n");
-    }
-  }
-  if( arg->cal_fp != NULL ){ fclose(arg->cal_fp);
-    if( (tmp_cfg=add_config(tmp)) != NULL ){
-      if( load_config(tmp_cfg, tmp, NULL) == 0 ){
-        merge_configs(tmp_cfg, configs[1]);
-      } else {
-        fprintf(stderr,"open sortfiles: cant load config:%s\nSwitching to ODB parameters from this .mid file instead.\n", tmp);
-        sprintf(sort->cal_src,"midas");
+   if( sort->histo_dir == NULL ){
+      sprintf(tmp, "%s/%s", sort->data_dir, sort->histo_name);
+   } else {
+      sprintf(tmp, "%s/%s", sort->histo_dir, sort->histo_name);
+   }
+   // first check if target has already been written
+   if( (arg->histo_fp=fopen(tmp,"r")) != NULL ){
+      fprintf(stderr,"histo file %s already exits overwriting\n", tmp);
+      //sleep(1);
+      fclose(arg->histo_fp);
+      unlink(tmp);
+   }
+   // then check target is writable
+   if( (arg->histo_fp=fopen(tmp,"w+")) == NULL ){ // can't write - switch to current directory
+   sprintf(tmp, "./%s", sort->histo_name);
+   } else {
+      fclose(arg->histo_fp);
+   }
+   if( (arg->histo_fp=fopen(tmp,"w")) == NULL ){ // can't write ?
+      fprintf(stderr,"can't open %s to write\n", tmp); return(-1);
+   }
+   if( sort->num_subruns == 0 ){
+      sprintf(tmp, "%s/%s", sort->data_dir, sort->data_name);
+   } else {
+      sprintf(tmp, "%s", subrun_filename(sort, 0) );
+   }
+   if( (arg->data_fp=fopen(tmp,"r")) == NULL ){
+      fprintf(stderr,"can't open %s to read\n", tmp);  return(-1);
+   }
+   fprintf(stdout,"sorting file %d %s\n", arg->current_filenum, tmp);
+   if( strcmp(sort->cal_src, "file") == 0 ){
+      // first subrun - open cal file or most recent
+      memcpy(tmp+strlen(tmp)-8, ".json", 6);
+      if( (arg->cal_fp=fopen(tmp,"r")) == NULL ){
+         fprintf(stdout,"No BOR calib file - ");
+         sprintf(tmp, "%s/%s", sort->data_dir, sort->recent_cal);
+         if( strlen(sort->recent_cal) != 0 && (arg->cal_fp=fopen(tmp,"r")) != NULL ){
+            fprintf(stdout,"using most recent: %s\n", sort->recent_cal);
+         } else {
+            fprintf(stdout,"No recent calib file found either. Switching to ODB parameters from this .mid file instead.\n");
+         }
       }
-      remove_config(tmp_cfg);
-    } else {
-      fprintf(stderr,"open sortfiles: cant create config:%s\nSwitching to ODB parameters from this .mid file instead.\n", tmp);
-      sprintf(sort->cal_src,"midas");
-    }
-  }
-}
-arg->midas_bytes = 0;
-if( strcmp(sort->cal_src, "midas") == 0 ){
-  arg->cal_overwrite = 1;
-} else {
-  arg->cal_overwrite = 0;  // cal src == "config" or "file"
-}
-return(0);
+      if( arg->cal_fp != NULL ){ fclose(arg->cal_fp);
+         if( (tmp_cfg=add_config(tmp)) != NULL ){
+            if( load_config(tmp_cfg, tmp, NULL) == 0 ){
+               merge_configs(tmp_cfg, configs[1]);
+            } else {
+               fprintf(stderr,"open sortfiles: cant load config:%s\nSwitching to ODB parameters from this .mid file instead.\n", tmp);
+               sprintf(sort->cal_src,"midas");
+            }
+            remove_config(tmp_cfg);
+         } else {
+            fprintf(stderr,"open sortfiles: cant create config:%s\nSwitching to ODB parameters from this .mid file instead.\n", tmp);
+            sprintf(sort->cal_src,"midas");
+         }
+      }
+   }
+   arg->midas_bytes = 0;
+   if( strcmp(sort->cal_src, "midas") == 0 ){
+      arg->cal_overwrite = 1;
+   } else {
+      arg->cal_overwrite = 0;  // cal src == "config" or "file"
+   }
+   return(0);
 }
 
 // Only first subrun contains odb event
@@ -3126,139 +3131,151 @@ return(0);
 //         otherwise sort all subruns
 int open_next_subrun(Sort_status *arg)
 {
-  Sortfile *sort = &filelist[arg->current_filenum];
-  char *filename;
-  fclose(arg->data_fp); arg->data_fp = NULL;
+   Sortfile *sort = &filelist[arg->current_filenum];
+   char *filename;
+   fclose(arg->data_fp); arg->data_fp = NULL;
 
-  if( sort->subrun >= sort->num_subruns-1 ){ // last or no subruns
-    fprintf(stderr,"Final Subrun[%d] completed\n", sort->subrun); return(-1);
-  }
-  filename = subrun_filename(sort, ++sort->subrun);
-  if( (arg->data_fp=fopen(filename,"r")) == NULL ){
-    fprintf(stderr,"can't open %s to read\n", filename);  return(-1);
-  }
-  fprintf(stdout,"sorting subrun %d\n", sort->subrun);
-  return(0);
+   if( sort->subrun >= sort->num_subruns-1 ){ // last or no subruns
+      fprintf(stderr,"Final Subrun[%d] completed\n", sort->subrun); return(-1);
+   }
+   filename = subrun_filename(sort, ++sort->subrun);
+   if( (arg->data_fp=fopen(filename,"r")) == NULL ){
+      fprintf(stderr,"can't open %s to read\n", filename);  return(-1);
+   }
+   fprintf(stdout,"sorting subrun %d\n", sort->subrun);
+   return(0);
 }
 
 char *subrun_filename(Sortfile *sort, int subrun)
 {
-  static char name[256];
-  int len, digits;
-  char tmp[64];
+   static char name[256];
+   int len, digits;
+   char tmp[64];
 
-  sprintf(name, "%s/run", sort->data_dir);
+   sprintf(name, "%s/run", sort->data_dir);
 
-  sprintf(tmp,"%d", sort->run); digits = strlen(tmp);
-  len = strlen(name);
-  while( digits++ < sort->run_digits ){ name[len] = '0'; name[++len] = 0; }
-  sprintf(name+strlen(name),"%d_", sort->run);
+   sprintf(tmp,"%d", sort->run); digits = strlen(tmp);
+   len = strlen(name);
+   while( digits++ < sort->run_digits ){ name[len] = '0'; name[++len] = 0; }
 
-  sprintf(tmp,"%d", subrun);  digits = strlen(tmp);
-  len = strlen(name);
-  while( digits++ < sort->subrun_digits ){
-    name[len++]='0'; name[len] = 0;
-  }
-  sprintf(name+strlen(name),"%d.mid", subrun);
-
-  return(name);
+   if( sort->subrun_digits <= 0 ){
+      sprintf(name+strlen(name),"%d.mid", sort->run);
+   } else {
+      sprintf(name+strlen(name),"%d_", sort->run);
+      sprintf(tmp,"%d", subrun);   digits = strlen(tmp);
+      len = strlen(name);
+      while( digits++ < sort->subrun_digits ){
+         name[len++]='0'; name[len] = 0;
+      }
+      sprintf(name+strlen(name),"%d.mid", subrun);
+   }
+   
+   return(name);
 }
 
 int close_sortfiles(Sort_status *arg)
-{  // data_fp usually closed in nxtsubrun
-  if( arg->online_mode ){ return(0); } // no files in this mode
-  if( arg->data_fp != NULL ){ fclose(arg->data_fp); }
-  fclose(arg->histo_fp);
-  free_sortfile(&filelist[arg->current_filenum]);
-  return(0);
+{   // data_fp usually closed in nxtsubrun
+   if( arg->online_mode ){ return(0); } // no files in this mode
+   if( arg->data_fp != NULL ){ fclose(arg->data_fp); }
+   fclose(arg->histo_fp);
+   free_sortfile(&filelist[arg->current_filenum]);
+   return(0);
 }
 
 int free_sortfile(Sortfile *sort)
 {
-  if( sort->histo_dir  != NULL ){ free(sort->histo_dir);  }
-  if( sort->histo_name != NULL ){ free(sort->histo_name); }
-  if( sort->data_dir   != NULL ){ free(sort->data_dir);   }
-  if( sort->data_name  != NULL ){ free(sort->data_name);  }
-  if( sort->conf_dir   != NULL ){ free(sort->conf_dir);   }
-  if( sort->conf_name  != NULL ){ free(sort->conf_name);  }
-  while( sort->narg > 0 && sort->arg != NULL ){
-    if( sort->arg[sort->narg-1] != NULL ){ free(sort->arg[sort->narg-1]); }
-    --sort->narg;
-  }
-  free(sort->arg);
-  memset((char *)sort, 0, sizeof(Sortfile));
-  return(0);
+   if( sort->histo_dir  != NULL ){ free(sort->histo_dir);  }
+   if( sort->histo_name != NULL ){ free(sort->histo_name); }
+   if( sort->data_dir   != NULL ){ free(sort->data_dir);   }
+   if( sort->data_name  != NULL ){ free(sort->data_name);  }
+   if( sort->conf_dir   != NULL ){ free(sort->conf_dir);   }
+   if( sort->conf_name  != NULL ){ free(sort->conf_name);  }
+   while( sort->narg > 0 && sort->arg != NULL ){
+      if( sort->arg[sort->narg-1] != NULL ){ free(sort->arg[sort->narg-1]); }
+      --sort->narg;
+   }
+   free(sort->arg);
+   memset((char *)sort, 0, sizeof(Sortfile));
+   return(0);
 }
 
 // read sun/subrun from filename, then count #digits in each
-int run_number(Sort_status *arg, Sortfile *sort, char *name)
+// As usual things are complicated by the varying filename formats ...
+//   - subrun number may or may not be present
+//   - also number of digits in both run and subrun number is variable
+//
+// calling function finds number of subruns by opening all in turn
+// starting from zero, until this fails => final subrun was previous 
+int run_number(Sortfile *sort, char *name)
 {
-  char *ptr = name, fmt[16], tmp[256];
-  FILE *fp;
-  int i;
+   char *ptr = name, fmt[16], tmp[256];
+   FILE *fp;
+   int i;
 
-  if( strncmp(ptr, "run", 3) != 0 ){
-    fprintf(stderr,"datafilename:%s does not being with \"run\"\n", name);
-    return(-1);
-  } ptr += 3;
-  while( 1 ){
-    if( !isdigit(*ptr) ){ sort->run_digits = ptr-name-3; break; }
-    ++ptr;
-  }
-  if( *ptr != 0 ){               // name contains stuff after run number ...
-    if( *ptr == '_' ){
-      if( sscanf(name, "run%d_%d.mid", &sort->run, &sort->subrun) != 2 ){
-        fprintf(stderr,"can't read run and subrun number in %s\n", name);
-        return(-1);
-      }
-      sort->subrun_digits = -1; ++ptr; while( 1 ){
-        if( !isdigit(*ptr) ){
-          sort->subrun_digits = ptr-name-4-sort->run_digits;  break;
-        }
-        ++ptr;
-      }
-      if( sort->subrun_digits == -1 ){
-        fprintf(stderr,"can't read subrun number in %s\n", name);
-        return(-1);
-      }
-      if( strncmp(ptr, ".mid", 4) == 0 ){ return(0); }
-      else {
-        fprintf(stderr,"no .mid extension in datafile: %s\n", name);
-        return(-1);
-      }
-    } else if( strncmp(ptr, ".mid", 4) == 0 ){
-      fprintf(stderr,"subrun number missing in datafile: %s\n", name);
+   if( strncmp(ptr, "run", 3) != 0 ){
+      fprintf(stderr,"datafilename:%s does not being with \"run\"\n", name);
       return(-1);
-    } else {
-      fprintf(stderr,"bad data filename format in %s\n", name);
+   } ptr += 3;
+   while( 1 ){
+      if( !isdigit(*ptr) ){ sort->run_digits = ptr-name-3; break; }
+      ++ptr;
+   }
+   if( *ptr != 0 && strncmp(ptr, ".mid", 4) != 0 ){ // name contains stuff
+      if( *ptr == '_' ){                            //  after run number ...
+         if( sscanf(name, "run%d_%d.mid", &sort->run, &sort->subrun) != 2 ){
+            fprintf(stderr,"can't read run and subrun number in %s\n", name);
+            return(-1);
+         }
+         sort->subrun_digits = -1; ++ptr; while( 1 ){
+            if( !isdigit(*ptr) ){
+               sort->subrun_digits = ptr-name-4-sort->run_digits;   break;
+            }
+            ++ptr;
+         }
+         if( sort->subrun_digits == -1 ){
+            fprintf(stderr,"can't read subrun number in %s\n", name);
+            return(-1);
+         }
+         if( strncmp(ptr, ".mid", 4) == 0 ){ return(0); }
+         else {
+            fprintf(stderr,"no .mid extension in datafile: %s\n", name);
+            return(-1);
+         }
+      } else {
+         fprintf(stderr,"bad data filename format in %s\n", name);
+         return(-1);
+      }
+   } else {               // name only contains run number - sort all subruns
+     sort->subrun = -1;   //  **Or single run file with no subrun number**
+      if( sscanf(name, "run%d.mid", &sort->run) != 1 ){
+         fprintf(stderr,"can't read run number in %s\n", name);
+         return(-1);
+      }
+      sprintf(fmt, "run%%0%dd.mid", sort->run_digits);
+      sprintf(tmp, fmt, sort->run);
+      if( (fp = fopen(tmp,"r")) != NULL ){
+         sort->subrun_digits = -1; fclose(fp); return(0);
+      }
+      for(i=1; i<5; i++){ // look for up to 5 subrun digits (usually 3)
+         sprintf(fmt, "%%s/%%s_%%0%dd.mid", i);
+         sprintf(tmp, fmt, sort->data_dir, name, 0 );
+         if( (fp = fopen(tmp,"r")) == NULL ){ continue; }
+         sort->subrun_digits = i; fclose(fp); return(0);
+      }
+      fprintf(stderr,"can't open subrun0 for datafile:%s\n", name);
       return(-1);
-    }
-  } else {               // name only contains run number - sort all subruns
-    sort->subrun = -1;
-    if( sscanf(name, "run%d.mid", &sort->run) != 1 ){
-      fprintf(stderr,"can't read run number in %s\n", name);
-      return(-1);
-    }
-    for(i=1; i<5; i++){ // look for up to 5 subrun digits (usually 3)
-      sprintf(fmt, "%%s/%%s_%%0%dd.mid", i);
-      sprintf(tmp, fmt, sort->data_dir, name, 0 );
-      if( (fp = fopen(tmp,"r")) == NULL ){ continue; }
-      sort->subrun_digits = i; fclose(fp); return(0);
-    }
-    fprintf(stderr,"can't open subrun0 for datafile:%s\n", name);
-    return(-1);
-  }
-  return(0);
+   }
+   return(0);
 }
 
 int end_current_sortfile(int fd)
 {
-  Sort_status *arg;
-  Sortfile *sort;
+   Sort_status *arg;
+   Sortfile *sort;
 
-  arg = get_sort_status();
-  arg->end_of_data = 1; //arg-> shutdown_midas = 1;
-  return(0);
+   arg = get_sort_status();
+   arg->end_of_data = 1; //arg-> shutdown_midas = 1;
+   return(0);
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -3298,12 +3315,15 @@ int most_recent_calib_file(char *data_dir, int data_run, char *result)
     return( closest_run == -1 );
   }
 
-  int send_datafile_list(char *path, int fd, int type)
-  {
-    char tmp[256];  Sortfile *tmp_srt;
-    int nlen, run, subrun, entry=0;
-    struct dirent *d_ent;
-    DIR *d;
+// without titles - just a list of pairs of filename and size in bytes
+// e.g.  "[ run13187_000.mid, 42835954, run13187_000.mid, 32829485 ]"
+// The browser collects groups of subruns into a single run entry [expandable]
+int send_datafile_list(char *path, int fd, int include_titles)
+{
+   char tmp[256];  Sortfile *tmp_srt;
+   int nlen, run, subrun, entry=0;
+   struct dirent *d_ent;
+   DIR *d;
 
     if( (d=opendir(path)) == NULL ){
       sprintf(tmp,"can't open directory %s\n",path);
@@ -3312,10 +3332,11 @@ int most_recent_calib_file(char *data_dir, int data_run, char *result)
       return(-1);
     }
     set_directory(configs[0], "Data", path);
-    if( type == 1 ){
-      if( (tmp_srt  = calloc(sizeof(Sortfile),    1)) == NULL ){
-        fprintf(stderr,"send_datafile_list: failed alloc\n");
-      }
+    if( include_titles == 1 ){
+       if( (tmp_srt  = calloc(sizeof(Sortfile),    1)) == NULL ){
+          fprintf(stderr,"send_datafile_list: failed alloc\n");
+ 	  // not a fatal error - just continue without titles
+       }
     } else { tmp_srt = NULL; }
     send_header(fd, APP_JSON);
     put_line(fd, " [ \n", 4 );
@@ -3324,11 +3345,11 @@ int most_recent_calib_file(char *data_dir, int data_run, char *result)
       if( strncmp(d_ent->d_name, ".", 1) == 0 ){
         continue; // Ignore
       }
-      if( sscanf(d_ent->d_name, "run%d_%d.mid", &run, &subrun) != 2 ){
-        if( sscanf(d_ent->d_name, "run%d.mid", &run) != 1 ){
-          continue; // Not Midas Data File
-        }
-        subrun=0;
+      if( sscanf(d_ent->d_name, "run%d_%d", &run, &subrun) != 2 ){
+         if( sscanf(d_ent->d_name, "run%d", &run) != 1 ){
+            continue; // Not Midas Data File
+         }
+         subrun=-1;
       }
       nlen = strlen(d_ent->d_name);
       if( strncmp(d_ent->d_name+nlen-4, ".mid", 4)     != 0 ){ // &&
@@ -3345,12 +3366,12 @@ int most_recent_calib_file(char *data_dir, int data_run, char *result)
       sprintf(tmp," , %ld ", (long)statbuf.st_size);
       put_line(fd, tmp, strlen(tmp) );
       if( (entry % 1000) == 0 ){ printf("Entry: %d\n", entry); }
-      if( type == 0 ){ continue; }
+      if( include_titles == 0 ){ continue; }
       if( tmp_srt == NULL ){ put_line(fd," ,  ",4); continue; }
 
       if( subrun == 0 ){
-        sprintf(tmp,"%s/%s", path, d_ent->d_name);
-        read_datafile_info(tmp_srt, tmp);
+         sprintf(tmp,"%s/%s", path, d_ent->d_name);
+         read_datafile_info(tmp_srt, tmp);
       } else { tmp_srt->file_info[0][0] = tmp_srt->file_info[1][0] = 0; }
       if( strlen(tmp_srt->file_info[0]) > 0 ){
         sprintf(tmp," , %s ", tmp_srt->file_info[0] );

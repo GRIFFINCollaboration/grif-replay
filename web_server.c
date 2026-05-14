@@ -17,11 +17,11 @@
 #include "histogram.h"
 #include "web_server.h"
 
-#define MAX_QUEUE_LEN    6
-#define REQUEST_TIMEOUT 30 // 30 seconds (was 10 seconds)
-#define URLLEN        2048 // maximum url and other string lengths
-#define WEBPORT       9093 //    http standard recommends ~8000bytes BUT
-                           // windows browsers will not handle more than 2000
+#define MAX_QUEUE_LEN      6
+#define REQUEST_TIMEOUT   30 // 30 seconds (was 10 seconds)
+#define URLLEN          2048 // maximum url and other string lengths
+#define DEFAULT_WEBPORT 9093 //    http standard recommends ~8000bytes BUT
+                             // windows browsers will not handle more than 2000
 
 // The following is required on MacOS
  #ifndef SOCK_NONBLOCK
@@ -41,9 +41,12 @@ int handle_connection(int fd);
 void web_main(int *arg)
 {
    struct sockaddr_in sock_addr;
-   int sock_fd, client_fd;
+   int port, sock_fd, client_fd;
    int sockopt=1; // Re-use the socket
 
+   if( *arg > 9080 && *arg <= 10099 ){ port = *arg; }
+   else { port = DEFAULT_WEBPORT; }
+   
    signal(SIGPIPE, SIG_IGN);
 
     if(PLATFORM_IS_MACOS){ // MAC Os
@@ -59,17 +62,17 @@ void web_main(int *arg)
    setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR, &sockopt, sizeof(int));
    memset(&sock_addr, 0, sizeof(sock_addr));
    sock_addr.sin_family = AF_INET;
-   sock_addr.sin_port = htons(WEBPORT);
+   sock_addr.sin_port = htons(port);
    sock_addr.sin_addr.s_addr = INADDR_ANY;
 
    if( bind(sock_fd,(struct sockaddr *)&sock_addr, sizeof(sock_addr)) == -1){
-      perror("bind failed"); close(sock_fd); return;
+      perror("bind failed"); close(sock_fd); exit(0); // return;
    }
    if( listen(sock_fd, MAX_QUEUE_LEN) == -1 ){
-      perror("listen failed"); close(sock_fd); return;
+      perror("listen failed"); close(sock_fd); exit(0); // return;
    }
    fprintf(stdout,"Launch data server ...\n");
-   if( init_config() ){ close(sock_fd); return; }
+   if( init_config(port) ){ close(sock_fd);  exit(0); } // return; }
    while(1){
       extern volatile int shutdown_server;
       // use select and non-blocking accept

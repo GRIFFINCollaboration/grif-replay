@@ -212,7 +212,7 @@ extern int add_cond_to_gate(Config *cfg, char *gatename, char *condname);
 /////////////////          Config Files         /////////////////////////
 /////////////////////////////////////////////////////////////////////////
 
-extern int init_config();
+extern int init_config(int webport);
 extern int init_user_config(Config *cfg);
 extern int init_default_config(Config *cfg);
 extern int write_config(Config *cfg, FILE *fp);
