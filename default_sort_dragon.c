@@ -630,6 +630,10 @@ int fill_chan_histos(Dragon_event *ptr)
 // *** NOTE MOST OF THESE ARE COINCIDENCE HISTOS (gated on various conditions)
 //           -> move to proper section
 
+TH1I  *e_front;
+TH1I  *e_back;
+TH2I  *dssd_hit_pat;
+
 TH1I  *sb_ecal[2]; char *sb_title="";
 TH1I  *xtofh;  // gamma to hvy-ion
 TH1I  *ic_sum;
@@ -646,24 +650,48 @@ int init_histos(Config *cfg)
    int i, j, k;
 
    if( cfg == NULL ){ cfg = save_cfg; } else { save_cfg = cfg; }
-
-   open_folder(cfg, "Singles");
-   open_folder(cfg, "Basic");
-   for(i=0; i<2; i++){
+    
+    // Singles Histograms --------------------------------------
+    open_folder(cfg, "Singles");
+    open_folder(cfg, "Basic");
+    for(i=0; i<2; i++){
       sprintf(hnd,  "SB_%d", i);
       sprintf(title,"Surface Barrier (target scattering monitor) %d", i);
       sb_ecal[i] = H1_BOOK(cfg, hnd, title, ADC_BINS, 0, ADC_BINS);
-   }
-   xtofh    = H1_BOOK(cfg, "XTOFH",    "Separator TOF (gamma->HI)", 5000, -10000, 9999);
-   ic_sum   = H1_BOOK(cfg, "IC_SUM",   "Summed Energy Loss in Ion Chamber", ADC_BINS, 0, ADC_BINS);
-   bgo_zpat = H1_BOOK(cfg, "BGO_ZPAT", "BGO Z HITPATTERN", 100, -50, 49);
-   bgo_e0   = H1_BOOK(cfg, "BGO_E0",   "BGO Energy spectrum [chan0]", ADC_BINS, 0, ADC_BINS);
-   ic_0v1   = H2_BOOK(cfg, "IC_0v1",   "Ion Chamber Energy 0 vs 1", ADC_BINS, 0, ADC_BINS, ADC_BINS, 0, ADC_BINS);
+    }
+    // DSSD Histograms
+    e_front = H1_BOOK(cfg, "E_front", "DSSD Front Strip Energy", 4096, 0, 4096);
+    e_back  = H1_BOOK(cfg, "E_back", "DSSD Back Strip Energy", 4096, 0, 4096);
+    dssd_hit_pat = H2_BOOK(cfg, "dssd_hit_pat", "DSSD Hit Pattern", 16, 0, 16, 16, 0, 16);
+    
+    // MCP Histograms
+    
+    // IC Histograms
+    ic_sum   = H1_BOOK(cfg, "IC_SUM",   "Summed Energy Loss in Ion Chamber", ADC_BINS, 0, ADC_BINS);
+    ic_0v1   = H2_BOOK(cfg, "IC_0v1",   "Ion Chamber Energy 0 vs 1", ADC_BINS, 0, ADC_BINS, ADC_BINS, 0, ADC_BINS);
+   
+    
+    // BGO Histograms
+    bgo_e0   = H1_BOOK(cfg, "BGO_E0",   "BGO Energy spectrum [chan0]", ADC_BINS, 0, ADC_BINS);
 
-   test   = H1_BOOK(cfg, "Test",   "Debug histogram", ADC_BINS, 0, ADC_BINS);
+    close_folder(cfg);
+    close_folder(cfg);
+    
+    // Coincidence Histograms ------------------------------------
+    open_folder(cfg, "Coincidence");
+    open_folder(cfg, "Basic");
+    
+    
+    
+    xtofh    = H1_BOOK(cfg, "XTOFH",    "Separator TOF (gamma->HI)", 5000, -10000, 9999);
+    
+    bgo_zpat = H1_BOOK(cfg, "BGO_ZPAT", "BGO Z HITPATTERN", 100, -50, 49);
+    
 
-   close_folder(cfg);
-   close_folder(cfg);
+    test   = H1_BOOK(cfg, "Test",   "Debug histogram", ADC_BINS, 0, ADC_BINS);
+
+    close_folder(cfg);
+    close_folder(cfg);
 
    return(0);
 }
@@ -672,7 +700,7 @@ int fill_singles_histos(Dragon_event *ptr)
 {
    Head_data *head = &ptr->head_tail_data.head_data;
    Tail_data *tail = &ptr->head_tail_data.tail_data;
-   int i, chan, val, cnt;
+   int i, j, chan, val, cnt;
    float v_cal, sum;
 
    if( ptr->type == HEAD_EVENT ){
@@ -741,9 +769,9 @@ int fill_coinc_histos(int win_idx, int frag_idx)
       }
       if( max > 0 ){
          //printf(" BGO[ch=%d,z=%.1f,e=%.1f] ", max_ch, bgo_tdc_zposn[i], max);
-         bgo_e0->Fill(bgo_e0, (int)10.0*max, 1);
+         //bgo_e0->Fill(bgo_e0, (int)10.0*max, 1); // This should be a singles histo
          bgo_zpat->Fill(bgo_zpat, bgo_tdc_zposn[max_ch], 1);
-         head->bgo_e0 = 10.0*max;   head->bgo_ch0 = max_ch;
+         //head->bgo_e0 = 10.0*max;   head->bgo_ch0 = max_ch;
       }
       //printf("\n");
       sum = 0; for(i=0; i<IC_MAXCHAN; i++){ sum += tail->ic_energy[i]; }
