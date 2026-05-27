@@ -62,6 +62,7 @@ float head_rftdc_slope, head_rftdc_offset, head_tdc0_slope, head_tdc0_offset;
 int   bgo_adc_chan    [BGO_MAXCHAN];
 int   bgo_adc_module  [BGO_MAXCHAN];
 float bgo_adc_slope   [BGO_MAXCHAN];
+
 float bgo_adc_offset  [BGO_MAXCHAN];
 int   bgo_adc_pedestal[BGO_MAXCHAN];
 int   bgo_tdc_chan    [BGO_MAXCHAN];
@@ -451,7 +452,7 @@ int pre_sort_enter(int start_idx, int frag_idx)
    return(0);
 }
 
-// Presort - do Suppression and Addback here
+// Presort - do Suppression, BGO energy-sort and Addback here
 //  - frag_idx is about to leave coinc window (which ends at end_idx)
 //    check other frags in window for possible suppression and/or summing
 //  also calculate multiplicities[store in frag_idx only]
@@ -466,6 +467,52 @@ int pre_sort_exit(int frag_idx, int end_idx)
       // Determine absolute time difference between timestamps
       dt = ptr->ts - alt->ts; if( dt < 0 ){ dt = -1*dt; }
    }// end of while
+   // BGO presort: runs once per HEAD event as it leaves the presort window.
+   // Populates bgo_mult, bgo_id[], bgo_esort[], bgo_tsort[] so that
+   // fill_singles_histos and fill_coinc_histos can use them directly
+   // without repeating the threshold check or sort.
+   if( ptr->type == HEAD_EVENT ){
+      Head_data *head = &ptr->head_tail_data.head_data;
+      int k = 0;
+      float tmp_e;  int tmp_id, tmp_t;
+
+      // Pass 1: collect channels that fired above BGO_THRESHOLD.
+      // Channels below threshold are skipped so they don't inflate multiplicity.
+      // The three parallel arrays (bgo_id, bgo_esort, bgo_tsort) are packed
+      // into indices [0..k-1] as hits are found.
+      for(i = 0; i < BGO_MAXCHAN; i++){
+         if( head->bgo_energy[i] > BGO_THRESHOLD ){
+            head->bgo_id[k]    = i;                   // original BGO channel number
+            head->bgo_esort[k] = head->bgo_energy[i]; // calibrated energy
+            head->bgo_tsort[k] = head->bgo_time[i];   // TDC time for this channel
+            k++;
+         }
+      }
+      head->bgo_mult = k; // total BGO hit multiplicity for this event
+
+      // Pass 2: insertion sort the k hits in descending energy order.
+      // After this, index [0] = highest energy hit, [1] = second highest, etc.
+      // bgo_id[] and bgo_tsort[] are kept synchronised so each index still
+      // refers to the same physical crystal as bgo_esort[].
+      for(i = 1; i < k; i++){
+         tmp_e  = head->bgo_esort[i]; // save current element from all three arrays
+         tmp_id = head->bgo_id[i];
+         tmp_t  = head->bgo_tsort[i];
+         j = i - 1;
+         // shift elements that are smaller than tmp_e one position to the right
+         while( j >= 0 && head->bgo_esort[j] < tmp_e ){
+            head->bgo_esort[j+1] = head->bgo_esort[j];
+            head->bgo_id[j+1]    = head->bgo_id[j];
+            head->bgo_tsort[j+1] = head->bgo_tsort[j];
+            j--;
+         }
+         // insert the saved element in its sorted position
+         head->bgo_esort[j+1] = tmp_e;
+         head->bgo_id[j+1]    = tmp_id;
+         head->bgo_tsort[j+1] = tmp_t;
+      }
+   }
+
    return(0);
 }
 
@@ -760,13 +807,22 @@ int fill_singles_histos(Dragon_event *ptr)
    if( ptr->type == HEAD_EVENT ){
       
        // BGO
-         for(i = 0; i < BGO_MAXCHAN; i++){
-             if( head->bgo_energy[i] > 0 ) bgo_chan->Fill(bgo_chan, i, 1);
-             if( head->bgo_energy[i] > 0 ) bgo_e0->Fill(bgo_e0, head->bgo_energy[i], 1);
-         }
-         
-         // bgo_e0_e1: fill highest two BGO energies — needs a small find-top-two loop
+//         for(i = 0; i < BGO_MAXCHAN; i++){
+//             if( head->bgo_energy[i] > 0 ) bgo_chan->Fill(bgo_chan, i, 1);
+//             if( head->bgo_energy[i] > 0 ) bgo_e0->Fill(bgo_e0, head->bgo_energy[i], 1);
+//         }
+//         
+//         // bgo_e0_e1: fill highest two BGO energies — needs a small find-top-two loop
+       // This was the old way. Next code is the new way.
        
+       if( head->bgo_mult > 0 ){
+             bgo_e0->Fill(bgo_e0, head->bgo_esort[0], 1);
+             bgo_chan->Fill(bgo_chan, head->bgo_id[0], 1);
+         }
+         if( head->bgo_mult > 1 ){
+             bgo_e0_e1->Fill(bgo_e0_e1, head->bgo_esort[0], head->bgo_esort[1], 1);
+         }
+
    } else if(  ptr->type == TAIL_EVENT ){
       for(i=0; i<SB_MAXCHAN; i++){
          sb_ecal[i]->Fill(sb_ecal[i], tail->sb_energy[i], 1);
@@ -847,27 +903,16 @@ int fill_coinc_histos(int win_idx, int frag_idx)
 
       xtofh->Fill(xtofh, dt, 1);
       xtofg->Fill(xtofg, dt, 1); // need to figure out how to properly fill this
-      max = max_ch = 0;
-      for(i=0; i<BGO_MAXCHAN; i++){
-         if( head->bgo_energy[i] > 0 ){
-            if( head->bgo_energy[i] > max ){
-               max = head->bgo_energy[i]; max_ch = i;
-            }
-            //bgo_zpat->Fill(bgo_zpat, bgo_tdc_zposn[i], 1);
-         }
+
+      // BGO (from head) - sorted arrays populated by pre_sort_exit
+      if( head->bgo_mult > 0 ){
+         bgo_e0_c->Fill(bgo_e0_c, head->bgo_esort[0], 1);
+         bgo_chan_c->Fill(bgo_chan_c, head->bgo_id[0], 1);
+         bgo_zpat->Fill(bgo_zpat, bgo_tdc_zposn[head->bgo_id[0]], 1);
       }
-      if( max > 0 ){
-         //printf(" BGO[ch=%d,z=%.1f,e=%.1f] ", max_ch, bgo_tdc_zposn[i], max);
-         //bgo_e0->Fill(bgo_e0, (int)10.0*max, 1); // This should be a singles histo
-         bgo_zpat->Fill(bgo_zpat, bgo_tdc_zposn[max_ch], 1);
-         //head->bgo_e0 = 10.0*max;   head->bgo_ch0 = max_ch;
+      if( head->bgo_mult > 1 ){
+         bgo_e0_e1_c->Fill(bgo_e0_e1_c, head->bgo_esort[0], head->bgo_esort[1], 1);
       }
-       
-       // BGO (from head)
-         if( head->bgo_e0 > 0 ) bgo_e0_c->Fill(bgo_e0_c, head->bgo_e0, 1);
-         //if( head->bgo_e0 > 0 && head->bgo_e1 > 0 ) bgo_e0_e1_c->Fill(bgo_e0_e1_c, head->bgo_e0, head->bgo_e1, 1); // need to figure out how to do this
-         bgo_zpat->Fill(bgo_zpat, bgo_tdc_zposn[head->bgo_ch0], 1);
-         bgo_chan_c->Fill(bgo_chan_c, head->bgo_ch0, 1);
        
        // DSSD (from tail)
         for(i = 0; i < 16; i++){
