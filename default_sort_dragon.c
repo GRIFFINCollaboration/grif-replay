@@ -627,8 +627,6 @@ int fill_chan_histos(Dragon_event *ptr)
 //#######################################################################
 
 
-// *** NOTE MOST OF THESE ARE COINCIDENCE HISTOS (gated on various conditions)
-//           -> move to proper section
 
 TH1I  *e_front;
 TH1I  *e_back;
