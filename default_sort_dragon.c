@@ -772,7 +772,7 @@ int init_histos(Config *cfg)
     // IC Coincidence Histograms
     ic_sum_c   = H1_BOOK(cfg, "IC_SUM_c",        "Summed IC Energy Loss",         ADC_BINS, 0, ADC_BINS);
     ic_0v1_c   = H2_BOOK(cfg, "IC_0v1_c",        "IC Energy 0 vs 1",              ADC_BINS, 0, ADC_BINS, ADC_BINS, 0, ADC_BINS);
-    ic_anode = H2_BOOK(cfg, "IC_anode_c",      "IC Energy vs Anode",            4096, 0, 4096, 4, 0, 4);
+    ic_anode_c = H2_BOOK(cfg, "IC_anode_c",      "IC Energy vs Anode",            4096, 0, 4096, 4, 0, 4);
     
     // MCP Coincidence Histograms
     mcp_tdc_c    = H1_BOOK(cfg, "MCP_TDC_c",    "MCP TDC (coinc)",               4096, 0, 4096);
