@@ -339,7 +339,7 @@ int unpack_tail_event(Dragon_event *evt)
       if( (cnt = j ? evt->v792a.d_count : evt->v792b.d_count) <= 0 ){ continue; }
       for(i=0; i<cnt; i++){
          val = j ? evt->v792a.data[i] : evt->v792b.data[i];
-         srcchan = (V792_MAXCHAN * j) + (val >> 16) & 0x1f;
+         srcchan = (V792_MAXCHAN * (1-j)) + ((val >> 16) & 0x1f);
          badval = (val >> 12) & 0x3; // under/overflow bits
          val &= 0xfff;
          if( (dstchan = tail_adc_dstchan[srcchan]) == -1 ){ continue; } // unassigned
