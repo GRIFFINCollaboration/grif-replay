@@ -693,6 +693,7 @@ TH1I  *nai_ecal[2]; char *nai_title="";
 TH1I  *e_front_c;
 TH1I  *e_back_c;
 TH2I  *dssd_hit_pat_c;
+TH2I  *dssd_echan_c;
 
 TH1I  *mcp_tdc_c;
 TH1I  *mcp_tac_c;
@@ -770,6 +771,7 @@ int init_histos(Config *cfg)
     e_front_c  = H1_BOOK(cfg, "E_front_c",     "DSSD Front Strip Energy (coinc)", 4096, 0, 4096);
     e_back_c   = H1_BOOK(cfg, "E_back_c",      "DSSD Back Strip Energy (coinc)",  4096, 0, 4096);
     dssd_hit_pat_c = H2_BOOK(cfg, "dssd_hit_pat_c", "DSSD Hit Pattern (coinc)",   16, 0, 16, 16, 0, 16);
+    dssd_echan_c   = H2_BOOK(cfg, "dssd_echan_c",   "DSSD Channel vs Energy (coinc)", 4096, 0, 4096, DSSD_MAXCHAN, 0, DSSD_MAXCHAN);
       
     // IC Coincidence Histograms
     ic_sum_c   = H1_BOOK(cfg, "IC_SUM_c",        "Summed IC Energy Loss",         ADC_BINS, 0, ADC_BINS);
@@ -934,7 +936,11 @@ int fill_coinc_histos(int win_idx, int frag_idx)
                 dssd_hit_pat_c->Fill(dssd_hit_pat_c, i, j-16, 1);
             }
         }
-         
+        for(i = 0; i < DSSD_MAXCHAN; i++){
+            if( tail->dssd_energy[i] > 0 )
+                dssd_echan_c->Fill(dssd_echan_c, tail->dssd_energy[i], i, 1);
+        }
+
         // MCP (from tail)
         if( tail->mcptac_energy > 0 ) mcp_tac_c->Fill(mcp_tac_c, tail->mcptac_energy, 1);
         if( tail->mcp_time[0]   > 0 ) mcp_tdc_c->Fill(mcp_tdc_c, tail->mcp_time[0],   1);
