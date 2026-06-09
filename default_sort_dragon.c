@@ -678,6 +678,7 @@ int fill_chan_histos(Dragon_event *ptr)
 TH1I  *e_front;
 TH1I  *e_back;
 TH2I  *dssd_hit_pat;
+TH2I  *dssd_echan;
 
 TH1I  *mcp_tdc;
 TH1I  *mcp_tac;
@@ -734,6 +735,7 @@ int init_histos(Config *cfg)
     e_front = H1_BOOK(cfg, "E_front", "DSSD Front Strip Energy", 4096, 0, 4096);
     e_back  = H1_BOOK(cfg, "E_back", "DSSD Back Strip Energy", 4096, 0, 4096);
     dssd_hit_pat = H2_BOOK(cfg, "dssd_hit_pat", "DSSD Hit Pattern", 16, 0, 16, 16, 0, 16);
+    dssd_echan   = H2_BOOK(cfg, "dssd_echan", "DSSD Channel vs Energy", 2048, 0, 4096, DSSD_MAXCHAN, 0, DSSD_MAXCHAN);
     
     // MCP Histograms
     mcp_tdc = H1_BOOK(cfg, "MCP_TDC", "MCP TDC (TOF)", 4096, 0, 4096);
@@ -815,17 +817,17 @@ int fill_singles_histos(Dragon_event *ptr)
 //         // bgo_e0_e1: fill highest two BGO energies — needs a small find-top-two loop
        // This was the old way. Next code is the new way.
        
-       if( head->bgo_mult > 0 ){
-             bgo_e0->Fill(bgo_e0, head->bgo_esort[0], 1);
-             bgo_chan->Fill(bgo_chan, head->bgo_id[0], 1);
-         }
-         if( head->bgo_mult > 1 ){
-             bgo_e0_e1->Fill(bgo_e0_e1, head->bgo_esort[0], head->bgo_esort[1], 1);
-         }
+      // if( head->bgo_mult > 0 ){
+      //       bgo_e0->Fill(bgo_e0, head->bgo_esort[0], 1);
+      //       bgo_chan->Fill(bgo_chan, head->bgo_id[0], 1);
+      //   }
+      //   if( head->bgo_mult > 1 ){
+      //       bgo_e0_e1->Fill(bgo_e0_e1, head->bgo_esort[0], head->bgo_esort[1], 1);
+      //   }
 
    } else if(  ptr->type == TAIL_EVENT ){
       for(i=0; i<SB_MAXCHAN; i++){
-         sb_ecal[i]->Fill(sb_ecal[i], tail->sb_energy[i], 1);
+         if( tail->sb_energy[i] > 0 ) sb_ecal[i]->Fill(sb_ecal[i], tail->sb_energy[i], 1);
       }
        // DSSD
          for(i = 0; i < 16; i++){
@@ -833,6 +835,10 @@ int fill_singles_histos(Dragon_event *ptr)
          }
          for(i = 16; i < 32; i++){
              if( tail->dssd_energy[i] > 0 ) e_back->Fill(e_back, tail->dssd_energy[i], 1);
+         }
+         for(i = 0; i < DSSD_MAXCHAN; i++){
+             if( tail->dssd_energy[i] > 0 )
+                 dssd_echan->Fill(dssd_echan, tail->dssd_energy[i], i, 1);
          }
          for(i = 0; i < 16; i++){
              if( tail->dssd_energy[i] <= 0 ){ continue; }
@@ -905,14 +911,14 @@ int fill_coinc_histos(int win_idx, int frag_idx)
       xtofg->Fill(xtofg, dt, 1); // need to figure out how to properly fill this
 
       // BGO (from head) - sorted arrays populated by pre_sort_exit
-      if( head->bgo_mult > 0 ){
-         bgo_e0_c->Fill(bgo_e0_c, head->bgo_esort[0], 1);
-         bgo_chan_c->Fill(bgo_chan_c, head->bgo_id[0], 1);
-         bgo_zpat->Fill(bgo_zpat, bgo_tdc_zposn[head->bgo_id[0]], 1);
-      }
-      if( head->bgo_mult > 1 ){
-         bgo_e0_e1_c->Fill(bgo_e0_e1_c, head->bgo_esort[0], head->bgo_esort[1], 1);
-      }
+      // if( head->bgo_mult > 0 ){
+      //    bgo_e0_c->Fill(bgo_e0_c, head->bgo_esort[0], 1);
+      //    bgo_chan_c->Fill(bgo_chan_c, head->bgo_id[0], 1);
+      //    bgo_zpat->Fill(bgo_zpat, bgo_tdc_zposn[head->bgo_id[0]], 1);
+      // }
+      // if( head->bgo_mult > 1 ){
+      //    bgo_e0_e1_c->Fill(bgo_e0_e1_c, head->bgo_esort[0], head->bgo_esort[1], 1);
+      // }
        
        // DSSD (from tail)
         for(i = 0; i < 16; i++){
