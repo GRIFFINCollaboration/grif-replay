@@ -260,9 +260,11 @@ TH2I  *qedp_ge_theta[N_QED_POS*N_QED_STRIPS], *qedn_ge_theta[N_QED_POS*N_QED_STR
 TH2I  *qed_geE_theta[N_QED_POS*N_QED_STRIPS], *qedE_ge_theta_sum, *qed_geE_theta_sum, *qed_totE_theta_sum, *qed_E_totE_sum_t, *qed_geE_totE_sum_t, *qedE_ge_theta_sum_t, *qed_geE_theta_sum_t, *qedE_ge_thetaI_sum_t, *qed_geE_thetaDiff_sum_t, *qed_geE_thetaI_sum_t;
 TH2I  *qedE_ge_theta_sum_c, *qed_geE_theta_sum_c, *qedE_ge_theta_sum_c_g, *qed_geE_theta_sum_c_g, *qedE_ge_theta_sum_c_s, *qed_geE_theta_sum_c_s, *ge_qed_c;
 TH2I  *qed_totE_theta[N_QED_POS], *qed_geE_theta_clov[N_CLOVER], *qed_geE_theta_clov_t[N_CLOVER], *qed_E_theta_dssd[N_QED_POS], *qed_geE_theta_dssd[N_QED_POS];
-TH2I  *qed_angle_test_g, *qed_angle_test_s, *qedE_ge_dt, *qed_geE_dt, *qedE_ge_dt_c, *qed_geE_dt_c, *qed_theta_dt, *qed_dcs_omega_dt, *qedx_dcs_omega_dt[N_QED_POS], *qed_theta1_vs_theta2, *qed_theta1_azi, *qed_theta2_azi, *qed2_theta1_vs_theta2, *qed2_theta1_azi, *qed2_theta2_azi;
+TH2I  *qed_angle_theta_g, *qed_angle_theta_s, *qed_angle_phi_s, *qed_angle_phi_a, *qed_angle_phi_b, *qedE_ge_dt, *qed_geE_dt, *qedE_ge_dt_c, *qed_geE_dt_c, *qed_theta_dt, *qed_dcs_omega_dt, *qedx_dcs_omega_dt[N_QED_POS], *qed_theta1_vs_theta2, *qed_theta1_azi, *qed_theta2_azi, *qed2_theta1_vs_theta2, *qed2_theta1_azi, *qed2_theta2_azi;
 TH1I  *qed_dcs_omega, *qed_dcs_omega_t, *qed_dcs_azi, *qed_dcs_azi_t, *qed_dcs_azi_tg, *qed_dcs_azi_b, *qed_dcs_azi_tb, *qed_dcs_azi_tgb, *qed_delta_theta1_theta2, *qed_sum_theta1_theta2, *qed_dcs_azi2, *qed_dcs_azi_tg2;
-TH1I  *dcs_theta, *dcs_cs_omega;
+TH1I  *dcs_theta, *dcs_cs_omega, *qed_phi_s, *qed_phi_a, *qed_phi_b;
+TH1I  *qed_dcs_azi_bins1, *qed_dcs_azi_bins2, *qed_dcs_azi_bins3, *qed_dcs_azi_bins4, *qed_dcs_azi_bins5, *qed_dcs_azi_bins6, *qed_dcs_azi_bins7, *qed_dcs_azi_bins8, *qed_dcs_azi_bins9, *qed_dcs_azi_bins10;
+TH1I  *qed_phi_bins1, *qed_phi_bins2, *qed_phi_bins3, *qed_phi_bins4, *qed_phi_bins5, *qed_phi_bins6, *qed_phi_bins7, *qed_phi_bins8, *qed_phi_bins9, *qed_phi_bins10;
 TH2I  *dcsE_ge_theta, *dcs_geE_theta, *dcs_theta_azi;
 TH1I  *dcs_cs_omega_ge;
 TH2I  *dcs_theta_azi_ge;
@@ -447,7 +449,7 @@ TH1I *tac_aries_art_sum;                 // ARIES TAC sum spectrum of all ARTs
 TH1I *aries_tac;                         // aries_tac gated on 1275keV peak
 TH1I *aries_tac_Egate;                   // aries_tac gated on 1275keV peak
 TH1I *aries_tac_artEn;                   // aries energy in coincidence with TAC
-TH2I *lblE_tac, *zdsE_tac, *ariesE_tac;  // lbl or zds or aries energy vs TAC
+TH2I *lblE_tac, *zdsE_tac, *ariesE_tac, *ariesPH_tac;  // lbl or zds or aries energy vs TAC, also ARIES Pulse-height vs TAC
 TH2I *lbl_lbl_tac;                       // A special 3d histogram disguised as a 2d histogram
 
 // 2D Energy vs detector number
