@@ -1295,6 +1295,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {(void **)&aries_xtal,   "AriesEnergy_CrystalNum",   "AriesE_Xtal",              SUBSYS_ARIES_A,  80, E_2D_SPECLEN},
         // {(void **)&labr_tac_xtal,"TAC_LBL_ART_vs_LBL_Num", "TAC_ART_LBL_LBL_Xtal",       SUBSYS_TAC_ART,   16,  E_2D_SPECLEN},
         {(void **)&art_tac_xtal, "TAC_LBL_ART_vs_ART_Num", "TAC_ART_LBL_ART_Xtal",       SUBSYS_ARIES_A,  80,  E_2D_SPECLEN},
+        {(void **)&geb_xtal,      "GeBEnergy_CrystalNum",      "",                       SUBSYS_HPGE_A,   64, E_2D_SPECLEN},
         {(void **)&desw_e_xtal,  "DESWall_En_DetNum",    "DSW_En_Xtal",                 SUBSYS_DESWALL, 64,  E_2D_SPECLEN},
         {(void **)&desw_tof_xtal,"DESWall_TOF_DetNum",   "DSW_TOF_Xtal",                SUBSYS_DESWALL, 64,  E_2D_SPECLEN},
         {(void **)&desw_psd_e,   "DESWall_PSD_En",       "DES_Wall_PSD_En",             SUBSYS_DESWALL, E_2D_SPECLEN, E_2D_SPECLEN},
@@ -1817,6 +1818,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
               } break;
               case SUBSYS_HPGE_B: // GRGb
               if( pos >= 0 && pos < 64 ){
+                geb_xtal->Fill(geb_xtal, pos, (int)ptr->ecal, 1);
                 // PPG Cycles histograms
                 if(ppg_cycles_active==1){
                   bin = (int)((ptr->ts-ppg_cycle_start)/ppg_cycles_binning_factor);  // convert 10ns to binning size set as Global
