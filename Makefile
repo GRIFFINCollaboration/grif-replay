@@ -12,6 +12,7 @@ CFLAGS  = -g -O0 -fPIC
 griffin-replay: grif-replay
 griffin:  grif-replay
 dragon: dragon-replay
+all: grif-replay dragon-replay tar2ascii
 
 grif-replay:   SYS = -DGRIFFIN_SORT
 dragon-replay: SYS = -DDRAGON_SORT
@@ -24,6 +25,9 @@ grif-replay: $(GRIF_OBJECTS)
 	$(CC) $(CFLAGS) $(SYS) -o $@ $^ -rdynamic -lz -ldl -lm -lpthread
 
 midas: midas_module.so
+
+tar2ascii: tar2ascii.c
+	$(CC) $(CFLAGS) -o tar2ascii tar2ascii.c -lz
 
 midas_module.so: midas_module.c libmidas.a
 	$(CC) $(CFLAGS) $(SYS) -rdynamic -shared -o $@ $^ -lrt -lz -lutil -lnsl -lpthread
