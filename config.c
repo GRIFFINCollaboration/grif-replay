@@ -3096,6 +3096,7 @@ if( (arg->data_fp=fopen(tmp,"r")) == NULL ){
 }
 fprintf(stdout,"sorting file %d %s\n", arg->current_filenum, tmp);
 if( strcmp(sort->cal_src, "file") == 0 ){
+  fprintf(stdout,"Calibration method is json file\n");
   // first subrun - open cal file or most recent
   memcpy(tmp+strlen(tmp)-8, ".json", 6);
   if( (arg->cal_fp=fopen(tmp,"r")) == NULL ){
@@ -3124,8 +3125,10 @@ if( strcmp(sort->cal_src, "file") == 0 ){
 }
 arg->midas_bytes = 0;
 if( strcmp(sort->cal_src, "midas") == 0 ){
+  fprintf(stdout,"Calibration method is ODB from midas file\n");
   arg->cal_overwrite = 1;
 } else {
+  if( strcmp(sort->cal_src, "config") == 0 ){ fprintf(stdout,"Calibration method is current config\n"); }
   arg->cal_overwrite = 0;  // cal src == "config" or "file"
 }
 return(0);
