@@ -2093,7 +2093,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
 
           int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
           {
-            int c1, c2, c3, c4, pos, bin, angle_idx, coinc_ecal, scatt_esum, totalEnergy;
+            int c1, c2, c3, c4, pos, bin, angle_idx, coinc_ecal, scatt_esum, totalEnergy, ge_corrected_angle;
             int pos1, qed1;
             double angle, initial_theta, omega, azimuthal;
             switch(alt->subsys){
@@ -2271,15 +2271,16 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                 qed_geE_theta_dssd[pos-1]->Fill(qed_geE_theta_dssd[pos-1], ptr->ecal, (int)(angle), 1);
                 qed_geE_theta_clov_t[(int)(c1/4)]->Fill(qed_geE_theta_clov_t[(int)(c1/4)], ptr->ecal, (int)(angle), 1);
 
-                qedE_ge_thetaI_sum_t->Fill(qedE_ge_thetaI_sum_t, alt->ecal, compton_angle(ptr->ecal,QED_GAMMA_ENERGY), 1);
-                qed_geE_thetaI_sum_t->Fill(qed_geE_thetaI_sum_t, ptr->ecal, compton_angle(ptr->ecal,QED_GAMMA_ENERGY), 1);
-                qed_geE_thetaDiff_sum_t->Fill(qed_geE_thetaDiff_sum_t, ptr->ecal, (int)(angle - compton_angle(ptr->ecal,QED_GAMMA_ENERGY))+90, 1);
+                ge_corrected_angle = compton_angle(ptr->ecal,QED_GAMMA_ENERGY);
+                qedE_ge_thetaI_sum_t->Fill(qedE_ge_thetaI_sum_t, alt->ecal, ge_corrected_angle, 1);
+                qed_geE_thetaI_sum_t->Fill(qed_geE_thetaI_sum_t, ptr->ecal, ge_corrected_angle, 1);
+                qed_geE_thetaDiff_sum_t->Fill(qed_geE_thetaDiff_sum_t, ptr->ecal, (int)(angle - ge_corrected_angle)+90, 1);
 
-                if((int)(c2/N_QED_STRIPS) == (c2%N_QED_STRIPS)){ // Single pixel theta needed for initial calibration
-                  qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], alt->ecal, (int)(angle), 1);
-                  qedn_ge_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qedn_ge_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], alt->alt_ecal, (int)(angle), 1);
-                  qed_geE_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qed_geE_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], ptr->ecal, (int)(angle), 1);
-                }
+              //  if((int)(c2/N_QED_STRIPS) == (c2%N_QED_STRIPS)){ // Single pixel theta needed for initial calibration
+                  qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], alt->ecal, ge_corrected_angle, 1);
+                  qedn_ge_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qedn_ge_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], alt->alt_ecal, ge_corrected_angle, 1);
+                  qed_geE_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qed_geE_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], ptr->ecal, ge_corrected_angle, 1);
+              //  }
               }
             }
             break;
