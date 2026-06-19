@@ -1162,21 +1162,21 @@ while( 1 ){ // Calibrations
   } ptr += 9;
   name = ptr; while( *ptr != '"' ){ ++ptr; } *ptr++ = 0;
   if( strncmp(ptr,",\"address\":",11) != 0 ){
-    fprintf(stderr,"load_config: errV byte %ld\n", ptr-config_data);
+    fprintf(stderr,"load_config: errV1 byte %ld\n", ptr-config_data);
     return(-1);
   } ptr += 11; valstr = ptr;
   while( isdigit(*ptr) || *ptr=='-' || *ptr=='.' ){++ptr;} *ptr++ = 0;
   if( sscanf( valstr, "%d", &address) < 1 ){
-    fprintf(stderr,"load_config:errX byte %ld\n", ptr-config_data);
+    fprintf(stderr,"load_config:errX1 byte %ld\n", ptr-config_data);
     return(-1);
   }
   if( strncmp(ptr,"\"datatype\":",11) != 0 ){
-    fprintf(stderr,"load_config: errV byte %ld\n", ptr-config_data);
+    fprintf(stderr,"load_config: errV2 byte %ld\n", ptr-config_data);
     return(-1);
   } ptr += 11; valstr = ptr;
   while( isdigit(*ptr) || *ptr=='-' || *ptr=='.' ){++ptr;} *ptr++ = 0;
   if( sscanf( valstr, "%d", &type) < 1 ){
-    fprintf(stderr,"load_config:errX byte %ld\n", ptr-config_data);
+    fprintf(stderr,"load_config:errX2 byte %ld\n", ptr-config_data);
     return(-1);
   }
   if( strncmp(ptr,"\"offset\":",9) != 0 ){
@@ -1189,12 +1189,12 @@ while( 1 ){ // Calibrations
     return(-1);
   }
   if( strncmp(ptr,"\"gain\":",7) != 0 ){
-    fprintf(stderr,"load_config: errV byte %ld\n", ptr-config_data);
+    fprintf(stderr,"load_config: errV3 byte %ld\n", ptr-config_data);
     return(-1);
   } ptr += 7; valstr = ptr;
   while( isdigit(*ptr) || *ptr=='-' || *ptr=='.' ){++ptr;} *ptr++ = 0;
   if( sscanf( valstr, "%f", &gain) < 1 ){
-    fprintf(stderr,"load_config:errX byte %ld\n", ptr-config_data);
+    fprintf(stderr,"load_config:errX3 byte %ld\n", ptr-config_data);
     return(-1);
   }
   if( strncmp(ptr,"\"quad\":",7) != 0 ){
@@ -2968,7 +2968,7 @@ memcpy((char *)sort->data_name, path+dlen, plen-dlen);
 if( run_number(sort, sort->data_name) ){ return(-1); }
 most_recent_calib_file(sort->data_dir, sort->run, sort->recent_cal);
 if( strlen(sort->recent_cal) == 0 && strcmp(calsrc,"file") == 0 ){
-  fprintf(stdout,"No recent calib file found. Switching to ODB parameters from this .mid file instead.\n");
+  fprintf(stdout,"No recent calib file found.\n>>>>>>>>Switching to ODB parameters from this .mid file instead.<<<<<<<<\n");
   sprintf(calsrc,"midas");
 }
 memset(&statbuf, 0, sizeof(struct stat)); sort->data_size = 0;
@@ -3105,7 +3105,7 @@ if( strcmp(sort->cal_src, "file") == 0 ){
     if( strlen(sort->recent_cal) != 0 && (arg->cal_fp=fopen(tmp,"r")) != NULL ){
       fprintf(stdout,"using most recent: %s\n", sort->recent_cal);
     } else {
-      fprintf(stdout,"No recent calib file found either. Switching to ODB parameters from this .mid file instead.\n");
+      fprintf(stdout,"No recent calib file found either.\n>>>>>>>>Switching to ODB parameters from this .mid file instead.<<<<<<<<\n");
     }
   }
   if( arg->cal_fp != NULL ){ fclose(arg->cal_fp);
@@ -3113,12 +3113,12 @@ if( strcmp(sort->cal_src, "file") == 0 ){
       if( load_config(tmp_cfg, tmp, NULL) == 0 ){
         merge_configs(tmp_cfg, configs[1]);
       } else {
-        fprintf(stderr,"open sortfiles: cant load config:%s\nSwitching to ODB parameters from this .mid file instead.\n", tmp);
+        fprintf(stderr,"open sortfiles: cant load config:%s\n>>>>>>>>Switching to ODB parameters from this .mid file instead.<<<<<<<<\n", tmp);
         sprintf(sort->cal_src,"midas");
       }
       remove_config(tmp_cfg);
     } else {
-      fprintf(stderr,"open sortfiles: cant create config:%s\nSwitching to ODB parameters from this .mid file instead.\n", tmp);
+      fprintf(stderr,"open sortfiles: cant create config:%s\n>>>>>>>>Switching to ODB parameters from this .mid file instead.<<<<<<<<\n", tmp);
       sprintf(sort->cal_src,"midas");
     }
   }
