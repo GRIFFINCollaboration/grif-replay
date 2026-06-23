@@ -1155,7 +1155,7 @@ if( strncmp(ptr,"{\"Calibrations\":[", 17) != 0 ){
   return(-1);
 } ptr += 17;
 while( 1 ){ // Calibrations
-  if( strncmp(ptr,"]},", 3) == 0 ){ ptr+=3; fprintf(stdout,"Calibrations section empty so breaking here.\n"); break; }// empty section
+  if( strncmp(ptr,"]},", 3) == 0 ){ ptr+=3; break; }// empty section or end of section
   if( strncmp(ptr,"{\"name\":\"", 9) != 0 ){
     fprintf(stderr,"load_config: errS byte %ld\n", ptr-config_data);
     return(-1);
@@ -2968,7 +2968,7 @@ memcpy((char *)sort->data_name, path+dlen, plen-dlen);
 if( run_number(sort, sort->data_name) ){ return(-1); }
 most_recent_calib_file(sort->data_dir, sort->run, sort->recent_cal);
 if( strlen(sort->recent_cal) == 0 && strcmp(calsrc,"file") == 0 ){
-  fprintf(stdout,"No recent calib file found.\n>>>>>>>>Switching to ODB parameters from this .mid file instead.<<<<<<<<\n");
+  fprintf(stdout,"No recent calib file found in add_sortfile().\n>>>>>>>>Switching to ODB parameters from this .mid file instead.<<<<<<<<\n");
   sprintf(calsrc,"midas");
 }
 memset(&statbuf, 0, sizeof(struct stat)); sort->data_size = 0;
@@ -3311,7 +3311,7 @@ int most_recent_calib_file(char *data_dir, int data_run, char *result)
         subrun=-1;
       }
       if( strcmp(extn, "json") != 0 ){ continue; }
-      if( run >= data_run ){ continue; } // after current file
+      if( run > data_run ){ continue; } // after current file
       if( run < closest_run ){ continue; } // already seen more recent
       if( run > closest_run ){ last_subrun=-1; }
       closest_run = run;
