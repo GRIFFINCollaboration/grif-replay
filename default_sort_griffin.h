@@ -239,7 +239,7 @@ TH1I  *ge_sum_b_art, *ge_sum_b_art_brems, *ge_sum_b_artT, *ge_sum_b_artR, *ge_su
 
 // ARIES, PACES and LaBr3
 TH1I  *aries_sum;  // aries_sum is sum of tile energies
-TH1I  *paces_sum;  // paces_sum is sum of crystal energies
+TH1I  *paces_sum, *paces_sum_b;  // paces_sum is sum of crystal energies, *paces_sum_b has a beta-coincidence
 TH1I  *labr_sum;  // labr_sum is sum of crystal energies
 
 // RCMP
