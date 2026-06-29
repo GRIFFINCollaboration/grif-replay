@@ -2110,7 +2110,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                 c1 = crystal_table[ptr->chan];
                 c2 = crystal_table[alt->chan];
                 if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 < 64 ){
-                  if(ptr->ecal < 5 &&  alt->ecal < 5){ break; } // Both crystals must have a valid energy
+                  if(ptr->ecal < 5 || alt->ecal < 5){ break; } // Both crystals must have a valid energy
                   gg_hit->Fill(gg_hit, c1, c2, 1); // 2d crystal hitpattern
 
                   // Individual Ge crystal energy in coincidence, used for angular correlations weighting factors
@@ -2133,7 +2133,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                   angle_idx = ge_angles_145mm[c1][c2];
                   gg_angcor_145[angle_idx]->Fill(gg_angcor_145[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
 
-                  if( ptr->esum > 5 ||  alt->esum > 5 ){ // addback energies
+                  if( ptr->esum > 5 || alt->esum > 5 ){ // addback energies
                     gg_ab->Fill(gg_ab, (int)ptr->esum, (int)alt->esum, 1);
                     // Fill Compton polarimetry matrices Here
                     // c1 and c2 are the same as for angular correlations. These define the plane.
