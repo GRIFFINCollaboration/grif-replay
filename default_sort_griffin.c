@@ -596,14 +596,14 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             break;
             case SUBSYS_SCEPTAR:
             if(alt->subsys == SUBSYS_HPGE_A && (dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_SCEPTAR]) && (dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_SCEPTAR]) ){ alt->tof = alt->tof | 1; }
-            if(alt->subsys == SUBSYS_PACES  && (dt >= time_diff_gate_min[SUBSYS_PACES][SUBSYS_SCEPTAR])  && (dt <= time_diff_gate_max[SUBSYS_PACES][SUBSYS_SCEPTAR])  ){ ptr->tof = ptr->tof | 1; }
+            if(alt->subsys == SUBSYS_PACES  && (dt >= time_diff_gate_min[SUBSYS_PACES][SUBSYS_SCEPTAR])  && (dt <= time_diff_gate_max[SUBSYS_PACES][SUBSYS_SCEPTAR])  ){ alt->tof = alt->tof | 1; }
             break;
             case SUBSYS_ZDS_A:
             if(alt->subsys == SUBSYS_HPGE_A && (dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_ZDS_A])   && (dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_ZDS_A])   ){ alt->tof = alt->tof | 2; }
-            if(alt->subsys == SUBSYS_PACES  && (dt >= time_diff_gate_min[SUBSYS_PACES][SUBSYS_ZDS_A])    && (dt <= time_diff_gate_max[SUBSYS_PACES][SUBSYS_ZDS_A])    ){ ptr->tof = ptr->tof | 2; }
+            if(alt->subsys == SUBSYS_PACES  && (dt >= time_diff_gate_min[SUBSYS_PACES][SUBSYS_ZDS_A])    && (dt <= time_diff_gate_max[SUBSYS_PACES][SUBSYS_ZDS_A])    ){ ptr->tof = alt->tof | 2; }
             break;
             case SUBSYS_ARIES_A:
-            if(alt->subsys == SUBSYS_PACES  && (dt >= time_diff_gate_min[SUBSYS_PACES][SUBSYS_ARIES_A])  && (dt <= time_diff_gate_max[SUBSYS_PACES][SUBSYS_ARIES_A])  ){ ptr->tof = ptr->tof | 4; }
+            if(alt->subsys == SUBSYS_PACES  && (dt >= time_diff_gate_min[SUBSYS_PACES][SUBSYS_ARIES_A])  && (dt <= time_diff_gate_max[SUBSYS_PACES][SUBSYS_ARIES_A])  ){ alt->tof = alt->tof | 4; }
             if(alt->subsys == SUBSYS_HPGE_A && (dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_ARIES_A]) && (dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_ARIES_A]) ){
               alt->tof = alt->tof | 4;
               pos = crystal_table[alt->chan];
