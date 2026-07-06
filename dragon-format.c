@@ -267,6 +267,7 @@ int unpack_head_event(Dragon_event *evt)
 {
    Head_data *head = &evt->head_tail_data.head_data;
    int i, cnt, val, edge, badval, srcchan, dstchan;
+   memset(head, 0, sizeof(Head_data));
 
    // v792a adc data [single module only for head events]
    if( (cnt = evt->v792a.d_count) > 0 ){
@@ -334,12 +335,13 @@ int unpack_tail_event(Dragon_event *evt)
 {
    Tail_data *tail = &evt->head_tail_data.tail_data;
    int i, j, cnt, val, edge, badval, srcchan, dstchan;
+   memset(tail, 0, sizeof(Tail_data));
 
    for(j=0; j<2; j++){  // v792a adc data (two modules)
       if( (cnt = j ? evt->v792a.d_count : evt->v792b.d_count) <= 0 ){ continue; }
       for(i=0; i<cnt; i++){
          val = j ? evt->v792a.data[i] : evt->v792b.data[i];
-         srcchan = (V792_MAXCHAN * j) + (val >> 16) & 0x1f;
+         srcchan = (V792_MAXCHAN * (1-j)) + ((val >> 16) & 0x1f);
          badval = (val >> 12) & 0x3; // under/overflow bits
          val &= 0xfff;
          if( (dstchan = tail_adc_dstchan[srcchan]) == -1 ){ continue; } // unassigned
