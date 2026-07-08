@@ -4049,6 +4049,7 @@ int send_binary_spectrum(int num, char url_args[][URL_STRING_LEN], char *name, i
       // transfer_method=0 requires the number of bytes per coordinate per non-empty submatrix
       // transfer_method=1 requires 2 bits per submatrix, so 1 byte per 4 submatrices for full histogram.
       if( num_nonempty_submatrices==0 ){ transfer_method = 0; }
+      else if( num_submatrices < 4 ){ transfer_method = 0; }
       else if((num_nonempty_submatrices*coord_size) > (num_submatrices/4)){ transfer_method = 1; }
       else{ transfer_method = 0; }
 
