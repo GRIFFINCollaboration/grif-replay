@@ -22,7 +22,7 @@
 // queue_sum_histos(), queue_sum_histo_list(), sum_histos(),
 ////////////////////////////////////////////////////  Directory reading  //
 // most_recent_calib_file(), send_datafile_list(), send_histofile_list(),
-// send_configfile_list(), 
+// send_configfile_list(),
 ///////////////////////////////////////////////////////  Sorting Control //
 // load_midas_module(), unload_midas_module(), send_sort_status(),
 // read_datafile_info(), send_file_details(), add_sortfile(),
@@ -37,6 +37,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 extern int coinc_events_cutoff;
+extern int merge_configs(Config *src, Config *dst);
 
 int handle_command(int fd, int narg, char url_args[][URL_STRING_LEN])
 {
@@ -1873,7 +1874,7 @@ int end_current_sortfile(int fd)
 /////////////////          Directory reading          /////////////////////
 ///////////////////////////////////////////////////////////////////////////
 // most_recent_calib_file(), send_datafile_list(), send_histofile_list(),
-// send_configfile_list(), 
+// send_configfile_list(),
 
 #include <dirent.h>
 

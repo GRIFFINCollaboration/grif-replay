@@ -2,6 +2,7 @@
 #include <stdlib.h> // alloc/free
 #include <string.h>
 #include <time.h>   // config last modification time
+#include <unistd.h>
 #include "config.h"
 #include "grif-replay.h"
 #include "histogram.h"

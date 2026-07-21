@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 #include "config.h"
 #include "grif-replay.h"
 #include "histogram.h"
@@ -7,7 +8,7 @@
 ///////////////////////////////////////////////////////////////////////////
 /////////////////            Config  I/O            ///////////////////////
 ///////////////////////////////////////////////////////////////////////////
-// write_config(),  load_config() 
+// write_config(),  load_config()
 Config *configs[MAX_CONFIGS];
 
 #define MAX_CONFIG_SIZE 1024*1024

@@ -46,7 +46,7 @@ void web_main(int *arg)
 
    if( *arg > 9080 && *arg <= 10099 ){ port = *arg; }
    else { port = DEFAULT_WEBPORT; }
-   
+
    signal(SIGPIPE, SIG_IGN);
 
     if(PLATFORM_IS_MACOS){ // MAC Os
