@@ -89,100 +89,7 @@ int user_sort(int win_strt, int win_end, int flag)
          }
       }
    }
-   user_removefrom_window(win_strt, win_end);
-   return(0);
-}
-
-///////////////////////////////////////////////////////////////////////////
-//////////////////    Some Currently Unused Code    ///////////////////////
-///////////////////////////////////////////////////////////////////////////
-// For every event sorted, the current user-sort re-calculates each condition
-//    for every event in the window, which for an average of 10 events in window
-//     => all conditions are calculated ~10 times PER EVENT
-//  *** BUT there are typically zero user histos and conditions ***
-//
-// For the (never-realized) case of many user histograms, each with many
-// conditions, a more efficient way of doing the user sort would be needed ...
-//
-// The code below, allows the conditions to be tracked/updated each time events
-// entered or left the main sort window [removing the window-size multiplier]
-//  -> maintain current condn-passed-count and
-//     on entry[exit] check if condition passed, and inc[dec] relevant counter
-//////////////////////////////////////////////////////////////////////////////
-
-// reset window counters, which will not be clear after a previous sort
-//   (due to not fully clearing coincwin - may fix this later)
-int user_sort_init()
-{
-return(0);
-   Config *cfg = configs[1]; // ** Sort is using config[1]
-   Cond *cond;
-   int i;
-   for(i=0; i<cfg->nconds; i++){ cond = cfg->condlist[i];
-      if( cond->use_count == 0 ){ continue; }
-      cond->pass_count = 0;
-   }
-   return(0);
-}
-
-// one CORRECT *single-var* gate-checking method is (as in electronics)
-//    keep running counts of either conditions or detector-types in window
-//  - inc on adding, dec on leaving
-
-// fragment new_frag has just entered coincwin (which starts at win_strt)
-// update any condition counters here, for use later during sort
-int user_addto_window(int win_strt, int new_frag)
-{
-return(0);
-   Grif_event *ptr = &grif_event[new_frag];
-   Config *cfg = configs[1]; // ** Sort is using config[1]
-   int i, *val = (int *)ptr;
-   Sortvar *var;
-   Cond *cond;
-   for(i=0; i<cfg->nconds; i++){ cond = cfg->condlist[i];
-      if( cond->use_count == 0 ){ continue; }
-      var = cond->var;
-      if( var->offset == -1 || var->dtype != ptr->dtype || var->local ){
-         continue;
-      }
-      var->value = val[var->offset];
-      switch( cond->op ){
-      case GATEOP_LT: cond->pass_count += var->value <  cond->value; continue;
-      case GATEOP_LE: cond->pass_count += var->value <= cond->value; continue;
-      case GATEOP_GT: cond->pass_count += var->value >  cond->value; continue;
-      case GATEOP_GE: cond->pass_count += var->value >= cond->value; continue;
-      case GATEOP_EQ: cond->pass_count += var->value == cond->value; continue;
-      default: printf("Unknown condition operation:%d\n", cond->op);
-      }
-   }
-   return(0);
-}
-// fragment win_strt is just leaving coincwin
-// update any condition counters
-int user_removefrom_window(int win_strt, int new_frag)
-{
-return(0);
-   Grif_event *ptr = &grif_event[win_strt];
-   Config *cfg = configs[1]; // ** Sort is using config[1]
-   int i, *val = (int *)ptr;
-   Sortvar *var;
-   Cond *cond;
-   for(i=0; i<cfg->nconds; i++){ cond = cfg->condlist[i];
-      if( cond->use_count == 0 ){ continue; }
-      var = cond->var;
-      if( var->offset == -1 || var->dtype != ptr->dtype || var->local ){
-         continue;
-      }
-      var->value = val[var->offset];
-      switch( cond->op ){
-      case GATEOP_LT: cond->pass_count -= var->value <  cond->value; continue;
-      case GATEOP_LE: cond->pass_count -= var->value <= cond->value; continue;
-      case GATEOP_GT: cond->pass_count -= var->value >  cond->value; continue;
-      case GATEOP_GE: cond->pass_count -= var->value >= cond->value; continue;
-      case GATEOP_EQ: cond->pass_count -= var->value == cond->value; continue;
-      default: printf("Unknown condition operation:%d\n", cond->op);
-      }
-   }
+   //user_removefrom_window(win_strt, win_end);
    return(0);
 }
 
@@ -415,10 +322,104 @@ int init_user_config(Config *cfg) // copy sort variable structure to config
       cfg->varlist[i].subsys1 = sortvarlist[i].subsys1;
       cfg->varlist[i].subsys2 = sortvarlist[i].subsys2;
       cfg->varlist[i].get_value  = (config_get_value)sortvarlist[i].get_value;
-
-      // TEMP to avoid changing config.c too much before merge
-      //   reuse old sortvar members for new items
-      //cfg->varlist[i].
    }
    return(0);
 }
+
+//////////////////////////////////////////////////////////////////////////
+// to use code below ... [also this code is not tested/incomplete]
+//    just before/after init_default_histos(),
+//       call user_sort_init(), to initialize window counters
+//    call user_removefrom_window() on removing old events from sort window
+//       either from insert_sort_win(), or at end of user_sort()
+//    call user_addto_window from insert_sort_win() [after old events removed]
+///////////////////////////////////////////////////////////////////////////
+//////////////////    Some Currently Unused Code    ///////////////////////
+///////////////////////////////////////////////////////////////////////////
+// For every event sorted, the current user-sort
+//   re-calculates each condition for every event in the window,
+//   which for an average of 10 events in window
+//     => all conditions are calculated ~10 times PER EVENT
+//  *** BUT there are typically zero user histos and conditions ***
+//
+// For the (never-realized) case of many user histograms, each with many
+// conditions, a more efficient way of doing the user sort would be needed ...
+//
+// The code below, allows the conditions to be tracked/updated each time events
+// entered or left the main sort window [removing the window-size multiplier]
+//  -> maintain current condn-passed-count and
+//     on entry[exit] check if condition passed, and inc[dec] relevant counter
+//////////////////////////////////////////////////////////////////////////////
+// reset window counters, which will not be clear after a previous sort
+//   (due to not fully clearing coincwin - may fix this later)
+/*int user_sort_init()
+{
+   Config *cfg = configs[1]; // ** Sort is using config[1]
+   Cond *cond;
+   int i;
+   for(i=0; i<cfg->nconds; i++){ cond = cfg->condlist[i];
+      if( cond->use_count == 0 ){ continue; }
+      cond->pass_count = 0;
+   }
+   return(0);
+   }*/
+
+// one CORRECT *single-var* gate-checking method is (as in electronics)
+//    keep running counts of either conditions or detector-types in window
+//  - inc on adding, dec on leaving
+
+// fragment new_frag has just entered coincwin (which starts at win_strt)
+// update any condition counters here, for use later during sort
+/*int user_addto_window(int win_strt, int new_frag)
+{
+   Grif_event *ptr = &grif_event[new_frag];
+   Config *cfg = configs[1]; // ** Sort is using config[1]
+   int i, *val = (int *)ptr;
+   Sortvar *var;
+   Cond *cond;
+   for(i=0; i<cfg->nconds; i++){ cond = cfg->condlist[i];
+      if( cond->use_count == 0 ){ continue; }
+      var = cond->var;
+      if( var->offset == -1 || var->dtype != ptr->dtype || var->local ){
+         continue;
+      }
+      var->value = val[var->offset];
+      switch( cond->op ){
+      case GATEOP_LT: cond->pass_count += var->value <  cond->value; continue;
+      case GATEOP_LE: cond->pass_count += var->value <= cond->value; continue;
+      case GATEOP_GT: cond->pass_count += var->value >  cond->value; continue;
+      case GATEOP_GE: cond->pass_count += var->value >= cond->value; continue;
+      case GATEOP_EQ: cond->pass_count += var->value == cond->value; continue;
+      default: printf("Unknown condition operation:%d\n", cond->op);
+      }
+   }
+   return(0);
+   }*/
+// fragment win_strt is just leaving coincwin
+// update any condition counters
+/*int user_removefrom_window(int win_strt, int new_frag)
+{
+return(0);
+   Grif_event *ptr = &grif_event[win_strt];
+   Config *cfg = configs[1]; // ** Sort is using config[1]
+   int i, *val = (int *)ptr;
+   Sortvar *var;
+   Cond *cond;
+   for(i=0; i<cfg->nconds; i++){ cond = cfg->condlist[i];
+      if( cond->use_count == 0 ){ continue; }
+      var = cond->var;
+      if( var->offset == -1 || var->dtype != ptr->dtype || var->local ){
+         continue;
+      }
+      var->value = val[var->offset];
+      switch( cond->op ){
+      case GATEOP_LT: cond->pass_count -= var->value <  cond->value; continue;
+      case GATEOP_LE: cond->pass_count -= var->value <= cond->value; continue;
+      case GATEOP_GT: cond->pass_count -= var->value >  cond->value; continue;
+      case GATEOP_GE: cond->pass_count -= var->value >= cond->value; continue;
+      case GATEOP_EQ: cond->pass_count -= var->value == cond->value; continue;
+      default: printf("Unknown condition operation:%d\n", cond->op);
+      }
+   }
+   return(0);
+}*/

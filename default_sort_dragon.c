@@ -436,6 +436,7 @@ int init_parameters_from_globals(Config *cfg)
 // pre_sort_enter used to be called apply_gains
 // it is the first function to be called when processing an event
 // event:frag_idx is the "current event", all other events are BEFORE it
+// [start_idx, and frag_idx are the start and end of the coinc window]
 int pre_sort_enter(int start_idx, int frag_idx)
 {
    Dragon_event *ptr = &evbuf[frag_idx];
@@ -469,22 +470,22 @@ int pre_sort_exit(int frag_idx, int end_idx)
    return(0);
 }
 
-int default_sort(int win_idx, int frag_idx, int flag)
+int default_sort(int win_strt, int win_end, int flag)
 {
    Dragon_event *ptr;
    int i;
 
    // sort first event, even if window only contains that event
    // (usually require at least two)
-   for(i=win_idx; ; i++){ ptr = &evbuf[i];
+   for(i=win_strt; ; i++){ ptr = &evbuf[i];
       if( i >= EVT_BUFSIZE ){ i=0; } // WRAP
-      if( i != win_idx && flag == SORT_ONE ){ break; }
-      if( i != win_idx && i==frag_idx ){ break; }
+      if( i != win_strt && flag == SORT_ONE ){ break; }
+      if( i != win_strt && i==win_end ){ break; }
       fill_chan_histos(ptr);
       fill_singles_histos(ptr);
-      if( i==frag_idx ){ break; }
+      if( i==win_end ){ break; } // [win_strt==win_end] => only 1 event in win
     }
-    fill_coinc_histos(win_idx, frag_idx);
+    fill_coinc_histos(win_strt, win_end);
     return(0);
 }
 
@@ -697,24 +698,27 @@ int fill_singles_histos(Dragon_event *ptr)
 
 // wget 'http://localhost:9093/?cmd=terminateServer'
 // loop over window and sort all head-tail pairs
-int fill_coinc_histos(int win_idx, int frag_idx)
+int fill_coinc_histos(int win_strt, int win_end)
 {
-   Dragon_event *alt, *tmp, *ptr = &evbuf[frag_idx];
    Head_data *head;   Tail_data *tail;
-   int i, max_ch, dt, abs_dt;
+   int i, max_ch, dt, abs_dt, win_idx;
+   Dragon_event *alt, *tmp, *ptr;
    float sum, max;
 
    // histogram of coincwin-size
    //dt = (frag_idx - win_idx + 2*EVT_BUFSIZE) %  EVT_BUFSIZE; ++frag_hist[dt];
-   while( win_idx != frag_idx ){ alt = &evbuf[win_idx]; // check all conicidences in window
-      if( ++win_idx == EVT_BUFSIZE ){ win_idx = 0; } // update for next coinc (check for wrap)
-      if( ptr->type == alt->type ){ continue; }// ignore head-head and tail-tail
-      if( ptr->type == TAIL_EVENT ){ // swap so ptr is always head and alt is always the tail event
-	 tmp = ptr; ptr = alt; alt = tmp;
+   if( (win_idx = win_strt+1) == EVT_BUFSIZE ){ win_idx = 0; }
+   if( ++win_end == EVT_BUFSIZE ){ win_end = 0; } // need to include win_end
+   while( win_idx != win_end ){
+      ptr = &evbuf[win_strt];
+      alt = &evbuf[win_idx]; // check all conicidences in window
+      if( ++win_idx == EVT_BUFSIZE ){ win_idx = 0; }// update for next coinc 
+      if( ptr->type == alt->type ){ continue; }// ignore head-head/tail-tail
+      if( ptr->type == TAIL_EVENT ){// swap so ptr always head, alt tail event
+	 tmp = ptr; ptr = alt; alt = tmp; //         [simplifies code below]
       }
-      // apply any time gates (coinditions on dt), and increment head-tail stuff here
-      //
-      //
+      // apply any time gates (coinditions on dt), 
+      //  and increment head-tail stuff here
       dt = ptr->ts - alt->ts; abs_dt = ( dt < 0 ) ? -1*dt : dt;
       if( abs_dt > 200 ){ continue; }
       head = &ptr->head_tail_data.head_data;

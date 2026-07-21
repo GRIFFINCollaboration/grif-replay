@@ -343,7 +343,7 @@ int insert_sort_win(Dragon_event *ptr, int slot)
          if( win_count > coinc_events_cutoff ){ ++sortfull; } else {
             // now removed all events not in coinc with newly added fragment
             //   so can update coinc window counters with just-added frag
-            user_addto_window(sort_window_start, slot);
+            // user_addto_window(sort_window_start, slot);
             break;
          }
       }
