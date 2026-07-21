@@ -1355,7 +1355,7 @@ int init_config(int webport)
   if( (configs[1]=add_config("sort")) == NULL ){ return(-1); }
   configs[0]->type = configs[1]->type = MEM_CONFIG;
 }
-init_default_config(cfg);  // populate default "test" config during testing
+//init_default_config(cfg);  // populate default "test" config during testing
 load_config(cfg, DEFAULT_CONFIG, NULL); // attempt to load, ignore any error
 clear_calibrations(cfg); // Clear the calibrations to default values following server restart
 tmp = gethostname(hostname, 32);
