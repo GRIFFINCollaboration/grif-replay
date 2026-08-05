@@ -3612,6 +3612,8 @@ int send_spectrum(int num, char url_args[][URL_STRING_LEN], char *name, int fd)
       sprintf(tmp,"\'%s\':NULL", name );
       put_line(fd, tmp, strlen(tmp) );
     } else if( hist->type == INT_1D ){
+      sprintf(tmp,"\'%s_xmin\':%d,\'%s_xmax\':%d,", hist->title, hist->xmin, hist->title, hist->xmax );
+      put_line(fd, tmp, strlen(tmp) );
       sprintf(tmp,"\'%s\':[", hist->title );
       put_line(fd, tmp, strlen(tmp) );
       for(i=0; i<hist->xbins; i++){
