@@ -7,19 +7,21 @@
 #define PTR_BUFSIZE     1024
 
 typedef unsigned short uint_16;
-typedef struct griffin_fragment_struct { // was 74 bytes, now ?            
-   long        ts;   uint_16    address; short  deadtime;                  
-   char      dtype;  char    array_posn; char       nhit;   char  pileup;  
-   int          q1;  int         integ1; int          q2;   int   integ2;  
-   int          q3;  int         integ3; int          q4;   int   integ4;  
-   int         cfd;  int       trig_req; int    trig_acc;   int   net_id;  
-   int   master_id;  int master_pattern; int         psd;   int cc_short;  
-// items below are derived from items above ...
+typedef struct griffin_fragment_struct { // was 74 bytes, now ?
+  // Hot cache line 1 items first, used most frequently in histgram filling
 //    esum:is addback energy, alt_chan is addback-otherCrystal
-   float      ecal;  int           chan; int      subsys;   int suppress;  
-   float      esum;  int   multiplicity; int     delta_t;   int alt_chan;  
-   float  alt_ecal;  int            tof; int    pu_class;   int alt2_chan;
-   float alt2_ecal;
+float      ecal;  int           chan; int      subsys;   int suppress;
+float      esum;  int   multiplicity; int     delta_t;   int alt_chan;
+float  alt_ecal;  int            tof; int    pu_class;   int alt2_chan;
+float alt2_ecal;
+//
+// items above are derived from items below ...
+  long        ts;   uint_16    address; short  deadtime;
+  char      dtype;  char    array_posn; char       nhit;   char  pileup;
+  int          q1;  int         integ1; int          q2;   int   integ2;
+  int          q3;  int         integ3; int          q4;   int   integ4;
+  int         cfd;  int       trig_req; int    trig_acc;   int   net_id;
+  int   master_id;  int master_pattern; int         psd;   int cc_short;
 } Grif_event;
 
 // NOTES on Grif_event ...

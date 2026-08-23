@@ -30,6 +30,11 @@
 #define QED_GAMMA_ENERGY         511  // 511keV
 
 //#######################################################################
+//######## Variables used across default init, presort and sort #########
+//#######################################################################
+int DEBUG_OUTPUT=0; // 0 for off, 1 for on
+
+//#######################################################################
 //########             PPG variables and patterns              ##########
 //#######################################################################
 
@@ -184,6 +189,7 @@ static int time_diff_gate_max[MAX_SUBSYS][MAX_SUBSYS];
 #define PU_3HIT_3RD         12
 #define PU_3HIT_ERROR       13
 #define PU_OTHER            14
+
 static char ge_pu_class_handles[N_PU_CLASSES][HANDLE_LENGTH]={
   "PU0",                          //  0    = Pu=0 error
   "PU1_NHIT1", "PU1_NHIT1_error", //  1, 2 = Single Hit, single hit error
@@ -233,9 +239,11 @@ TH1I *tac_lbl_ts_diff[N_TACS];
 
 // HPGe (ge_sum is sum of crystal energies, ge_sum_b is beta-gated)
 TH1I  *ge_ab_e[N_CLOVER], *ge_ab_sup_e[N_CLOVER], *ge_sum_ab, *ge_sum_ab_sup, *ge_sum_ab_sup_rej;
-TH1I  *ge_sum, *ge_sum_us, *ge_sum_ds, *ge_sum_ab_us, *ge_sum_ab_ds;
+TH1I  *ge_sum, *ge_sum_us, *ge_sum_ds, *ge_sum_hem[2], *ge_sum_ab_us, *ge_sum_ab_ds;
 TH1I  *ge_sum_b, *ge_sum_b_ab, *ge_sum_b_sep, *ge_sum_b_sep_brems, *ge_sum_b_ab_sep_brems, *ge_sum_b_zds;
 TH1I  *ge_sum_b_art, *ge_sum_b_art_brems, *ge_sum_b_artT, *ge_sum_b_artR, *ge_sum_b_artS;
+
+char ge_hem_handles[3][HANDLE_LENGTH] = {"ge_downstream","ge_upstream","ge_nope"};
 
 // ARIES, PACES and LaBr3
 TH1I  *aries_sum;  // aries_sum is sum of tile energies
@@ -262,10 +270,12 @@ TH2I  *qedE_ge_theta_sum_c, *qed_geE_theta_sum_c, *qedE_ge_theta_sum_c_g, *qed_g
 TH2I  *qed_totE_theta[N_QED_POS], *qed_geE_theta_clov[N_CLOVER], *qed_geE_theta_clov_t[N_CLOVER], *qed_E_theta_dssd[N_QED_POS], *qed_geE_theta_dssd[N_QED_POS];
 TH2I  *qed_angle_test_g, *qed_angle_test_s, *qedE_ge_dt, *qed_geE_dt, *qedE_ge_dt_c, *qed_geE_dt_c, *qed_theta_dt, *qed_dcs_omega_dt, *qedx_dcs_omega_dt[N_QED_POS], *qed_theta1_vs_theta2, *qed_theta1_azi, *qed_theta2_azi, *qed2_theta1_vs_theta2, *qed2_theta1_azi, *qed2_theta2_azi;
 TH1I  *qed_dcs_omega, *qed_dcs_omega_t, *qed_dcs_azi, *qed_dcs_azi_t, *qed_dcs_azi_tg, *qed_dcs_azi_b, *qed_dcs_azi_tb, *qed_dcs_azi_tgb, *qed_delta_theta1_theta2, *qed_sum_theta1_theta2, *qed_dcs_azi2, *qed_dcs_azi_tg2;
-TH1I  *dcs_theta, *dcs_cs_omega;
+TH1I  *qed_wf_dcs_azi, *qed_wf_omega;
+TH1I  *qed_theta, *dcs_theta, *dcs_cs_omega;
 TH2I  *dcsE_ge_theta, *dcs_geE_theta, *dcs_theta_azi;
 TH1I  *dcs_cs_omega_ge;
 TH2I  *dcs_theta_azi_ge;
+TH2I  *qed_qed_23;
 
 char qed_psd_handles[N_QED_POS][HANDLE_LENGTH] = {"QED01_E_vs_psd","QED02_E_vs_psd","QED03_E_vs_psd","QED04_E_vs_psd","QED05_E_vs_psd","QED06_E_vs_psd"};
 char qed_strips_handles[N_QED_POS][HANDLE_LENGTH]={"QED01_E_strips", "QED02_E_strips", "QED03_E_strips", "QED04_E_strips", "QED05_E_strips", "QED06_E_strips"};
@@ -421,6 +431,51 @@ char qed_each_geE_theta_handles[N_QED_POS*N_QED_STRIPS][HANDLE_LENGTH]={
   "QED6N18_GeE_vs_theta", "QED6N19_GeE_vs_theta", "QED6N20_GeE_vs_theta", "QED6N21_GeE_vs_theta", "QED6N22_GeE_vs_theta", "QED6N23_GeE_vs_theta",
   "QED6N24_GeE_vs_theta", "QED6N25_GeE_vs_theta", "QED6N26_GeE_vs_theta", "QED6N27_GeE_vs_theta", "QED6N28_GeE_vs_theta", "QED6N29_GeE_vs_theta",
   "QED6N30_GeE_vs_theta", "QED6N31_GeE_vs_theta",
+};
+
+// This lookup table reorders strips that have already been reordered in the ODB...
+// Per GRIFFIN elog, https://grsilog.triumf.ca/GRIFFIN/25966
+// Per GRIFFIN elog, https://grsilog.triumf.ca/GRIFFIN/25968
+int reorder_rcmp_strips[7][2][32] = {
+  {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+  {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // RCS1 X
+  {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // RCS1 Y
+  {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // RCS2 X
+  {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}, // RCS2 X
+  {{1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30},  // RCS3 X
+  {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // RCS3 Y
+  {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // RCS4 X
+  {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}, // RCS4 Y
+  {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // RCS5 X
+  {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // RCS5 Y
+  {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // RCS6 X
+  {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}  // RCS6 Y
+};
+
+// This lookup table reorders strips that have already been reordered in the ODB...
+// Per GRIFFIN elog, https://grsilog.triumf.ca/GRIFFIN/25966
+// Per GRIFFIN elog, https://grsilog.triumf.ca/GRIFFIN/25968
+int reorder_qed_strips[7][2][32] = {
+  {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+  {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED1 P
+  {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}, // QED1 N
+
+  {{1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30},  // QED2 P
+  {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}, // QED2 N
+
+  {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED3 P
+  {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}, // QED3 N
+
+  {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED4 P
+  {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}, // QED4
+
+  {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED5 P
+  {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}}, // QED5 N
+
+  {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31},  // QED6 P
+  {1, 0, 3, 2, 5, 4, 7, 6, 9, 8,11,10,13,12,15,14,17,16,19,18,21,20,23,22,25,24,27,26,29,28,31,30}}  // QED6 N
 };
 
 // DESCANT WALL

@@ -84,6 +84,7 @@ typedef struct th2i_struct TH2I;
 
 #define SYMMETERIZE -1 // When the ybins are set to this for a 2D histogram it will be symmeterized
 
+/*
 // float has around 24bits integer precision
 struct th1i_struct {  long  file_data_offset;    int data_size;
    int      type;  TH1I    *next;   char    path[HISTO_FOLDER_LENGTH];
@@ -114,6 +115,52 @@ struct th2i_struct {  long  file_data_offset;  int data_size;
    int   (*SetBinContent)(TH2I *, int, int, int);
    int   (*GetBinContent)(TH2I *, int, int);
    int   (*SetValidLen  )(TH2I *, int);
+};
+*/
+
+// float has around 24bits integer precision
+// th2i_struct layout must match th1i_struct layout (only the arguments in the function calls differ)
+struct th1i_struct {
+    // --- Hot Cache Line 1: Frequently used in TH2I_Fill ---
+    int xmin; int xmax; int xbins; int xrange;
+    int ymin; int ymax; int ybins; int yrange;
+    int underflow; int overflow;   int *data;
+    char handle[HANDLE_LENGTH]; // Used in error logs if malloc fails
+    // --- Warm / Cold Data: Pointers, sizes, and less used scalar flags ---
+    long file_data_offset; int data_size; int type; int valid_bins;
+    int entries; int num_gates; int suppress; int user; int done_flag;
+    int symm; TH1I *next; Sortvar *xvar; Sortvar *yvar;
+    char path[HISTO_FOLDER_LENGTH]; char title[TITLE_LENGTH];
+    // --- Arrays & Function Pointers (Cold path) ---
+    Gate *gatelist[MAX_HISTO_GATES]; char *gate_names[MAX_HISTO_GATES];
+    int *gate_passed[MAX_HISTO_GATES];
+   int   (*Reset)(TH1I *);
+   int   (*Fill)(TH1I *, int, int);
+   int   (*SetBinContent)(TH1I *, int, int);
+   int   (*GetBinContent)(TH1I *, int);
+   int   (*SetValidLen  )(TH1I *, int);
+};
+
+// th2i_struct layout must match th1i_struct layout (only the arguments in the function calls differ)
+struct th2i_struct {
+    // --- Hot Cache Line 1: Frequently used in TH2I_Fill ---
+    int xmin; int xmax; int xbins; int xrange;
+    int ymin; int ymax; int ybins; int yrange;
+    int underflow; int overflow;   int *data;
+    char handle[HANDLE_LENGTH]; // Used in error logs if malloc fails
+    // --- Warm / Cold Data: Pointers, sizes, and less used scalar flags ---
+    long file_data_offset; int data_size; int type; int valid_bins;
+    int entries; int num_gates; int suppress; int user; int done_flag;
+    int symm; TH1I *next; Sortvar *xvar; Sortvar *yvar;
+    char path[HISTO_FOLDER_LENGTH]; char title[TITLE_LENGTH];
+    // --- Arrays & Function Pointers (Cold path) ---
+    Gate *gatelist[MAX_HISTO_GATES]; char *gate_names[MAX_HISTO_GATES];
+    int *gate_passed[MAX_HISTO_GATES];
+    int (*Reset)(TH2I *);
+    int (*Fill)(TH2I *, int, int, int);
+    int (*SetBinContent)(TH2I *, int, int, int);
+    int (*GetBinContent)(TH2I *, int, int);
+    int (*SetValidLen )(TH2I *, int);
 };
 
 #define DISK_CONFIG 0

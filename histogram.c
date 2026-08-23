@@ -8,9 +8,12 @@
 #include <time.h>   // time()
 #include <math.h>   // NAN
 #include <zlib.h>   //
+#include <stdbool.h>
+#include <stdatomic.h>
 
 #include "config.h"
 #include "histogram.h"
+#include "grif-format.h"
 
 static int check_folder(char *folder); // return valid length (or -1) if invalid
 int open_folder(Config *cfg, char* folder)
@@ -140,19 +143,28 @@ int TH1I_Reset(TH1I *this)
    this->entries       = 0;
 }
 
+
 inline __attribute__((always_inline)) int TH1I_Fill(TH1I *this, int xval, int count)
 {
-  float bin;
-  if(this->xmin != 0 || this->xbins != this->xrange){
-    bin = (1.0*xval-this->xmin) * this->xbins/(1.0*this->xrange);
-  }else{
-    bin = xval;
-  }
-//   (this->entries)++; // entries is not actually used for anything
-   if( bin <            0 ){ (this->underflow)++; return(0); }
-   if( bin >= this->xbins ){ (this-> overflow)++; return(0); }
-   (this->data[(int)bin])+=count;
-   return(0);
+  // Fast path calculation assuming xmin == 0 and xbins == xrange
+    float bin = (float)xval;
+
+    if (__builtin_expect(this->xmin != 0 || this->xbins != this->xrange, 0)) {
+        bin = ((float)xval - (float)this->xmin) * ((float)this->xbins / (float)this->xrange);
+    }
+
+    // Bounds check using unsigned/combined comparison tricks or standard fast paths
+    if (__builtin_expect(bin < 0.0f, 0)) {
+        this->underflow++;
+        return 0;
+    }
+    if (__builtin_expect(bin >= (float)this->xbins, 0)) {
+        this->overflow++;
+        return 0;
+    }
+
+    this->data[(int)bin] += count;
+    return 0;
 }
 
 int TH1I_SetBinContent(TH1I *this, int bin, int value)
@@ -248,29 +260,52 @@ int TH2I_Reset(TH2I *this)
    this->entries       = 0;
 }
 
+
 inline __attribute__((always_inline)) int TH2I_Fill(TH2I *this, int xval, int yval, int count)
 {
-  float xbin, ybin;
-  if(this->xmin != 0 || this->xbins != this->xrange){
-    xbin = (1.0*xval-this->xmin) * this->xbins/(1.0*this->xrange);
-  }else{ xbin = xval; }
-  if(this->ymin != 0 || this->ybins != this->yrange){
-    ybin = (1.0*yval-this->ymin) * this->ybins/(1.0*this->yrange);
-  }else{ ybin = yval; }
-  if( xbin <            0 ){ (this->underflow)++; return(0); }
-  if( xbin >= this->xbins ){ (this-> overflow)++; return(0); }
-  if( ybin <            0 ){ (this->underflow)++; return(0); }
-  if( ybin >= this->ybins ){ (this-> overflow)++; return(0); }
-  if( this->data == NULL ){
-     if( (this->data=(int *)malloc(this->xbins*this->ybins*sizeof(int)))==NULL){
-        fprintf(stderr,"TH2I_Fill: data malloc failed for %s\n",this->handle);
-        return(-1);
-     }
-     memset(this->data, 0, this->xbins*this->ybins*sizeof(int) );
-  }
-  (this->data[(int)xbin + (int)(ybin)*this->xbins])+=count;
-  return(0);
+  // Cache frequently accessed struct members in local variables
+    const int xmin = this->xmin;
+    const int xbins = this->xbins;
+    const int xrange = this->xrange;
+    const int ymin = this->ymin;
+    const int ybins = this->ybins;
+    const int yyrange = this->yrange;
+
+    // Fast integer path or floating-point scale calculation
+    float xbin = (xmin != 0 || xbins != xrange)
+                 ? (float)(xval - xmin) * ((float)xbins / (float)xrange)
+                 : (float)xval;
+
+    float ybin = (ymin != 0 || ybins != yyrange)
+                 ? (float)(yval - ymin) * ((float)ybins / (float)yyrange)
+                 : (float)yval;
+
+    // Boundary and overflow/underflow checks
+    if (xbin < 0.0f) { (this->underflow)++; return 0; }
+    if (xbin >= (float)xbins) { (this->overflow)++; return 0; }
+    if (ybin < 0.0f) { (this->underflow)++; return 0; }
+    if (ybin >= (float)ybins) { (this->overflow)++; return 0; }
+
+    // Lazy allocation of data buffer
+    int *data = this->data;
+    if (data == NULL) {
+        size_t total_bins = (size_t)xbins * (size_t)ybins;
+        data = (int *)malloc(total_bins * sizeof(int));
+        if (data == NULL) {
+            fprintf(stderr, "TH2I_Fill: data malloc failed for %s\n", this->handle);
+            return -1;
+        }
+        memset(data, 0, total_bins * sizeof(int));
+        this->data = data;
+    }
+
+    // Single cast evaluation for indexing
+    int ix = (int)xbin;
+    int iy = (int)ybin;
+    data[ix + iy * xbins] += count;
+    return 0;
 }
+
 
 int TH2I_SetBinContent(TH2I *this, int xbin, int ybin, int value)
 {

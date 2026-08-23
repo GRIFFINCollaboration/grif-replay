@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "histogram.h"
 #include "grif-format.h"
 #include "config.h"
-#include "histogram.h"
 
 extern float spread(int val);
 int test_gate(Grif_event *ptr, Grif_event *alt, Gate *gate);

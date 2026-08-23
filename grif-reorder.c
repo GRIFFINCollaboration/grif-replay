@@ -45,7 +45,8 @@ void reorder_status(int current_time)
 //////////////////////////////////////////////////////////////////////////////
 #define TOO_EARLY_CUTOFF 300000000000
 #define REORDER_EVENTS    65536  // *0.5 => max 32k events stored in buffers
-#define REORDER_TSLOTS  1000000  // 1 million [~1.25 seconds]
+#define REORDER_TSLOTS  1048576  // (Must be power of 2) >1 million [~1.25 seconds]
+#define REORDER_TSLOTS_MASK  (REORDER_TSLOTS - 1)
 #define BUCKET_SIZE_BITS      7  // 128 timestamps per slot -> 1us
 #define OVERFULL_FRACTION   0.5
 #define OUTPUT_FRACTION    0.25
@@ -169,7 +170,8 @@ void reorder_main(Sort_status *arg)
       ++err[ERR_EARLY_IN]; err[ERR_WORDS_IN] += len;
       evstart = NULL; err_format = len = ev_done = ts_stat = 0; continue;
     }
-    bufptr = NULL;  ts_slot = (ts >> BUCKET_SIZE_BITS) % REORDER_TSLOTS;
+    bufptr = NULL;
+    ts_slot = (ts >> BUCKET_SIZE_BITS) & REORDER_TSLOTS_MASK;
     // check if next buffer slot is available to store this event
     // LOOP over buffer (starting at next)
     //   NOTE: looping, instead of just waiting for nxt to become free
@@ -256,7 +258,7 @@ void reorder_out(Sort_status *arg)
           printf("REORDER ERROR-VERY-LONG-DATA-GAP\n");
         }
       }
-      ts_slot = (ts >> BUCKET_SIZE_BITS) % REORDER_TSLOTS;
+      ts_slot = (ts >> BUCKET_SIZE_BITS) & REORDER_TSLOTS_MASK;
       if( (buf = tslot[ts_slot]) == NULL ){ continue; }
       if( buf->ts > ts+bucket_length ){ continue; }
       break;
