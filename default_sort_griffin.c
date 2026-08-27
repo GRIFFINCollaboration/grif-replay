@@ -1520,7 +1520,6 @@ Histogram_definition histodef_array[HISTO_DEF_SIZE] = {
   {(void **) qed_geE_theta_clov_t,  "",qed_geE_theta_clov_t_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_CLOVER},
   {(void **) qedp_ge_theta,  "",     qedp_ge_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
   {(void **) qedn_ge_theta,  "",     qedn_ge_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
-  {(void **) qed_geE_theta,  "",     qed_each_geE_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
   {NULL,                   "QED/PSD",        ""},
   {(void **) qed_psd_e,      "",           qed_psd_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN, E_2D_SPECLEN, N_QED_POS},
   {NULL,                   "QED/Misc.",        ""},
@@ -2204,7 +2203,7 @@ int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
             }else{ // c2 is coincident, c1+c3 are the scattering event
               scatt_esum = alt_esum; coinc_ecal = ptr_esum;
             }
-            if(c3<0){ break; }
+            if(c3<0 || c3>63){ break; }
             // Determine angle_idx from azimuthal.
             angle = azimuthal_GeGeGe(c1,c2,c3,110);
             angle_idx = (int)(angle / 15);
@@ -2335,11 +2334,9 @@ int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
       qed_geE_thetaI_sum_t->Fill(qed_geE_thetaI_sum_t, ptr->ecal, ge_corrected_angle, 1);
       qed_geE_thetaDiff_sum_t->Fill(qed_geE_thetaDiff_sum_t, ptr->ecal, (int)(angle - ge_corrected_angle)+90, 1);
 
-      //  if((int)(c2/N_QED_STRIPS) == (c2%N_QED_STRIPS)){ // Single pixel theta needed for initial calibration
+      // Single strip vs theta needed for strip-energy calibration
       qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], alt->ecal, ge_corrected_angle, 1);
       qedn_ge_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qedn_ge_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], alt->alt_ecal, ge_corrected_angle, 1);
-      qed_geE_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qed_geE_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], ptr->ecal, ge_corrected_angle, 1);
-      //  }
     }
   }
   break;
@@ -2353,7 +2350,7 @@ int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
   //  c2 = (ptr->alt_chan%1024);        // Pixel number [0-1023]
   //  c1 = ptr->net_id; // HPGe crystal number
   pos  = crystal_table[alt->chan]; // QED DSSD number [1-6]
-  c2 = (alt->alt_chan%1024);        // Pixel number [0-1023]
+  c2 = (alt->alt_chan&1023);        // Pixel number [0-1023] (faster than alt_chan%1024)
   c1 = alt->net_id; // HPGe crystal number
   angle = scattering_angle_QEDGe(pos,c2,c1);
 
@@ -2372,8 +2369,6 @@ int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
 
       // Single pixel theta needed for initial calibration
       qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qedp_ge_theta[(int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], alt->ecal, (int)(angle), 1);
-      // no information on n strip energy in Subsys_Compton
-      qed_geE_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))]->Fill(qed_geE_theta[(int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS))], ptr->ecal, (int)(angle), 1);
     }
   }
 

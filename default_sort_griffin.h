@@ -265,7 +265,7 @@ TH2I  *qed_fb[N_QED_POS];
 TH2I  *qed_psd_e[N_QED_POS];
 TH2I  *qed_p_ge_hit, *qed_n_ge_hit; // qed strips vs Ge hitpatterns
 TH2I  *qedp_ge_theta[N_QED_POS*N_QED_STRIPS], *qedn_ge_theta[N_QED_POS*N_QED_STRIPS]; // qed strip energy vs theta of a qed-Ge hit
-TH2I  *qed_geE_theta[N_QED_POS*N_QED_STRIPS], *qedE_ge_theta_sum, *qed_geE_theta_sum, *qed_totE_theta_sum, *qed_E_totE_sum_t, *qed_geE_totE_sum_t, *qedE_ge_theta_sum_t, *qed_geE_theta_sum_t, *qedE_ge_thetaI_sum_t, *qed_geE_thetaDiff_sum_t, *qed_geE_thetaI_sum_t;
+TH2I  *qedE_ge_theta_sum, *qed_geE_theta_sum, *qed_totE_theta_sum, *qed_E_totE_sum_t, *qed_geE_totE_sum_t, *qedE_ge_theta_sum_t, *qed_geE_theta_sum_t, *qedE_ge_thetaI_sum_t, *qed_geE_thetaDiff_sum_t, *qed_geE_thetaI_sum_t;
 TH2I  *qedE_ge_theta_sum_c, *qed_geE_theta_sum_c, *qedE_ge_theta_sum_c_g, *qed_geE_theta_sum_c_g, *qedE_ge_theta_sum_c_s, *qed_geE_theta_sum_c_s, *ge_qed_c;
 TH2I  *qed_totE_theta[N_QED_POS], *qed_geE_theta_clov[N_CLOVER], *qed_geE_theta_clov_t[N_CLOVER], *qed_E_theta_dssd[N_QED_POS], *qed_geE_theta_dssd[N_QED_POS];
 TH2I  *qed_angle_test_g, *qed_angle_test_s, *qedE_ge_dt, *qed_geE_dt, *qedE_ge_dt_c, *qed_geE_dt_c, *qed_theta_dt, *qed_dcs_omega_dt, *qedx_dcs_omega_dt[N_QED_POS], *qed_theta1_vs_theta2, *qed_theta1_azi, *qed_theta2_azi, *qed2_theta1_vs_theta2, *qed2_theta1_azi, *qed2_theta2_azi;
@@ -387,50 +387,6 @@ char qedn_ge_theta_handles[N_QED_POS*N_QED_STRIPS][HANDLE_LENGTH]={
   "QED6N18_E_vs_theta", "QED6N19_E_vs_theta", "QED6N20_E_vs_theta", "QED6N21_E_vs_theta", "QED6N22_E_vs_theta", "QED6N23_E_vs_theta",
   "QED6N24_E_vs_theta", "QED6N25_E_vs_theta", "QED6N26_E_vs_theta", "QED6N27_E_vs_theta", "QED6N28_E_vs_theta", "QED6N29_E_vs_theta",
   "QED6N30_E_vs_theta", "QED6N31_E_vs_theta",
-};
-
-char qed_each_geE_theta_handles[N_QED_POS*N_QED_STRIPS][HANDLE_LENGTH]={
-  "QED1N00_GeE_vs_theta", "QED1N01_GeE_vs_theta", "QED1N02_GeE_vs_theta", "QED1N03_GeE_vs_theta", "QED1N04_GeE_vs_theta", "QED1N05_GeE_vs_theta",
-  "QED1N06_GeE_vs_theta", "QED1N07_GeE_vs_theta", "QED1N08_GeE_vs_theta", "QED1N09_GeE_vs_theta", "QED1N10_GeE_vs_theta", "QED1N11_GeE_vs_theta",
-  "QED1N12_GeE_vs_theta", "QED1N13_GeE_vs_theta", "QED1N14_GeE_vs_theta", "QED1N15_GeE_vs_theta", "QED1N16_GeE_vs_theta", "QED1N17_GeE_vs_theta",
-  "QED1N18_GeE_vs_theta", "QED1N19_GeE_vs_theta", "QED1N20_GeE_vs_theta", "QED1N21_GeE_vs_theta", "QED1N22_GeE_vs_theta", "QED1N23_GeE_vs_theta",
-  "QED1N24_GeE_vs_theta", "QED1N25_GeE_vs_theta", "QED1N26_GeE_vs_theta", "QED1N27_GeE_vs_theta", "QED1N28_GeE_vs_theta", "QED1N29_GeE_vs_theta",
-  "QED1N30_GeE_vs_theta", "QED1N31_GeE_vs_theta",
-
-  "QED2N00_GeE_vs_theta", "QED2N01_GeE_vs_theta", "QED2N02_GeE_vs_theta", "QED2N03_GeE_vs_theta", "QED2N04_GeE_vs_theta", "QED2N05_GeE_vs_theta",
-  "QED2N06_GeE_vs_theta", "QED2N07_GeE_vs_theta", "QED2N08_GeE_vs_theta", "QED2N09_GeE_vs_theta", "QED2N10_GeE_vs_theta", "QED2N11_GeE_vs_theta",
-  "QED2N12_GeE_vs_theta", "QED2N13_GeE_vs_theta", "QED2N14_GeE_vs_theta", "QED2N15_GeE_vs_theta", "QED2N16_GeE_vs_theta", "QED2N17_GeE_vs_theta",
-  "QED2N18_GeE_vs_theta", "QED2N19_GeE_vs_theta", "QED2N20_GeE_vs_theta", "QED2N21_GeE_vs_theta", "QED2N22_GeE_vs_theta", "QED2N23_GeE_vs_theta",
-  "QED2N24_GeE_vs_theta", "QED2N25_GeE_vs_theta", "QED2N26_GeE_vs_theta", "QED2N27_GeE_vs_theta", "QED2N28_GeE_vs_theta", "QED2N29_GeE_vs_theta",
-  "QED2N30_GeE_vs_theta", "QED2N31_GeE_vs_theta",
-
-  "QED3N00_GeE_vs_theta", "QED3N01_GeE_vs_theta", "QED3N02_GeE_vs_theta", "QED3N03_GeE_vs_theta", "QED3N04_GeE_vs_theta", "QED3N05_GeE_vs_theta",
-  "QED3N06_GeE_vs_theta", "QED3N07_GeE_vs_theta", "QED3N08_GeE_vs_theta", "QED3N09_GeE_vs_theta", "QED3N10_GeE_vs_theta", "QED3N11_GeE_vs_theta",
-  "QED3N12_GeE_vs_theta", "QED3N13_GeE_vs_theta", "QED3N14_GeE_vs_theta", "QED3N15_GeE_vs_theta", "QED3N16_GeE_vs_theta", "QED3N17_GeE_vs_theta",
-  "QED3N18_GeE_vs_theta", "QED3N19_GeE_vs_theta", "QED3N20_GeE_vs_theta", "QED3N21_GeE_vs_theta", "QED3N22_GeE_vs_theta", "QED3N23_GeE_vs_theta",
-  "QED3N24_GeE_vs_theta", "QED3N25_GeE_vs_theta", "QED3N26_GeE_vs_theta", "QED3N27_GeE_vs_theta", "QED3N28_GeE_vs_theta", "QED3N29_GeE_vs_theta",
-  "QED3N30_GeE_vs_theta", "QED3N31_GeE_vs_theta",
-
-  "QED4N00_GeE_vs_theta", "QED4N01_GeE_vs_theta", "QED4N02_GeE_vs_theta", "QED4N03_GeE_vs_theta", "QED4N04_GeE_vs_theta", "QED4N05_GeE_vs_theta",
-  "QED4N06_GeE_vs_theta", "QED4N07_GeE_vs_theta", "QED4N08_GeE_vs_theta", "QED4N09_GeE_vs_theta", "QED4N10_GeE_vs_theta", "QED4N11_GeE_vs_theta",
-  "QED4N12_GeE_vs_theta", "QED4N13_GeE_vs_theta", "QED4N14_GeE_vs_theta", "QED4N15_GeE_vs_theta", "QED4N16_GeE_vs_theta", "QED4N17_GeE_vs_theta",
-  "QED4N18_GeE_vs_theta", "QED4N19_GeE_vs_theta", "QED4N20_GeE_vs_theta", "QED4N21_GeE_vs_theta", "QED4N22_GeE_vs_theta", "QED4N23_GeE_vs_theta",
-  "QED4N24_GeE_vs_theta", "QED4N25_GeE_vs_theta", "QED4N26_GeE_vs_theta", "QED4N27_GeE_vs_theta", "QED4N28_GeE_vs_theta", "QED4N29_GeE_vs_theta",
-  "QED4N30_GeE_vs_theta", "QED4N31_GeE_vs_theta",
-
-  "QED5N00_GeE_vs_theta", "QED5N01_GeE_vs_theta", "QED5N02_GeE_vs_theta", "QED5N03_GeE_vs_theta", "QED5N04_GeE_vs_theta", "QED5N05_GeE_vs_theta",
-  "QED5N06_GeE_vs_theta", "QED5N07_GeE_vs_theta", "QED5N08_GeE_vs_theta", "QED5N09_GeE_vs_theta", "QED5N10_GeE_vs_theta", "QED5N11_GeE_vs_theta",
-  "QED5N12_GeE_vs_theta", "QED5N13_GeE_vs_theta", "QED5N14_GeE_vs_theta", "QED5N15_GeE_vs_theta", "QED5N16_GeE_vs_theta", "QED5N17_GeE_vs_theta",
-  "QED5N18_GeE_vs_theta", "QED5N19_GeE_vs_theta", "QED5N20_GeE_vs_theta", "QED5N21_GeE_vs_theta", "QED5N22_GeE_vs_theta", "QED5N23_GeE_vs_theta",
-  "QED5N24_GeE_vs_theta", "QED5N25_GeE_vs_theta", "QED5N26_GeE_vs_theta", "QED5N27_GeE_vs_theta", "QED5N28_GeE_vs_theta", "QED5N29_GeE_vs_theta",
-  "QED5N30_GeE_vs_theta", "QED5N31_GeE_vs_theta",
-
-  "QED6N00_GeE_vs_theta", "QED6N01_GeE_vs_theta", "QED6N02_GeE_vs_theta", "QED6N03_GeE_vs_theta", "QED6N04_GeE_vs_theta", "QED6N05_GeE_vs_theta",
-  "QED6N06_GeE_vs_theta", "QED6N07_GeE_vs_theta", "QED6N08_GeE_vs_theta", "QED6N09_GeE_vs_theta", "QED6N10_GeE_vs_theta", "QED6N11_GeE_vs_theta",
-  "QED6N12_GeE_vs_theta", "QED6N13_GeE_vs_theta", "QED6N14_GeE_vs_theta", "QED6N15_GeE_vs_theta", "QED6N16_GeE_vs_theta", "QED6N17_GeE_vs_theta",
-  "QED6N18_GeE_vs_theta", "QED6N19_GeE_vs_theta", "QED6N20_GeE_vs_theta", "QED6N21_GeE_vs_theta", "QED6N22_GeE_vs_theta", "QED6N23_GeE_vs_theta",
-  "QED6N24_GeE_vs_theta", "QED6N25_GeE_vs_theta", "QED6N26_GeE_vs_theta", "QED6N27_GeE_vs_theta", "QED6N28_GeE_vs_theta", "QED6N29_GeE_vs_theta",
-  "QED6N30_GeE_vs_theta", "QED6N31_GeE_vs_theta",
 };
 
 // This lookup table reorders strips that have already been reordered in the ODB...
