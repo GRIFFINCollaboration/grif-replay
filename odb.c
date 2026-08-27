@@ -153,7 +153,7 @@ int get_odb_array(char *path, void **value, int *type, int *nvalues, int *size)
       printf("get_odb_array:path[%s] not found\n", path); return(-1);
    }
    if( (attr = get_attr(node->attr, "type")) == NULL ){
-      printf("get_odb_array:type attr not found\n", path); return(-1);
+      printf("get_odb_array:type attr not found\n"); return(-1);
    }
    if( (tmp = attr_value(attr)) == NULL ){
       printf("get_odb_array:non-pointer-type-attr[%d]\n", attr->type);
@@ -163,7 +163,7 @@ int get_odb_array(char *path, void **value, int *type, int *nvalues, int *size)
       return(-1);
    }
    if( (attr = get_attr(node->attr, "num_values")) == NULL ){
-      printf("get_odb_array:num_values attr not found\n", path); return(-1);
+      printf("get_odb_array:num_values attr not found\n"); return(-1);
    }
    if( (tmp = attr_value(attr)) == NULL ){
       printf("get_odb_array:non-pointer-num_values-attr[%d]\n", attr->type);
@@ -175,7 +175,7 @@ int get_odb_array(char *path, void **value, int *type, int *nvalues, int *size)
    }
    if( *type == 11 ){ // string
       if( (attr = get_attr(node->attr, "size")) == NULL ){
-         printf("get_odb_array:string length attr not found\n", path);
+         printf("get_odb_array:string length attr not found\n");
          return(-1);
       }
       if( (tmp = attr_value(attr)) == NULL ){
@@ -197,7 +197,7 @@ int get_odb_array(char *path, void **value, int *type, int *nvalues, int *size)
    f_array = (float *)result;
    *value = i_array = (int *)result;
    if( (node = node->child_head) == NULL ){
-      printf("get_odb_array:empty\n", path); return(-1);
+      printf("get_odb_array:empty\n"); return(-1);
    }
    while( node != NULL ){ tmp=node->name;
       if( strlen(tmp) != 5 || strncmp(tmp, "value", 5) != 0 ){
@@ -205,7 +205,7 @@ int get_odb_array(char *path, void **value, int *type, int *nvalues, int *size)
          node = node->next; continue;
       }
       if( (attr = get_attr(node->attr, "index")) == NULL ){
-         printf("get_odb_array:index attr not found\n", path);
+         printf("get_odb_array:index attr not found\n");
          node = node->next; continue;
       }
       if( (tmp = attr_value(attr)) == NULL ){
@@ -505,7 +505,7 @@ Xml_node *get_odb_node(char *path)
                printf("get_odb_node: key mid path\n");
             }
             if( (attr = get_attr(node->attr, "name")) != NULL ){
-               if( attr->type = XML_PTR && attr->value.p_val != NULL ){
+               if( attr->type == XML_PTR && attr->value.p_val != NULL ){
                   if( strlen(attr->value.p_val) == len &&
                      strncmp(attr->value.p_val, ptr, len) == 0 ){
                      break;

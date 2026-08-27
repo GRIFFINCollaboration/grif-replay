@@ -15,324 +15,411 @@
 #include "histogram.h"
 #include "grif-format.h"
 
+int *histo_data_block;
+int latest_offset=0;
+
 static int check_folder(char *folder); // return valid length (or -1) if invalid
 int open_folder(Config *cfg, char* folder)
 {
-   char *path = cfg->current_path;
-   int plen, flen;
+  char *path = cfg->current_path;
+  int plen, flen;
 
-   if( (flen = check_folder(folder)) <= 0 ){ return(-1); }
-   if( flen + (plen = strlen(path)) >= HISTO_FOLDER_LENGTH ){
-      fprintf(stderr,"folder path longer than %d\n", HISTO_FOLDER_LENGTH );
-      return(-1);
-   }
-   if( path[0] == 0 ){ memcpy(path, folder, flen); path[flen]=0; }
-   else { sprintf(&path[plen], "/%s", folder); }
-   return(0);
+  if( (flen = check_folder(folder)) <= 0 ){ return(-1); }
+  if( flen + (plen = strlen(path)) >= HISTO_FOLDER_LENGTH ){
+    fprintf(stderr,"folder path longer than %d\n", HISTO_FOLDER_LENGTH );
+    return(-1);
+  }
+  if( path[0] == 0 ){ memcpy(path, folder, flen); path[flen]=0; }
+  else { sprintf(&path[plen], "/%s", folder); }
+  return(0);
 }
 
 int close_folder(Config *cfg) // work back from end to next slash
 {
-   char *path = cfg->current_path;
-   int i, len = strlen(path);
-   if( path[len-1] == '/' ){ --len; } // remove trailing /
-   for(i=len-1; i>0; i--){
-      if( path[i] == '/' ){ break; }
-   }
-   path[i] = '\0'; return(0);
+  char *path = cfg->current_path;
+  int i, len = strlen(path);
+  if( path[len-1] == '/' ){ --len; } // remove trailing /
+  for(i=len-1; i>0; i--){
+    if( path[i] == '/' ){ break; }
+  }
+  path[i] = '\0'; return(0);
 }
 
 int Zero_Histograms(Config *cfg)
 {
-   int i;  TH1I *ptr;
-   for(i=0; i<cfg->nhistos; i++){
-      ptr = (TH1I *)cfg->histo_list[i];
-      ptr->Reset(ptr);
-   }
-   return(0);
+  int i;  TH1I *ptr;
+  for(i=0; i<cfg->nhistos; i++){
+    ptr = (TH1I *)cfg->histo_list[i];
+    ptr->Reset(ptr);
+  }
+  return(0);
 }
 
 /* if this starts being slow - add names to hash table */
 TH1I *hist_querytitle(Config *cfg, char *name)
 {
-   TH1I *ptr;   int i;
-   for(i=0; i<cfg->nhistos; i++){
-     ptr = (TH1I *)cfg->histo_list[i];
-      if( strcmp(name, ptr->title) == 0 ){ return( ptr ); }
-   }
-   return( NULL );
+  TH1I *ptr;   int i;
+  for(i=0; i<cfg->nhistos; i++){
+    ptr = (TH1I *)cfg->histo_list[i];
+    if( strcmp(name, ptr->title) == 0 ){ return( ptr ); }
+  }
+  return( NULL );
 }
 TH1I *hist_queryhandle(Config *cfg, char *name)
 {
-   TH1I *ptr;   int i;
-   for(i=0; i<cfg->nhistos; i++){
-     ptr = (TH1I *)cfg->histo_list[i];
-      if( strcmp(name, ptr->handle) == 0 ){ return( ptr ); }
-   }
-   return( NULL );
+  TH1I *ptr;   int i;
+  for(i=0; i<cfg->nhistos; i++){
+    ptr = (TH1I *)cfg->histo_list[i];
+    if( strcmp(name, ptr->handle) == 0 ){ return( ptr ); }
+  }
+  return( NULL );
 }
 //TH1I *hist_querynum(int num){}
 
 char *next_histotitle(Config *cfg, int reset)
 {
-   static char filename[HISTO_FOLDER_LENGTH+TITLE_LENGTH+1];
-   static int index;
-   if( reset ){ index = 0; }
-   if( index >= cfg->nhistos ){ return(NULL); }
-   sprintf(filename, "%s/%s", ((TH1I *)cfg->histo_list[index])->path,
-                              ((TH1I *)cfg->histo_list[index])->title );
-   ++index;
-   return(filename);
+  static char filename[HISTO_FOLDER_LENGTH+TITLE_LENGTH+1];
+  static int index;
+  if( reset ){ index = 0; }
+  if( index >= cfg->nhistos ){ return(NULL); }
+  sprintf(filename, "%s/%s", ((TH1I *)cfg->histo_list[index])->path,
+  ((TH1I *)cfg->histo_list[index])->title );
+  ++index;
+  return(filename);
 }
 
 TH1I *H1_BOOK(Config *cfg, char *name, char *title, int nbins, int xmin, int xmax)
 {
-   int tlen, hlen; TH1I *result = &cfg->histo_array[cfg->nhistos];
+  int tlen, hlen; TH1I *result = &cfg->histo_array[cfg->nhistos];
+  int *local_data, j;
 
-   if( cfg == NULL ){ return(NULL); }
-   if( cfg->nhistos >= MAX_HISTOGRAMS ){
-      fprintf(stderr,"H1_BOOK: max number of histograms:%d exceeded when handling %s\n",
-	 MAX_HISTOGRAMS, name );
-      return(NULL);
-   }
-   // always allocate the data for sorting histograms
-   // skip allocation for large histos read from disk (only read when needed)
-   if( nbins <= SMALL_HISTO_BINS ||
-       cfg == configs[0] || cfg == configs[1] ){
+//printf("H1_BOOK: %s, %s, %d, %d, %d\n",name,title,nbins,xmin,xmax);
+  if( nbins == 0 ){ return(NULL); }
+  if( strlen(name) < 2 ){ return(NULL); }
+  if( cfg == NULL ){ return(NULL); }
+  if( cfg->nhistos >= MAX_HISTOGRAMS ){
+    fprintf(stderr,"H1_BOOK: max number of histograms:%d exceeded when handling %s\n",
+    MAX_HISTOGRAMS, name );
+    return(NULL);
+  }
+  if(cfg->nhistos == 0){
+    // First histogram to be created
+  //  printf("Set latest_offset = 0, was %d\n",latest_offset);
+    latest_offset = 0;
+  }
+  // always allocate the data for sorting histograms
+  // skip allocation for large histos read from disk (only read when needed)
+  if( nbins <= SMALL_HISTO_BINS ||
+    cfg == configs[0] || cfg == configs[1] ){
+      /*
       if( (result->data = (int *)malloc(nbins*sizeof(int))) == NULL){
-         fprintf(stderr,"H1_BOOK: data malloc failed\n");
-         free(result); return(NULL);
-      }
-      memset(result->data, 0, nbins*sizeof(int) );
-   } else {
-      result->data = NULL;
-   }
-   if( (tlen=strlen(title)) >= TITLE_LENGTH  ){ tlen = TITLE_LENGTH-1; }
-   if( (hlen=strlen(name))  >= HANDLE_LENGTH ){ hlen = HANDLE_LENGTH-1; }
+      fprintf(stderr,"H1_BOOK: data malloc failed\n");
+      free(result); return(NULL);
+    }
+    */
+    // histo_data_block is a single contiguous block of memory
+    // use for all histogram data in order to avoid heap fragmentation
+    // this makes things run much faster as it avoids cache misses.
+    // At each expansion of the histo_data_block size the actual memory may be moved
+    // so the data member for each histogram must be an offset with respect to
+    // the histo_data_block base address, otherwise all pointers would need to be reassigned.
+    // If realloc fails then a NULL pointer is returned and all previous data would be lost so use a local pointer first.
+    local_data = realloc(histo_data_block, latest_offset*sizeof(int) + nbins*sizeof(int));
+    //printf("Expand memory for %s\n",name);
+    //printf("histo_data_block/local_data/latest_offset = %p / %p / %d\n",(void *)histo_data_block,(void *)local_data,latest_offset);
 
-   memcpy(result->path, cfg->current_path, strlen(cfg->current_path)+1 );
-   memcpy(result->handle, name, hlen+1);
-   memcpy(result->title, title, tlen+1);
-   result->underflow     = 0;
-   result->overflow      = 0;
-   result->entries       = 0;
-   result->xbins         = nbins;
-   result->xmin          = xmin;
-   result->xmax          = xmax;
-   result->xrange        = xmax-xmin;
-   result->valid_bins    = nbins;
-   result->Reset         = &TH1I_Reset;
-   result->Fill          = &TH1I_Fill;
-   result->SetBinContent = &TH1I_SetBinContent;
-   result->GetBinContent = &TH1I_GetBinContent;
-   result->SetValidLen   = &TH1I_SetValidLen;
-   result->type          = INT_1D;
-   cfg->histo_list[cfg->nhistos++] = (void *)result;
-   cfg->folders_valid = 0;
-   return(result);
+    if(local_data == NULL){
+      fprintf(stderr,"H1_BOOK: data realloc failed\n");
+      free(result); return(NULL);
+    }
+
+    if( local_data != histo_data_block ){
+      // Memory block was moved during expansion
+      // Recalculate all pointers assigned so far
+    //  printf("Recalculate all %d pointers assigned so far\n",cfg->nhistos);
+      for(j=0; j<cfg->nhistos; j++){
+        if(cfg->histo_list[j]->data != NULL){
+          cfg->histo_list[j]->data = local_data + cfg->histo_list[j]->memory_offset;
+        }
+      }
+    }
+
+    histo_data_block = local_data;
+    result->memory_offset = latest_offset; // Points to the start of this histo
+    result->data = histo_data_block + latest_offset;
+  //  printf("histo_data_block/local_data/latest_offset/result->data = %p / %p / %d / %p\n",(void *)histo_data_block,(void *)local_data,latest_offset,(void *)result->data);
+    memset(result->data, 0, nbins*sizeof(int) );
+  //  printf("Calculate new offset %d + [%d] = ",latest_offset,nbins);
+    latest_offset += nbins; // Points to the start of the next histo
+  //  printf("%d\n",latest_offset);
+  } else {
+    result->data = NULL;
+  }
+  if( (tlen=strlen(title)) >= TITLE_LENGTH  ){ tlen = TITLE_LENGTH-1; }
+  if( (hlen=strlen(name))  >= HANDLE_LENGTH ){ hlen = HANDLE_LENGTH-1; }
+
+  memcpy(result->path, cfg->current_path, strlen(cfg->current_path)+1 );
+  memcpy(result->handle, name, hlen+1);
+  memcpy(result->title, title, tlen+1);
+  result->underflow     = 0;
+  result->overflow      = 0;
+  result->entries       = 0;
+  result->xbins         = nbins;
+  result->xmin          = xmin;
+  result->xmax          = xmax;
+  result->xrange        = xmax-xmin;
+  result->valid_bins    = nbins;
+  result->Reset         = &TH1I_Reset;
+  result->Fill          = &TH1I_Fill;
+  result->SetBinContent = &TH1I_SetBinContent;
+  result->GetBinContent = &TH1I_GetBinContent;
+  result->SetValidLen   = &TH1I_SetValidLen;
+  result->type          = INT_1D;
+  cfg->histo_list[cfg->nhistos++] = (void *)result;
+  cfg->folders_valid = 0;
+  return(result);
 }
 
 int TH1I_Reset(TH1I *this)
 {
 
   // fprintf(stdout,"Reset TH1I histogram, %s\n",this->title);
-   memset(this->data, 0, this->xbins*sizeof(int)); return(0);
-   this->valid_bins    = this->xbins;
-   this->underflow     = 0;
-   this->overflow      = 0;
-   this->entries       = 0;
+  memset(this->data, 0, this->xbins*sizeof(int)); return(0);
+  this->valid_bins    = this->xbins;
+  this->underflow     = 0;
+  this->overflow      = 0;
+  this->entries       = 0;
 }
 
 
 inline __attribute__((always_inline)) int TH1I_Fill(TH1I *this, int xval, int count)
 {
   // Fast path calculation assuming xmin == 0 and xbins == xrange
-    float bin = (float)xval;
+  float bin = (float)xval;
 
-    if (__builtin_expect(this->xmin != 0 || this->xbins != this->xrange, 0)) {
-        bin = ((float)xval - (float)this->xmin) * ((float)this->xbins / (float)this->xrange);
-    }
+  if (__builtin_expect(this->xmin != 0 || this->xbins != this->xrange, 0)) {
+    bin = ((float)xval - (float)this->xmin) * ((float)this->xbins / (float)this->xrange);
+  }
 
-    // Bounds check using unsigned/combined comparison tricks or standard fast paths
-    if (__builtin_expect(bin < 0.0f, 0)) {
-        this->underflow++;
-        return 0;
-    }
-    if (__builtin_expect(bin >= (float)this->xbins, 0)) {
-        this->overflow++;
-        return 0;
-    }
-
-    this->data[(int)bin] += count;
+  // Bounds check using unsigned/combined comparison tricks or standard fast paths
+  if (__builtin_expect(bin < 0.0f, 0)) {
+    this->underflow++;
     return 0;
+  }
+  if (__builtin_expect(bin >= (float)this->xbins, 0)) {
+    this->overflow++;
+    return 0;
+  }
+
+  this->data[(int)bin] += count;
+  return 0;
 }
 
 int TH1I_SetBinContent(TH1I *this, int bin, int value)
 {
-   if( bin < 0 || bin >= this->xbins ){ return(-1); }
-   (this->data[bin])=value; return(0);
+  if( bin < 0 || bin >= this->xbins ){ return(-1); }
+  (this->data[bin])=value; return(0);
 }
 
 int TH1I_GetBinContent(TH1I *this, int bin)
 {
-   if( bin < 0 || bin >= this->xbins ){ return(0); }
-   return( (this->data[bin]) );
+  if( bin < 0 || bin >= this->xbins ){ return(0); }
+  return( (this->data[bin]) );
 }
 
 int TH1I_SetValidLen(TH1I *this, int bins)
 {
-   if( bins < 0 || bins >= this->xbins ){ return(0); }
-   (this->valid_bins)=bins; return(0);
+  if( bins < 0 || bins >= this->xbins ){ return(0); }
+  (this->valid_bins)=bins; return(0);
 }
 
 TH2I *H2_BOOK(Config *cfg, char *name, char *title, int xbins, int xmin, int xmax, int ybins, int ymin, int ymax)
 {
-   int tlen, hlen; TH2I *result = (TH2I *)&cfg->histo_array[cfg->nhistos];
+  int tlen, hlen; TH2I *result = (TH2I *)&cfg->histo_array[cfg->nhistos];
+  int *local_data, j;
 
-   if( cfg == NULL ){return(NULL); }
-   if( cfg->nhistos >= MAX_HISTOGRAMS ){
-      fprintf(stderr,"H2_BOOK: max number of histograms:%d exceeded when handling %s\n",
-	 MAX_HISTOGRAMS, name );
-      return(NULL);
-   }
-   if( ybins == SYMMETERIZE ){
-     // This matrix will be symmetrized. Set the flag and the ybins to equal xbins.
-     result->symm = 1; // Symmetric matrix
-     result->type = INT_2D_SYMM;
-     ybins = xbins; ymin = xmin; ymax = xmax;
-   }else{
-     result->symm = 0; // Non-symmetric matrix
-     result->type = INT_2D;
-   }
-   // always allocate the data for sorting histograms
-   // skip allocation for large histos read from disk (only read when needed)
-   if( xbins*ybins <= SMALL_HISTO_BINS /* ||
-      cfg == configs[0] || cfg == configs[1]*/ ){
-      if( (result->data = (int *)malloc(xbins*ybins*sizeof(int))) == NULL){
-         fprintf(stderr,"H2_BOOK: data malloc failed\n");
-         return(NULL);
+//  printf("H2_BOOK: %s, %s, %d, %d, %d, %d, %d, %d\n",name,title,xbins,xmin,xmax,ybins,ymin,ymax);
+  if( cfg == NULL ){return(NULL); }
+  if( cfg->nhistos >= MAX_HISTOGRAMS ){
+    fprintf(stderr,"H2_BOOK: max number of histograms:%d exceeded when handling %s\n",
+    MAX_HISTOGRAMS, name );
+    return(NULL);
+  }
+  if(cfg->nhistos == 0){
+    // First histogram to be created
+  //  printf("Set latest_offset = 0, was %d\n",latest_offset);
+    latest_offset = 0;
+  }
+  if( ybins == SYMMETERIZE ){
+    // This matrix will be symmetrized. Set the flag and the ybins to equal xbins.
+    result->symm = 1; // Symmetric matrix
+    result->type = INT_2D_SYMM;
+    ybins = xbins; ymin = xmin; ymax = xmax;
+  }else{
+    result->symm = 0; // Non-symmetric matrix
+    result->type = INT_2D;
+  }
+  // always allocate the data for sorting histograms
+  // skip allocation for large histos read from disk (only read when needed)
+  if( xbins*ybins <= SMALL_HISTO_BINS /* ||
+    cfg == configs[0] || cfg == configs[1]*/ ){
+    /*
+    if( (result->data = (int *)malloc(xbins*ybins*sizeof(int))) == NULL){
+    fprintf(stderr,"H2_BOOK: data malloc failed\n");
+    return(NULL);
+  }
+  */
+
+  // histo_data_block is a single contiguous block of memory
+  // use for all histogram data in order to avoid heap fragmentation
+  // this makes things run much faster as it avoids cache misses.
+  // At each expansion of the histo_data_block size the actual memory may be moved
+  // so the data member for each histogram must be an offset with respect to
+  // the histo_data_block base address, otherwise all pointers would need to be reassigned.
+  // If realloc fails then a NULL pointer is returned and all previous data would be lost so use a local pointer first.
+  local_data = realloc(histo_data_block, latest_offset*sizeof(int) + xbins*ybins*sizeof(int));
+//  printf("Expand memory for %s\n",name);
+//  printf("histo_data_block/local_data/latest_offset/result->data = %p / %p / %d / %p\n",(void *)histo_data_block,(void *)local_data,latest_offset,(void *)result->data);
+
+  if(local_data == NULL){
+    fprintf(stderr,"H2_BOOK: data realloc failed\n");
+    free(result); return(NULL);
+  }
+
+  if( local_data != histo_data_block ){
+    // Memory block was moved during expansion
+    // Recalculate all pointers assigned so far
+  //  printf("Recalculate all %d pointers assigned so far\n",cfg->nhistos);
+    for(j=0; j<cfg->nhistos; j++){
+      if(cfg->histo_list[j]->data != NULL){
+        cfg->histo_list[j]->data = local_data + cfg->histo_list[j]->memory_offset;
       }
-      memset(result->data, 0, xbins*ybins*sizeof(int) );
-   } else {
-      result->data = NULL;
-   }
-   if( (tlen=strlen(title)) >= TITLE_LENGTH  ){ tlen = TITLE_LENGTH-1; }
-   if( (hlen=strlen(name))  >= HANDLE_LENGTH ){ hlen = HANDLE_LENGTH-1; }
+    }
+  }
 
-if(strncmp(title,"LBL-LBL_vs_TAC",14)==0){
-fprintf(stdout,"create %s\n",title);
+  histo_data_block = local_data;
+  result->memory_offset = latest_offset;
+  result->data = histo_data_block + latest_offset;
+//  printf("histo_data_block/local_data/latest_offset/result->data = %p / %p / %d / %p\n",(void *)histo_data_block,(void *)local_data,latest_offset,(void *)result->data);
+  memset(result->data, 0, xbins*ybins*sizeof(int) );
+//  printf("Calculate new offset %d + [%d * %d = %d] = ",latest_offset,xbins,ybins,xbins*ybins);
+  latest_offset += xbins*ybins;
+//  printf("%d\n",latest_offset);
+} else {
+  result->data = NULL;
 }
-
-   memcpy(result->path, cfg->current_path, strlen(cfg->current_path)+1 );
-   memcpy(result->handle, name, hlen+1);
-   memcpy(result->title, title, tlen+1);
-   result->underflow     = 0;
-   result->overflow      = 0;
-   result->entries       = 0;
-   result->xbins         = xbins;
-   result->xmin          = xmin;
-   result->xmax          = xmax;
-   result->ybins         = ybins;
-   result->xrange        = xmax-xmin;
-   result->ymin          = ymin;
-   result->ymax          = ymax;
-   result->yrange        = ymax-ymin;
-   result->valid_bins    = xbins*ybins;
-   result->Reset         = &TH2I_Reset;
-   result->Fill          = &TH2I_Fill;
-   result->SetBinContent = &TH2I_SetBinContent;
-   result->GetBinContent = &TH2I_GetBinContent;
-   result->SetValidLen   = &TH2I_SetValidLen;
-   cfg->histo_list[cfg->nhistos++] = (void *)result;
-   cfg->folders_valid = 0;
-   return(result);
+if( (tlen=strlen(title)) >= TITLE_LENGTH  ){ tlen = TITLE_LENGTH-1; }
+if( (hlen=strlen(name))  >= HANDLE_LENGTH ){ hlen = HANDLE_LENGTH-1; }
+memcpy(result->path, cfg->current_path, strlen(cfg->current_path)+1 );
+memcpy(result->handle, name, hlen+1);
+memcpy(result->title, title, tlen+1);
+result->underflow     = 0;
+result->overflow      = 0;
+result->entries       = 0;
+result->xbins         = xbins;
+result->xmin          = xmin;
+result->xmax          = xmax;
+result->ybins         = ybins;
+result->xrange        = xmax-xmin;
+result->ymin          = ymin;
+result->ymax          = ymax;
+result->yrange        = ymax-ymin;
+result->valid_bins    = xbins*ybins;
+result->Reset         = &TH2I_Reset;
+result->Fill          = &TH2I_Fill;
+result->SetBinContent = &TH2I_SetBinContent;
+result->GetBinContent = &TH2I_GetBinContent;
+result->SetValidLen   = &TH2I_SetValidLen;
+cfg->histo_list[cfg->nhistos++] = (void *)result;
+cfg->folders_valid = 0;
+return(result);
 }
 
 int TH2I_Reset(TH2I *this)
 {
   // fprintf(stdout,"Reset TH1I histogram, %s\n",this->title);
-   if( this->data != NULL ){
-      memset(this->data, 0, this->xbins*this->ybins*sizeof(int));
-   } return(0);
-   this->valid_bins    = this->xbins*this->ybins;
-   this->underflow     = 0;
-   this->overflow      = 0;
-   this->entries       = 0;
+  if( this->data != NULL ){
+    memset(this->data, 0, this->xbins*this->ybins*sizeof(int));
+  } return(0);
+  this->valid_bins    = this->xbins*this->ybins;
+  this->underflow     = 0;
+  this->overflow      = 0;
+  this->entries       = 0;
 }
 
 
 inline __attribute__((always_inline)) int TH2I_Fill(TH2I *this, int xval, int yval, int count)
 {
   // Cache frequently accessed struct members in local variables
-    const int xmin = this->xmin;
-    const int xbins = this->xbins;
-    const int xrange = this->xrange;
-    const int ymin = this->ymin;
-    const int ybins = this->ybins;
-    const int yyrange = this->yrange;
+  const int xmin = this->xmin;
+  const int xbins = this->xbins;
+  const int xrange = this->xrange;
+  const int ymin = this->ymin;
+  const int ybins = this->ybins;
+  const int yyrange = this->yrange;
 
-    // Fast integer path or floating-point scale calculation
-    float xbin = (xmin != 0 || xbins != xrange)
-                 ? (float)(xval - xmin) * ((float)xbins / (float)xrange)
-                 : (float)xval;
+  // Fast integer path or floating-point scale calculation
+  float xbin = (xmin != 0 || xbins != xrange)
+  ? (float)(xval - xmin) * ((float)xbins / (float)xrange)
+  : (float)xval;
 
-    float ybin = (ymin != 0 || ybins != yyrange)
-                 ? (float)(yval - ymin) * ((float)ybins / (float)yyrange)
-                 : (float)yval;
+  float ybin = (ymin != 0 || ybins != yyrange)
+  ? (float)(yval - ymin) * ((float)ybins / (float)yyrange)
+  : (float)yval;
 
-    // Boundary and overflow/underflow checks
-    if (xbin < 0.0f) { (this->underflow)++; return 0; }
-    if (xbin >= (float)xbins) { (this->overflow)++; return 0; }
-    if (ybin < 0.0f) { (this->underflow)++; return 0; }
-    if (ybin >= (float)ybins) { (this->overflow)++; return 0; }
+  // Boundary and overflow/underflow checks
+  if (xbin < 0.0f) { (this->underflow)++; return 0; }
+  if (xbin >= (float)xbins) { (this->overflow)++; return 0; }
+  if (ybin < 0.0f) { (this->underflow)++; return 0; }
+  if (ybin >= (float)ybins) { (this->overflow)++; return 0; }
 
-    // Lazy allocation of data buffer
-    int *data = this->data;
+  // Lazy allocation of data buffer
+  int *data = this->data;
+  if (data == NULL) {
+    size_t total_bins = (size_t)xbins * (size_t)ybins;
+    data = (int *)malloc(total_bins * sizeof(int));
     if (data == NULL) {
-        size_t total_bins = (size_t)xbins * (size_t)ybins;
-        data = (int *)malloc(total_bins * sizeof(int));
-        if (data == NULL) {
-            fprintf(stderr, "TH2I_Fill: data malloc failed for %s\n", this->handle);
-            return -1;
-        }
-        memset(data, 0, total_bins * sizeof(int));
-        this->data = data;
+      fprintf(stderr, "TH2I_Fill: data malloc failed for %s\n", this->handle);
+      return -1;
     }
+    memset(data, 0, total_bins * sizeof(int));
+    this->data = data;
+  }
 
-    // Single cast evaluation for indexing
-    int ix = (int)xbin;
-    int iy = (int)ybin;
-    data[ix + iy * xbins] += count;
-    return 0;
+  // Single cast evaluation for indexing
+  int ix = (int)xbin;
+  int iy = (int)ybin;
+  data[ix + iy * xbins] += count;
+  return 0;
 }
 
 
 int TH2I_SetBinContent(TH2I *this, int xbin, int ybin, int value)
 {
-   if( xbin < 0 || xbin >= this->xbins ){ return(-1); }
-   if( ybin < 0 || ybin >= this->ybins ){ return(-1); }
-   if( this->data == NULL ){
-      if( (this->data=(int *)malloc(this->xbins*this->ybins*sizeof(int)))==NULL){
-         fprintf(stderr,"TH2I_Fill: data malloc failed for %s\n",this->handle);
-         return(-1);
-      }
-      memset(this->data, 0, this->xbins*this->ybins*sizeof(int) );
-   }
-   (this->data[xbin+ybin*this->xbins])=value; return(0);
+  if( xbin < 0 || xbin >= this->xbins ){ return(-1); }
+  if( ybin < 0 || ybin >= this->ybins ){ return(-1); }
+  if( this->data == NULL ){
+    if( (this->data=(int *)malloc(this->xbins*this->ybins*sizeof(int)))==NULL){
+      fprintf(stderr,"TH2I_Fill: data malloc failed for %s\n",this->handle);
+      return(-1);
+    }
+    memset(this->data, 0, this->xbins*this->ybins*sizeof(int) );
+  }
+  (this->data[xbin+ybin*this->xbins])=value; return(0);
 }
 
 int TH2I_GetBinContent(TH2I *this, int xbin, int ybin)
 {
-   if( xbin < 0 || xbin >= this->xbins ){ return(-1); }
-   if( ybin < 0 || ybin >= this->ybins ){ return(-1); }
-   if( this->data == NULL ){ return(0); }
-   return( (this->data[xbin+ybin*this->xbins]) );
+  if( xbin < 0 || xbin >= this->xbins ){ return(-1); }
+  if( ybin < 0 || ybin >= this->ybins ){ return(-1); }
+  if( this->data == NULL ){ return(0); }
+  return( (this->data[xbin+ybin*this->xbins]) );
 }
 
 int TH2I_SetValidLen(TH2I *this, int bins)
 {
-   if( bins < 0 || bins >= this->xbins*this->ybins ){ return(0); }
-   (this->valid_bins)=bins; return(0);
+  if( bins < 0 || bins >= this->xbins*this->ybins ){ return(0); }
+  (this->valid_bins)=bins; return(0);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -406,13 +493,13 @@ int TH2I_SetValidLen(TH2I *this, int bins)
 // diskfiles: just array of spectra[each with own header] (no file-header)
 
 typedef struct file_header_struct { // should be 512 bytes
-   char name[100];  char    mode[8];  char      uid[8];  char    gid[8];
-   char  size[12];  char  mtime[12];  char    cksum[8];  char   type[1];
-   char link[100];
-   char  magic[6];  char version[2];  char   owner[32];  char group[32];
-   char devmaj[8];  char  devmin[8];  char prefix[155];  char   pad[12];
+  char name[100];  char    mode[8];  char      uid[8];  char    gid[8];
+  char  size[12];  char  mtime[12];  char    cksum[8];  char   type[1];
+  char link[100];
+  char  magic[6];  char version[2];  char   owner[32];  char group[32];
+  char devmaj[8];  char  devmin[8];  char prefix[155];  char   pad[12];
 } File_head;    // uid/gid:xbins/ybins
-                // own/group:xmin_xmax  ymin_ymax
+// own/group:xmin_xmax  ymin_ymax
 
 //typedef struct histo_header_struct { // soon will have to use this
 //   int sbins; int xmin; int xmax;  int ybins; int ymin; int ymax;
@@ -424,57 +511,60 @@ static char      file_body[FILE_BUFSIZ];
 
 int delete_histograms(Config *cfg)
 {
-   TH1I *ptr;
-   int i;
-   for(i=0; i<cfg->nhistos; i++){
-      ptr = (TH1I *)cfg->histo_list[i];
-      free(ptr->data); //free(ptr);
-   }
-   cfg->nhistos = 0;
-   return(0);
+  TH1I *ptr;
+  int i;
+  for(i=0; i<cfg->nhistos; i++){
+    ptr = (TH1I *)cfg->histo_list[i];
+    ptr->data = NULL; // free(ptr->data); //free(ptr);
+  }
+  free(histo_data_block);
+  histo_data_block = NULL;
+  latest_offset=0;
+  cfg->nhistos = 0;
+  return(0);
 }
 
 int write_histofile(Config *cfg, FILE *fp)
 {
-   int i, type, size, pad, cksum;
+  int i, type, size, pad, cksum;
 
-   if( fp == NULL ){
-      fprintf(stderr,"*** No file open in write_histofile\n"); return(-1);
-   }
-   if( cfg == NULL ){ // not yet alloc'd live set
-      fprintf(stderr,"No histos defined\n"); return(-1);
-   }
-   fseek(fp, 512, SEEK_SET);
-   write_config(cfg, fp);
-   size = (int)ftell(fp) - 512;
-   pad = (512 - (size % 512)) % 512; // pad with 0 to multiple of 512 bytes
-   memset(&file_head, 0, sizeof(file_head));
-   sprintf(file_head.name,"config_file"); sprintf(file_head.mode,"0000755");
-   sprintf(file_head.uid,"%07o", 0);      sprintf(file_head.gid,"%07o", 0);
-   sprintf(file_head.mtime,"%011o",0);    memset(file_head.cksum,' ', 8);
-   sprintf(file_head.owner ,"X");         sprintf(file_head.group ,"X");
-   file_head.type[0] = 0;                 sprintf(file_head.magic,"ustar");
-   file_head.version[0] = file_head.version[1] = '0';
-   sprintf(file_head.size    ,"%011o", size );
-   cksum = 0; for(i=0; i<512; i++){ cksum += file_head.name[i]; }
-   sprintf(file_head.cksum   ,"%07o", cksum );
-   fseek(fp, 0, SEEK_SET);
-   fwrite( &file_head, sizeof(File_head), 1, fp);
-   fseek(fp, size+pad+512, SEEK_SET);
-   for(i=0; i<cfg->nhistos; i++){
-      if( ((TH1I *)cfg->histo_list[i])->suppress ){ continue; }
-      switch( type = ((TH1I *)cfg->histo_list[i])->type ){
-      case INT32_1D: write_th1I(fp, cfg->histo_list[i] ); break;
-      case INT32_2D: write_th1I(fp, cfg->histo_list[i] ); break;
-      case INT32_2D_SYMM: write_th1I(fp, cfg->histo_list[i] ); break;
-      }
-   }
-   return(0);
+  if( fp == NULL ){
+    fprintf(stderr,"*** No file open in write_histofile\n"); return(-1);
+  }
+  if( cfg == NULL ){ // not yet alloc'd live set
+  fprintf(stderr,"No histos defined\n"); return(-1);
+}
+fseek(fp, 512, SEEK_SET);
+write_config(cfg, fp);
+size = (int)ftell(fp) - 512;
+pad = (512 - (size % 512)) % 512; // pad with 0 to multiple of 512 bytes
+memset(&file_head, 0, sizeof(file_head));
+sprintf(file_head.name,"config_file"); sprintf(file_head.mode,"0000755");
+sprintf(file_head.uid,"%07o", 0);      sprintf(file_head.gid,"%07o", 0);
+sprintf(file_head.mtime,"%011o",0);    memset(file_head.cksum,' ', 8);
+sprintf(file_head.owner ,"X");         sprintf(file_head.group ,"X");
+file_head.type[0] = 0;                 sprintf(file_head.magic,"ustar");
+file_head.version[0] = file_head.version[1] = '0';
+sprintf(file_head.size    ,"%011o", size );
+cksum = 0; for(i=0; i<512; i++){ cksum += file_head.name[i]; }
+sprintf(file_head.cksum   ,"%07o", cksum );
+fseek(fp, 0, SEEK_SET);
+fwrite( &file_head, sizeof(File_head), 1, fp);
+fseek(fp, size+pad+512, SEEK_SET);
+for(i=0; i<cfg->nhistos; i++){
+  if( ((TH1I *)cfg->histo_list[i])->suppress ){ continue; }
+  switch( type = ((TH1I *)cfg->histo_list[i])->type ){
+    case INT32_1D: write_th1I(fp, cfg->histo_list[i] ); break;
+    case INT32_2D: write_th1I(fp, cfg->histo_list[i] ); break;
+    case INT32_2D_SYMM: write_th1I(fp, cfg->histo_list[i] ); break;
+  }
+}
+return(0);
 }
 
 int close_histofile(Config *cfg)
 {
-   return( remove_config(cfg) );
+  return( remove_config(cfg) );
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -483,310 +573,310 @@ int close_histofile(Config *cfg)
 static char compress_buf[COMPRESS_BUFSIZ];
 int compress_buffer(char *input, int size)
 {
-   z_stream strm;
-   int status;
+  z_stream strm;
+  int status;
 
-   strm.zalloc = Z_NULL;
-   strm.zfree = Z_NULL;
-   strm.opaque = Z_NULL;
-   if( (status = deflateInit(&strm, Z_DEFAULT_COMPRESSION)) != Z_OK ){
-      fprintf(stderr,"zlib compression error\n"); return(-1);
-   }
-   strm.avail_in = size;
-   strm.next_in = (unsigned char *)input;
+  strm.zalloc = Z_NULL;
+  strm.zfree = Z_NULL;
+  strm.opaque = Z_NULL;
+  if( (status = deflateInit(&strm, Z_DEFAULT_COMPRESSION)) != Z_OK ){
+    fprintf(stderr,"zlib compression error\n"); return(-1);
+  }
+  strm.avail_in = size;
+  strm.next_in = (unsigned char *)input;
 
-   strm.avail_out = COMPRESS_BUFSIZ; // should never be filled
-   strm.next_out = (unsigned char *)compress_buf;
-   deflate(&strm, Z_FINISH);
-   status = COMPRESS_BUFSIZ - strm.avail_out;
-   deflateEnd(&strm);
-   return(status);
+  strm.avail_out = COMPRESS_BUFSIZ; // should never be filled
+  strm.next_out = (unsigned char *)compress_buf;
+  deflate(&strm, Z_FINISH);
+  status = COMPRESS_BUFSIZ - strm.avail_out;
+  deflateEnd(&strm);
+  return(status);
 }
 int decompress_buffer(char *input, int size)
 {
-   z_stream strm;
-   int status;
+  z_stream strm;
+  int status;
 
-   strm.zalloc = Z_NULL;
-   strm.zfree = Z_NULL;
-   strm.opaque = Z_NULL;
-   strm.avail_in = 0;strm.next_in = Z_NULL;
-   if( (status = inflateInit(&strm)) != Z_OK ){
-      fprintf(stderr,"zlib decompression error\n"); return(-1);
-   }
-   strm.avail_in = size;
-   strm.next_in = (unsigned char *)input;
+  strm.zalloc = Z_NULL;
+  strm.zfree = Z_NULL;
+  strm.opaque = Z_NULL;
+  strm.avail_in = 0;strm.next_in = Z_NULL;
+  if( (status = inflateInit(&strm)) != Z_OK ){
+    fprintf(stderr,"zlib decompression error\n"); return(-1);
+  }
+  strm.avail_in = size;
+  strm.next_in = (unsigned char *)input;
 
-   strm.avail_out = COMPRESS_BUFSIZ; // should never be filled
-   strm.next_out = (unsigned char *)compress_buf;
-   inflate(&strm, Z_NO_FLUSH);
-   status = COMPRESS_BUFSIZ - strm.avail_out;
-   inflateEnd(&strm);
-   return(status);
+  strm.avail_out = COMPRESS_BUFSIZ; // should never be filled
+  strm.next_out = (unsigned char *)compress_buf;
+  inflate(&strm, Z_NO_FLUSH);
+  status = COMPRESS_BUFSIZ - strm.avail_out;
+  inflateEnd(&strm);
+  return(status);
 }
 int read_histo_data(Histogram *histo, FILE *fp)
 {
-   int bins = (histo->ybins != 0) ? histo->xbins*histo->ybins : histo->xbins;
-   int size = histo->data_size;
-   if( histo->data != NULL ){
-      fprintf(stderr,"histo data already present:%s\n", histo->title );
-      return(-1);
-   }
-   if( (histo->data = (int *)malloc(bins*sizeof(int))) == NULL){
-      fprintf(stderr,"read_histo_data: data malloc failed\n");
-      return(-1);
-   }
-   memset(histo->data, 0, bins*sizeof(int));
-   if( fseek(fp, histo->file_data_offset, SEEK_SET) < 0 ){
-      fprintf(stderr,"failed_seek histo:%s\n", histo->title );
-      return(-1);
-   }
-   if( fread( &file_body, sizeof(char), size, fp) < size ){
-      fprintf(stderr,"short read histo:%s[%d]\n", histo->title, size );
-      return(-1);
-   }
-   // compressed data starts with signed bytes: 120,-100
-   if( bins > SMALL_HISTO_BINS && file_body[0]==120 && file_body[1]==-100 ){
-      size = decompress_buffer(file_body, size);
-      memcpy(histo->data, compress_buf, size);
-   } else {
-      memcpy(histo->data, file_body, size);
-   }
-   return(0);
+  int bins = (histo->ybins != 0) ? histo->xbins*histo->ybins : histo->xbins;
+  int size = histo->data_size;
+  if( histo->data != NULL ){
+    fprintf(stderr,"histo data already present:%s\n", histo->title );
+    return(-1);
+  }
+  if( (histo->data = (int *)malloc(bins*sizeof(int))) == NULL){
+    fprintf(stderr,"read_histo_data: data malloc failed\n");
+    return(-1);
+  }
+  memset(histo->data, 0, bins*sizeof(int));
+  if( fseek(fp, histo->file_data_offset, SEEK_SET) < 0 ){
+    fprintf(stderr,"failed_seek histo:%s\n", histo->title );
+    return(-1);
+  }
+  if( fread( &file_body, sizeof(char), size, fp) < size ){
+    fprintf(stderr,"short read histo:%s[%d]\n", histo->title, size );
+    return(-1);
+  }
+  // compressed data starts with signed bytes: 120,-100
+  if( bins > SMALL_HISTO_BINS && file_body[0]==120 && file_body[1]==-100 ){
+    size = decompress_buffer(file_body, size);
+    memcpy(histo->data, compress_buf, size);
+  } else {
+    memcpy(histo->data, file_body, size);
+  }
+  return(0);
 }
 ///////////////////////////////////////////////////////////////////////////
 // alloc and read new histogram set (+config file)
 Config *read_histofile(char *filename, int config_only)
 {
-   unsigned size, xbins, xmin, xmax, ybins, ymin, ymax, len;
-   long file_offset = 0;
-   int pad, err=0, bins;
-   Config *cfg;
-   TH1I *histo;
-   char tmp[64];
-   FILE *fp;
+  unsigned size, xbins, xmin, xmax, ybins, ymin, ymax, len;
+  long file_offset = 0;
+  int pad, err=0, bins;
+  Config *cfg;
+  TH1I *histo;
+  char tmp[64];
+  FILE *fp;
 
-   if( (cfg=add_config(filename)) == NULL ){ return(NULL); }
-   if( (fp=cfg->histo_fp=fopen(filename,"r")) == NULL){ // can't open
-      fprintf(stderr,"can't open file:%s to read\n", filename );
-      remove_config(cfg); return(NULL);
-   }
-   while( 1 ){
-      if( fread( &file_head, sizeof(File_head), 1, fp) < 1 ){ break; }
-      memcpy(tmp, file_head.size, 12); tmp[12]=0;
-      if( sscanf(tmp, "%o", &size) < 1 ){
-         fprintf(stderr,"can't read histo size from:%s\n", file_head.size);
-         err=1; break;
+  if( (cfg=add_config(filename)) == NULL ){ return(NULL); }
+  if( (fp=cfg->histo_fp=fopen(filename,"r")) == NULL){ // can't open
+  fprintf(stderr,"can't open file:%s to read\n", filename );
+  remove_config(cfg); return(NULL);
+}
+while( 1 ){
+  if( fread( &file_head, sizeof(File_head), 1, fp) < 1 ){ break; }
+  memcpy(tmp, file_head.size, 12); tmp[12]=0;
+  if( sscanf(tmp, "%o", &size) < 1 ){
+    fprintf(stderr,"can't read histo size from:%s\n", file_head.size);
+    err=1; break;
+  }
+  file_offset += sizeof(File_head);
+  pad = (512 - (size % 512)) % 512; // pad to multiple of 512 bytes
+  if( cfg->nhistos == 0 && strcmp(file_head.name, "config_file") == 0 ){
+    if( config_only ){
+      if( fread( &file_body, sizeof(char), size+pad, fp) <  size+pad ){
+        fprintf(stderr,"short read histo:%s[%d]\n",file_head.name,size);
+        err=1; break;
       }
-      file_offset += sizeof(File_head);
-      pad = (512 - (size % 512)) % 512; // pad to multiple of 512 bytes
-      if( cfg->nhistos == 0 && strcmp(file_head.name, "config_file") == 0 ){
-         if( config_only ){
-            if( fread( &file_body, sizeof(char), size+pad, fp) <  size+pad ){
-               fprintf(stderr,"short read histo:%s[%d]\n",file_head.name,size);
-               err=1; break;
-            }
-            load_config(cfg, NULL, file_body );
-            return( cfg );
-         } else { // do not try to load this as histogram - skip it
-            if( fseek(fp, size+pad, SEEK_CUR) < 0 ){
-               fprintf(stderr,"short seek histo:%s[%d]\n",file_head.name,size);
-               err=1; break;
-            }
-            file_offset += size+pad;
-            continue;
-         }
-      }
-      if( config_only ){ // config file was not the first entry
-         remove_config( cfg ); return( NULL );
-      }
-      memcpy(tmp, file_head.uid, 8); tmp[8]=0;
-      if( sscanf(tmp, "%o", &xbins) < 1 ){
-         fprintf(stderr,"can't read histo xbins from:%s\n", file_head.uid);
-         err=1; break;
-      }
-      memcpy(tmp, file_head.gid, 8); tmp[8]=0;
-      if( sscanf(tmp, "%o", &ybins) < 1 ){
-         fprintf(stderr,"can't read histo ybins from:%s\n", file_head.gid);
-         err=1; break;
-      }
-     if( sscanf(file_head.owner,"%d_%d", &xmin, &xmax) != 2 ){
-         xmin = 0; xmax = xbins;
-      }
-      if( sscanf(file_head.group,"%d_%d", &ymin, &ymax) != 2 ){
-         ymin = 0; ymax = ybins;
-      }
-      len = strlen(file_head.prefix);
-      memcpy(cfg->current_path, file_head.prefix, len);
-      cfg->current_path[len]=0;
-      bins = ( ybins == 0 ) ? xbins : xbins*ybins;
-      if( bins <= SMALL_HISTO_BINS*sizeof(int) ){
-         if( fread( &file_body, sizeof(char), size+pad, fp) <  size+pad ){
-            fprintf(stderr,"short read histo:%s[%d]\n",file_head.name,size);
-            err=1; break;
-         }
-      } else {
-         if( fseek(fp, size+pad, SEEK_CUR) < 0 ){
-            fprintf(stderr,"short seek histo:%s[%d]\n", file_head.name, size);
-            err=1; break;
-         }
-      }
-      if( ybins == 0 ){
-         histo = (TH1I *)H1_BOOK(cfg, file_head.name,file_head.link,xbins,0,xbins);
-      } else {
-        if(file_head.type[0] == 'C'){  ybins=SYMMETERIZE; } // set ybins to 0 for H2_BOOK to handle as symmetric
-         histo = (TH1I *)H2_BOOK(cfg, file_head.name,file_head.link,xbins,0,xbins,ybins,0,ybins);
-      }
-      if( bins <= SMALL_HISTO_BINS ){
-         memcpy(histo->data, file_body, size); // Do not include pad!
-      } else {
-         histo->file_data_offset = file_offset;  histo->data_size = size+pad;
+      load_config(cfg, NULL, file_body );
+      return( cfg );
+    } else { // do not try to load this as histogram - skip it
+      if( fseek(fp, size+pad, SEEK_CUR) < 0 ){
+        fprintf(stderr,"short seek histo:%s[%d]\n",file_head.name,size);
+        err=1; break;
       }
       file_offset += size+pad;
-   }
-   if( err ){ remove_config(cfg); return(NULL); }
-   return(cfg);
+      continue;
+    }
+  }
+  if( config_only ){ // config file was not the first entry
+    remove_config( cfg ); return( NULL );
+  }
+  memcpy(tmp, file_head.uid, 8); tmp[8]=0;
+  if( sscanf(tmp, "%o", &xbins) < 1 ){
+    fprintf(stderr,"can't read histo xbins from:%s\n", file_head.uid);
+    err=1; break;
+  }
+  memcpy(tmp, file_head.gid, 8); tmp[8]=0;
+  if( sscanf(tmp, "%o", &ybins) < 1 ){
+    fprintf(stderr,"can't read histo ybins from:%s\n", file_head.gid);
+    err=1; break;
+  }
+  if( sscanf(file_head.owner,"%d_%d", &xmin, &xmax) != 2 ){
+    xmin = 0; xmax = xbins;
+  }
+  if( sscanf(file_head.group,"%d_%d", &ymin, &ymax) != 2 ){
+    ymin = 0; ymax = ybins;
+  }
+  len = strlen(file_head.prefix);
+  memcpy(cfg->current_path, file_head.prefix, len);
+  cfg->current_path[len]=0;
+  bins = ( ybins == 0 ) ? xbins : xbins*ybins;
+  if( bins <= SMALL_HISTO_BINS*sizeof(int) ){
+    if( fread( &file_body, sizeof(char), size+pad, fp) <  size+pad ){
+      fprintf(stderr,"short read histo:%s[%d]\n",file_head.name,size);
+      err=1; break;
+    }
+  } else {
+    if( fseek(fp, size+pad, SEEK_CUR) < 0 ){
+      fprintf(stderr,"short seek histo:%s[%d]\n", file_head.name, size);
+      err=1; break;
+    }
+  }
+  if( ybins == 0 ){
+    histo = (TH1I *)H1_BOOK(cfg, file_head.name,file_head.link,xbins,0,xbins);
+  } else {
+    if(file_head.type[0] == 'C'){  ybins=SYMMETERIZE; } // set ybins to 0 for H2_BOOK to handle as symmetric
+    histo = (TH1I *)H2_BOOK(cfg, file_head.name,file_head.link,xbins,0,xbins,ybins,0,ybins);
+  }
+  if( bins <= SMALL_HISTO_BINS ){
+    memcpy(histo->data, file_body, size); // Do not include pad!
+  } else {
+    histo->file_data_offset = file_offset;  histo->data_size = size+pad;
+  }
+  file_offset += size+pad;
+}
+if( err ){ remove_config(cfg); return(NULL); }
+return(cfg);
 }
 
 int write_th1I(FILE *fp, void *ptr)
 {
-   int i, cksum, size, pad, count, mode, bins;
-   TH1I *hist = (TH1I *)ptr;
-   time_t filetime;
-   time(&filetime);
+  int i, cksum, size, pad, count, mode, bins;
+  TH1I *hist = (TH1I *)ptr;
+  time_t filetime;
+  time(&filetime);
 
-   memset(&file_head, 0, sizeof(file_head));  file_head.cksum[7] = ' ';
-   sprintf(file_head.name,"%s", hist->handle);
-   //else { sprintf(file_head.name,"%s/%s", hist->path, hist->handle); }
-   //sprintf(file_head.prefix,"%s", hist->title);
-   sprintf(file_head.link,"%s", hist->title);
-   sprintf(file_head.prefix,"%s", hist->path);
-   sprintf(file_head.mode    ,"0000755"); // encode type?
-   sprintf(file_head.uid     ,"%07o", hist->xbins);
-   sprintf(file_head.gid     ,"%07o", (hist->type==INT_2D || hist->type==INT_2D_SYMM) ? hist->ybins : 0);
-   //sprintf(file_head.size    ,"%011o", 0 ); // fill in proper size later
-   sprintf(file_head.mtime   ,"%011lo", filetime );
-   memset(file_head.cksum, ' ', 8);// cksum entry counted as 8 blanks, no null
+  memset(&file_head, 0, sizeof(file_head));  file_head.cksum[7] = ' ';
+  sprintf(file_head.name,"%s", hist->handle);
+  //else { sprintf(file_head.name,"%s/%s", hist->path, hist->handle); }
+  //sprintf(file_head.prefix,"%s", hist->title);
+  sprintf(file_head.link,"%s", hist->title);
+  sprintf(file_head.prefix,"%s", hist->path);
+  sprintf(file_head.mode    ,"0000755"); // encode type?
+  sprintf(file_head.uid     ,"%07o", hist->xbins);
+  sprintf(file_head.gid     ,"%07o", (hist->type==INT_2D || hist->type==INT_2D_SYMM) ? hist->ybins : 0);
+  //sprintf(file_head.size    ,"%011o", 0 ); // fill in proper size later
+  sprintf(file_head.mtime   ,"%011lo", filetime );
+  memset(file_head.cksum, ' ', 8);// cksum entry counted as 8 blanks, no null
 
-   switch( hist->type ){
-   case INT32_1D: file_head.type[0] = 'A'; break;
-   case INT32_2D: file_head.type[0] = 'B'; break;
-   case INT32_2D_SYMM: file_head.type[0] = 'C'; break;
-   }
+  switch( hist->type ){
+    case INT32_1D: file_head.type[0] = 'A'; break;
+    case INT32_2D: file_head.type[0] = 'B'; break;
+    case INT32_2D_SYMM: file_head.type[0] = 'C'; break;
+  }
 
-   // linkname[100] is from 157 to 256
-   //sprintf(file_head.magic   ,"Grif1"    ); // ustar
-   sprintf(file_head.magic   ,"ustar"    ); // ustar FOLLOWED BY NULL
-   file_head.version[0] = file_head.version[1] = '0';
-   sprintf(file_head.owner   ,"%d_%d", hist->xmin, hist->xmax );
-   sprintf(file_head.group   ,"%d_%d",  hist->ymin, hist->ymax );
-   sprintf(file_head.devmaj  ,""         );
-   sprintf(file_head.devmin  ,""         );
+  // linkname[100] is from 157 to 256
+  //sprintf(file_head.magic   ,"Grif1"    ); // ustar
+  sprintf(file_head.magic   ,"ustar"    ); // ustar FOLLOWED BY NULL
+  file_head.version[0] = file_head.version[1] = '0';
+  sprintf(file_head.owner   ,"%d_%d", hist->xmin, hist->xmax );
+  sprintf(file_head.group   ,"%d_%d",  hist->ymin, hist->ymax );
+  sprintf(file_head.devmaj  ,""         );
+  sprintf(file_head.devmin  ,""         );
 
-   // binformat, #entries, compression format(use size for now)
+  // binformat, #entries, compression format(use size for now)
 
-   bins = (hist->type==INT_2D || hist->type==INT_2D_SYMM) ? hist->xbins*hist->ybins : hist->xbins;
-   // check for empty (count non-zero at same time)
-   count = 0; if( hist->data != NULL ){
-      for(i=0; i<bins; i++){
-         if( hist->data[i] != 0 ){
-            ++count; if( hist->type==INT_2D || hist->type==INT_2D_SYMM){ break; }
-         }
+  bins = (hist->type==INT_2D || hist->type==INT_2D_SYMM) ? hist->xbins*hist->ybins : hist->xbins;
+  // check for empty (count non-zero at same time)
+  count = 0; if( hist->data != NULL ){
+    for(i=0; i<bins; i++){
+      if( hist->data[i] != 0 ){
+        ++count; if( hist->type==INT_2D || hist->type==INT_2D_SYMM){ break; }
       }
-   }
-   if( count == 0 ){ size=0; mode=0; }
-   //else if( count * 6 < ptr->xbins*sizeof(float) ){ size = count*6; mode=1; }
-   else if( bins > 65536 ){
-      size = compress_buffer((char *)(hist->data), bins*sizeof(int));
-      mode = 3; // gzip compressed
-   } else { size = bins*sizeof(int);  mode=2; } // just write data
+    }
+  }
+  if( count == 0 ){ size=0; mode=0; }
+  //else if( count * 6 < ptr->xbins*sizeof(float) ){ size = count*6; mode=1; }
+  else if( bins > 65536 ){
+    size = compress_buffer((char *)(hist->data), bins*sizeof(int));
+    mode = 3; // gzip compressed
+  } else { size = bins*sizeof(int);  mode=2; } // just write data
 
-   sprintf(file_head.size    ,"%011o", size );
-   sprintf(file_head.owner   ,"%10d",  hist->underflow );
-   sprintf(file_head.group   ,"%10d",  hist->overflow  );
+  sprintf(file_head.size    ,"%011o", size );
+  sprintf(file_head.owner   ,"%10d",  hist->underflow );
+  sprintf(file_head.group   ,"%10d",  hist->overflow  );
 
-   cksum = 0; for(i=0; i<512; i++){ cksum += file_head.name[i]; }
-   sprintf(file_head.cksum   ,"%07o", cksum );
-   fwrite( &file_head, sizeof(File_head), 1, fp);
+  cksum = 0; for(i=0; i<512; i++){ cksum += file_head.name[i]; }
+  sprintf(file_head.cksum   ,"%07o", cksum );
+  fwrite( &file_head, sizeof(File_head), 1, fp);
 
-   pad = (512 - (size % 512)) % 512; // pad with 0 to multiple of 512 bytes
-   memset(file_body+size, 0, pad);
-   switch(mode){
-   case  0: break;
-   case  1: size = pad = 0; break;
-   case  2: memcpy( file_body, hist->data, size ); break;
-   case  3: memcpy( file_body, compress_buf, size ); break;
-   default: break;
-   }
-   fwrite( &file_body, sizeof(char), size+pad, fp);
+  pad = (512 - (size % 512)) % 512; // pad with 0 to multiple of 512 bytes
+  memset(file_body+size, 0, pad);
+  switch(mode){
+    case  0: break;
+    case  1: size = pad = 0; break;
+    case  2: memcpy( file_body, hist->data, size ); break;
+    case  3: memcpy( file_body, compress_buf, size ); break;
+    default: break;
+  }
+  fwrite( &file_body, sizeof(char), size+pad, fp);
 
-   // run test and make file, do root script to view spectra
+  // run test and make file, do root script to view spectra
 
-   return(0);
+  return(0);
 }
 
 int sum_th1I(Config *dst_cfg, Config *src_cfg, TH1I *src)
 {
-   int i, bins, ybins;
-   TH1I *dst;
+  int i, bins, ybins;
+  TH1I *dst;
 
-   if( (dst=find_histo(dst_cfg, src->handle)) == NULL ){
-      memcpy(dst_cfg->current_path, src->path, HISTO_FOLDER_LENGTH);
-      if( src->type == INT_1D ){
-         dst = H1_BOOK(dst_cfg, src->handle, src->title, src->xbins, src->xmin, src->xmax);
-      } else {
-        // Handle symmetrized and non-symmetrized matrices
-        if( src->symm == 1 ){
-          ybins = SYMMETERIZE;
-        }else{
-          ybins = src->ybins;
-        }
-         dst = (TH1I *)H2_BOOK(dst_cfg, src->handle, src->title, src->xbins, src->xmin, src->xmax, ybins, src->ymin, src->ymax);
+  if( (dst=find_histo(dst_cfg, src->handle)) == NULL ){
+    memcpy(dst_cfg->current_path, src->path, HISTO_FOLDER_LENGTH);
+    if( src->type == INT_1D ){
+      dst = H1_BOOK(dst_cfg, src->handle, src->title, src->xbins, src->xmin, src->xmax);
+    } else {
+      // Handle symmetrized and non-symmetrized matrices
+      if( src->symm == 1 ){
+        ybins = SYMMETERIZE;
+      }else{
+        ybins = src->ybins;
       }
-      if( dst == NULL ){ return(-1); }
-      if( dst->data == NULL ){
-         bins = (dst->ybins != 0) ? dst->xbins*dst->ybins : dst->xbins;
-         if( (dst->data = (int *)malloc(bins*sizeof(int))) == NULL){
-            fprintf(stderr,"sum_TH1I: data malloc failed\n");
-            return(-1);
-         }
+      dst = (TH1I *)H2_BOOK(dst_cfg, src->handle, src->title, src->xbins, src->xmin, src->xmax, ybins, src->ymin, src->ymax);
+    }
+    if( dst == NULL ){ return(-1); }
+    if( dst->data == NULL ){
+      bins = (dst->ybins != 0) ? dst->xbins*dst->ybins : dst->xbins;
+      if( (dst->data = (int *)malloc(bins*sizeof(int))) == NULL){
+        fprintf(stderr,"sum_TH1I: data malloc failed\n");
+        return(-1);
       }
-      memcpy(dst->data, src->data, dst->valid_bins*sizeof(int) );
-      return(0);
-   }
-   for(i=0; i<dst->valid_bins && i<src->valid_bins; i++){ dst->data[i] += src->data[i]; }
-   return(0);
+    }
+    memcpy(dst->data, src->data, dst->valid_bins*sizeof(int) );
+    return(0);
+  }
+  for(i=0; i<dst->valid_bins && i<src->valid_bins; i++){ dst->data[i] += src->data[i]; }
+  return(0);
 }
 
 int old_sum_th1I(Config *dst_cfg, TH1I *dst, TH1I *src)
 {
-   int i, bins, ybins;
-   if( dst == NULL ){
-      memcpy(dst_cfg->current_path, src->path, HISTO_FOLDER_LENGTH);
-      if( src->type == INT_1D ){
-         dst = H1_BOOK(dst_cfg, src->handle, src->title, src->xbins, src->xmin, src->xmax);
-      } else {
-        // Handle symmetrized and non-symmetrized matrices
-        if( src->symm == 1 ){
-          ybins = SYMMETERIZE;
-        }else{
-          ybins = src->ybins;
-        }
-         dst = (TH1I *)H2_BOOK(dst_cfg, src->handle, src->title, src->xbins, src->xmin, src->xmax, ybins, src->ymin, src->ymax);
+  int i, bins, ybins;
+  if( dst == NULL ){
+    memcpy(dst_cfg->current_path, src->path, HISTO_FOLDER_LENGTH);
+    if( src->type == INT_1D ){
+      dst = H1_BOOK(dst_cfg, src->handle, src->title, src->xbins, src->xmin, src->xmax);
+    } else {
+      // Handle symmetrized and non-symmetrized matrices
+      if( src->symm == 1 ){
+        ybins = SYMMETERIZE;
+      }else{
+        ybins = src->ybins;
       }
-      if( dst == NULL ){ return(-1); }
-      if( dst->data == NULL ){
-         bins = (dst->ybins != 0) ? dst->xbins*dst->ybins : dst->xbins;
-         if( (dst->data = (int *)malloc(bins*sizeof(int))) == NULL){
-            fprintf(stderr,"sum_TH1I: data malloc failed\n");
-            return(-1);
-         }
+      dst = (TH1I *)H2_BOOK(dst_cfg, src->handle, src->title, src->xbins, src->xmin, src->xmax, ybins, src->ymin, src->ymax);
+    }
+    if( dst == NULL ){ return(-1); }
+    if( dst->data == NULL ){
+      bins = (dst->ybins != 0) ? dst->xbins*dst->ybins : dst->xbins;
+      if( (dst->data = (int *)malloc(bins*sizeof(int))) == NULL){
+        fprintf(stderr,"sum_TH1I: data malloc failed\n");
+        return(-1);
       }
-      memcmp(dst->data, src->data, dst->valid_bins*sizeof(int) );
-      return(0);
-   }
-   for(i=0; i<dst->valid_bins && i<src->valid_bins; i++){ dst->data[i] += src->data[i]; }
-   return(0);
+    }
+    memcmp(dst->data, src->data, dst->valid_bins*sizeof(int) );
+    return(0);
+  }
+  for(i=0; i<dst->valid_bins && i<src->valid_bins; i++){ dst->data[i] += src->data[i]; }
+  return(0);
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -796,26 +886,26 @@ int old_sum_th1I(Config *dst_cfg, TH1I *dst, TH1I *src)
 // max length ~256, no odd characters or /
 int check_folder(char *folder) // return valid length (or -1) if invalid
 {
-   int i, len;
+  int i, len;
 
-   for(i=0; i<HISTO_FOLDER_LENGTH; i++){
-      if( folder[i] == '\0' ){ break; }
-   }
-   if( (len=i) >= HISTO_FOLDER_LENGTH ){
-      fprintf(stderr,"folder longer than %d\n", HISTO_FOLDER_LENGTH );
-      return(-1);
-   }
-   if( folder[len-1] == '/' ){ --len; } // remove trailing /
-   for(i=0; i<len; i++){ // check input - no '/'
-      if( folder[i] == '/' ){ break; }
-      if( folder[i]  < ' ' ){ break; } // space = 32
-      if( folder[i]  > '~' ){ break; } //     ~ = 127
-   }
-   if( i != len ){
-      fprintf(stderr,"invalid characters in folder:%s\n", folder );
-      return(-1);
-   }
-   return(len);
+  for(i=0; i<HISTO_FOLDER_LENGTH; i++){
+    if( folder[i] == '\0' ){ break; }
+  }
+  if( (len=i) >= HISTO_FOLDER_LENGTH ){
+    fprintf(stderr,"folder longer than %d\n", HISTO_FOLDER_LENGTH );
+    return(-1);
+  }
+  if( folder[len-1] == '/' ){ --len; } // remove trailing /
+  for(i=0; i<len; i++){ // check input - no '/'
+  if( folder[i] == '/' ){ break; }
+  if( folder[i]  < ' ' ){ break; } // space = 32
+  if( folder[i]  > '~' ){ break; } //     ~ = 127
+}
+if( i != len ){
+  fprintf(stderr,"invalid characters in folder:%s\n", folder );
+  return(-1);
+}
+return(len);
 }
 
 // could be a little simpler to do this as histograms/folders are created
@@ -836,66 +926,66 @@ int check_folder(char *folder) // return valid length (or -1) if invalid
 // depth first, otherwise keep order same as when created
 int create_histo_tree(Config *cfg)
 {
-   char name[HISTO_FOLDER_LENGTH];
-   char *fldstart, *p;
-   Folder *curr_folder, *f;
-   TH1I *curr_histo;
-   int i, len;
+  char name[HISTO_FOLDER_LENGTH];
+  char *fldstart, *p;
+  Folder *curr_folder, *f;
+  TH1I *curr_histo;
+  int i, len;
 
-   if( cfg->folders_valid ){ return(0); } // already up to date
-   else {
-      delete_histo_tree(cfg);             // start over
-      cfg->folders_valid = 1;
-   }
-   for(i=0; i<cfg->nhistos; i++){
-      if( ((TH1I *)cfg->histo_list[i])->suppress ){ continue; }
-      // split path into folders, find position in folder tree, and add histo
-      p = ((TH1I *)cfg->histo_list[i])->path;
-      curr_folder = &cfg->first_folder;
-      while(1){ // loop over path ..
-	 if( *p == '/' ){ ++p; } // skip over any folder separator
-	 fldstart = p;
-         while( *p != '/' && *p != 0 ){ ++p; }
-         if( (len = p - fldstart) == 0 ){ // NULL name => reached EndOfPath
-            if( (curr_histo = curr_folder->first_histo) == NULL ){
-	       curr_folder->first_histo = cfg->histo_list[i]; break;//DONE
-   	    }
-            while( curr_histo->next != NULL ){ curr_histo = curr_histo->next; }
-            curr_histo->next = cfg->histo_list[i]; break;           //DONE
-         } else {                             // descend into this folder
-	    memcpy(name, fldstart, len); name[len] = 0;
-            if( curr_folder->next_subfolder == NULL ){  // no subfolders exist
-	       if((f=curr_folder->next_subfolder=malloc(sizeof(Folder)))==NULL){
-                  fprintf(stderr,"folder_tree: structure malloc failed\n");
-	          return(-1);
-	       }
-               memcpy(f->name, name, len+1);
-               f->next_subfolder = f->next_folder = NULL;
-               f->first_histo = NULL;
-               curr_folder = f;
-	    } else {                       // subfolders do exist - find or add
-	       curr_folder = curr_folder->next_subfolder;
-               while( strncmp(name, curr_folder->name, len) !=   0 ||
-		                  strlen(curr_folder->name) != len ){
-	          if( curr_folder->next_folder != NULL ){
- 		     curr_folder = curr_folder->next_folder; continue;
-		  }
-                  // did not find - add new "next_folder"
-                  if((f=curr_folder->next_folder=malloc(sizeof(Folder)))==NULL){
-                     fprintf(stderr,"folder_tree: structure malloc failed\n");
-	             return(-1);
-	          }
-                  memcpy(f->name, name, len+1);
-                  f->next_subfolder = f->next_folder = NULL;
-                  f->first_histo = NULL;
-                  curr_folder = f;
-		  break;
-               }
-	    }
-	 } // done descent - continue along path
-      } // done current histogram path
-   } // done all histograms
-   return(0);
+  if( cfg->folders_valid ){ return(0); } // already up to date
+  else {
+    delete_histo_tree(cfg);             // start over
+    cfg->folders_valid = 1;
+  }
+  for(i=0; i<cfg->nhistos; i++){
+    if( ((TH1I *)cfg->histo_list[i])->suppress ){ continue; }
+    // split path into folders, find position in folder tree, and add histo
+    p = ((TH1I *)cfg->histo_list[i])->path;
+    curr_folder = &cfg->first_folder;
+    while(1){ // loop over path ..
+      if( *p == '/' ){ ++p; } // skip over any folder separator
+      fldstart = p;
+      while( *p != '/' && *p != 0 ){ ++p; }
+      if( (len = p - fldstart) == 0 ){ // NULL name => reached EndOfPath
+        if( (curr_histo = curr_folder->first_histo) == NULL ){
+          curr_folder->first_histo = cfg->histo_list[i]; break;//DONE
+        }
+        while( curr_histo->next != NULL ){ curr_histo = curr_histo->next; }
+        curr_histo->next = cfg->histo_list[i]; break;           //DONE
+      } else {                             // descend into this folder
+        memcpy(name, fldstart, len); name[len] = 0;
+        if( curr_folder->next_subfolder == NULL ){  // no subfolders exist
+          if((f=curr_folder->next_subfolder=malloc(sizeof(Folder)))==NULL){
+            fprintf(stderr,"folder_tree: structure malloc failed\n");
+            return(-1);
+          }
+          memcpy(f->name, name, len+1);
+          f->next_subfolder = f->next_folder = NULL;
+          f->first_histo = NULL;
+          curr_folder = f;
+        } else {                       // subfolders do exist - find or add
+          curr_folder = curr_folder->next_subfolder;
+          while( strncmp(name, curr_folder->name, len) !=   0 ||
+          strlen(curr_folder->name) != len ){
+            if( curr_folder->next_folder != NULL ){
+              curr_folder = curr_folder->next_folder; continue;
+            }
+            // did not find - add new "next_folder"
+            if((f=curr_folder->next_folder=malloc(sizeof(Folder)))==NULL){
+              fprintf(stderr,"folder_tree: structure malloc failed\n");
+              return(-1);
+            }
+            memcpy(f->name, name, len+1);
+            f->next_subfolder = f->next_folder = NULL;
+            f->first_histo = NULL;
+            curr_folder = f;
+            break;
+          }
+        }
+      } // done descent - continue along path
+    } // done current histogram path
+  } // done all histograms
+  return(0);
 }
 
 // depth first - reuse current_path for deletion
@@ -903,22 +993,22 @@ int create_histo_tree(Config *cfg)
 // (do not do any freeing on depth=0)
 int delete_histo_tree(Config *cfg)
 {
-   Folder *tmp, *folder = cfg->treepath[0] = &cfg->first_folder;
-   int depth = 0;
+  Folder *tmp, *folder = cfg->treepath[0] = &cfg->first_folder;
+  int depth = 0;
 
-   while( 1 ){
-      if( folder->next_subfolder != NULL ){
-         folder = cfg->treepath[++depth] = folder->next_subfolder;
-      }
-      // no next_subfolder from here - free current, and go to nxt folder
-      if( depth == 0 ){ break; }
-      tmp = folder->next_folder;
-      free(folder->name); free(folder);
-      if( (folder = cfg->treepath[depth] = tmp) == NULL ){ // no nxt - go up
-         folder = cfg->treepath[--depth];
-      }
-   }
-   return(0);
+  while( 1 ){
+    if( folder->next_subfolder != NULL ){
+      folder = cfg->treepath[++depth] = folder->next_subfolder;
+    }
+    // no next_subfolder from here - free current, and go to nxt folder
+    if( depth == 0 ){ break; }
+    tmp = folder->next_folder;
+    free(folder->name); free(folder);
+    if( (folder = cfg->treepath[depth] = tmp) == NULL ){ // no nxt - go up
+      folder = cfg->treepath[--depth];
+    }
+  }
+  return(0);
 }
 
 // output histogram tree item-by-item
@@ -931,73 +1021,73 @@ int delete_histo_tree(Config *cfg)
 static int curr_depth;
 char *next_histotree_item(Config *cfg, int reset, int *type, int *ascend)
 {
-   static char name[HISTO_FOLDER_LENGTH];
-   static Folder* folder;
-   static TH1I *histo;
+  static char name[HISTO_FOLDER_LENGTH];
+  static Folder* folder;
+  static TH1I *histo;
 
-   *ascend = 0;
-   if( reset ){
-      create_histo_tree(cfg);
-      folder = cfg->treepath[0] = &cfg->first_folder;
-      cfg->current_depth = 0;
-      histo = NULL;
-      name[0] = 0;
-      *type = 0; return(name);
-   }
-   // depth first, continue till next_subfolder is null
-   if( folder->next_subfolder != NULL ){
-      folder = cfg->treepath[++cfg->current_depth] = folder->next_subfolder;
+  *ascend = 0;
+  if( reset ){
+    create_histo_tree(cfg);
+    folder = cfg->treepath[0] = &cfg->first_folder;
+    cfg->current_depth = 0;
+    histo = NULL;
+    name[0] = 0;
+    *type = 0; return(name);
+  }
+  // depth first, continue till next_subfolder is null
+  if( folder->next_subfolder != NULL ){
+    folder = cfg->treepath[++cfg->current_depth] = folder->next_subfolder;
+    histo = NULL;
+    memcpy(name,  folder->name, strlen(folder->name)+1);
+    // To use restricted format where 1st element of array is final folder name
+    // Need to check next_subfolder, and if null, set type = 3 instead of 0
+    // This START AN ARRAY AND make the folder name an array element
+    //                                               not a sub-object
+    if( folder->next_subfolder == NULL ){
+      *type = 3; return(name);
+    }
+    *type = 0; return(name);
+  }
+  // histo starts NULL, list ends when curr_histo->next_histo is NULL
+  if( histo == NULL ){
+    histo = folder->first_histo;
+  } else {
+    histo = histo->next;
+  }
+  if( histo == NULL ){ // end of histos in this folder - exit folder
+    // **before going up a level, need to go to next folder on this level
+    if( folder->next_folder != NULL ){
+      folder = cfg->treepath[cfg->current_depth] = folder->next_folder;
       histo = NULL;
       memcpy(name,  folder->name, strlen(folder->name)+1);
-   // To use restricted format where 1st element of array is final folder name
-   // Need to check next_subfolder, and if null, set type = 3 instead of 0
-   // This START AN ARRAY AND make the folder name an array element
-   //                                               not a sub-object
       if( folder->next_subfolder == NULL ){
-         *type = 3; return(name);
+        *ascend = -1; *type = 1; return(name);
       }
-      *type = 0; return(name);
-   }
-   // histo starts NULL, list ends when curr_histo->next_histo is NULL
-   if( histo == NULL ){
-      histo = folder->first_histo;
-   } else {
-      histo = histo->next;
-   }
-   if( histo == NULL ){ // end of histos in this folder - exit folder
-      // **before going up a level, need to go to next folder on this level
-      if( folder->next_folder != NULL ){
-         folder = cfg->treepath[cfg->current_depth] = folder->next_folder;
-         histo = NULL;
-         memcpy(name,  folder->name, strlen(folder->name)+1);
-         if( folder->next_subfolder == NULL ){
-            *ascend = -1; *type = 1; return(name);
-         }
-         *ascend = 1; *type = 0; return(name);
-      } else {
+      *ascend = 1; *type = 0; return(name);
+    } else {
       // **when finally do go up a level, go to *next* folder on that level
       //                           (or will repeat what has just been done)
-	 *ascend = 1;
- 	 while( --cfg->current_depth > 0 ){ ++*ascend;
-	    if( (folder = cfg->treepath[cfg->current_depth]->next_folder) != NULL ){
-               cfg->treepath[cfg->current_depth] = folder;
-               histo = NULL;
-               memcpy(name,  folder->name, strlen(folder->name)+1);
-               if( folder->next_subfolder == NULL ){
-                  *type = 3; return(name);
-               }
-               *type = 0; return(name);
-	    }
-	 }
-         *type = 2; return(NULL);  // all done (curr_depth = 0)
+      *ascend = 1;
+      while( --cfg->current_depth > 0 ){ ++*ascend;
+        if( (folder = cfg->treepath[cfg->current_depth]->next_folder) != NULL ){
+          cfg->treepath[cfg->current_depth] = folder;
+          histo = NULL;
+          memcpy(name,  folder->name, strlen(folder->name)+1);
+          if( folder->next_subfolder == NULL ){
+            *type = 3; return(name);
+          }
+          *type = 0; return(name);
+        }
       }
-   }
-   if( histo->type == INT_2D  || histo->type==INT_2D_SYMM){
-      sprintf(name, "%s:2d", histo->title );
-   } else {
-      sprintf(name, "%s", histo->title );
-   }
-   *type = 1; return(name);
+      *type = 2; return(NULL);  // all done (curr_depth = 0)
+    }
+  }
+  if( histo->type == INT_2D  || histo->type==INT_2D_SYMM){
+    sprintf(name, "%s:2d", histo->title );
+  } else {
+    sprintf(name, "%s", histo->title );
+  }
+  *type = 1; return(name);
 }
 // ----------------------------------------------------------------------------
 // json format ...
@@ -1012,19 +1102,19 @@ char *next_histotree_item(Config *cfg, int reset, int *type, int *ascend)
 
 int dump_histo_tree(Folder *folder)
 {
-   while( 1 ){
-      //printf("\"%s\"\n", (folder->name == NULL) ? "NULL" : folder->name); // warning: comparison of array 'folder->name' equal to a null pointer is always false
-      printf("\"%s\"\n", folder->name);
-      if( folder->next_subfolder != NULL ){
- 	 printf(" / \n");
-         dump_histo_tree(folder->next_subfolder);
-      }
-      if( folder->next_folder != NULL ){
-	 folder = folder->next_folder;
-      } else {
-         break;
-      }
-   }
-   printf(" .. \n");
-   return(0);
+  while( 1 ){
+    //printf("\"%s\"\n", (folder->name == NULL) ? "NULL" : folder->name); // warning: comparison of array 'folder->name' equal to a null pointer is always false
+    printf("\"%s\"\n", folder->name);
+    if( folder->next_subfolder != NULL ){
+      printf(" / \n");
+      dump_histo_tree(folder->next_subfolder);
+    }
+    if( folder->next_folder != NULL ){
+      folder = folder->next_folder;
+    } else {
+      break;
+    }
+  }
+  printf(" .. \n");
+  return(0);
 }

@@ -8,8 +8,10 @@ DRAGON_OBJECTS = config_io.o config_usersort.o config_util.o web_command.o\
           web_server.o dragon-reorder.o user_sort_dragon.o \
           default_sort_dragon.o dragon-format.o odb.o
 
-CFLAGS  = -g -O3 -fPIC
-//CFLAGS  = -g -O0 -fPIC
+CFLAGS  = -O3 -fPIC
+//CC = clang
+//CFLAGS  = -O0 -fPIC -g
+//CFLAGS  = -O0 -fPIC -fsanitize=address -g
 
 griffin-replay: grif-replay
 griffin:  grif-replay

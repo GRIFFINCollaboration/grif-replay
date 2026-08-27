@@ -39,6 +39,7 @@ int init_config(int webport)
    return(0);
 }
 
+extern int *histo_data_block;
 int clear_config(Config *cfg)
 {
    time_t current_time = time(NULL);
@@ -49,8 +50,9 @@ int clear_config(Config *cfg)
    //   return(-1);
    //}
    for(i=0; i<MAX_HISTOGRAMS; i++){ histo = &cfg->histo_array[i];
-      if( histo->data != NULL ){ free(histo->data); histo->data = NULL; }
+     if( histo->data != NULL ){ /* free(histo->data); */ histo->data = NULL; }
    }
+   free(histo_data_block); // free all histogram memory block
    memset(cfg, 0, sizeof(Config));      // delete any current vars, gates etc.
    for(i=0; i<MAX_CALIB;     i++){cfg->calib[i]    = &cfg->calib_array[i]; }
    for(i=0; i<MAX_GLOBALS;   i++){cfg->globals[i]  = &cfg->global_array[i]; }

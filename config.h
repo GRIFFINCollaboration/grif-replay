@@ -131,6 +131,7 @@ struct th1i_struct {
     int entries; int num_gates; int suppress; int user; int done_flag;
     int symm; TH1I *next; Sortvar *xvar; Sortvar *yvar;
     char path[HISTO_FOLDER_LENGTH]; char title[TITLE_LENGTH];
+    int memory_offset; // offset from start of histo_data_block
     // --- Arrays & Function Pointers (Cold path) ---
     Gate *gatelist[MAX_HISTO_GATES]; char *gate_names[MAX_HISTO_GATES];
     int *gate_passed[MAX_HISTO_GATES];
@@ -153,6 +154,7 @@ struct th2i_struct {
     int entries; int num_gates; int suppress; int user; int done_flag;
     int symm; TH1I *next; Sortvar *xvar; Sortvar *yvar;
     char path[HISTO_FOLDER_LENGTH]; char title[TITLE_LENGTH];
+    int memory_offset; // offset from start of histo_data_block
     // --- Arrays & Function Pointers (Cold path) ---
     Gate *gatelist[MAX_HISTO_GATES]; char *gate_names[MAX_HISTO_GATES];
     int *gate_passed[MAX_HISTO_GATES];
@@ -162,6 +164,10 @@ struct th2i_struct {
     int (*GetBinContent)(TH2I *, int, int);
     int (*SetValidLen )(TH2I *, int);
 };
+
+// Contiguous memory block for all histogram data
+extern int *histo_data_block;
+extern int latest_offset;
 
 #define DISK_CONFIG 0
 #define MEM_CONFIG  1

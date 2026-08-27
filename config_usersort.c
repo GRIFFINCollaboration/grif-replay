@@ -14,7 +14,7 @@
 // add_gate(),      remove_gate(), apply_gate(), unapply_gate(),
 // next_condname(), add_cond(),   remove_cond(), add_cond_to_gate(),
 // add_histo(), remove_histo(), find_histo(), set_directory(),
-// set_midas_param(), 
+// set_midas_param(),
 
 
 /////////////////////////  Sort variables   //////////////////////////////
@@ -473,7 +473,7 @@ int remove_histo(Config *cfg, char *name)
    cfg->histo_list[i] = cfg->histo_list[cfg->nhistos-1];//nop if i last
    cfg->histo_list[cfg->nhistos-1] = NULL;
    --cfg->nhistos;
-   free(histo->data);
+   histo->data = NULL; // free(histo->data);
    cfg->folders_valid = 0;
    cfg->mtime = current_time;  save_config(cfg, DEFAULT_CONFIG, 1);
 
