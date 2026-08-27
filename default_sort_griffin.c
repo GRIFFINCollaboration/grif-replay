@@ -719,7 +719,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             // Check for any additional neighbouring strips in this DSSD to use in addback
             // If a neighbour strip has higher energy then change the pixel to that one, otherwise just add the energy
             if( alt->subsys == SUBSYS_QED_STRIP && (dt >= qed_fb_window_min && dt <= qed_fb_window_max) && (alt->ecal>QED_STRIP_THRESHOLD && alt->ecal<32768)){
-              if((crystal_table[ptr->chan] == crystal_table[alt->chan])){ // same DSSD
+              if(crystal_table[ptr->chan] == crystal_table[alt->chan]){ // same DSSD
 
 
                 if(polarity_table[alt->chan]==0){ // alt is P strip
@@ -2201,6 +2201,7 @@ int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
             }else{ // c2 is coincident, c1+c3 are the scattering event
               scatt_esum = alt_esum; coinc_ecal = ptr_esum;
             }
+            if(c3<0){ break; }
             // Determine angle_idx from azimuthal.
             angle = azimuthal_GeGeGe(c1,c2,c3,110);
             angle_idx = (int)(angle / 15);
@@ -2317,7 +2318,7 @@ int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
         fprintf(stdout,"COINC, %d %d scattering_angle_QEDGe(%d,%d,%d) %f\n",(int)ptr->ecal,(int)alt->ecal,pos,c2,c1,angle);
       }
       */
-      if(DEBUG_OUTPUT){ fprintf(stdout,"\nCOINC PIXEL: %d %d %ld | %.1f %.1f %.1f | %d vs %d %d %ld | %.1f %.1f %.1f | %d, dt=%d, sumE=%.1f\n",ptr->subsys,ptr->chan,ptr->ts,ptr->ecal,ptr->alt_ecal,ptr->esum,ptr->net_id,alt->subsys,alt->chan,alt->ts,alt->ecal,alt->alt_ecal,alt->esum,alt->net_id,(ptr->ts-alt->ts),(ptr->ecal+alt->ecal)); }
+      if(DEBUG_OUTPUT){ fprintf(stdout,"\nCOINC PIXEL: %d %d %ld | %.1f %.1f %.1f | %d vs %d %d %ld | %.1f %.1f %.1f | %d, dt=%ld, sumE=%.1f\n",ptr->subsys,ptr->chan,ptr->ts,ptr->ecal,ptr->alt_ecal,ptr->esum,ptr->net_id,alt->subsys,alt->chan,alt->ts,alt->ecal,alt->alt_ecal,alt->esum,alt->net_id,(ptr->ts-alt->ts),(ptr->ecal+alt->ecal)); }
       qedE_ge_dt->Fill(qedE_ge_dt, (int)(alt->ts-ptr->ts)+512, alt->ecal, 1);
       qed_geE_dt->Fill(qed_geE_dt, (int)(alt->ts-ptr->ts)+512, ptr->ecal, 1);
       qedE_ge_theta_sum_t->Fill(qedE_ge_theta_sum_t, alt->ecal, (int)(angle), 1);
@@ -2361,7 +2362,7 @@ int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
   if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 < 1024 && ptr->ecal>5 && (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_QED_PIXEL]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_QED_PIXEL])){
     if(alt->esum>QED_GAMMA_ENERGY-12 && alt->esum<QED_GAMMA_ENERGY+12){
 
-      if(DEBUG_OUTPUT){ fprintf(stdout,"\nCOINC COMPTON: %d %d %ld | %.1f %.1f %.1f | %d vs %d %d %ld | %.1f %.1f %.1f | %d, dt=%d, sumE=%.1f\n",ptr->subsys,ptr->chan,ptr->ts,ptr->ecal,ptr->alt_ecal,ptr->esum,ptr->net_id,alt->subsys,alt->chan,alt->ts,alt->ecal,alt->alt_ecal,alt->esum,alt->net_id,(ptr->ts-alt->ts),(ptr->ecal+alt->ecal)); }
+      if(DEBUG_OUTPUT){ fprintf(stdout,"\nCOINC COMPTON: %d %d %ld | %.1f %.1f %.1f | %d vs %d %d %ld | %.1f %.1f %.1f | %d, dt=%ld, sumE=%.1f\n",ptr->subsys,ptr->chan,ptr->ts,ptr->ecal,ptr->alt_ecal,ptr->esum,ptr->net_id,alt->subsys,alt->chan,alt->ts,alt->ecal,alt->alt_ecal,alt->esum,alt->net_id,(ptr->ts-alt->ts),(ptr->ecal+alt->ecal)); }
 
       qedE_ge_theta_sum_t->Fill(qedE_ge_theta_sum_t, alt->ecal, (int)(angle), 1);
       qed_geE_theta_sum_t->Fill(qed_geE_theta_sum_t, ptr->ecal, (int)(angle), 1);
