@@ -456,7 +456,8 @@ int write_histofile(Config *cfg, FILE *fp)
    file_head.type[0] = 0;                 sprintf(file_head.magic,"ustar");
    file_head.version[0] = file_head.version[1] = '0';
    sprintf(file_head.size    ,"%011o", size );
-   cksum = 0; for(i=0; i<512; i++){ cksum += file_head.name[i]; }
+   unsigned char *file_head_ptr = (unsigned char *)&file_head;
+   cksum = 0; for(i=0; i<sizeof(File_head); i++){ cksum += file_head_ptr[i]; }
    sprintf(file_head.cksum   ,"%07o", cksum );
    fseek(fp, 0, SEEK_SET);
    fwrite( &file_head, sizeof(File_head), 1, fp);
@@ -705,7 +706,8 @@ int write_th1I(FILE *fp, void *ptr)
    sprintf(file_head.owner   ,"%10d",  hist->underflow );
    sprintf(file_head.group   ,"%10d",  hist->overflow  );
 
-   cksum = 0; for(i=0; i<512; i++){ cksum += file_head.name[i]; }
+   unsigned char *file_head_ptr = (unsigned char *)&file_head;
+   cksum = 0; for(i=0; i<sizeof(File_head); i++){ cksum += file_head_ptr[i]; }
    sprintf(file_head.cksum   ,"%07o", cksum );
    fwrite( &file_head, sizeof(File_head), 1, fp);
 

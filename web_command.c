@@ -1532,8 +1532,8 @@ int add_sortfile(char *path, char *histodir, char *confdir, char *calsrc)
    plen=strlen(path);
    ext_len = ( strncmp(path+plen-4, ".mid", 4) == 0 ) ? 4 : 0;
    for(i=plen; i>=0; i--){ if( path[i] == '/' ){ ++i; break; } }
-   if( (dlen = i) == -1 ){ dlen = 0; } // no directory separator in path
-   if( (sort->data_dir = malloc(dlen + 2)) == NULL ){
+   if( (dlen = i) < 0 ){ dlen = 0; } // no directory separator in path
+   if( (sort->data_dir = malloc((size_t)dlen + 2)) == NULL ){
       fprintf(stderr,"can't alloc string for data_dir");
       free_sortfile(&filelist[arg->current_filenum]); return(-1);
    }

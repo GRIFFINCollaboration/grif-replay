@@ -1461,7 +1461,26 @@ Histogram_definition histodef_array[HISTO_DEF_SIZE] = {
   {NULL,                   "Analysis/Comp_Pol",        ""},
   {(void **) gg_comp_pol_110,"GeGe_110mm_CompPol_bin%02d", "", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  GE_ANGCOR_SPECLEN, N_GE_COMP_POL},
   {(void **) gg_comp_pol_145,"GeGe_145mm_CompPol_bin%02d", "", SUBSYS_HPGE_A,  GE_ANGCOR_SPECLEN,  GE_ANGCOR_SPECLEN, N_GE_COMP_POL},
-  {NULL,                   "QED/Compton",        ""},
+  {NULL,                   "QED/Calibrations",        ""},
+  {(void **) qedp_ge_theta,  "",     qedp_ge_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
+  {(void **) qedn_ge_theta,  "",     qedn_ge_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
+  {(void **) qed_geE_theta_clov,    "",qed_geE_theta_clov_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_CLOVER},
+  {(void **) qed_geE_theta_clov_t,  "",qed_geE_theta_clov_t_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_CLOVER},
+  {NULL,                   "QED/DSSD-Ge",        ""},
+  {(void **)&qedE_ge_theta_sum, "QED_E_vs_theta",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+  {(void **)&qed_geE_theta_sum, "QED_GeE_vs_theta",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+  //  {(void **)&qed_totE_theta_sum,"QED_totalE_vs_theta",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+  {(void **) qed_E_theta_dssd,  "",qed_E_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS},
+  {(void **) qed_geE_theta_dssd,"",qed_geE_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS},
+  //  {(void **) qed_totE_theta,    "",qed_totE_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS},
+  {(void **)&qed_E_totE_sum_t,       "QED_E_vs_totEgated",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN, E_2D_QED_SPECLEN},
+  {(void **)&qed_geE_totE_sum_t,     "QED_GeE_vs_totEgated",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN, E_2D_QED_SPECLEN},
+  {(void **)&qedE_ge_theta_sum_t,    "QED_E_vs_theta_totEgated",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+  {(void **)&qed_geE_theta_sum_t,    "QED_GeE_vs_theta_totEgated",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+  {(void **)&qed_geE_thetaI_sum_t,   "QED_GeE_vs_thetaI_totEgated",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+  {(void **)&qedE_ge_thetaI_sum_t,   "QED_E_vs_thetaI_totEgated",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+  {(void **)&qed_geE_thetaDiff_sum_t,"QED_GeE_vs_thetaDiff_totEgated",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+  {NULL,                   "QED/Compton-SiGe",        ""},
   {(void **)&ge_qed_c,             "GeQED_COMP",        "",                 SUBSYS_QED_STRIP,  E_2D_SPECLEN, E_2D_SPECLEN},
   {(void **)&qedE_ge_theta_sum_c,  "COMP_QED_E_vs_theta",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
   {(void **)&qed_geE_theta_sum_c,  "COMP_QED_GeE_vs_theta",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
@@ -1492,36 +1511,16 @@ Histogram_definition histodef_array[HISTO_DEF_SIZE] = {
   {(void **)&qed2_theta1_vs_theta2,"COMP_QED2_theta1_vs_theta2",  "",SUBSYS_QED_STRIP, 192, 192},
   {(void **)&qed2_theta1_azi,      "COMP_QED2_theta1_vs_azi",  "",SUBSYS_QED_STRIP, 192, 192},
   {(void **)&qed2_theta2_azi,      "COMP_QED2_theta2_vs_azi",  "",SUBSYS_QED_STRIP, 192, 192},
-  {NULL,                   "QED/DCS",        ""},
+  {NULL,                   "QED/Dbl-COMPTON-SiGeGe",        ""},
   {(void **)&dcs_theta,         "DCS_theta",          "", SUBSYS_QED_STRIP, 200},
-  {(void **)&dcs_cs_omega,      "DCS_CS_omega_SiGeSiGe",           "", SUBSYS_QED_STRIP, 200},
+  {(void **)&dcs_cs_omega,      "DCS_CS_omega_SiGeGe-SiGe",           "", SUBSYS_QED_STRIP, 200},
   {(void **)&dcsE_ge_theta,     "DCS_E_vs_ICStheta",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
   {(void **)&dcs_geE_theta,     "DCS_GeE_vs_ICStheta",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
-  {(void **)&dcs_theta_azi,     "DCS_ICStheta_vs_azimuth_SiGeSiGe",         "",SUBSYS_QED_STRIP, 384, 384},
-  {(void **)&dcs_cs_omega_ge,   "DCS_CS_omega_GeSiGe",           "", SUBSYS_QED_STRIP, 200},
-  {(void **)&dcs_theta_azi_ge,  "DCS_ICStheta_vs_azimuth_GeSiGe",         "",SUBSYS_QED_STRIP, 384, 384},
-  {NULL,                   "QED/DSSD-Ge",        ""},
-  {(void **)&qedE_ge_theta_sum, "QED_E_vs_theta",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
-  {(void **)&qed_geE_theta_sum, "QED_GeE_vs_theta",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
-  {(void **)&qed_totE_theta_sum,"QED_totalE_vs_theta",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
-  {(void **) qed_E_theta_dssd,  "",qed_E_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS},
-  {(void **) qed_geE_theta_dssd,"",qed_geE_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS},
-  {(void **) qed_totE_theta,    "",qed_totE_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS},
-  {NULL,                   "QED/TotE_Gated",        ""},
-  {(void **)&qed_E_totE_sum_t,       "QED_E_vs_totEgated",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN, E_2D_QED_SPECLEN},
-  {(void **)&qed_geE_totE_sum_t,     "QED_GeE_vs_totEgated",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN, E_2D_QED_SPECLEN},
-  {(void **)&qedE_ge_theta_sum_t,    "QED_E_vs_theta_totEgated",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
-  {(void **)&qed_geE_theta_sum_t,    "QED_GeE_vs_theta_totEgated",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
-  {(void **)&qed_geE_thetaI_sum_t,   "QED_GeE_vs_thetaI_totEgated",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
-  {(void **)&qedE_ge_thetaI_sum_t,   "QED_E_vs_thetaI_totEgated",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
-  {(void **)&qed_geE_thetaDiff_sum_t,"QED_GeE_vs_thetaDiff_totEgated",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
-  {NULL,                   "QED/Calibrations",        ""},
-  {(void **) qed_geE_theta_clov,    "",qed_geE_theta_clov_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_CLOVER},
-  {(void **) qed_geE_theta_clov_t,  "",qed_geE_theta_clov_t_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_CLOVER},
-  {(void **) qedp_ge_theta,  "",     qedp_ge_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
-  {(void **) qedn_ge_theta,  "",     qedn_ge_theta_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192, N_QED_POS*N_QED_STRIPS},
-  {NULL,                   "QED/PSD",        ""},
-  {(void **) qed_psd_e,      "",           qed_psd_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN, E_2D_SPECLEN, N_QED_POS},
+  {(void **)&dcs_cs_omega_ge,   "DCS_Ge_omega_SiGe-Ge",           "", SUBSYS_QED_STRIP, 200},
+  {(void **)&dcs_theta_azi_ge,  "DCS_ICStheta_vs_azimuth_SiGe-Ge",         "",SUBSYS_QED_STRIP, 384, 384},
+  {(void **)&dcs_theta_azi,     "DCS_ICStheta_vs_azimuth_SiGe-SiGe",         "",SUBSYS_QED_STRIP, 384, 384},
+  //  {NULL,                   "QED/PSD",        ""},
+  //  {(void **) qed_psd_e,      "",           qed_psd_handles[0],SUBSYS_QED_STRIP, E_2D_QED_SPECLEN, E_2D_SPECLEN, N_QED_POS},
   {NULL,                   "QED/Misc.",        ""},
   {(void **)&qed_qed_23,  "QED2_QED3",       "",     SUBSYS_QED_STRIP, E_2D_QED_SPECLEN, E_2D_QED_SPECLEN},
   {(void **)&qed_angle_test_s,  "QED_angle_test_Si_first",         "",SUBSYS_QED_STRIP, N_HPGE,   192},
@@ -2064,7 +2063,7 @@ int init_histos(Config *cfg, int subsystem)
       pos  = crystal_table[ptr->chan]-1; // QED DSSD number [1-6]
       elem = ptr->alt_chan; // QED pixel number [0-1023]
       qed_fb[pos]->Fill(qed_fb[pos], ecal, (int)ptr->alt_ecal, 1); // front-back energy
-      qed_psd_e[pos]->Fill(qed_psd_e[pos], ecal, ptr->psd, 1); // qed psd
+      //  qed_psd_e[pos]->Fill(qed_psd_e[pos], ecal, ptr->psd, 1); // qed psd
       if(ecal>QED_STRIP_THRESHOLD){
         qed_hit[pos]->Fill(qed_hit[pos], (int)(elem/N_QED_STRIPS), (elem%N_QED_STRIPS), 1); // QED DSSD hitpattern
         qed_strips[pos]->Fill(qed_strips[pos], (int)(elem/N_QED_STRIPS), ecal, 1); // p strip energies
@@ -2125,15 +2124,15 @@ if((angle>=compton_angle(ptr->alt_ecal,QED_GAMMA_ENERGY)-5) && (angle<=compton_a
 }
 break;
 
-case SUBSYS_DCOMPTON: // DCOMPTON is a coincidence between a DSSD pixel and a HPGE with sum energy of 511keV
+case SUBSYS_DCOMPTON: // DCOMPTON is a coincidence between a DSSD pixel and a HPGE addback with sum energy of 511keV
 // QED DCOMPTON EVENTS
 // Ge with addback is a Double Compton scatter (DSSD-Ge-Ge)
 // Identified as subsys==HPGE_A and pu_class==QED_COMPTON
-// pos is HPGE crystal number
-// In COMPTON event, ecal will be Ge and alt_ecal will be QED_PIXEL
-// In COMPTON event, crystal_table[chan]=pos will be Ge, alt_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
+// In DCOMPTON event, ecal will be QED_PIXEL and alt_ecal will be Ge addback sum energy
+// In DCOMPTON event, crystal_table[chan]=pos will be QED DSSD number [1-6], alt_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
+// In DCOMPTON event, net_id will be first HPGe crystal number [1-64], alt2_chan will be second HPGe crystal number [1-64]
 pos  = crystal_table[chan]; // QED DSSD number [1-6]
-c2 = (ptr->alt_chan%1024);        // Pixel number [0-1023]
+c2 = (ptr->alt_chan&1023);  // Pixel number [0-1023] (faster than alt_chan%1024)
 c1 = ptr->net_id; // HPGe crystal number
 angle = scattering_angle_QEDGe(pos,c2,c1); // This is the initial theta angle in DCompton
 
@@ -2306,8 +2305,8 @@ int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
       qed_geE_theta_sum->Fill(qed_geE_theta_sum, ptr->ecal, (int)(angle), 1);
       qed_geE_theta_clov[(int)(c1>>2)]->Fill(qed_geE_theta_clov[(int)(c1>>2)], ptr->ecal, (int)(angle), 1);
       totalEnergy = (int)(ptr->ecal+alt->ecal);
-      qed_totE_theta_sum->Fill(qed_totE_theta_sum, totalEnergy, (int)(angle), 1);
-      qed_totE_theta[pos-1]->Fill(qed_totE_theta[pos-1], totalEnergy, (int)(angle), 1);
+      //  qed_totE_theta_sum->Fill(qed_totE_theta_sum, totalEnergy, (int)(angle), 1);
+      //  qed_totE_theta[pos-1]->Fill(qed_totE_theta[pos-1], totalEnergy, (int)(angle), 1);
       qed_E_totE_sum_t->Fill(qed_E_totE_sum_t, alt->ecal, totalEnergy, 1);
       qed_geE_totE_sum_t->Fill(qed_geE_totE_sum_t, ptr->ecal, totalEnergy, 1);
       qed_theta_dt->Fill(qed_theta_dt, (int)(alt->ts-ptr->ts)+512, (int)(angle), 1);
@@ -2373,16 +2372,13 @@ int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
   }
 
   break;
-  case SUBSYS_DCOMPTON: // ge-DCOMPTON where is a coincidence between a DSSD pixel and a HPGE with sum energy of 511keV
+  case SUBSYS_DCOMPTON: // ge-DCOMPTON where is a coincidence between a DSSD pixel and a HPGE addback with sum energy of 511keV
   // QED DCOMPTON EVENTS
+  // Ge with addback is a Double Compton scatter (DSSD-Ge-Ge)
   // Identified as subsys==HPGE_A and pu_class==QED_COMPTON
-  // pos is HPGE crystal number
-  // In COMPTON event, ecal will be Ge and alt_ecal will be QED_PIXEL
-  // In COMPTON event, crystal_table[chan]=pos will be Ge, alt_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
-  //  pos  = crystal_table[ptr->chan]; // QED DSSD number [1-6]
-  //  c2 = (ptr->alt_chan%1024);        // Pixel number [0-1023]
-  //  c1 = ptr->net_id; // HPGe crystal number
-
+  // In DCOMPTON event, ecal will be QED_PIXEL and alt_ecal will be Ge addback sum energy
+  // In DCOMPTON event, crystal_table[chan]=pos will be QED DSSD number [1-6], alt_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
+  // In DCOMPTON event, net_id will be first HPGe crystal number [1-64], alt2_chan will be second HPGe crystal number [1-64]
   ge_dcs->Fill(ge_dcs, (int)ptr->ecal, (int)(alt->esum), 1);
   if(ptr->esum>ptr->ecal){
     geadd_dcs->Fill(geadd_dcs, (int)ptr->esum, (int)(alt->esum), 1);
@@ -2615,10 +2611,10 @@ int fill_coinc_histos(int win_idx, int frag_idx)
                 //  c1 = ptr->net_id; // HPGe crystal number
 
                 pos1 = crystal_table[ptr->chan];
-                qed1 = (ptr->alt_chan%1024);
+                qed1 = (ptr->alt_chan&1023);
                 ge1 = ptr->net_id;
                 pos2 = crystal_table[alt->chan];
-                qed2 = (alt->alt_chan%1024);
+                qed2 = (alt->alt_chan&1023);
                 ge2 = alt->net_id;
                 if(DEBUG_OUTPUT){ fprintf(stdout,"COMPTON-COMPTON: pos1,qed1,ge1 %d,%d,%d | pos2,qed2,ge2 %d,%d,%d | %.1f %.1f\n",pos1,qed1,ge1,pos2,qed2,ge2,ptr->esum,alt->esum); }
                 omega = angular_diff_QEDQED(pos1, qed1, pos2, qed2);
@@ -2693,13 +2689,19 @@ int fill_coinc_histos(int win_idx, int frag_idx)
                 //  pos  = crystal_table[ptr->chan]; // QED DSSD number [1-6]
                 //  c2 = (ptr->alt_chan%1024);        // Pixel number [0-1023]
                 //  c1 = ptr->net_id; // HPGe crystal number
+                // QED DCOMPTON EVENTS
+                // Ge with addback is a Double Compton scatter (DSSD-Ge-Ge)
+                // Identified as subsys==HPGE_A and pu_class==QED_COMPTON
+                // In DCOMPTON event, ecal will be QED_PIXEL and alt_ecal will be Ge addback sum energy
+                // In DCOMPTON event, crystal_table[chan]=pos will be QED DSSD number [1-6], alt_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
+                // In DCOMPTON event, net_id will be first HPGe crystal number [1-64], alt2_chan will be second HPGe crystal number [1-64]
 
                 pos1 = crystal_table[alt->chan];
-                qed1 = (alt->alt_chan%1024);
+                qed1 = (alt->alt_chan&1023);
                 ge1 = alt->net_id;
 
                 pos2 = crystal_table[ptr->chan];
-                qed2 = (ptr->alt_chan%1024);
+                qed2 = (ptr->alt_chan&1023);
                 ge2 = ptr->net_id;
                 ge3 = ptr->alt2_chan;
 
