@@ -269,10 +269,14 @@ TH2I  *qedE_ge_theta_sum, *qed_geE_theta_sum, *qed_E_totE_sum_t, *qed_geE_totE_s
 TH2I  *qedE_ge_theta_sum_c, *qed_geE_theta_sum_c, *qedE_ge_theta_sum_c_g, *qed_geE_theta_sum_c_g, *qedE_ge_theta_sum_c_s, *qed_geE_theta_sum_c_s, *ge_qed_c;
 //TH2I  *qed_totE_theta[N_QED_POS], *qed_totE_theta_sum;
 TH2I  *qed_geE_theta_clov[N_CLOVER], *qed_geE_theta_clov_t[N_CLOVER], *qed_E_theta_dssd[N_QED_POS], *qed_geE_theta_dssd[N_QED_POS];
-TH2I  *qed_angle_test_g, *qed_angle_test_s, *qedE_ge_dt, *qed_geE_dt, *qedE_ge_dt_c, *qed_geE_dt_c, *qed_theta_dt, *qed_dcs_omega_dt, *qedx_dcs_omega_dt[N_QED_POS], *qed_theta1_vs_theta2, *qed_theta1_azi, *qed_theta2_azi, *qed2_theta1_vs_theta2, *qed2_theta1_azi, *qed2_theta2_azi;
-TH1I  *qed_dcs_omega, *qed_dcs_omega_t, *qed_dcs_azi, *qed_dcs_azi_t, *qed_dcs_azi_tg, *qed_dcs_azi_b, *qed_dcs_azi_tb, *qed_dcs_azi_tgb, *qed_delta_theta1_theta2, *qed_sum_theta1_theta2, *qed_dcs_azi2, *qed_dcs_azi_tg2;
+TH2I  *qed_angle_test_g, *qed_angle_test_s, *qedE_ge_dt, *qed_geE_dt, *qedE_ge_dt_c, *qed_geE_dt_c, *qed_theta_dt, *qed_dcs_omega_dt, *qed_dcs_omega_dtx, *qedx_dcs_omega_dt[N_QED_POS], *qed_theta1_vs_theta2, *qed_theta1_azi, *qed_theta2_azi, *qed2_theta1_vs_theta2, *qed2_theta1_azi, *qed2_theta2_azi;
+TH1I  *qed_dcs_omega, *qed_dcs_omega_t, *qed_dcs_azi, *qed_dcs_azi_t, *qed_dcs_azi_tg, *qed_dcs_azi_TRWF, *qed_dcs_azi_TRWF_t, *qed_dcs_azi_TRWF_tg, *qed_delta_theta1_theta2, *qed_sum_theta1_theta2;
 TH1I  *qed_wf_dcs_azi, *qed_wf_omega;
-TH1I  *qed_theta, *dcs_theta, *dcs_cs_omega;
+TH2I  *qed_angle_theta_g, *qed_angle_theta_s, *qed_angle_phi_s, *qed_angle_phi_a, *qed_angle_phi_b;
+TH1I  *qed_theta, *dcs_theta, *dcs_cs_omega, *qed_phi_s, *qed_phi_a, *qed_phi_b;
+TH1I  *qed_dcs_azi_bins1, *qed_dcs_azi_bins2, *qed_dcs_azi_bins3, *qed_dcs_azi_bins4, *qed_dcs_azi_bins5, *qed_dcs_azi_bins6, *qed_dcs_azi_bins7, *qed_dcs_azi_bins8, *qed_dcs_azi_bins8a, *qed_dcs_azi_bins9, *qed_dcs_azi_bins10;
+TH1I  *qed_dcs_azi_TRWF_bins1, *qed_dcs_azi_TRWF_bins2, *qed_dcs_azi_TRWF_bins3, *qed_dcs_azi_TRWF_bins4, *qed_dcs_azi_TRWF_bins5, *qed_dcs_azi_TRWF_bins6, *qed_dcs_azi_TRWF_bins7, *qed_dcs_azi_TRWF_bins8, *qed_dcs_azi_TRWF_bins8a, *qed_dcs_azi_TRWF_bins9, *qed_dcs_azi_TRWF_bins10;
+TH1I  *qed_phi_bins1, *qed_phi_bins2, *qed_phi_bins3, *qed_phi_bins4, *qed_phi_bins5, *qed_phi_bins6, *qed_phi_bins7, *qed_phi_bins8, *qed_phi_bins9, *qed_phi_bins10;
 TH2I  *dcsE_ge_theta, *dcs_geE_theta, *dcs_theta_azi;
 TH1I  *dcs_cs_omega_ge;
 TH2I  *dcs_theta_azi_ge;

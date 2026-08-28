@@ -451,7 +451,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         int clover, ge1, c1,c2,bin, p_strip, n_strip;
         float energy,ecal,correction,angle;
 
-      //  if(ptr->ts>10663580856){ DEBUG_OUTPUT=0; } // Only save some debugging info otherwise a >5GB file!
+        //  if(ptr->ts>10663580856){ DEBUG_OUTPUT=0; } // Only save some debugging info otherwise a >5GB file!
         if(DEBUG_OUTPUT){ fprintf(stdout,"Start of pre_sort_exit"); }
         // Assign chan local variable and check it is a valid channel number
         chan = ptr->chan;
@@ -1487,17 +1487,38 @@ Histogram_definition histodef_array[HISTO_DEF_SIZE] = {
   {(void **)&qedE_ge_theta_sum_c_g,"COMP_QED_E_vs_theta_Ge_first",         "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
   {(void **)&qed_geE_theta_sum_c_g,"COMP_QED_GeE_vs_theta_Ge_first",       "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
   {(void **)&qed_dcs_omega_dt,     "QED_DCS_omega_vs_dt",     "", SUBSYS_QED_STRIP, 1024,   192},
+  {(void **)&qed_dcs_omega_dtx,    "QED_DCS_omega_vs_dt_diff",    "", SUBSYS_QED_STRIP, 1024,   192},
   {(void **) qedx_dcs_omega_dt,    "",qedx_dcs_omega_dt_handles[0], SUBSYS_QED_STRIP, 1024,   192, N_QED_POS},
   {(void **)&qed_dcs_omega,        "QED_DCS_omega",           "", SUBSYS_QED_STRIP, 200},
   {(void **)&qed_dcs_omega_t,      "QED_DCS_omega_t",           "", SUBSYS_QED_STRIP, 200},
   {(void **)&qed_dcs_azi_t,        "QED_DCS_azimuth_0_180",         "", SUBSYS_QED_STRIP, 384},
-  {(void **)&qed_dcs_azi_tb,       "QED_DCS_azimuth_0_180_binned",         "", SUBSYS_QED_STRIP, 384},
   {(void **)&qed_dcs_azi,          "QED_DCS_azimuth_70_110",         "", SUBSYS_QED_STRIP, 384},
-  {(void **)&qed_dcs_azi_b,        "QED_DCS_azimuth_70_110_binned",         "", SUBSYS_QED_STRIP, 384},
   {(void **)&qed_dcs_azi_tg,       "QED_DCS_azimuth_93_103",         "", SUBSYS_QED_STRIP, 384},
-  {(void **)&qed_dcs_azi_tgb,      "QED_DCS_azimuth_93_103_binned",         "", SUBSYS_QED_STRIP, 384},
-  {(void **)&qed_dcs_azi2,         "QED_DCS_azimuth2_70_110",         "", SUBSYS_QED_STRIP, 384},
-  {(void **)&qed_dcs_azi_tg2,      "QED_DCS_azimuth2_93_103",         "", SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_dcs_azi_bins1,     "QED_DCS_azimuth2_0_180",         "", SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_dcs_azi_bins2,     "QED_DCS_azimuth2_10_170",         "", SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_dcs_azi_bins3,     "QED_DCS_azimuth2_20_160",         "", SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_dcs_azi_bins4,     "QED_DCS_azimuth2_30_150",         "", SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_dcs_azi_bins5,     "QED_DCS_azimuth2_40_140",         "", SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_dcs_azi_bins6,     "QED_DCS_azimuth2_50_130",         "", SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_dcs_azi_bins7,     "QED_DCS_azimuth2_60_120",         "", SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_dcs_azi_bins8,     "QED_DCS_azimuth2_70_110",         "", SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_dcs_azi_bins9,     "QED_DCS_azimuth2_80_100",         "", SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_dcs_azi_bins10,    "QED_DCS_azimuth2_85_95",         "", SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_dcs_azi_bins8a,    "QED_DCS_azimuth2_93_103",          "", SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_dcs_azi_TRWF_t,        "QED_DCS_azimuth_TRWF_0_180",         "", SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_dcs_azi_TRWF,          "QED_DCS_azimuth_TRWF_70_110",         "", SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_dcs_azi_TRWF_tg,       "QED_DCS_azimuth_TRWF_93_103",         "", SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_dcs_azi_TRWF_bins1,     "QED_DCS_azimuth2_TRWF_0_180",         "", SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_dcs_azi_TRWF_bins2,     "QED_DCS_azimuth2_TRWF_10_170",         "", SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_dcs_azi_TRWF_bins3,     "QED_DCS_azimuth2_TRWF_20_160",         "", SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_dcs_azi_TRWF_bins4,     "QED_DCS_azimuth2_TRWF_30_150",         "", SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_dcs_azi_TRWF_bins5,     "QED_DCS_azimuth2_TRWF_40_140",         "", SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_dcs_azi_TRWF_bins6,     "QED_DCS_azimuth2_TRWF_50_130",         "", SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_dcs_azi_TRWF_bins7,     "QED_DCS_azimuth2_TRWF_60_120",         "", SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_dcs_azi_TRWF_bins8,     "QED_DCS_azimuth2_TRWF_70_110",         "", SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_dcs_azi_TRWF_bins9,     "QED_DCS_azimuth2_TRWF_80_100",         "", SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_dcs_azi_TRWF_bins10,    "QED_DCS_azimuth2_TRWF_85_95",         "", SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_dcs_azi_TRWF_bins8a,    "QED_DCS_azimuth2_TRWF_93_103",        "", SUBSYS_QED_STRIP, 384},
   {(void **)&qed_theta,            "COMP_QED_theta",           "",SUBSYS_QED_STRIP, 192},
   {(void **)&qed_wf_omega,         "COMP_QED_weight_omega",        "",SUBSYS_QED_STRIP, 192},
   {(void **)&qed_wf_dcs_azi,       "COMP_QED_weight_dcs_azi",     "",SUBSYS_QED_STRIP, 192},
@@ -1523,6 +1544,22 @@ Histogram_definition histodef_array[HISTO_DEF_SIZE] = {
   {(void **)&qed_qed_23,  "QED2_QED3",       "",     SUBSYS_QED_STRIP, E_2D_QED_SPECLEN, E_2D_QED_SPECLEN},
   {(void **)&qed_angle_test_s,  "QED_angle_test_Si_first",         "",SUBSYS_QED_STRIP, N_HPGE,   192},
   {(void **)&qed_angle_test_g,  "QED_angle_test_Ge_first",         "",SUBSYS_QED_STRIP, N_HPGE,   192},
+  {(void **)&qed_angle_phi_s,  "QED_angle_phi_Si_first",         "",SUBSYS_QED_STRIP, N_HPGE,   384},
+  {(void **)&qed_angle_phi_a,  "QED_angle_phi_70_110",         "",SUBSYS_QED_STRIP, N_HPGE,   384},
+  {(void **)&qed_angle_phi_b,  "QED_angle_phi_93_103",         "",SUBSYS_QED_STRIP, N_HPGE,   384},
+  {(void **)&qed_phi_s,  "QED_phi_Si_first",         "",SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_phi_a,  "QED_phi_70_110",         "",SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_phi_b,  "QED_phi_93_103",         "",SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_phi_bins1,  "QED_phi_weight_0_180",         "",SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_phi_bins2,  "QED_phi_weight_10_170",         "",SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_phi_bins3,  "QED_phi_weight_20_160",         "",SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_phi_bins4,  "QED_phi_weight_30_150",         "",SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_phi_bins5,  "QED_phi_weight_40_140",         "",SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_phi_bins6,  "QED_phi_weight_50_130",         "",SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_phi_bins7,  "QED_phi_weight_60_120",         "",SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_phi_bins8,  "QED_phi_weight_70_110",         "",SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_phi_bins9,  "QED_phi_weight_80_100",         "",SUBSYS_QED_STRIP, 384},
+  {(void **)&qed_phi_bins10,  "QED_phi_weight_85_95",         "",SUBSYS_QED_STRIP, 384},
   {(void **)&qedE_ge_dt,  "QED_Ge_E_vs_dt",       "",SUBSYS_QED_STRIP, 1024, E_2D_QED_SPECLEN},
   {(void **)&qed_geE_dt,  "QED_GeE_vs_dt",        "",SUBSYS_QED_STRIP, 1024, E_2D_QED_SPECLEN},
   {(void **)&qed_theta_dt,  "QED_theta_vs_dt",        "",SUBSYS_QED_STRIP, 1024, 192},
@@ -2481,7 +2518,7 @@ int fill_coinc_histos(int win_idx, int frag_idx)
   TH2I *hist_ee; TH1I *hist_dt;
 
   // histogram of coincwin-size
-  dt = (frag_idx - win_idx + 2*PTR_BUFSIZE) %  PTR_BUFSIZE; ++frag_hist[dt];
+  dt = (frag_idx - win_idx + 2*PTR_BUFSIZE) % PTR_BUFSIZE; ++frag_hist[dt];
 
   while( win_idx != frag_idx ){ // check all conicidences in window
     if( ++win_idx == PTR_BUFSIZE ){ win_idx = 0; } // wrap
@@ -2607,7 +2644,6 @@ int fill_coinc_histos(int win_idx, int frag_idx)
                 //  pos  = crystal_table[ptr->chan]; // QED DSSD number [1-6]
                 //  c2 = (ptr->alt_chan%1024);        // Pixel number [0-1023]
                 //  c1 = ptr->net_id; // HPGe crystal number
-
                 pos1 = crystal_table[ptr->chan];
                 qed1 = (ptr->alt_chan&1023);
                 ge1 = ptr->net_id;
@@ -2617,62 +2653,162 @@ int fill_coinc_histos(int win_idx, int frag_idx)
                 if(DEBUG_OUTPUT){ fprintf(stdout,"COMPTON-COMPTON: pos1,qed1,ge1 %d,%d,%d | pos2,qed2,ge2 %d,%d,%d | %.1f %.1f\n",pos1,qed1,ge1,pos2,qed2,ge2,ptr->esum,alt->esum); }
                 omega = angular_diff_QEDQED(pos1, qed1, pos2, qed2);
                 qed_dcs_omega->Fill(qed_dcs_omega, (int)omega, 1);
-                qed_dcs_omega_dt->Fill(qed_dcs_omega_dt, (int)(ptr->ts - alt->ts)+512, (int)omega, 1);
-                qedx_dcs_omega_dt[pos1-1]->Fill(qedx_dcs_omega_dt[pos1-1], (int)(ptr->ts - alt->ts)+512, (int)omega, 1);
+                qed_dcs_omega_dt->Fill(qed_dcs_omega_dt, dt+512, (int)omega, 1);
+                qedx_dcs_omega_dt[pos1-1]->Fill(qedx_dcs_omega_dt[pos1-1], dt+512, (int)omega, 1);
                 if(pos1 != pos2 && ge1 != ge2){
+                  qed_dcs_omega_dtx->Fill(qed_dcs_omega_dtx, dt+512, (int)omega, 1);
                   qed_dcs_omega_t->Fill(qed_dcs_omega_t, (int)omega, 1);
                   theta1 = scattering_angle_QEDGe(pos1, qed1, ge1);
                   theta2 = scattering_angle_QEDGe(pos2, qed2, ge2);
                   azimuthal = azimuthal_DCS(pos1, qed1, ge1, pos2, qed2, ge2);
                   delta_theta = (theta1>theta2) ? theta1-theta2 : theta2-theta1;
-                  qed_dcs_azi_t->Fill(qed_dcs_azi_t, (int)azimuthal, 1);
-                  qed_dcs_azi_tb->Fill(qed_dcs_azi_tb, (int)(azimuthal/20), 1);
                   //    if(){  }
                   //  fprintf(stdout,"omega = %f, theta1 = %f, theta2 = %f, azimuth = %f, for [%d %d %d] - [%d %d %d]\n",omega,theta1,theta2,azimuthal,pos1, qed1, ge1, pos2, qed2, ge2);
 
-                  if(omega>170){
+
+                  if(omega>170){ // Require back-to-back coincidence
+                    // Calculate the other angles
                     azimuthal2 = energy_corrected_azimuthal_DCS(pos1, qed1, ge1, ptr->alt_ecal,pos2, qed2, ge2, alt->alt_ecal);
                     energy_derived_theta1 = compton_angle(ptr->alt_ecal, 511.0);
                     energy_derived_theta2 = compton_angle(alt->alt_ecal, 511.0);
-                    if(theta1<theta2){
-                      qed_theta1_vs_theta2->Fill(qed_theta1_vs_theta2, (int)theta1, (int)theta2, 1);
-                    }else{
-                      qed_theta1_vs_theta2->Fill(qed_theta1_vs_theta2, (int)theta2, (int)theta1, 1);
-                    }
 
-                    qed_delta_theta1_theta2->Fill(qed_delta_theta1_theta2, (int)delta_theta, 1);
-                    qed_sum_theta1_theta2->Fill(qed_sum_theta1_theta2, (int)(theta1+theta2), 1);
-                    qed_theta1_azi->Fill(qed_theta1_azi, (int)theta1, (int)azimuthal, 1);
-                    qed_theta2_azi->Fill(qed_theta2_azi, (int)theta2, (int)azimuthal, 1);
+                    if(dt>-11 && dt<1){ // Prompt time coincidence
 
-                    if(energy_derived_theta1<energy_derived_theta2){
-                      qed2_theta1_vs_theta2->Fill(qed2_theta1_vs_theta2, (int)energy_derived_theta1, (int)energy_derived_theta2, 1);
-                    }else{
-                      qed2_theta1_vs_theta2->Fill(qed2_theta1_vs_theta2, (int)energy_derived_theta2, (int)energy_derived_theta1, 1);
-                    }
-                    qed2_theta1_azi->Fill(qed2_theta1_azi, (int)energy_derived_theta1, (int)azimuthal2, 1);
-                    qed2_theta2_azi->Fill(qed2_theta2_azi, (int)energy_derived_theta2, (int)azimuthal2, 1);
-
-                    // Scattering angle 70 to 110
-                    if(theta1>69 && theta1<111 && theta2>69 && theta2<111){
-                      comp_comp->Fill(comp_comp, (int)ptr->esum, (int)(alt->esum), 1);
-                      qed_dcs_azi->Fill(qed_dcs_azi, (int)azimuthal, 1);
-                      qed_dcs_azi_b->Fill(qed_dcs_azi_b, (int)(azimuthal/20), 1);
-                      // Scattering angle 93 to 103
-                      if(theta1>92 && theta1<104 && theta2>92 && theta2<104){
-                        qed_dcs_azi_tg->Fill(qed_dcs_azi_tg, (int)azimuthal, 1);
-                        qed_dcs_azi_tgb->Fill(qed_dcs_azi_tgb, (int)(azimuthal/20), 1);
+                      if(theta1<theta2){
+                        qed_theta1_vs_theta2->Fill(qed_theta1_vs_theta2, (int)theta1, (int)theta2, 1);
+                      }else{
+                        qed_theta1_vs_theta2->Fill(qed_theta1_vs_theta2, (int)theta2, (int)theta1, 1);
                       }
-                    }
 
-                    if(energy_derived_theta1>69 && energy_derived_theta1<111 && energy_derived_theta2>69 && energy_derived_theta2<111){
-                      qed_dcs_azi2->Fill(qed_dcs_azi2, (int)azimuthal2, 1);
-                      if(energy_derived_theta1>92 && energy_derived_theta1<104 && energy_derived_theta2>92 && energy_derived_theta2<104){
-                        qed_dcs_azi_tg2->Fill(qed_dcs_azi_tg2, (int)azimuthal2, 1);
+                      qed_delta_theta1_theta2->Fill(qed_delta_theta1_theta2, (int)delta_theta, 1);
+                      qed_sum_theta1_theta2->Fill(qed_sum_theta1_theta2, (int)(theta1+theta2), 1);
+                      qed_theta1_azi->Fill(qed_theta1_azi, (int)theta1, (int)azimuthal, 1);
+                      qed_theta2_azi->Fill(qed_theta2_azi, (int)theta2, (int)azimuthal, 1);
+
+                      if(energy_derived_theta1<energy_derived_theta2){
+                        qed2_theta1_vs_theta2->Fill(qed2_theta1_vs_theta2, (int)energy_derived_theta1, (int)energy_derived_theta2, 1);
+                      }else{
+                        qed2_theta1_vs_theta2->Fill(qed2_theta1_vs_theta2, (int)energy_derived_theta2, (int)energy_derived_theta1, 1);
                       }
+                      qed2_theta1_azi->Fill(qed2_theta1_azi, (int)energy_derived_theta1, (int)azimuthal2, 1);
+                      qed2_theta2_azi->Fill(qed2_theta2_azi, (int)energy_derived_theta2, (int)azimuthal2, 1);
+
+                      qed_dcs_azi_t->Fill(qed_dcs_azi_t, (int)azimuthal, 1);
+                      // Scattering angle 70 to 110
+                      if(theta1>69 && theta1<111 && theta2>69 && theta2<111){
+                        comp_comp->Fill(comp_comp, (int)ptr->esum, (int)(alt->esum), 1);
+                        qed_dcs_azi->Fill(qed_dcs_azi, (int)azimuthal, 1);
+                        // Scattering angle 93 to 103
+                        if(theta1>92 && theta1<104 && theta2>92 && theta2<104){
+                          qed_dcs_azi_tg->Fill(qed_dcs_azi_tg, (int)azimuthal, 1);
+                        }
+                      }
+
+                      // I know this code is ugly. Sorry.
+                      if(energy_derived_theta1>=0 && energy_derived_theta1<=180 && energy_derived_theta2>=0 && energy_derived_theta2<=180){
+                        qed_dcs_azi_bins1->Fill(qed_dcs_azi_bins1, (int)(azimuthal2), 1);
+
+                        if(energy_derived_theta1>=10 && energy_derived_theta1<=170 && energy_derived_theta2>=10 && energy_derived_theta2<=170){
+                          qed_dcs_azi_bins2->Fill(qed_dcs_azi_bins2, (int)(azimuthal2), 1);
+
+                          if(energy_derived_theta1>=20 && energy_derived_theta1<=160 && energy_derived_theta2>=20 && energy_derived_theta2<=160){
+                            qed_dcs_azi_bins3->Fill(qed_dcs_azi_bins3, (int)(azimuthal2), 1);
+
+                            if(energy_derived_theta1>=30 && energy_derived_theta1<=150 && energy_derived_theta2>=30 && energy_derived_theta2<=150){
+                              qed_dcs_azi_bins4->Fill(qed_dcs_azi_bins4, (int)(azimuthal2), 1);
+
+                              if(energy_derived_theta1>=40 && energy_derived_theta1<=140 && energy_derived_theta2>=40 && energy_derived_theta2<=140){
+                                qed_dcs_azi_bins5->Fill(qed_dcs_azi_bins5, (int)(azimuthal2), 1);
+
+                                if(energy_derived_theta1>=50 && energy_derived_theta1<=130 && energy_derived_theta2>=50 && energy_derived_theta2<=130){
+                                  qed_dcs_azi_bins6->Fill(qed_dcs_azi_bins6, (int)(azimuthal2), 1);
+
+                                  if(energy_derived_theta1>=60 && energy_derived_theta1<=120 && energy_derived_theta2>=60 && energy_derived_theta2<=120){
+                                    qed_dcs_azi_bins7->Fill(qed_dcs_azi_bins7, (int)(azimuthal2), 1);
+
+                                    if(energy_derived_theta1>=70 && energy_derived_theta1<=110 && energy_derived_theta2>=70 && energy_derived_theta2<=110){
+                                      qed_dcs_azi_bins8->Fill(qed_dcs_azi_bins8, (int)(azimuthal2), 1);
+
+                                      if(energy_derived_theta1>=93 && energy_derived_theta1<=103 && energy_derived_theta2>=93 && energy_derived_theta2<=103){
+                                        qed_dcs_azi_bins8a->Fill(qed_dcs_azi_bins8a, (int)(azimuthal2), 1);
+                                      }
+
+                                      if(energy_derived_theta1>=80 && energy_derived_theta1<=100 && energy_derived_theta2>=80 && energy_derived_theta2<=100){
+                                        qed_dcs_azi_bins9->Fill(qed_dcs_azi_bins9, (int)(azimuthal2), 1);
+
+                                        if(energy_derived_theta1>=85 && energy_derived_theta1<=95 && energy_derived_theta2>=85 && energy_derived_theta2<=95){
+                                          qed_dcs_azi_bins10->Fill(qed_dcs_azi_bins10, (int)(azimuthal2), 1);
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+
+                    }else{ // Time-random for weighting factors
+                      // Build weighting factors here
+
+                      qed_dcs_azi_TRWF_t->Fill(qed_dcs_azi_TRWF_t, (int)azimuthal, 1);
+                      // Scattering angle 70 to 110
+                      if(theta1>69 && theta1<111 && theta2>69 && theta2<111){
+                        qed_dcs_azi_TRWF->Fill(qed_dcs_azi_TRWF, (int)azimuthal, 1);
+                        // Scattering angle 93 to 103
+                        if(theta1>92 && theta1<104 && theta2>92 && theta2<104){
+                          qed_dcs_azi_TRWF_tg->Fill(qed_dcs_azi_TRWF_tg, (int)azimuthal, 1);
+                        }
+                      }
+                      // I know this code is ugly. Sorry.
+                      if(energy_derived_theta1>=0 && energy_derived_theta1<=180 && energy_derived_theta2>=0 && energy_derived_theta2<=180){
+                        qed_dcs_azi_TRWF_bins1->Fill(qed_dcs_azi_TRWF_bins1, (int)(azimuthal2), 1);
+
+                        if(energy_derived_theta1>=10 && energy_derived_theta1<=170 && energy_derived_theta2>=10 && energy_derived_theta2<=170){
+                          qed_dcs_azi_TRWF_bins2->Fill(qed_dcs_azi_TRWF_bins2, (int)(azimuthal2), 1);
+
+                          if(energy_derived_theta1>=20 && energy_derived_theta1<=160 && energy_derived_theta2>=20 && energy_derived_theta2<=160){
+                            qed_dcs_azi_TRWF_bins3->Fill(qed_dcs_azi_TRWF_bins3, (int)(azimuthal2), 1);
+
+                            if(energy_derived_theta1>=30 && energy_derived_theta1<=150 && energy_derived_theta2>=30 && energy_derived_theta2<=150){
+                              qed_dcs_azi_TRWF_bins4->Fill(qed_dcs_azi_TRWF_bins4, (int)(azimuthal2), 1);
+
+                              if(energy_derived_theta1>=40 && energy_derived_theta1<=140 && energy_derived_theta2>=40 && energy_derived_theta2<=140){
+                                qed_dcs_azi_TRWF_bins5->Fill(qed_dcs_azi_TRWF_bins5, (int)(azimuthal2), 1);
+
+                                if(energy_derived_theta1>=50 && energy_derived_theta1<=130 && energy_derived_theta2>=50 && energy_derived_theta2<=130){
+                                  qed_dcs_azi_TRWF_bins6->Fill(qed_dcs_azi_TRWF_bins6, (int)(azimuthal2), 1);
+
+                                  if(energy_derived_theta1>=60 && energy_derived_theta1<=120 && energy_derived_theta2>=60 && energy_derived_theta2<=120){
+                                    qed_dcs_azi_TRWF_bins7->Fill(qed_dcs_azi_TRWF_bins7, (int)(azimuthal2), 1);
+
+                                    if(energy_derived_theta1>=70 && energy_derived_theta1<=110 && energy_derived_theta2>=70 && energy_derived_theta2<=110){
+                                      qed_dcs_azi_TRWF_bins8->Fill(qed_dcs_azi_TRWF_bins8, (int)(azimuthal2), 1);
+
+                                      if(energy_derived_theta1>=93 && energy_derived_theta1<=103 && energy_derived_theta2>=93 && energy_derived_theta2<=103){
+                                        qed_dcs_azi_TRWF_bins8a->Fill(qed_dcs_azi_TRWF_bins8a, (int)(azimuthal2), 1);
+                                      }
+
+                                      if(energy_derived_theta1>=80 && energy_derived_theta1<=100 && energy_derived_theta2>=80 && energy_derived_theta2<=100){
+                                        qed_dcs_azi_TRWF_bins9->Fill(qed_dcs_azi_TRWF_bins9, (int)(azimuthal2), 1);
+
+                                        if(energy_derived_theta1>=85 && energy_derived_theta1<=95 && energy_derived_theta2>=85 && energy_derived_theta2<=95){
+                                          qed_dcs_azi_TRWF_bins10->Fill(qed_dcs_azi_TRWF_bins10, (int)(azimuthal2), 1);
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+
                     }
 
-                  }
+                  }// end of omega>170
 
                 }
               }
