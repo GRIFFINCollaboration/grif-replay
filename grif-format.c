@@ -7,7 +7,9 @@
 #include "grif-format.h"
 #include "midas-format.h"
 
-float spread(int val){ return( val + rand()/(1.0*RAND_MAX) ); }
+//float spread(int val){ return( val + rand()/(1.0*RAND_MAX) ); }
+float spread(int val){ return val + (rand() * (1.0f / RAND_MAX)); }
+//inline __attribute__((always_inline)) float spread(int val){ return val + (rand() * (1.0f / RAND_MAX)); }
 
 void dbg_dump_event(unsigned *buf, int len){
   int i; for(i=0; i<len; i++){ printf("0x%08x ", *buf++); } printf("\n");

@@ -19,8 +19,8 @@ char subsys_handle[MAX_SUBSYS][8] = {
   "ARTA", "ZDSA", "LBT",  "LBS",
   "BGO",  "SEP",  "DSC",  "DSW",
   "DSG",  "QEDs", "XXX2", "DCS",
-  "GRGB", "ARTB", "ZDSB", "", // secondary names start after #16
-  "",     "CS",     "QED",  "UNK"
+  "GRGB", "ARTB", "ZDSB", "TACZ", // secondary names start after #16
+  "TACA",     "CS",     "QED",  "UNK"
 };
 char subsys_name[MAX_SUBSYS][STRING_LEN] = {
   "Griffin",   "PACES",    "LaBrX",   "RCMP",     //  0- 3
@@ -56,6 +56,7 @@ extern Grif_event grif_event[PTR_BUFSIZE];
 
 int presort_window_width= 1940;  // 19.4us needed for all crosstalk corrections. 5us needed for pileup corrections.
 int sort_window_width   = 200; //  2us - MAXIMUM (indiv. gates can be smaller)
+int ct_index[4][4] = {{-1,0,1,2},{0,-1,1,2},{0,1,-1,2},{0,1,2,-1}}; // crosstalk index used in presort functions
 
 // Default sort function declarations
 extern float spread(int val);
@@ -258,10 +259,9 @@ int init_default_histos(Config *cfg, Sort_status *arg)
       int i, ppg_index;
       int dt, bin, chan2, chan = ptr->chan;
       int clover, ge1, c1,c2, add;
-      int ct_index[4][4] = {{-1,0,1,2},{0,-1,1,2},{0,1,-1,2},{0,1,2,-1}};
 
       // Protect against invalid channel numbers
-      if( chan < 0 || chan >= odb_daqsize ){
+      if( (unsigned int)chan >= (unsigned int)odb_daqsize ){
         if( ptr->address == 0xFFFF ){
           /*
           ppg_index=-1;
@@ -283,7 +283,6 @@ int init_default_histos(Config *cfg, Sort_status *arg)
       // Assign the subsys type
       if( (ptr->subsys = subsys_table[chan]) == -1 ){ return(-1); }
       if( subsys_initialized[ptr->subsys] == 0 ){
-        //init_histos(configs[1], ptr->subsys);
         init_histos(NULL, ptr->subsys);
       }
 
@@ -375,7 +374,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         i = start_idx;
         while( i != frag_idx ){ // need at least two events in window
           if( ++i >=  PTR_BUFSIZE ){ i=0; } alt = &grif_event[i]; // WRAP
-          if( (chan2 = alt->chan)<0 || alt->chan >= odb_daqsize ){
+          chan2 = alt->chan;
+          if( (unsigned int)chan2 >= (unsigned int)odb_daqsize ){
             fprintf(stderr,"presort error: ignored event in chan:%d\n",alt->chan );
             continue;
           }
@@ -391,7 +391,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
               if(bin<0 || bin>15){ fprintf(stderr,"pre_sort_enter bin [%d] out of bounds for dt %d\n",bin,dt); continue; }
               ge1 = crystal_table[chan];
               c1 = ge1%4;
-              c2 = ct_index[c1][(int)(crystal_table[chan2]%4)];
+              c2 = ct_index[c1][(int)(crystal_table[chan2]&3)];
               if(crosstalk[ge1][c2][bin] != -1 ){
                 //  correction = crosstalk[ge1][c2][bin] + ((crosstalk[ge1][c2][bin+1] - crosstalk[ge1][c2][bin]) * (float)(((1940+dt)%160)/160));
                 correction = crosstalk[ge1][c2][bin];
@@ -407,7 +407,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         i = start_idx;
         while( i != frag_idx ){ // need at least two events in window
           if( ++i >=  PTR_BUFSIZE ){ i=0; } alt = &grif_event[i]; // WRAP
-          if( (chan2 = alt->chan)<0 || alt->chan >= odb_daqsize ){
+          chan2 = alt->chan;
+          if( (unsigned int)chan2 >= (unsigned int)odb_daqsize ){
             fprintf(stderr,"presort error: ignored event in chan:%d\n",alt->chan );
             continue;
           }
@@ -419,7 +420,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
 
                 // (c2%4) = Crystal Color [B, G, R, W]
                 // Hits with ptr arriving after alt
-                switch(crystal_table[chan2]%4){
+                switch(crystal_table[chan2]&3){
                   case 0:  ct_e_vs_dt_B[crystal_table[chan]]->Fill(ct_e_vs_dt_B[crystal_table[chan]], ((int)((alt->ts - ptr->ts)>>2)+300), (int)ptr->ecal-1100, 1); break;
                   case 1:  ct_e_vs_dt_G[crystal_table[chan]]->Fill(ct_e_vs_dt_G[crystal_table[chan]], ((int)((alt->ts - ptr->ts)>>2)+300), (int)ptr->ecal-1100, 1); break;
                   case 2:  ct_e_vs_dt_R[crystal_table[chan]]->Fill(ct_e_vs_dt_R[crystal_table[chan]], ((int)((alt->ts - ptr->ts)>>2)+300), (int)ptr->ecal-1100, 1); break;
@@ -449,19 +450,20 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         int chan,chan2,found,pos;
         int clover, ge1, c1,c2,bin, p_strip, n_strip;
         float energy,ecal,correction,angle;
-        int ct_index[4][4] = {{-1,0,1,2},{0,-1,1,2},{0,1,-1,2},{0,1,2,-1}};
 
-        if(ptr->ts>10663580856){ DEBUG_OUTPUT=0; } // Only save some debugging info otherwise a >5GB file!
+      //  if(ptr->ts>10663580856){ DEBUG_OUTPUT=0; } // Only save some debugging info otherwise a >5GB file!
         if(DEBUG_OUTPUT){ fprintf(stdout,"Start of pre_sort_exit"); }
         // Assign chan local variable and check it is a valid channel number
-        if( (chan=ptr->chan)<0 || ptr->chan >= odb_daqsize ){
+        chan = ptr->chan;
+        if( (unsigned int)chan >= (unsigned int)odb_daqsize ){
           fprintf(stderr,"presort error: ignored event in chan:%d\n",ptr->chan );
           return(-1);
         }
         i = frag_idx; ptr->multiplicity = 1;
         while( i != end_idx ){ // need at least two events in window
           if( ++i >=  PTR_BUFSIZE ){ i=0; } alt = &grif_event[i]; // WRAP
-          if( (chan2=alt->chan)<0 || alt->chan >= odb_daqsize ){
+          chan2 = alt->chan;
+          if( (unsigned int)chan2 >= (unsigned int)odb_daqsize ){
             fprintf(stderr,"presort error: ignored event in chan:%d\n",alt->chan );
             continue;
           }
@@ -507,8 +509,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                   bin = (int)((1940+dt)/160);
                   if(bin<0 || bin>15){ fprintf(stderr,"pre_sort_exit bin [%d] out of bounds for dt %d\n",bin,dt); continue; }
                   ge1 = crystal_table[chan];
-                  c1 = ge1%4;
-                  c2 = ct_index[c1][(int)(crystal_table[chan2]%4)];
+                  c1 = ge1&3;
+                  c2 = ct_index[c1][(int)(crystal_table[chan2]&3)];
                   if(crosstalk[ge1][c2][bin] != -1 ){
                     //correction = crosstalk[ge1][c2][bin] + ((crosstalk[ge1][c2][bin+1] - crosstalk[ge1][c2][bin]) * (((1940+dt)%160)/160));
                     correction = crosstalk[ge1][c2][bin];
@@ -1199,13 +1201,9 @@ int fill_chan_histos(Grif_event *ptr)
   static int event;
   int chan, sys, pos;
 
-  // Check for unassigned channel numbers
-  if( (chan = ptr->chan) == -1 ){
-    return(-1);
-  }
-
   // Check for invalid channel numbers, prossibly due to data corruption
-  if( chan < 0 || chan > odb_daqsize ){
+  chan = ptr->chan;
+  if( (unsigned int)chan >= (unsigned int)odb_daqsize ){
     fprintf(stderr,"Invalid channel number in fill_chan_histos(), %d\n",chan);
     return(-1);
   }
@@ -1221,7 +1219,7 @@ int fill_chan_histos(Grif_event *ptr)
   if( ptr->ecal        >= 1 ){ hit_hist[1] -> Fill(hit_hist[1], chan, 1);
     hit_hist[6] -> Fill(hit_hist[6], ptr->dtype, 1);
     sys = ptr->subsys;
-    if( sys >=0 && sys < MAX_SUBSYS ){
+    if( (unsigned int)sys < MAX_SUBSYS ){
       hit_hist[5] -> Fill(hit_hist[5], sys, 1);
     }
   }
@@ -1705,23 +1703,23 @@ int init_histos(Config *cfg, int subsystem)
 
       chan = ptr->chan;
       // Check for invalid channel numbers, prossibly due to data corruption
-      if( chan < 0 || chan > odb_daqsize ){
+      if( (unsigned int)chan >= (unsigned int)odb_daqsize ){
         fprintf(stderr,"Invalid channel number in fill_singles_histos(), %d\n",chan);
         return(-1);
       }
       sys = ptr->subsys;
       // Check this is a valid susbsytem type
-      if( sys <0 || sys > MAX_SUBSYS ){
+      if( (unsigned int)sys > MAX_SUBSYS ){
         return(-1);
       }
-      if( mult_hist[sys] != NULL){ mult_hist[sys]->Fill(mult_hist[sys], ptr->multiplicity, 1); } // Fill multiplicity histograms
+      mult_hist[sys]->Fill(mult_hist[sys], ptr->multiplicity, 1); // Fill multiplicity histograms
       // Get the position for this fragment
       pos  = crystal_table[chan];
       ecal = (int)ptr->ecal;
 
       switch (sys){
         case SUBSYS_HPGE_A: // GRGa
-        if( pos >= 0 && pos < 64 ){
+        if( (unsigned int)pos < 64 ){
           ge_sum->Fill(ge_sum, ecal, 1);
           ge_xtal->Fill(ge_xtal, pos, ecal, 1);
 
