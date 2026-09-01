@@ -735,7 +735,7 @@ int init_histos(Config *cfg)
     // DSSD Histograms
     e_front = H1_BOOK(cfg, "E_front", "DSSD Front Strip Energy", 4096, 0, 4096);
     e_back  = H1_BOOK(cfg, "E_back", "DSSD Back Strip Energy", 4096, 0, 4096);
-    dssd_hit_pat = H2_BOOK(cfg, "dssd_hit_pat", "DSSD Hit Pattern", 16, 0, 16, 17, 0, 17);
+    dssd_hit_pat = H2_BOOK(cfg, "dssd_hit_pat", "DSSD Hit Pattern", 16, 0, 16, 16, 0, 16);
     dssd_echan   = H2_BOOK(cfg, "dssd_echan", "DSSD Channel vs Energy", 2048, 0, 4096, DSSD_MAXCHAN, 0, DSSD_MAXCHAN);
     
     // MCP Histograms
@@ -770,7 +770,7 @@ int init_histos(Config *cfg)
     // DSSD Coincidence Histograms
     e_front_c  = H1_BOOK(cfg, "E_front_c",     "DSSD Front Strip Energy (coinc)", 4096, 0, 4096);
     e_back_c   = H1_BOOK(cfg, "E_back_c",      "DSSD Back Strip Energy (coinc)",  4096, 0, 4096);
-    dssd_hit_pat_c = H2_BOOK(cfg, "dssd_hit_pat_c", "DSSD Hit Pattern (coinc)",   16, 0, 16, 17, 0, 17);
+    dssd_hit_pat_c = H2_BOOK(cfg, "dssd_hit_pat_c", "DSSD Hit Pattern (coinc)",   16, 0, 16, 16, 0, 16);
     dssd_echan_c   = H2_BOOK(cfg, "dssd_echan_c",   "DSSD Channel vs Energy (coinc)", 4096, 0, 4096, DSSD_MAXCHAN, 0, DSSD_MAXCHAN);
       
     // IC Coincidence Histograms
