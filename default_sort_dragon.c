@@ -137,7 +137,6 @@ int add_v1190_item(int v1190_chan, int subsys_type, int subsys_chan, int *tdc_de
 }
 int add_v792_item(int v792_chan, int v792_module, int subsys_type, int subsys_chan, int *adc_dettype, int *adc_dstchan)
 {
-   printf("Add V792 Chan[%d,%d] Sys[%d] Dstchan[%d]\n", v792_chan, v792_module, subsys_type, subsys_chan);
    if( v792_module < 0 || v792_module > 1 ){
       printf("read_dragon_odb: invalid %s v792 module number:%d\n",
              subsys_name[subsys_type], v792_module); return(-1);
@@ -842,17 +841,10 @@ int fill_singles_histos(Dragon_event *ptr)
              if( tail->dssd_energy[i] > 0 )
                  dssd_echan->Fill(dssd_echan, tail->dssd_energy[i], i, 1);
          }
-         printf("DSSD singles hit_pat debug: X hits=");
-         for(i = 0; i < 16; i++) if( tail->dssd_energy[i] > 0 ) printf("%d ", i);
-         printf("| Y hits=");
-         for(i = 16; i < 32; i++) if( tail->dssd_energy[i] > 0 ) printf("%d ", i);
-         printf("\n");
          for(i = 0; i < 16; i++){
              for(j = 16; j < 32; j++){
-                 if( tail->dssd_energy[i] > 0 && tail->dssd_energy[j] > 0 ){
-                     printf("  -> filling dssd_hit_pat at (%d, %d)\n", i, j-16);
+                 if( tail->dssd_energy[i] > 0 && tail->dssd_energy[j] > 0 )
                      dssd_hit_pat->Fill(dssd_hit_pat, i, j-16, 1);
-                 }
              }
          }
          // MCP
@@ -935,11 +927,6 @@ int fill_coinc_histos(int win_idx, int frag_idx)
         for(i = 16; i < 32; i++){
             if( tail->dssd_energy[i] > 0 ) e_back_c->Fill(e_back_c, tail->dssd_energy[i], 1);
         }
-        printf("DSSD coinc hit_pat debug: X hits=");
-        for(i = 0; i < 16; i++) if( tail->dssd_energy[i] > 0 ) printf("%d ", i);
-        printf("| Y hits=");
-        for(i = 16; i < 32; i++) if( tail->dssd_energy[i] > 0 ) printf("%d ", i);
-        printf("\n");
         for(i = 0; i < 16; i++){
             for(j = 16; j < 32; j++){
                 if( tail->dssd_energy[i] > 0 && tail->dssd_energy[j] > 0 )
