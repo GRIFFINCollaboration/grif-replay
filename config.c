@@ -4055,8 +4055,8 @@ int send_binary_spectrum(int num, char url_args[][URL_STRING_LEN], char *name, i
       // Determine the first instance of the last submatrix type in a series and mark it
       // This will terminate the submatrix_type header at this point for transfer_method=1=submatrix type only.
       last_type = submatrix_type[pos-1]; pos-=2;
-      if( submatrix_type[pos] == last_type && transfer_method==1){
-        while( submatrix_type[pos] == last_type ){ pos--; if(pos==0){ break; } }
+      if( pos >= 0 && submatrix_type[pos] == last_type && transfer_method==1){
+        while( submatrix_type[pos] == last_type ){ pos--; if(pos<=0){ break; } }
         if(pos+2<num_submatrices){ submatrix_type[pos+2] = 3; }
       }
 
@@ -4115,15 +4115,15 @@ int send_binary_spectrum(int num, char url_args[][URL_STRING_LEN], char *name, i
         // Submatrix type header is the type given as 2 bits for all submatrices
         for(i=0; i<num_submatrices; i+=4){
           binaryArray[index] = submatrix_type[i] << 6;
-          binaryArray[index] = binaryArray[index] | (submatrix_type[i+1] << 4);
-          binaryArray[index] = binaryArray[index] | (submatrix_type[i+2] << 2);
-          binaryArray[index] = binaryArray[index] |  submatrix_type[i+3];
+          binaryArray[index] = binaryArray[index] | ((i+1<num_submatrices ? submatrix_type[i+1] : 0) << 4);
+          binaryArray[index] = binaryArray[index] | ((i+2<num_submatrices ? submatrix_type[i+2] : 0) << 2);
+          binaryArray[index] = binaryArray[index] |  (i+3<num_submatrices ? submatrix_type[i+3] : 0);
           index++;
           // If we find a type 3 then change it back so the data is transferred correctly below
-          if(submatrix_type[i]  ==3){ submatrix_type[i]  =submatrix_type[i-1];  break; }
-          if(submatrix_type[i+1]==3){ submatrix_type[i+1]=submatrix_type[i];    break; }
-          if(submatrix_type[i+2]==3){ submatrix_type[i+2]=submatrix_type[i+1];  break; }
-          if(submatrix_type[i+3]==3){ submatrix_type[i+3]=submatrix_type[i+2];  break; }
+          if(submatrix_type[i]  ==3){ submatrix_type[i]  =(i>0?submatrix_type[i-1]:0); break; }
+          if(i+1<num_submatrices && submatrix_type[i+1]==3){ submatrix_type[i+1]=submatrix_type[i];   break; }
+          if(i+2<num_submatrices && submatrix_type[i+2]==3){ submatrix_type[i+2]=submatrix_type[i+1]; break; }
+          if(i+3<num_submatrices && submatrix_type[i+3]==3){ submatrix_type[i+3]=submatrix_type[i+2]; break; }
         }
         put_binary(fd, binaryArray, index ); // Send submatrix type header word
       }else{
