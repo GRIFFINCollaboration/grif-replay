@@ -180,7 +180,7 @@ void midas_main(Sort_status *arg)
             //printf("MIDAS evt%6d pos:%6d\n", evcount++, bankbuf_wrpos);
             bankbuf_wrpos += DRAGON_EVENTWORDS;
             if( (overrun = (wrpos + DRAGON_EVENTWORDS - BANK_BUFSIZE)) > 0 ){
-               memcpy(bankbuf, bankbuf+wrpos, sizeof(int)*overrun);
+               memcpy(bankbuf, bankbuf+BANK_BUFSIZE, sizeof(*bankbuf)*overrun);
             }
          }
       } else {
