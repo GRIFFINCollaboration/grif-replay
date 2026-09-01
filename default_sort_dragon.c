@@ -118,8 +118,8 @@ int tail_adc_dettype[2*V792_MAXCHAN]; int tail_adc_dstchan[2*V792_MAXCHAN];
 int tail_tdc_dettype[ V1190_MAXCHAN]; int tail_tdc_dstchan[ V1190_MAXCHAN];
 
 static char subsys_name[16][8]={
-   "   BGO", "    SB", "   NAI", "  DSSD",   "    IC", "   MCP", " MCPTAC", "    GE", "  XTDC",
-   " RFTDC", "  TDC0", "", "",   "", "", ""
+   "", "   BGO", "    SB", "   NAI", "  DSSD", "    IC", "   MCP", " MCPTAC", "    GE", "  XTDC",
+   " RFTDC", "  TDC0", "", "",   "", ""
 };
 
 int add_v1190_item(int v1190_chan, int subsys_type, int subsys_chan, int *tdc_dettype, int *tdc_dstchan)
@@ -291,8 +291,8 @@ int read_dragon_odb(int bank_len, int *bank_data)
    if( err ){ printf("read_dragon_odb: %d errors\n", err); }
 
    // generate derived tables ---------------------------------
-   memset(head_adc_dettype, -1,   V792_MAXCHAN*sizeof(int) );
-   memset(head_adc_dstchan, -1,   V792_MAXCHAN*sizeof(int) );
+   memset(head_adc_dettype, -1, 2*V792_MAXCHAN*sizeof(int) );
+   memset(head_adc_dstchan, -1, 2*V792_MAXCHAN*sizeof(int) );
    memset(head_tdc_dettype, -1,  V1190_MAXCHAN*sizeof(int) );
    memset(head_tdc_dstchan, -1,  V1190_MAXCHAN*sizeof(int) );
    memset(tail_adc_dettype, -1, 2*V792_MAXCHAN*sizeof(int) );
