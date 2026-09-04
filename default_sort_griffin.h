@@ -237,7 +237,7 @@ TH2I  *ge_PU2_e2_v_k_gated1408[N_HPGE]; // Ge e2 vs k2 for fixed e1 energy gates
 // for most subsystem-pair-combinations, there is a
 // a 1d time-difference and a 2d ecal-vs-ecal matrix
 TH2I *subsys_e_vs_e[MAX_SUBSYS][MAX_SUBSYS];
-TH1I *subsys_dt[MAX_SUBSYS][MAX_SUBSYS];
+TH1I *subsys_dt[MAX_SUBSYS][MAX_SUBSYS], *subsys_dcfd[MAX_SUBSYS][MAX_SUBSYS];
 TH1I *tac_lbl_ts_diff[N_TACS];
 
 // HPGe (ge_sum is sum of crystal energies, ge_sum_b is beta-gated)
@@ -485,106 +485,115 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
   "dt_dsw_art",    "dt_dsw_zds",    "dt_zds_GRIF_CAEN_10ns", "dt_zds_GRIF_CAEN_2ns", // 20-23
   "dt_dsw_dsw_2ns","dt_dsw_zds_2ns","dt_labr_labr",          "dt_ge_qed",   "dt_qed_qed",   // 24-28
   "dt_comp_comp", "dt_comp_ge" };
-  TH1I  *dt_hist[N_DT], *dt_tacs_hist[N_TACS];
+  char dcfd_handles[N_DT][HANDLE_LENGTH]={
+    "dcfd_ge_ge",      "dcfd_ge_bgo",     "dcfd_ge_sep",             "dcfd_ge_zds",     // 0-3
+    "dcfd_ge_pac",     "dcfd_ge_labr",    "dcfd_ge_rcmp",            "dcfd_pac_zds",    // 4-7
+    "dcfd_pac_labr",   "dcfd_rcmp_rcmp",  "dcfd_ge_art",             "dcfd_labr_art",   // 8-11
+    "dcfd_paces_art",  "dcfd_art_art",    "dcfd_art_tac",            "dcfd_zds_tac",    // 12-15
+    "dcfd_labr_tac",   "dcfd_labr_zds",   "dcfd_dsw_dsw",            "dcfd_dsw_ge",     // 16-19
+    "dcfd_dsw_art",    "dcfd_dsw_zds",    "dcfd_zds_GRIF_CAEN_10ns", "dcfd_zds_GRIF_CAEN_2ns", // 20-23
+    "dcfd_dsw_dsw_2ns","dcfd_dsw_zds_2ns","dcfd_labr_labr",          "dcfd_ge_qed",   "dcfd_qed_qed",   // 24-28
+    "dt_comp_comp", "dt_comp_ge" };
+    TH1I  *dt_hist[N_DT], *dcfd_hist[N_DT], *dt_tacs_hist[N_TACS];
 
-  // 2D hitpatterns
-  TH2I *gg_hit, *bgobgo_hit, *aa_hit, *gea_hit, *lba_hit, *dsw_hit;
+    // 2D hitpatterns
+    TH2I *gg_hit, *bgobgo_hit, *aa_hit, *gea_hit, *lba_hit, *dsw_hit;
 
-  // 2D Energy vs Energy Coincidence matrices
-  TH2I *gea_self_dt,*geb_self_dt;
-  TH2I *gg, *gg_ab, *gg_opp, *gg_ab_opp, *ge_bgo, *ge_paces, *ge_labr, *ge_rcmp, *labr_labr, *labr_zds, *labr_rcmp;
-  TH2I *ge_art, *ge_zds, *paces_art, *labr_art, *art_art, *dsw_dsw, *ge_dsw, *art_dsw, *ge_qed, *qed_qed, *comp_comp, *ge_comp, *geadd_comp, *ge_dcs, *geadd_dcs, *comp_dcs;
-  TH1I *gg_energy[N_HPGE];
-  char gg_energy_handles[N_HPGE][HANDLE_LENGTH]={
-    "GRG01BN00A_GGEnergy","GRG01GN00A_GGEnergy","GRG01RN00A_GGEnergy","GRG01WN00A_GGEnergy", "GRG02BN00A_GGEnergy","GRG02GN00A_GGEnergy","GRG02RN00A_GGEnergy","GRG02WN00A_GGEnergy",
-    "GRG03BN00A_GGEnergy","GRG03GN00A_GGEnergy","GRG03RN00A_GGEnergy","GRG03WN00A_GGEnergy", "GRG04BN00A_GGEnergy","GRG04GN00A_GGEnergy","GRG04RN00A_GGEnergy","GRG04WN00A_GGEnergy",
-    "GRG05BN00A_GGEnergy","GRG05GN00A_GGEnergy","GRG05RN00A_GGEnergy","GRG05WN00A_GGEnergy", "GRG06BN00A_GGEnergy","GRG06GN00A_GGEnergy","GRG06RN00A_GGEnergy","GRG06WN00A_GGEnergy",
-    "GRG07BN00A_GGEnergy","GRG07GN00A_GGEnergy","GRG07RN00A_GGEnergy","GRG07WN00A_GGEnergy", "GRG08BN00A_GGEnergy","GRG08GN00A_GGEnergy","GRG08RN00A_GGEnergy","GRG08WN00A_GGEnergy",
-    "GRG09BN00A_GGEnergy","GRG09GN00A_GGEnergy","GRG09RN00A_GGEnergy","GRG09WN00A_GGEnergy", "GRG10BN00A_GGEnergy","GRG10GN00A_GGEnergy","GRG10RN00A_GGEnergy","GRG10WN00A_GGEnergy",
-    "GRG11BN00A_GGEnergy","GRG11GN00A_GGEnergy","GRG11RN00A_GGEnergy","GRG11WN00A_GGEnergy", "GRG12BN00A_GGEnergy","GRG12GN00A_GGEnergy","GRG12RN00A_GGEnergy","GRG12WN00A_GGEnergy",
-    "GRG13BN00A_GGEnergy","GRG13GN00A_GGEnergy","GRG13RN00A_GGEnergy","GRG13WN00A_GGEnergy", "GRG14BN00A_GGEnergy","GRG14GN00A_GGEnergy","GRG14RN00A_GGEnergy","GRG14WN00A_GGEnergy",
-    "GRG15BN00A_GGEnergy","GRG15GN00A_GGEnergy","GRG15RN00A_GGEnergy","GRG15WN00A_GGEnergy", "GRG16BN00A_GGEnergy","GRG16GN00A_GGEnergy","GRG16RN00A_GGEnergy","GRG16WN00A_GGEnergy"
-  };
+    // 2D Energy vs Energy Coincidence matrices
+    TH2I *gea_self_dt,*geb_self_dt;
+    TH2I *gg, *gg_ab, *gg_opp, *gg_ab_opp, *ge_bgo, *ge_paces, *ge_labr, *ge_rcmp, *labr_labr, *labr_zds, *labr_rcmp;
+    TH2I *ge_art, *ge_zds, *paces_art, *labr_art, *art_art, *dsw_dsw, *ge_dsw, *art_dsw, *ge_qed, *qed_qed, *comp_comp, *ge_comp, *geadd_comp, *ge_dcs, *geadd_dcs, *comp_dcs;
+    TH1I *gg_energy[N_HPGE];
+    char gg_energy_handles[N_HPGE][HANDLE_LENGTH]={
+      "GRG01BN00A_GGEnergy","GRG01GN00A_GGEnergy","GRG01RN00A_GGEnergy","GRG01WN00A_GGEnergy", "GRG02BN00A_GGEnergy","GRG02GN00A_GGEnergy","GRG02RN00A_GGEnergy","GRG02WN00A_GGEnergy",
+      "GRG03BN00A_GGEnergy","GRG03GN00A_GGEnergy","GRG03RN00A_GGEnergy","GRG03WN00A_GGEnergy", "GRG04BN00A_GGEnergy","GRG04GN00A_GGEnergy","GRG04RN00A_GGEnergy","GRG04WN00A_GGEnergy",
+      "GRG05BN00A_GGEnergy","GRG05GN00A_GGEnergy","GRG05RN00A_GGEnergy","GRG05WN00A_GGEnergy", "GRG06BN00A_GGEnergy","GRG06GN00A_GGEnergy","GRG06RN00A_GGEnergy","GRG06WN00A_GGEnergy",
+      "GRG07BN00A_GGEnergy","GRG07GN00A_GGEnergy","GRG07RN00A_GGEnergy","GRG07WN00A_GGEnergy", "GRG08BN00A_GGEnergy","GRG08GN00A_GGEnergy","GRG08RN00A_GGEnergy","GRG08WN00A_GGEnergy",
+      "GRG09BN00A_GGEnergy","GRG09GN00A_GGEnergy","GRG09RN00A_GGEnergy","GRG09WN00A_GGEnergy", "GRG10BN00A_GGEnergy","GRG10GN00A_GGEnergy","GRG10RN00A_GGEnergy","GRG10WN00A_GGEnergy",
+      "GRG11BN00A_GGEnergy","GRG11GN00A_GGEnergy","GRG11RN00A_GGEnergy","GRG11WN00A_GGEnergy", "GRG12BN00A_GGEnergy","GRG12GN00A_GGEnergy","GRG12RN00A_GGEnergy","GRG12WN00A_GGEnergy",
+      "GRG13BN00A_GGEnergy","GRG13GN00A_GGEnergy","GRG13RN00A_GGEnergy","GRG13WN00A_GGEnergy", "GRG14BN00A_GGEnergy","GRG14GN00A_GGEnergy","GRG14RN00A_GGEnergy","GRG14WN00A_GGEnergy",
+      "GRG15BN00A_GGEnergy","GRG15GN00A_GGEnergy","GRG15RN00A_GGEnergy","GRG15WN00A_GGEnergy", "GRG16BN00A_GGEnergy","GRG16GN00A_GGEnergy","GRG16RN00A_GGEnergy","GRG16WN00A_GGEnergy"
+    };
 
-  // Angular Correlation histograms
-  #define N_GE_ANG_CORR       52
-  #define N_GRG_ART_ANG_CORR 114
-  #define N_DSW_DSW_ANG_CORR  42
-  TH2I  *gg_angcor_110[N_GE_ANG_CORR];
-  TH2I  *gg_angcor_145[N_GE_ANG_CORR];
-  TH2I  *ge_art_angcor[N_GRG_ART_ANG_CORR];
-  TH2I  *dsw_angcor[N_DSW_DSW_ANG_CORR];
+    // Angular Correlation histograms
+    #define N_GE_ANG_CORR       52
+    #define N_GRG_ART_ANG_CORR 114
+    #define N_DSW_DSW_ANG_CORR  42
+    TH2I  *gg_angcor_110[N_GE_ANG_CORR];
+    TH2I  *gg_angcor_145[N_GE_ANG_CORR];
+    TH2I  *ge_art_angcor[N_GRG_ART_ANG_CORR];
+    TH2I  *dsw_angcor[N_DSW_DSW_ANG_CORR];
 
-  // Compton Polarimetry histograms
-  TH2I  *comp_pol_angles_110;
-  TH2I  *comp_pol_angles_145;
-  #define N_GE_COMP_POL       12 // 12 bins is 180 degrees divided into a bin width of 15 degrees
-  TH2I  *gg_comp_pol_110[N_GE_COMP_POL];
-  TH2I  *gg_comp_pol_145[N_GE_COMP_POL];
+    // Compton Polarimetry histograms
+    TH2I  *comp_pol_angles_110;
+    TH2I  *comp_pol_angles_145;
+    #define N_GE_COMP_POL       12 // 12 bins is 180 degrees divided into a bin width of 15 degrees
+    TH2I  *gg_comp_pol_110[N_GE_COMP_POL];
+    TH2I  *gg_comp_pol_145[N_GE_COMP_POL];
 
-  // Isomer Spectroscopy
-  TH2I  *gg_dt, *gb_dt;
-  TH1I  *ge_isomer_popu, *ge_isomer_depop;
+    // Isomer Spectroscopy
+    TH2I  *gg_dt, *gb_dt;
+    TH1I  *ge_isomer_popu, *ge_isomer_depop;
 
-  // Crosstalk Analysis
-  TH2I  *ct_e_vs_dt_B[N_HPGE], *ct_e_vs_dt_G[N_HPGE], *ct_e_vs_dt_R[N_HPGE], *ct_e_vs_dt_W[N_HPGE];
+    // Crosstalk Analysis
+    TH2I  *ct_e_vs_dt_B[N_HPGE], *ct_e_vs_dt_G[N_HPGE], *ct_e_vs_dt_R[N_HPGE], *ct_e_vs_dt_W[N_HPGE];
 
-  ////////////////////////////////////
-  ////////////////////////////////////
+    ////////////////////////////////////
+    ////////////////////////////////////
 
-  // LBT (TAC) timestamp offset values.
-  // These are subtracted in the apply_gains function
-  //int tac_ts_offset[12] = {60,60,60,60,60,60,60,60,60,60,60,60}; // From Dec 2024
-  //  int tac_ts_offset[12] = { 54, 64,406,137, 77,404,114,158, 0, 0, 0, 0}; // S2231_S2196_Nov2024
-  // int tac_ts_offset[12] = {134, 48, 74, 59, 48,400,395,  0, 0, 0, 0, 0}; // S1723, Aug 2021
-  int tac_ts_offset[12] = {60,60,60,60,60,60,60,60,60,60,60,60}; // Default 60 for Dec 2024 onwards. Set as Globals otherwise
+    // LBT (TAC) timestamp offset values.
+    // These are subtracted in the apply_gains function
+    //int tac_ts_offset[12] = {60,60,60,60,60,60,60,60,60,60,60,60}; // From Dec 2024
+    //  int tac_ts_offset[12] = { 54, 64,406,137, 77,404,114,158, 0, 0, 0, 0}; // S2231_S2196_Nov2024
+    // int tac_ts_offset[12] = {134, 48, 74, 59, 48,400,395,  0, 0, 0, 0, 0}; // S1723, Aug 2021
+    int tac_ts_offset[12] = {60,60,60,60,60,60,60,60,60,60,60,60}; // Default 60 for Dec 2024 onwards. Set as Globals otherwise
 
 
-  // TAC coincidence combination offsets.
-  // These should not be here, they are a calibration and should be settable by the user.
+    // TAC coincidence combination offsets.
+    // These should not be here, they are a calibration and should be settable by the user.
 
-  // These are the offsets for aligning the TAC calibrated energy based on the two LaBr3 energies in coincidence
-  // 30 values
-  // They are set from Globals
-  int tac_lbl_combo_offset[(int)((N_LABR)*(N_LABR-1)/2)+2] = {
-    0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0,
-    0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0
-  };
+    // These are the offsets for aligning the TAC calibrated energy based on the two LaBr3 energies in coincidence
+    // 30 values
+    // They are set from Globals
+    int tac_lbl_combo_offset[(int)((N_LABR)*(N_LABR-1)/2)+2] = {
+      0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0,
+      0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0
+    };
 
-  // BGO HV alignment histograms
-  TH1I *ge_bgo_gated[N_BGO];
-  char ge_bgo_handles[N_BGO][HANDLE_LENGTH]={
-    "Ge01BGO01","Ge01BGO02","Ge01BGO03","Ge01BGO04","Ge01BGO05", "Ge02BGO01","Ge02BGO02","Ge02BGO03","Ge02BGO04","Ge02BGO05",
-    "Ge03BGO01","Ge03BGO02","Ge03BGO03","Ge03BGO04","Ge03BGO05", "Ge04BGO01","Ge04BGO02","Ge04BGO03","Ge04BGO04","Ge04BGO05",
-    "Ge05BGO01","Ge05BGO02","Ge05BGO03","Ge05BGO04","Ge05BGO05", "Ge06BGO01","Ge06BGO02","Ge06BGO03","Ge06BGO04","Ge06BGO05",
-    "Ge07BGO01","Ge07BGO02","Ge07BGO03","Ge07BGO04","Ge07BGO05", "Ge08BGO01","Ge08BGO02","Ge08BGO03","Ge08BGO04","Ge08BGO05",
-    "Ge09BGO01","Ge09BGO02","Ge09BGO03","Ge09BGO04","Ge09BGO05",
-    "Ge10BGO01","Ge10BGO02","Ge10BGO03","Ge10BGO04","Ge10BGO05", "Ge11BGO01","Ge11BGO02","Ge11BGO03","Ge11BGO04","Ge11BGO05",
-    "Ge12BGO01","Ge12BGO02","Ge12BGO03","Ge12BGO04","Ge12BGO05", "Ge13BGO01","Ge13BGO02","Ge13BGO03","Ge13BGO04","Ge13BGO05",
-    "Ge14BGO01","Ge14BGO02","Ge14BGO03","Ge14BGO04","Ge14BGO05", "Ge15BGO01","Ge15BGO02","Ge15BGO03","Ge15BGO04","Ge15BGO05",
-    "Ge16BGO01","Ge16BGO02","Ge16BGO03","Ge16BGO04","Ge16BGO05", "Ge17BGO01","Ge17BGO02","Ge17BGO03","Ge17BGO04","Ge17BGO05",
-    "Ge18BGO01","Ge18BGO02","Ge18BGO03","Ge18BGO04","Ge18BGO05", "Ge19BGO01","Ge19BGO02","Ge19BGO03","Ge19BGO04","Ge19BGO05",
-    "Ge20BGO01","Ge20BGO02","Ge20BGO03","Ge20BGO04","Ge20BGO05", "Ge21BGO01","Ge21BGO02","Ge21BGO03","Ge21BGO04","Ge21BGO05",
-    "Ge22BGO01","Ge22BGO02","Ge22BGO03","Ge22BGO04","Ge22BGO05", "Ge23BGO01","Ge23BGO02","Ge23BGO03","Ge23BGO04","Ge23BGO05",
-    "Ge24BGO01","Ge24BGO02","Ge24BGO03","Ge24BGO04","Ge24BGO05", "Ge25BGO01","Ge25BGO02","Ge25BGO03","Ge25BGO04","Ge25BGO05",
-    "Ge26BGO01","Ge26BGO02","Ge26BGO03","Ge26BGO04","Ge26BGO05", "Ge27BGO01","Ge27BGO02","Ge27BGO03","Ge27BGO04","Ge27BGO05",
-    "Ge28BGO01","Ge28BGO02","Ge28BGO03","Ge28BGO04","Ge28BGO05", "Ge29BGO01","Ge29BGO02","Ge29BGO03","Ge29BGO04","Ge29BGO05",
-    "Ge30BGO01","Ge30BGO02","Ge30BGO03","Ge30BGO04","Ge30BGO05", "Ge31BGO01","Ge31BGO02","Ge31BGO03","Ge31BGO04","Ge31BGO05",
-    "Ge32BGO01","Ge32BGO02","Ge32BGO03","Ge32BGO04","Ge32BGO05", "Ge33BGO01","Ge33BGO02","Ge33BGO03","Ge33BGO04","Ge33BGO05",
-    "Ge34BGO01","Ge34BGO02","Ge34BGO03","Ge34BGO04","Ge34BGO05", "Ge35BGO01","Ge35BGO02","Ge35BGO03","Ge35BGO04","Ge35BGO05",
-    "Ge36BGO01","Ge36BGO02","Ge36BGO03","Ge36BGO04","Ge36BGO05", "Ge37BGO01","Ge37BGO02","Ge37BGO03","Ge37BGO04","Ge37BGO05",
-    "Ge38BGO01","Ge38BGO02","Ge38BGO03","Ge38BGO04","Ge38BGO05", "Ge39BGO01","Ge39BGO02","Ge39BGO03","Ge39BGO04","Ge39BGO05",
-    "Ge40BGO01","Ge40BGO02","Ge40BGO03","Ge40BGO04","Ge40BGO05", "Ge41BGO01","Ge41BGO02","Ge41BGO03","Ge41BGO04","Ge41BGO05",
-    "Ge42BGO01","Ge42BGO02","Ge42BGO03","Ge42BGO04","Ge42BGO05", "Ge43BGO01","Ge43BGO02","Ge43BGO03","Ge43BGO04","Ge43BGO05",
-    "Ge44BGO01","Ge44BGO02","Ge44BGO03","Ge44BGO04","Ge44BGO05", "Ge45BGO01","Ge45BGO02","Ge45BGO03","Ge45BGO04","Ge45BGO05",
-    "Ge46BGO01","Ge46BGO02","Ge46BGO03","Ge46BGO04","Ge46BGO05", "Ge47BGO01","Ge47BGO02","Ge47BGO03","Ge47BGO04","Ge47BGO05",
-    "Ge48BGO01","Ge48BGO02","Ge48BGO03","Ge48BGO04","Ge48BGO05", "Ge49BGO01","Ge49BGO02","Ge49BGO03","Ge49BGO04","Ge49BGO05",
-    "Ge50BGO01","Ge50BGO02","Ge50BGO03","Ge50BGO04","Ge50BGO05", "Ge51BGO01","Ge51BGO02","Ge51BGO03","Ge51BGO04","Ge51BGO05",
-    "Ge52BGO01","Ge52BGO02","Ge52BGO03","Ge52BGO04","Ge52BGO05", "Ge53BGO01","Ge53BGO02","Ge53BGO03","Ge53BGO04","Ge53BGO05",
-    "Ge54BGO01","Ge54BGO02","Ge54BGO03","Ge54BGO04","Ge54BGO05", "Ge55BGO01","Ge55BGO02","Ge55BGO03","Ge55BGO04","Ge55BGO05",
-    "Ge56BGO01","Ge56BGO02","Ge56BGO03","Ge56BGO04","Ge56BGO05", "Ge57BGO01","Ge57BGO02","Ge57BGO03","Ge57BGO04","Ge57BGO05",
-    "Ge58BGO01","Ge58BGO02","Ge58BGO03","Ge58BGO04","Ge58BGO05", "Ge59BGO01","Ge59BGO02","Ge59BGO03","Ge59BGO04","Ge59BGO05",
-    "Ge60BGO01","Ge60BGO02","Ge60BGO03","Ge60BGO04","Ge60BGO05", "Ge61BGO01","Ge61BGO02","Ge61BGO03","Ge61BGO04","Ge61BGO05",
-    "Ge62BGO01","Ge62BGO02","Ge62BGO03","Ge62BGO04","Ge62BGO05", "Ge63BGO01","Ge63BGO02","Ge63BGO03","Ge63BGO04","Ge63BGO05",
-    "Ge64BGO01","Ge64BGO02","Ge64BGO03","Ge64BGO04","Ge64BGO05"
-  };
+    // BGO HV alignment histograms
+    TH1I *ge_bgo_gated[N_BGO];
+    char ge_bgo_handles[N_BGO][HANDLE_LENGTH]={
+      "Ge01BGO01","Ge01BGO02","Ge01BGO03","Ge01BGO04","Ge01BGO05", "Ge02BGO01","Ge02BGO02","Ge02BGO03","Ge02BGO04","Ge02BGO05",
+      "Ge03BGO01","Ge03BGO02","Ge03BGO03","Ge03BGO04","Ge03BGO05", "Ge04BGO01","Ge04BGO02","Ge04BGO03","Ge04BGO04","Ge04BGO05",
+      "Ge05BGO01","Ge05BGO02","Ge05BGO03","Ge05BGO04","Ge05BGO05", "Ge06BGO01","Ge06BGO02","Ge06BGO03","Ge06BGO04","Ge06BGO05",
+      "Ge07BGO01","Ge07BGO02","Ge07BGO03","Ge07BGO04","Ge07BGO05", "Ge08BGO01","Ge08BGO02","Ge08BGO03","Ge08BGO04","Ge08BGO05",
+      "Ge09BGO01","Ge09BGO02","Ge09BGO03","Ge09BGO04","Ge09BGO05",
+      "Ge10BGO01","Ge10BGO02","Ge10BGO03","Ge10BGO04","Ge10BGO05", "Ge11BGO01","Ge11BGO02","Ge11BGO03","Ge11BGO04","Ge11BGO05",
+      "Ge12BGO01","Ge12BGO02","Ge12BGO03","Ge12BGO04","Ge12BGO05", "Ge13BGO01","Ge13BGO02","Ge13BGO03","Ge13BGO04","Ge13BGO05",
+      "Ge14BGO01","Ge14BGO02","Ge14BGO03","Ge14BGO04","Ge14BGO05", "Ge15BGO01","Ge15BGO02","Ge15BGO03","Ge15BGO04","Ge15BGO05",
+      "Ge16BGO01","Ge16BGO02","Ge16BGO03","Ge16BGO04","Ge16BGO05", "Ge17BGO01","Ge17BGO02","Ge17BGO03","Ge17BGO04","Ge17BGO05",
+      "Ge18BGO01","Ge18BGO02","Ge18BGO03","Ge18BGO04","Ge18BGO05", "Ge19BGO01","Ge19BGO02","Ge19BGO03","Ge19BGO04","Ge19BGO05",
+      "Ge20BGO01","Ge20BGO02","Ge20BGO03","Ge20BGO04","Ge20BGO05", "Ge21BGO01","Ge21BGO02","Ge21BGO03","Ge21BGO04","Ge21BGO05",
+      "Ge22BGO01","Ge22BGO02","Ge22BGO03","Ge22BGO04","Ge22BGO05", "Ge23BGO01","Ge23BGO02","Ge23BGO03","Ge23BGO04","Ge23BGO05",
+      "Ge24BGO01","Ge24BGO02","Ge24BGO03","Ge24BGO04","Ge24BGO05", "Ge25BGO01","Ge25BGO02","Ge25BGO03","Ge25BGO04","Ge25BGO05",
+      "Ge26BGO01","Ge26BGO02","Ge26BGO03","Ge26BGO04","Ge26BGO05", "Ge27BGO01","Ge27BGO02","Ge27BGO03","Ge27BGO04","Ge27BGO05",
+      "Ge28BGO01","Ge28BGO02","Ge28BGO03","Ge28BGO04","Ge28BGO05", "Ge29BGO01","Ge29BGO02","Ge29BGO03","Ge29BGO04","Ge29BGO05",
+      "Ge30BGO01","Ge30BGO02","Ge30BGO03","Ge30BGO04","Ge30BGO05", "Ge31BGO01","Ge31BGO02","Ge31BGO03","Ge31BGO04","Ge31BGO05",
+      "Ge32BGO01","Ge32BGO02","Ge32BGO03","Ge32BGO04","Ge32BGO05", "Ge33BGO01","Ge33BGO02","Ge33BGO03","Ge33BGO04","Ge33BGO05",
+      "Ge34BGO01","Ge34BGO02","Ge34BGO03","Ge34BGO04","Ge34BGO05", "Ge35BGO01","Ge35BGO02","Ge35BGO03","Ge35BGO04","Ge35BGO05",
+      "Ge36BGO01","Ge36BGO02","Ge36BGO03","Ge36BGO04","Ge36BGO05", "Ge37BGO01","Ge37BGO02","Ge37BGO03","Ge37BGO04","Ge37BGO05",
+      "Ge38BGO01","Ge38BGO02","Ge38BGO03","Ge38BGO04","Ge38BGO05", "Ge39BGO01","Ge39BGO02","Ge39BGO03","Ge39BGO04","Ge39BGO05",
+      "Ge40BGO01","Ge40BGO02","Ge40BGO03","Ge40BGO04","Ge40BGO05", "Ge41BGO01","Ge41BGO02","Ge41BGO03","Ge41BGO04","Ge41BGO05",
+      "Ge42BGO01","Ge42BGO02","Ge42BGO03","Ge42BGO04","Ge42BGO05", "Ge43BGO01","Ge43BGO02","Ge43BGO03","Ge43BGO04","Ge43BGO05",
+      "Ge44BGO01","Ge44BGO02","Ge44BGO03","Ge44BGO04","Ge44BGO05", "Ge45BGO01","Ge45BGO02","Ge45BGO03","Ge45BGO04","Ge45BGO05",
+      "Ge46BGO01","Ge46BGO02","Ge46BGO03","Ge46BGO04","Ge46BGO05", "Ge47BGO01","Ge47BGO02","Ge47BGO03","Ge47BGO04","Ge47BGO05",
+      "Ge48BGO01","Ge48BGO02","Ge48BGO03","Ge48BGO04","Ge48BGO05", "Ge49BGO01","Ge49BGO02","Ge49BGO03","Ge49BGO04","Ge49BGO05",
+      "Ge50BGO01","Ge50BGO02","Ge50BGO03","Ge50BGO04","Ge50BGO05", "Ge51BGO01","Ge51BGO02","Ge51BGO03","Ge51BGO04","Ge51BGO05",
+      "Ge52BGO01","Ge52BGO02","Ge52BGO03","Ge52BGO04","Ge52BGO05", "Ge53BGO01","Ge53BGO02","Ge53BGO03","Ge53BGO04","Ge53BGO05",
+      "Ge54BGO01","Ge54BGO02","Ge54BGO03","Ge54BGO04","Ge54BGO05", "Ge55BGO01","Ge55BGO02","Ge55BGO03","Ge55BGO04","Ge55BGO05",
+      "Ge56BGO01","Ge56BGO02","Ge56BGO03","Ge56BGO04","Ge56BGO05", "Ge57BGO01","Ge57BGO02","Ge57BGO03","Ge57BGO04","Ge57BGO05",
+      "Ge58BGO01","Ge58BGO02","Ge58BGO03","Ge58BGO04","Ge58BGO05", "Ge59BGO01","Ge59BGO02","Ge59BGO03","Ge59BGO04","Ge59BGO05",
+      "Ge60BGO01","Ge60BGO02","Ge60BGO03","Ge60BGO04","Ge60BGO05", "Ge61BGO01","Ge61BGO02","Ge61BGO03","Ge61BGO04","Ge61BGO05",
+      "Ge62BGO01","Ge62BGO02","Ge62BGO03","Ge62BGO04","Ge62BGO05", "Ge63BGO01","Ge63BGO02","Ge63BGO03","Ge63BGO04","Ge63BGO05",
+      "Ge64BGO01","Ge64BGO02","Ge64BGO03","Ge64BGO04","Ge64BGO05"
+    };

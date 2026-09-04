@@ -1387,6 +1387,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
         {(void **) dt_hist,     "",        dt_handles[0],  SUBSYS_HPGE_A,  DT_SPEC_LENGTH, 0, N_DT }, // leave subsys as GE -> all always defined
         {(void **) dt_tacs_hist,"dt_labr_tac%d",      "",  SUBSYS_TAC_LABR,  DT_SPEC_LENGTH, 0, N_TACS },
         {(void **) tac_lbl_ts_diff,"TAC%02d timestamp offset", "",  SUBSYS_LABR_L,  DT_SPEC_LENGTH, 0, N_TACS },
+        {(void **) dcfd_hist,     "",      dcfd_handles[0],  SUBSYS_HPGE_A,  DT_SPEC_LENGTH, 0, N_DT }, // leave subsys as GE -> all always defined
         {NULL,                  "Coinc/Coinc",        ""},
         {(void **)&gg_ab,       "Addback_GG",         "",  SUBSYS_HPGE_A,  E_2D_SPECLEN, SYMMETERIZE},
         {(void **)&gg,          "GG",                 "",  SUBSYS_HPGE_A,  E_2D_SPECLEN, SYMMETERIZE},
@@ -1722,6 +1723,7 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             subsys_e_vs_e[SUBSYS_LABR_L ][SUBSYS_ARIES_A] = labr_art;
             subsys_e_vs_e[SUBSYS_LABR_L ][SUBSYS_ZDS_A  ] = labr_zds;
             subsys_e_vs_e[SUBSYS_ARIES_A][SUBSYS_ARIES_A] = art_art;
+            // Timestamp differences in 10ns units
             subsys_dt[SUBSYS_HPGE_A ][SUBSYS_HPGE_A  ] = dt_hist[ 0];
             subsys_dt[SUBSYS_HPGE_A ][SUBSYS_PACES   ] = dt_hist[ 4];
             subsys_dt[SUBSYS_HPGE_A ][SUBSYS_LABR_L  ] = dt_hist[ 5];
@@ -1750,6 +1752,35 @@ int init_default_histos(Config *cfg, Sort_status *arg)
             subsys_dt[SUBSYS_QED_PIXEL][SUBSYS_QED_PIXEL] = dt_hist[28];
             subsys_dt[SUBSYS_COMPTON][SUBSYS_COMPTON] = dt_hist[29];
             subsys_dt[SUBSYS_HPGE_A][SUBSYS_COMPTON] = dt_hist[30];
+            // CFD differences in 10ns units
+            subsys_dcfd[SUBSYS_HPGE_A ][SUBSYS_HPGE_A  ] = dcfd_hist[ 0];
+            subsys_dcfd[SUBSYS_HPGE_A ][SUBSYS_PACES   ] = dcfd_hist[ 4];
+            subsys_dcfd[SUBSYS_HPGE_A ][SUBSYS_LABR_L  ] = dcfd_hist[ 5];
+            subsys_dcfd[SUBSYS_HPGE_A ][SUBSYS_RCMP    ] = dcfd_hist[ 6];
+            subsys_dcfd[SUBSYS_HPGE_A ][SUBSYS_ZDS_A   ] = dcfd_hist[ 3];
+            subsys_dcfd[SUBSYS_HPGE_A ][SUBSYS_ARIES_A ] = dcfd_hist[10];
+            subsys_dcfd[SUBSYS_HPGE_A ][SUBSYS_BGO     ] = dcfd_hist[ 1];
+            subsys_dcfd[SUBSYS_HPGE_A ][SUBSYS_SCEPTAR ] = dcfd_hist[ 2];
+            subsys_dcfd[SUBSYS_HPGE_A ][SUBSYS_DESWALL ] = dcfd_hist[19];
+            subsys_dcfd[SUBSYS_PACES  ][SUBSYS_LABR_L  ] = dcfd_hist[ 8];
+            subsys_dcfd[SUBSYS_PACES  ][SUBSYS_ARIES_A ] = dcfd_hist[12];
+            subsys_dcfd[SUBSYS_PACES  ][SUBSYS_ZDS_A   ] = dcfd_hist[ 7];
+            subsys_dcfd[SUBSYS_LABR_L ][SUBSYS_LABR_L  ] = dcfd_hist[26];
+            subsys_dcfd[SUBSYS_LABR_L ][SUBSYS_ARIES_A ] = dcfd_hist[11];
+            subsys_dcfd[SUBSYS_LABR_L ][SUBSYS_ZDS_A   ] = dcfd_hist[17];
+            subsys_dcfd[SUBSYS_LABR_L ][SUBSYS_TAC_LABR] = dcfd_hist[16];
+            subsys_dcfd[SUBSYS_RCMP   ][SUBSYS_RCMP    ] = dcfd_hist[ 9];
+            subsys_dcfd[SUBSYS_ARIES_A][SUBSYS_ARIES_A ] = dcfd_hist[13];
+            subsys_dcfd[SUBSYS_ARIES_A][SUBSYS_TAC_ART ] = dcfd_hist[14];
+            subsys_dcfd[SUBSYS_ZDS_A  ][SUBSYS_TAC_ZDS ] = dcfd_hist[15];
+            subsys_dcfd[SUBSYS_ZDS_A  ][SUBSYS_ZDS_B   ] = dcfd_hist[22];
+            subsys_dcfd[SUBSYS_DESWALL][SUBSYS_DESWALL ] = dcfd_hist[18];
+            subsys_dcfd[SUBSYS_DESWALL][SUBSYS_ARIES_A ] = dcfd_hist[20];
+            subsys_dcfd[SUBSYS_DESWALL][SUBSYS_ZDS_A   ] = dcfd_hist[21];
+            subsys_dcfd[SUBSYS_HPGE_A ][SUBSYS_QED_PIXEL  ] = dcfd_hist[27];
+            subsys_dcfd[SUBSYS_QED_PIXEL][SUBSYS_QED_PIXEL] = dcfd_hist[28];
+            subsys_dcfd[SUBSYS_COMPTON][SUBSYS_COMPTON] = dcfd_hist[29];
+            subsys_dcfd[SUBSYS_HPGE_A][SUBSYS_COMPTON] = dcfd_hist[30];
 
             // Fill QED-HPGe angles test histogram
             // Pixel 0 of QED02 is pixel number 1024
@@ -2586,12 +2617,12 @@ int init_default_histos(Config *cfg, Sort_status *arg)
   {
     int global_window_size = (int)(sort_window_width>>1); // size in grif-replay should be double this
     Grif_event *alt, *ptr, *original_ptr = &grif_event[win_idx], *tmp;
-    int dt, abs_dt,  pos, c1, c2, index, ptr_swap;
+    int dt, abs_dt,  pos, c1, c2, index, ptr_swap, delta_cfd;
     int ptr_subsys, alt_subsys, ptr_ecal, alt_ecal, sum_ecal;
     int pos1, qed1, ge1, pos2, qed2, ge2, ge3, angle;  // QED variables
     double omega, theta1, theta2, delta_theta, azimuthal, azimuthal2, initial_theta; // QED variables
     double energy_derived_theta1, energy_derived_theta2;
-    TH2I *hist_ee; TH1I *hist_dt;
+    TH2I *hist_ee; TH1I *hist_dt; TH1I *hist_dcfd;
 
     // histogram of coincwin-size
     dt = (frag_idx - win_idx + 2*PTR_BUFSIZE) % PTR_BUFSIZE; ++frag_hist[dt];
@@ -2610,6 +2641,9 @@ int init_default_histos(Config *cfg, Sort_status *arg)
       // the usual subsys-vs-subsys 1d-time-diff and 2d-EvsE
       if( (hist_dt = subsys_dt[ptr_subsys][alt_subsys]) != NULL ){
         hist_dt->Fill(hist_dt, (int)(abs_dt+(DT_SPEC_LENGTH>>1)), 1);
+      }
+      if( (hist_dcfd = subsys_dcfd[ptr_subsys][alt_subsys]) != NULL ){
+        hist_dcfd->Fill(hist_dcfd, (int)((ptr->cfd>>4)-(alt->cfd>>4)+(DT_SPEC_LENGTH>>1)), 1);
       }
       if( (hist_ee = subsys_e_vs_e[ptr_subsys][alt_subsys]) != NULL ){
         if((abs_dt >= time_diff_gate_min[ptr_subsys][alt_subsys]) && (abs_dt <= time_diff_gate_max[ptr_subsys][alt_subsys]) ){
@@ -2722,16 +2756,18 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                   if( qed1 >= 0 && qed1 < 1024 && qed2 >= 0 && qed2 < 1024 && ptr->ecal>5 && alt->ecal>5){ //&& (abs_dt >= time_diff_gate_min[SUBSYS_QED_PIXEL][SUBSYS_QED_PIXEL]) && (abs_dt <= time_diff_gate_max[SUBSYS_QED_PIXEL][SUBSYS_QED_PIXEL])){
                     if(pos1 == 2 && pos2 == 3){ // Back-to-back DSSD, QED2 and QED3
                       qed_qed_23->Fill(qed_qed_23, (int)ptr->ecal, (int)alt->ecal, 1);
-                      qed_qed_23dt->Fill(qed_qed_23dt, dt+512, 1);
+                      delta_cfd = (ptr->cfd>>4) - (alt->cfd>>4);
+                      qed_qed_23dt->Fill(qed_qed_23dt, delta_cfd+512, 1);
                       angle = (int)scattering_angle_QEDQED(pos1, qed1, pos2, qed2);
-                      sum_ecal = (int)(ptr->ecal+alt->ecal);
+                      sum_ecal = (int)(ptr->ecal+alt->cfd);
                       qed_qed_23_theta2->Fill(qed_qed_23_theta2, (int)ptr->ecal, angle, 1);
                       qed_qed_23_theta3->Fill(qed_qed_23_theta3, (int)alt->ecal, angle, 1);
                       qed_qed_23_totv2->Fill(qed_qed_23_totv2, (int)ptr->ecal, sum_ecal, 1);
                       qed_qed_23_totv3->Fill(qed_qed_23_totv3, (int)alt->ecal, sum_ecal, 1);
                     }else if(pos2 == 2 && pos1 == 3){
                       qed_qed_23->Fill(qed_qed_23, (int)alt->ecal, (int)ptr->ecal, 1);
-                      qed_qed_23dt->Fill(qed_qed_23dt, dt+512, 1);
+                      delta_cfd = (ptr->cfd>>4) - (alt->cfd>>4);
+                      qed_qed_23dt->Fill(qed_qed_23dt, delta_cfd+512, 1);
                       angle = (int)scattering_angle_QEDQED(pos2, qed2, pos1, qed1);
                       sum_ecal = (int)(ptr->ecal+alt->ecal);
                       qed_qed_23_theta2->Fill(qed_qed_23_theta2, (int)alt->ecal, angle, 1);
@@ -2741,7 +2777,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                     }
                     if(pos1 == 1 && pos2 == 2){ // 90 degree DSSD, QED1 and QED2
                       qed_qed_12->Fill(qed_qed_12, (int)ptr->ecal, (int)alt->ecal, 1);
-                      qed_qed_12dt->Fill(qed_qed_12dt, dt+512, 1);
+                      delta_cfd = (ptr->cfd>>4) - (alt->cfd>>4);
+                      qed_qed_12dt->Fill(qed_qed_12dt, delta_cfd+512, 1);
                       angle = (int)scattering_angle_QEDQED(pos1, qed1, pos2, qed2);
                       sum_ecal = (int)(ptr->ecal+alt->ecal);
                       qed_qed_12_theta1->Fill(qed_qed_12_theta1, (int)ptr->ecal, angle, 1);
@@ -2750,7 +2787,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                       qed_qed_12_totv2->Fill(qed_qed_12_totv2, (int)alt->ecal, sum_ecal, 1);
                     }else if(pos2 == 1 && pos1 == 2){
                       qed_qed_12->Fill(qed_qed_12, (int)alt->ecal, (int)ptr->ecal, 1);
-                      qed_qed_12dt->Fill(qed_qed_12dt, dt+512, 1);
+                      delta_cfd = (ptr->cfd>>4) - (alt->cfd>>4);
+                      qed_qed_12dt->Fill(qed_qed_12dt, delta_cfd+512, 1);
                       angle = (int)scattering_angle_QEDQED(pos2, qed2, pos1, qed1);
                       sum_ecal = (int)(ptr->ecal+alt->ecal);
                       qed_qed_12_theta1->Fill(qed_qed_12_theta1, (int)alt->ecal, angle, 1);
@@ -2760,7 +2798,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                     }
                     if(pos1 == 1 && pos2 == 4){ // Opposite DSSD, QED1 and QED4
                       qed_qed_14->Fill(qed_qed_14, (int)ptr->ecal, (int)alt->ecal, 1);
-                      qed_qed_14dt->Fill(qed_qed_14dt, dt+512, 1);
+                      delta_cfd = (ptr->cfd>>4) - (alt->cfd>>4);
+                      qed_qed_14dt->Fill(qed_qed_14dt, delta_cfd+512, 1);
                       angle = (int)scattering_angle_QEDQED(pos1, qed1, pos2, qed2);
                       sum_ecal = (int)(ptr->ecal+alt->ecal);
                       qed_qed_14_theta1->Fill(qed_qed_14_theta1, (int)ptr->ecal, angle, 1);
@@ -2769,7 +2808,8 @@ int init_default_histos(Config *cfg, Sort_status *arg)
                       qed_qed_14_totv4->Fill(qed_qed_14_totv4, (int)alt->ecal, sum_ecal, 1);
                     }else if(pos2 == 1 && pos1 == 4){
                       qed_qed_14->Fill(qed_qed_14, (int)alt->ecal, (int)ptr->ecal, 1);
-                      qed_qed_14dt->Fill(qed_qed_14dt, dt+512, 1);
+                      delta_cfd = (ptr->cfd>>4) - (alt->cfd>>4);
+                      qed_qed_14dt->Fill(qed_qed_14dt, delta_cfd+512, 1);
                       angle = (int)scattering_angle_QEDQED(pos2, qed2, pos1, qed1);
                       sum_ecal = (int)(ptr->ecal+alt->ecal);
                       qed_qed_14_theta1->Fill(qed_qed_14_theta1, (int)alt->ecal, angle, 1);
