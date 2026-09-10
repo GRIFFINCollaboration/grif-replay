@@ -1,7 +1,7 @@
 GRIF_OBJECTS = config_io.o config_usersort.o config_util.o web_command.o\
           grif-replay.o midas-format.o grif-format.o histogram.o\
-          web_server.o grif-reorder.o user_sort_griffin.o \
-          default_sort_griffin.o odb.o
+          web_server.o grif-reorder.o user_sort_griffin.o grif-angles.o \
+          default_sort_init_griffin.o default_sort_presort_griffin.o default_sort_main_griffin.o odb.o
 
 DRAGON_OBJECTS = config_io.o config_usersort.o config_util.o web_command.o\
           dragon-replay.o midas-format.o histogram.o \
@@ -25,7 +25,7 @@ dragon-replay: $(DRAGON_OBJECTS)
 
 grif-replay: $(GRIF_OBJECTS)
 	$(CC) $(CFLAGS) $(SYS) -o $@ $^ -rdynamic -lz -ldl -lm -lpthread -flto -ffast-math
-	
+
 midas: midas_module.so
 
 tar2ascii: tar2ascii.c
@@ -54,7 +54,10 @@ histogram.o:      histogram.c config.h histogram.h
 grif-reorder.o:   grif-reorder.c grif-replay.h midas-format.h
 dragon-reorder.o: dragon-reorder.c grif-replay.h midas-format.h dragon-format.h
 web_server.o:     web_server.c histogram.h
-default_sort_griffin.o:   default_sort_griffin.c default_sort_griffin.h config.h grif-format.h histogram.h
+grif-angles.o:    grif-angles.c grif-angles.h
+default_sort_init_griffin.o:   default_sort_init_griffin.c default_sort_griffin.h config.h grif-format.h histogram.h
+default_sort_presort_griffin.o:   default_sort_presort_griffin.c default_sort_griffin.h config.h grif-format.h histogram.h
+default_sort_main_griffin.o:   default_sort_main_griffin.c default_sort_griffin.h config.h grif-format.h histogram.h
 default_sort_dragon.o:    default_sort_dragon.c default_sort_dragon.h config.h dragon-format.h histogram.h
 
 clean:

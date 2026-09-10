@@ -1,9 +1,39 @@
 //////////////////////////// Angles ////////////////////////////////
 
+#define DEGREES_TO_RADIANS 0.01745329251 // (3.14/180)
+#define RADIANS_TO_DEGREES 57.2957795131 // (180/3.14)
+#define ACOS_TABLE_SIZE 2048  // acos is slow so here is a fast lookup table
+
+extern float acos_table[ACOS_TABLE_SIZE]; // Global acos lookup table
 extern int ge_angles[64][64];
+
+// function declarations
+double dot_product(double vector1[], double vector2[]);
+void cross_product(double vector1[], double vector2[], double result[]);
+double vector_magnitude_product(double vector1[], double vector2[]);
+void rotate_vector(double v[], double u[], double angle, double result[]);
+void init_acos_table(void);
+float fast_acos(float x);
+int compton_angle(float ecal, float initial_energy);
+int secondary_energy(float angle, float initial_energy);
+double angular_diff_GeGe(int c1, int c2, int distance);
+double angular_diff_QEDQED(int pos1, int qed1, int pos2, int qed2);
+double angular_diff_QEDGe(int pos1, int qed1, int c2, int distance);
+double azimuthal_GeGeGe(int c1, int c2, int c3, int distance);
+double scattering_angle_QEDGe(int pos, int qed, int ge);
+double scattering_angle_GeQED(int pos, int qed, int ge);
+double scattering_angle_QEDQED(int pos1, int qed1, int pos2, int qed2);
+double azimuthal_DCS(int pos1, int qed1, int ge1, int pos2, int qed2, int ge2);
+double energy_corrected_azimuthal_DCS(int pos1, int qed1, int ge1, float ecal1, int pos2, int qed2, int ge2, float ecal2);
+double azimuthal_TCS_SiGe_SiGeGe(int pos1, int qed1, int ge1, int ge2, int ge3);
+double azimuthal_TCS_GeGe_SiGeGe(int ge1, int ge2, int ge3, int ge4);
+double azimuthal_TCS_GeGe_SiSiGe(int pos1, int qed1, int ge1, int ge2, int ge3);
+double azimuthal_TCS_SiGe_SiSiGe(int pos1, int qed1, int ge1, int pos3, int qed3, int ge2);
+
+
 // These need to have more signficant figures in order to correctly assign angular differences.
 // Need a Global variable to select between HPGe at 110mm and 145mm
-float grif_crystal_theta_110mm[64]={ // HPGe angles at 110mm
+static const float grif_crystal_theta_110mm[64]={ // HPGe angles at 110mm
   36.5419172	, 55.06797108	, 55.06797108	, 36.5419172	,
   36.5419172	, 55.06797108	, 55.06797108	, 36.5419172	,
   36.5419172	, 55.06797108	, 55.06797108	, 36.5419172	,
@@ -21,7 +51,7 @@ float grif_crystal_theta_110mm[64]={ // HPGe angles at 110mm
   124.9320289	, 143.4580828	, 143.4580828	, 124.9320289	,
   124.9320289	, 143.4580828	, 143.4580828	, 124.9320289
 };
-float grif_crystal_phi_110mm[64]={ // Ge at 110mm
+static const float grif_crystal_phi_110mm[64]={ // Ge at 110mm
   83.40942207	, 78.98318538	, 56.01681462	, 51.59057793	,
   173.4094221	, 168.9831854	, 146.0168146	, 141.5905779	,
   263.4094221	, 258.9831854	, 236.0168146	, 231.5905779	,
@@ -40,7 +70,7 @@ float grif_crystal_phi_110mm[64]={ // Ge at 110mm
   348.9831854	, 353.4094221	, 321.5905779	, 326.0168146
 };
 
-int grif_opposite[64] = {
+static const int grif_opposite[64] = {
   57, 56, 59, 58,    61, 60, 63, 62,
   49, 48, 51, 50,    53, 52, 55, 54,
   33, 32, 35, 34,    37, 36, 39, 38,
@@ -52,7 +82,7 @@ int grif_opposite[64] = {
 };
 
 // cartesian coordinates of the centre of the front face of each GRIFFIN HPGe crystal at 110mm
-float grif_crystal_cartesian_110mm[64][3]={
+static const float grif_crystal_cartesian_110mm[64][3]={
   {7.561842, 65.028412, 88.397537}, {17.289392, 88.477371, 63.030403}, {50.426800, 74.728218, 63.030403}, {40.696285, 51.280487, 88.397537},
   {-65.022369, 7.613623, 88.397537}, {-88.463577, 17.359844, 63.030403}, {-74.688034, 50.486294, 63.030403}, {-51.248062, 40.737106, 88.397537},
   {-7.665400, -65.016289, 88.397537}, {-17.430285, -88.449722, 63.030403}, {-50.545753, -74.647804, 63.030403}, {-40.777905, -51.215607, 88.397537},
@@ -71,7 +101,7 @@ float grif_crystal_cartesian_110mm[64][3]={
   {88.534180, -17.520180, -62.886745}, {65.149879, -7.733758, -88.293159}, {51.293121, -40.906406, -88.293159}, {74.690514, -50.661469, -62.886745}};
 
   // unit vectors of the front face of each clover. Pointing towards the origin.
-  double grif_clover_unit_vector_110mm[16][3] = {
+  static const double grif_clover_unit_vector_110mm[16][3] = {
     {-0.2709, -0.6529, -0.7074}, {0.6527, -0.2714, -0.7074}, {0.2719, 0.6524, -0.7074}, {-0.6522, 0.2724, -0.7074},
     {-0.9240, -0.3825, 0.0}, {-0.3832, -0.9237, 0.0}, {0.3818, -0.9243, 0.0}, {0.9233, -0.3840, 0.0},
     {0.9246, 0.3810, 0.0}, {0.3847, 0.9230, 0.0}, {-0.3803, 0.9249, 0.0}, {-0.9227, 0.3854, 0.0},
@@ -79,7 +109,7 @@ float grif_crystal_cartesian_110mm[64][3]={
 
     // angular differences in degrees for the 110mm distance. There are
     // 110mm
-    float angular_bins_110mm[52] = {
+    static const float angular_bins_110mm[52] = {
       0.000, 18.787, 25.602, 26.690, 31.946, 33.654, 44.364, 46.794, 48.576, 49.798,
       53.834, 60.151, 62.705, 63.086, 65.016, 66.461, 67.456, 69.864, 70.860, 73.084,
       76.381, 78.669, 83.043, 86.228, 86.238, 88.474, 91.526, 93.762, 93.772, 96.957,
@@ -92,7 +122,7 @@ float grif_crystal_cartesian_110mm[64][3]={
     // ge_angles_110mm[c1][c2] = angularIndex of the angular_bins_110mm array of angular differences in degrees
     // c1 and c2 run from 0 to 63.
     // the angular index runs from 0 to 51.
-    int ge_angles_110mm[64][64] = {
+    static const int ge_angles_110mm[64][64] = {
       {0,1,3,1,9,11,7,5,19,26,25,17,9,14,20,12,11,20,24,18,6,13,15,8,10,18,14,7,21,28,22,16,31,40,33,27,38,45,43,36,33,41,44,37,23,30,35,29,25,32,34,26,37,42,39,31,50,51,50,48,40,42,46,44},
       {1,0,1,3,14,18,10,7,26,34,32,25,11,18,24,20,9,12,20,14,2,6,8,4,7,11,9,5,22,28,21,16,39,42,37,31,45,49,47,43,40,44,46,42,23,29,35,30,17,25,26,19,33,40,31,27,51,50,48,50,33,37,44,41},
       {3,1,0,1,20,24,18,11,25,32,34,26,7,10,18,14,5,9,11,7,4,8,6,2,14,20,12,9,30,35,29,23,42,46,44,40,43,47,49,45,31,37,42,39,16,21,28,22,19,26,25,17,41,44,37,33,50,48,50,51,27,31,40,33},
@@ -161,7 +191,7 @@ float grif_crystal_cartesian_110mm[64][3]={
 
     // angular differences in degrees between HPGe crystal centers for the 145mm distance.
     // 145mm
-    float angular_bins_145mm[52] = {
+    static const float angular_bins_145mm[52] = {
       0.000, 15.442, 21.905, 29.143, 33.143, 38.382, 44.57, 47.445, 48.741, 51.473,
       55.170, 59.978, 60.102, 62.340, 62.492, 63.423, 68.957, 71.431, 73.358, 73.629,
       75.774, 80.942, 81.546, 83.894, 86.868, 88.966, 91.034, 93.132, 96.106, 98.454,
@@ -174,7 +204,7 @@ float grif_crystal_cartesian_110mm[64][3]={
     // ge_angles_145mm[c1][c2] = angularIndex of the angular_bins_145mm array of angular differences in degrees
     // c1 and c2 run from 0 to 63.
     // the angular index runs from 0 to 51.
-    int ge_angles_145mm[64][64] = {
+    static const int ge_angles_145mm[64][64] = {
       {0,1,2,1,9,12,8,5,20,26,25,19,9,15,18,14,12,18,22,16,6,11,13,7,10,16,15,8,21,27,23,17,33,39,35,29,40,45,44,38,35,41,43,36,24,30,34,28,25,31,32,26,36,42,37,33,50,51,50,49,39,42,46,43},
       {1,0,1,2,15,16,10,8,26,32,31,25,12,16,22,18,9,14,18,15,3,6,7,4,8,12,9,5,23,27,21,17,37,42,36,33,45,48,47,44,39,43,46,42,24,28,34,30,19,25,26,20,35,39,33,29,51,50,49,50,35,36,43,41},
       {2,1,0,1,18,22,16,12,25,31,32,26,8,10,16,15,5,9,12,8,4,7,6,3,15,18,14,9,30,34,28,24,42,46,43,39,44,47,48,45,33,36,42,37,17,21,27,23,20,26,25,19,41,43,36,35,50,49,50,51,29,33,39,35},
@@ -246,7 +276,7 @@ float grif_crystal_cartesian_110mm[64][3]={
     //////////////////////////////////////
 
     // GRIFFIN-ARIES with HPGE at 110mm
-    float GRG_ART_angular_bins_110mm[114] = {
+    static const float GRG_ART_angular_bins_110mm[114] = {
       0,18.787,25.602,26.69,27.229,27.292,29.681,31.458,31.946,33.654,36.505,
       38.602,41.39,42.923,44.234,44.364,45.555,45.872,45.884,46.794,47.478,48.576,
       49.798,50.229,53.808,53.834,55.822,57.36,60.151,60.651,62.705,63.001,63.086,
@@ -261,7 +291,7 @@ float grif_crystal_cartesian_110mm[64][3]={
 
       // GRIFFIN-ARIES with HPGE at 110mm
       // GRG_ART_angles_110mm[crystal][tile] = angularIndex of the GRG_ART_angular_bins_110mm array of angular differences in degrees
-      int GRG_ART_angles_110mm[64][76] = {
+      static const int GRG_ART_angles_110mm[64][76] = {
         {6,7,14,13,1,0,9,22,38,42,30,22,16,5,45,53,3,1,19,28,54,59,44,34,39,28,21,15,19,25,36,47,61,69,78,81,79,74,64,51,52,44,35,32,34,39,49,62,74,85,92,98,94,88,77,66,59,54,69,79,110,112,94,85,68,60,97,108,75,71,83,91,112,113,104,91},
         {20,23,31,29,3,1,19,34,54,59,44,28,16,5,60,68,1,0,25,39,71,75,52,39,34,22,8,2,9,19,36,49,69,83,92,98,91,85,66,51,44,30,21,15,22,28,47,62,79,91,105,111,104,94,77,64,42,38,61,74,112,113,88,74,53,45,97,108,59,54,69,85,110,112,94,79},
         {17,24,33,27,1,3,28,44,59,54,34,19,5,16,68,60,0,1,39,52,75,71,39,25,19,9,2,8,22,34,51,66,85,91,98,92,83,69,49,36,28,22,15,21,30,44,64,77,94,104,111,105,91,79,62,47,38,42,74,88,113,112,74,61,45,53,108,97,54,59,79,94,112,110,85,69},
@@ -330,7 +360,7 @@ float grif_crystal_cartesian_110mm[64][3]={
 
       // GRIFFIN-ARIES with HPGE at 110mm
       // ART_GRG_angles_110mm[tile][crystal] = angularIndex of the GRG_ART_angular_bins_110mm array of angular differences in degrees
-      int ART_GRG_angles_110mm[76][64] = {
+      static const int ART_GRG_angles_110mm[76][64] = {
         {6,20,17,4,13,29,27,11,14,31,33,18,7,23,24,10,40,57,58,41,41,58,57,40,46,65,63,43,50,70,67,48,56,73,72,55,55,72,73,56,48,67,70,50,43,63,65,46,82,99,95,80,90,106,103,89,93,107,109,96,84,100,102,86},
         {7,23,24,10,6,20,17,4,13,29,27,11,14,31,33,18,48,67,70,50,43,63,65,46,40,57,58,41,41,58,57,40,46,65,63,43,50,70,67,48,56,73,72,55,55,72,73,56,84,100,102,86,82,99,95,80,90,106,103,89,93,107,109,96},
         {14,31,33,18,7,23,24,10,6,20,17,4,13,29,27,11,56,73,72,55,55,72,73,56,48,67,70,50,43,63,65,46,40,57,58,41,41,58,57,40,46,65,63,43,50,70,67,48,93,107,109,96,84,100,102,86,82,99,95,80,90,106,103,89},
@@ -417,7 +447,7 @@ float grif_crystal_cartesian_110mm[64][3]={
 
       // Source to detector distance of each descant detector in the Wall configuration
       // Required for time-of-flight determination
-      float DSW_distance[60] = {
+      static const float DSW_distance[60] = {
         1608,1608,1681.8,1681.8,1681.8,1681.8,1608,1608,1681.8,1681.8,
         1681.8,1681.8,1886.1,1886.1,1886.1,1886.1,1608,1608,1886.1,1886.1,
         1886.1,1886.1,1681.8,1681.8,1681.8,1681.8,1886.1,1886.1,1886.1,1886.1,
@@ -427,16 +457,16 @@ float grif_crystal_cartesian_110mm[64][3]={
 
         // Correction factor for time-of-flight
         // Equal to median detector distance / detector distance
-        float DSW_tof_corr_factor[60] = {1.0459,1.0459,1.0000,1.0000,1.0000,1.0000,1.0459,1.0459,1.0000,1.0000,1.0000,1.0000,0.8917,0.8917,0.8917,0.8917,1.0459,1.0459,0.8917,0.8917,0.8917,0.8917,1.0000,1.0000,1.0000,1.0000,0.8917,0.8917,0.8917,0.8917,1.0459,1.0459,1.0000,1.0000,1.0000,1.0000,0.8917,0.8917,0.8917,0.8917,0.8917,0.8917,0.8917,0.8917,1.0000,1.0000,1.0000,1.0000,1.0459,1.0459,0.8917,0.8917,0.8917,0.8917,1.0000,1.0000,1.0000,1.0000,1.0459,1.0459};
+        static const float DSW_tof_corr_factor[60] = {1.0459,1.0459,1.0000,1.0000,1.0000,1.0000,1.0459,1.0459,1.0000,1.0000,1.0000,1.0000,0.8917,0.8917,0.8917,0.8917,1.0459,1.0459,0.8917,0.8917,0.8917,0.8917,1.0000,1.0000,1.0000,1.0000,0.8917,0.8917,0.8917,0.8917,1.0459,1.0459,1.0000,1.0000,1.0000,1.0000,0.8917,0.8917,0.8917,0.8917,0.8917,0.8917,0.8917,0.8917,1.0000,1.0000,1.0000,1.0000,1.0459,1.0459,0.8917,0.8917,0.8917,0.8917,1.0000,1.0000,1.0000,1.0000,1.0459,1.0459};
 
         // DSW_DSW_angles[detector][detector] = angularIndex of the DSW_DSW_angular_bins array of angular differences in degrees
-        float DSW_DSW_angular_bins[42] = {
+        static const float DSW_DSW_angular_bins[42] = {
           0,    14,17.054,21.939,    28,32.419,36.8,      42,44.677,47.197,
           50.683,53.396,    56,58.555,61.535,64.893,68.409,72.412,76.946,79.56,
           82.794,88.542,91.458,97.206,100.44,103.054,107.588,111.62,115.107,118.465,
           122.272,126.36,129.304,135.229,138,143.293,147.632,152,158.125,160.747,166,180.000};
 
-          int DSW_DSW_angles[60][60] = {
+          static const int DSW_DSW_angles[60][60] = {
             {0,1,2,3,3,2,1,4,3,5,5,3,5,5,5,5,4,7,5,7,7,5,5,8,8,5,7,10,10,7,7,12,8,12,12,8,10,14,14,10,29,32,32,29,30,33,33,30,30,34,32,34,34,32,33,36,36,33,34,37},
             {1,0,3,2,2,3,4,1,5,3,3,5,5,5,5,5,7,4,7,5,5,7,8,5,5,8,10,7,7,10,12,7,12,8,8,12,14,10,10,14,32,29,29,32,33,30,30,33,34,30,34,32,32,34,36,33,33,36,37,34},
             {2,3,0,1,6,5,3,5,1,4,7,6,1,2,10,9,5,8,2,4,11,10,4,7,11,7,4,7,14,11,8,12,7,11,15,11,7,10,17,14,26,28,34,31,28,31,34,31,30,33,28,30,37,34,31,33,37,34,33,36},
@@ -504,7 +534,7 @@ float grif_crystal_cartesian_110mm[64][3]={
           ////////////////////////////////////////////////////////////////////////////////
 
           // cartesian coordinates of the centre of each pixel of each DSSD in the QED arrangement
-          float qed_cartesian[6][1024][3]={
+          static const float qed_cartesian[6][1024][3]={
             // QED DSSD1
             {{	42.061243	,	31.727147	,	31.000000	},
             {	40.235607	,	32.200247	,	31.000000	},
@@ -6656,745 +6686,3 @@ float grif_crystal_cartesian_110mm[64][3]={
             {	49.609372	,	-49.242971	,	31.000000	},
             {	49.006360	,	-51.032702	,	31.000000	}}
           };
-          ////////////////////////////
-          // Helper functions
-          ////////////////////////////
-          #define DEGREES_TO_RADIANS 0.01745329251 // (3.14/180)
-          #define RADIANS_TO_DEGREES 57.2957795131 // (180/3.14)
-
-          // calculate dot product of two three-dimensional vectors
-          double dot_product(double vector1[], double vector2[]) {
-            double result = 0.0;
-            result += vector1[0] * vector2[0];
-            result += vector1[1] * vector2[1];
-            result += vector1[2] * vector2[2];
-            return result;
-          }
-
-          // calculate cross product of two three-dimensional vectors
-          void cross_product(double vector1[], double vector2[], double result[]) {
-            result[0] = vector1[1] * vector2[2] - vector1[2] * vector2[1];
-            result[1] = vector1[2] * vector2[0] - vector1[0] * vector2[2];
-            result[2] = vector1[0] * vector2[1] - vector1[1] * vector2[0];
-          }
-
-          // calculate the product of the magnitudes of two three-dimensional vector
-          double vector_magnitude_product(double vector1[], double vector2[]){
-            double result1 = 0.0,result2 = 0.0;
-            result1 += vector1[0] * vector1[0];
-            result1 += vector1[1] * vector1[1];
-            result1 += vector1[2] * vector1[2];
-            result1 = sqrt(result1);
-            result2 += vector2[0] * vector2[0];
-            result2 += vector2[1] * vector2[1];
-            result2 += vector2[2] * vector2[2];
-            result2 = sqrt(result2);
-
-            return (result1*result2);
-          }
-
-          // rotate a three-dimensional vector, v, around an axis of unit vector (u) by the given angle
-          void rotate_vector(double v[], double u[], double angle, double result[]) {
-            double dot,cross[3];
-            dot = dot_product(u,v);
-            cross_product(u,v,cross);
-            result[0] = v[0]*cos(DEGREES_TO_RADIANS*angle) + cross[0]*sin(DEGREES_TO_RADIANS*angle) + u[0]*dot*(1-cos(DEGREES_TO_RADIANS*angle));
-            result[1] = v[1]*cos(DEGREES_TO_RADIANS*angle) + cross[1]*sin(DEGREES_TO_RADIANS*angle) + u[1]*dot*(1-cos(DEGREES_TO_RADIANS*angle));
-            result[2] = v[2]*cos(DEGREES_TO_RADIANS*angle) + cross[2]*sin(DEGREES_TO_RADIANS*angle) + u[2]*dot*(1-cos(DEGREES_TO_RADIANS*angle));
-            if(result[0]>-0.0001 && result[0]<0.0001){ result[0]=0.0; }
-            if(result[1]>-0.0001 && result[1]<0.0001){ result[1]=0.0; }
-            if(result[2]>-0.0001 && result[2]<0.0001){ result[2]=0.0; }
-          }
-          // acos is slow so here is a fast lookup table
-          #define ACOS_TABLE_SIZE 2048
-          // Global lookup table
-          float acos_table[ACOS_TABLE_SIZE];
-
-          // Initialize table mapping index to acos(x)
-          void init_acos_table(void){
-            for(int i = 0; i < ACOS_TABLE_SIZE; i++){
-              // Map index [0, 511] to input range [-1.0, 1.0]
-              float x = -1.0f + (2.0f * i) / (ACOS_TABLE_SIZE - 1);
-              acos_table[i] = acosf(x);
-            }
-          }
-
-          // Fast lookup function with linear interpolation because acos is slow
-          float fast_acos(float x){
-            // Bound input to valid acos range [-1.0, 1.0]
-            if(x < -1.0f) x = -1.0f;
-            if(x > 1.0f) x = 1.0f;
-
-            // Map x to table index scale [0.0, 511.0]
-            float val = (x + 1.0f) * 0.5f * (ACOS_TABLE_SIZE - 1);
-
-            int index = (int)val;
-            if(index >= ACOS_TABLE_SIZE - 1){
-              return acos_table[ACOS_TABLE_SIZE - 1];
-            }
-
-            // Linear interpolation for higher accuracy
-            float fraction = val - index;
-            float y0 = acos_table[index];
-            float y1 = acos_table[index + 1];
-
-            return y0 + fraction * (y1 - y0);
-          }
-
-          // Calculate the scattering angle from a HPGe energy (keV) assuming it is
-          // the secondary (final) photon from a single Compton scatter of an initial_energy gamma ray
-          int compton_angle(float ecal, float initial_energy){
-            //  return (int)( RADIANS_TO_DEGREES*fast_acos( 1 - (511.0/ecal) + (511.0/initial_energy) ) );
-            float factor;
-            factor = 1 - (511.0/ecal) + (511.0/initial_energy);
-            if(factor<-1.0 || factor>1.0){ return 0; }
-            return (int)( RADIANS_TO_DEGREES*fast_acos( factor ) );
-          }
-
-          // Calculate the secondary photon energy from a scattering angle and an initial_energy gamma ray
-          int secondary_energy(float angle, float initial_energy){
-            return (int)(initial_energy/(1+((initial_energy/511.0)*(1-cos(angle*DEGREES_TO_RADIANS)))));
-          }
-
-          // Calculate angular difference between two HPGe
-          double angular_diff_GeGe(int c1, int c2, int distance){
-            double vec1[3], vec2[3], dot, mag, angle;
-
-            if(distance==110){
-              vec1[0] = grif_crystal_cartesian_110mm[c1][0]; vec1[1] = grif_crystal_cartesian_110mm[c1][1]; vec1[2] = grif_crystal_cartesian_110mm[c1][2];
-              vec2[0] = grif_crystal_cartesian_110mm[c2][0]; vec2[1] = grif_crystal_cartesian_110mm[c2][1]; vec2[2] = grif_crystal_cartesian_110mm[c2][2];
-            }else if(distance==145){
-              fprintf(stderr,"angular_diff_GeGe function error: 145mm distance case not implemented yet\n");
-              return 0;
-              //  vec1[0] = grif_crystal_cartesian_145mm[c1][0]; vec1[1] = grif_crystal_cartesian_145mm[c1][1]; vec1[2] = grif_crystal_cartesian_145mm[c1][2];
-              //  vec2[0] = grif_crystal_cartesian_145mm[c2][0]; vec2[1] = grif_crystal_cartesian_145mm[c2][1]; vec2[2] = grif_crystal_cartesian_145mm[c2][2];
-            }else{
-              fprintf(stderr,"angular_diff_GeGe function error: unknown distance = %d. Expected int of 110 or 145\n",distance);
-              return 0;
-            }
-            dot = dot_product(vec1,vec2);
-            mag = vector_magnitude_product(vec1,vec2);
-            angle = RADIANS_TO_DEGREES*fast_acos( dot / mag ); // acos is very slow
-
-            return angle;
-          }
-
-          // Calculate the azimuthal angle between a scattering event in one clover and a coincidence plane defined by two HPGe
-          // c1 and c2 are the same as for angular correlations. These define the coincidence plane.
-          // c3 is another crystal in one of the clovers.
-          double azimuthal_GeGeGe(int c1, int c2, int c3, int distance){
-            double vec1[3], vec2[3], vec3[3], coincidence_plane[3], scattering_plane[3], dot, mag, angle;
-
-            if(distance==110){
-              vec1[0] = grif_crystal_cartesian_110mm[c1][0]; vec1[1] = grif_crystal_cartesian_110mm[c1][1]; vec1[2] = grif_crystal_cartesian_110mm[c1][2];
-              vec2[0] = grif_crystal_cartesian_110mm[c2][0]; vec2[1] = grif_crystal_cartesian_110mm[c2][1]; vec2[2] = grif_crystal_cartesian_110mm[c2][2];
-              vec3[0] = grif_crystal_cartesian_110mm[c3][0]; vec3[1] = grif_crystal_cartesian_110mm[c3][1]; vec3[2] = grif_crystal_cartesian_110mm[c3][2];
-            }else if(distance==145){
-              fprintf(stderr,"azimuthal_GeGeGe function error: 145mm distance case not implemented yet\n");
-              return 0;
-              //  vec1[0] = grif_crystal_cartesian_145mm[c1][0]; vec1[1] = grif_crystal_cartesian_145mm[c1][1]; vec1[2] = grif_crystal_cartesian_145mm[c1][2];
-              //  vec2[0] = grif_crystal_cartesian_145mm[c2][0]; vec2[1] = grif_crystal_cartesian_145mm[c2][1]; vec2[2] = grif_crystal_cartesian_145mm[c2][2];
-              //  vec3[0] = grif_crystal_cartesian_145mm[c3][0]; vec3[1] = grif_crystal_cartesian_145mm[c3][1]; vec3[2] = grif_crystal_cartesian_145mm[c3][2];
-            }else{
-              fprintf(stderr,"azimuthal_GeGeGe function error: unknown distance = %d. Expected int of 110 or 145\n",distance);
-              return 0;
-            }
-            cross_product(vec1,vec2,coincidence_plane); // the Normal vector of the plane (c1,c2)
-            cross_product(vec2,vec3,scattering_plane);  // the Normal vector of the plane (c2,c3)
-            // Now find the angle between the coincidence and scattering planes, the azimuthal
-            dot = dot_product(coincidence_plane,scattering_plane);
-            mag = vector_magnitude_product(coincidence_plane,scattering_plane);
-            if(dot==0 && mag==0){ dot = mag = 1; } // Protection from NaN in the division
-            angle = RADIANS_TO_DEGREES*fast_acos( dot / mag ); // acos is very slow
-
-            return angle;
-          }
-
-          // Calculate Compton scattering angle between one QED pixel and one HPGe from their cartesian coordinates
-          // pos is DSSD number [1-6], qed is pixel number [0-1023], ge is crystal number [0-63]
-          double scattering_angle_QEDGe(int pos, int qed, int ge){
-            double vec1[3], vec2[3], vec3[3], dot, mag, angle;
-
-            pos--; // pos is now 0-5 within this function
-            vec1[0] = qed_cartesian[pos][qed][0]; vec1[1] = qed_cartesian[pos][qed][1]; vec1[2] = qed_cartesian[pos][qed][2];
-            // vec2[0] = grif_crystal_cartesian_110mm[ge][0]; vec2[1] = grif_crystal_cartesian_110mm[ge][1]; vec2[2] = grif_crystal_cartesian_110mm[ge][2];
-            // vec1 is the vector from origin to DSSD pixel
-            // vec2 is the vector from origin to HPGe crystal
-            // The dot product of vec1 and vec2 would give the angular difference between these - as required for angular correlations
-            // Here we want the Compton scattering angle so we want the dot product of vec1 and vec3 where vec3 passes through the DSSD pixel and HPGe crystal
-            vec3[0] = grif_crystal_cartesian_110mm[ge][0] - qed_cartesian[pos][qed][0];
-            vec3[1] = grif_crystal_cartesian_110mm[ge][1] - qed_cartesian[pos][qed][1];
-            vec3[2] = grif_crystal_cartesian_110mm[ge][2] - qed_cartesian[pos][qed][2];
-
-            dot = dot_product(vec1,vec3);
-            mag = vector_magnitude_product(vec1,vec3);
-            angle = RADIANS_TO_DEGREES*fast_acos( dot / mag ); // acos is very slow
-
-            return angle;
-          }
-
-          // Calculate Compton scattering angle between one HPGe and one QED pixel from their cartesian coordinates
-          // pos is DSSD number [1-6], qed is pixel number [0-1023], ge is crystal number [0-63]
-          double scattering_angle_GeQED(int pos, int qed, int ge){
-            double vec1[3], vec2[3], vec3[3], dot, mag, angle;
-
-            pos--; // pos is now 0-5 within this function
-            //vec1[0] = qed_cartesian[pos][qed][0]; vec1[1] = qed_cartesian[pos][qed][1]; vec1[2] = qed_cartesian[pos][qed][2];
-            vec2[0] = grif_crystal_cartesian_110mm[ge][0]; vec2[1] = grif_crystal_cartesian_110mm[ge][1]; vec2[2] = grif_crystal_cartesian_110mm[ge][2];
-            // vec1 is the vector from origin to DSSD pixel
-            // vec2 is the vector from origin to HPGe crystal
-            // The dot product of vec1 and vec2 would give the angular difference between these - as required for angular correlations
-            // Here we want the Compton scattering angle so we want the dot product of vec2 and vec3 where vec3 passes through the DSSD pixel and HPGe crystal
-            vec3[0] = qed_cartesian[pos][qed][0] - grif_crystal_cartesian_110mm[ge][0];
-            vec3[1] = qed_cartesian[pos][qed][1] - grif_crystal_cartesian_110mm[ge][1];
-            vec3[2] = qed_cartesian[pos][qed][2] - grif_crystal_cartesian_110mm[ge][2];
-
-            dot = dot_product(vec2,vec3);
-            mag = vector_magnitude_product(vec2,vec3);
-            angle = RADIANS_TO_DEGREES*fast_acos( dot / mag ); // acos is very slow
-
-            return angle;
-          }
-
-          // Calculate Compton scattering angle between two QED pixels from their cartesian coordinates
-          // pos is DSSD number [1-6], qed is pixel number [0-1023]
-          double scattering_angle_QEDQED(int pos1, int qed1, int pos2, int qed2){
-            double vec1[3], vec2[3], vec3[3], dot, mag, angle;
-
-            pos1--; pos2--; // pos is now 0-5 within this function
-            vec1[0] = qed_cartesian[pos1][qed1][0]; vec1[1] = qed_cartesian[pos1][qed1][1]; vec1[2] = qed_cartesian[pos1][qed1][2];
-            // vec2[0] = grif_crystal_cartesian_110mm[ge][0]; vec2[1] = grif_crystal_cartesian_110mm[ge][1]; vec2[2] = grif_crystal_cartesian_110mm[ge][2];
-            // vec1 is the vector from origin to DSSD pixel
-            // vec2 is the vector from origin to HPGe crystal
-            // The dot product of vec1 and vec2 would give the angular difference between these - as required for angular correlations
-            // Here we want the Compton scattering angle so we want the dot product of vec1 and vec3 where vec3 passes through the DSSD pixel and HPGe crystal
-            vec3[0] = qed_cartesian[pos2][qed2][0] - qed_cartesian[pos1][qed1][0];
-            vec3[1] = qed_cartesian[pos2][qed2][1] - qed_cartesian[pos1][qed1][1];
-            vec3[2] = qed_cartesian[pos2][qed2][2] - qed_cartesian[pos1][qed1][2];
-
-            dot = dot_product(vec1,vec3);
-            mag = vector_magnitude_product(vec1,vec3);
-            angle = RADIANS_TO_DEGREES*fast_acos( dot / mag ); // acos is very slow
-
-            return angle;
-          }
-
-          // Double Compton Scatter (DCS) - delta phi, angle between the two scattering planes
-          // Calculate the azimuthal angle between the two scattering planes defined by two QED-HPGe scatter events
-          // c1 and c2 are the QED pixel and HPGe of one event. These define the scattering plane.
-          // c3 and c4 are the QED pixel and HPGe of one event. These define the scattering plane.
-          double azimuthal_DCS(int pos1, int qed1, int ge1, int pos2, int qed2, int ge2){
-            double vec1[3], vec2[3], vec3[3], vec4[3], first_scattering_plane[3], second_scattering_plane[3], dot, mag, angle;
-
-            pos1--; // pos1 is now 0-5 within this function
-            pos2--; // pos2 is now 0-5 within this function
-            vec1[0] = qed_cartesian[pos1][qed1][0];         vec1[1] = qed_cartesian[pos1][qed1][1];         vec1[2] = qed_cartesian[pos1][qed1][2];
-            vec2[0] = grif_crystal_cartesian_110mm[ge1][0]; vec2[1] = grif_crystal_cartesian_110mm[ge1][1]; vec2[2] = grif_crystal_cartesian_110mm[ge1][2];
-
-            vec3[0] = qed_cartesian[pos2][qed2][0];         vec3[1] = qed_cartesian[pos2][qed2][1];         vec3[2] = qed_cartesian[pos2][qed2][2];
-            vec4[0] = grif_crystal_cartesian_110mm[ge2][0]; vec4[1] = grif_crystal_cartesian_110mm[ge2][1]; vec4[2] = grif_crystal_cartesian_110mm[ge2][2];
-
-            cross_product(vec1,vec2,first_scattering_plane);   // the Normal vector of the plane (qed1,ge1)
-            cross_product(vec3,vec4,second_scattering_plane);  // the Normal vector of the plane (qed2,ge2)
-            // Now find the angle between the two scattering planes, the azimuthal
-            dot = dot_product(first_scattering_plane,second_scattering_plane);
-            mag = vector_magnitude_product(first_scattering_plane,second_scattering_plane);
-            if(dot==0 && mag==0){ // Protection from NaN in the division
-              dot = mag = 1;
-            }
-            angle = RADIANS_TO_DEGREES*fast_acos( dot / mag ); // acos is very slow
-
-            // Determine the handedness based on if the scatter of the first photon is upstream or downstream
-            // Downstream is positive z and positive handedness (azimuthal is positive 0 ... 180)
-            // Upstream is negative z and negative handedness (azimuthal is negative -1 ... -180)
-            // If the z coordinate of the HPGe is larger than z coordinate of the DSSD pixel then the scatter is in the downstream direction
-            if(vec1[0]>0){
-              if(vec2[2]<vec1[2]){
-                //fprintf(stdout,"azimuthal_DCS, vec1 is left. Scatter is upstream\n");
-                angle *= -1; }
-                //  fprintf(stdout,"azimuthal_DCS, vec1 is left. Scatter is downstream\n");
-              }else{
-                if(vec4[2]<vec3[2]){
-                  //fprintf(stdout,"azimuthal_DCS, vec3 is left. Scatter is upstream\n");
-                  angle *= -1; }
-                  //fprintf(stdout,"azimuthal_DCS, vec3 is left. Scatter is downstream\n");
-                }
-                //printf("azimuthal_DCS angle = %f\n",angle);
-                angle += 180; // angle now runs from 0-360
-                return angle;
-              }
-
-              // Double Compton Scatter (DCS) - delta phi, angle between the two scattering planes
-              // Calculate the azimuthal angle between the two scattering planes defined by two QED-HPGe scatter events
-              // c1 and c2 are the QED pixel and HPGe of one event. These define the scattering plane.
-              // c3 and c4 are the QED pixel and HPGe of one event. These define the scattering plane.
-              double energy_corrected_azimuthal_DCS(int pos1, int qed1, int ge1, float ecal1, int pos2, int qed2, int ge2, float ecal2){
-                double vec1[3], vec2[3], vec3[3], vec4[3], first_geometric_scattering_plane[3], second_geometric_scattering_plane[3], dot, mag, angle, scalar1, scalar2, scalar1m, scalar1p;
-                double first_geometric_unit_scattering_plane[3], second_geometric_unit_scattering_plane[3], rotated_vec2[3], rotated_vec4[3], plane1[4], plane2[4], intercept1[3], intercept2[3];
-                double temp_vec[3], direction1[3], direction2[3], unit1[3], unit3[3], cone_base_normal1[3],cone_base_radius1[3],tangent1[3],phi_arc1[3],o[3],cone_height1;
-                double geometric_theta1, geometric_theta2, energy_derived_theta1, energy_derived_theta2, rotation_angle1, rotation_angle2;
-                double enumerator1, enumerator2, denominator, boundary1[3], boundary2[3], midpoint1[3], midpoint2[3];
-                double first_energy_corrected_scattering_plane[3], second_energy_corrected_scattering_plane[3];
-                double cone_base_normal2[3],cone_base_radius2[3],tangent2[3],phi_arc2[3],cone_height2;
-
-                // Calculate the scattering theta angles from the geometric centres.
-                geometric_theta1 = scattering_angle_QEDGe(pos1, qed1, ge1);
-                geometric_theta2 = scattering_angle_QEDGe(pos2, qed2, ge2);
-
-                // Calculate the scattering theta angles from the Ge energy (secondary photon energy).
-                // This is more accurate than the theta from geometric centres.
-                energy_derived_theta1 = compton_angle(ecal1, 511.0);
-                energy_derived_theta2 = compton_angle(ecal2, 511.0);
-
-                // Adjust pos for directly accessing arrays
-                pos1--; // pos1 is now 0-5 within this function
-                pos2--; // pos2 is now 0-5 within this function
-
-                // Rotate the vector of the geometric center to the energy-derived theta, keeping the same phi.
-                // These are still on the same plane so would not change the delta-phi calculation.
-                // Calculate where this vector intercepts the clover front-face plane to get the new coordinates which will have a different length.
-                // Use this coordinate and the unit vector of the theta cone to calculate the line of interception of the clover front-face plane and theta cone conic section
-                // Find the centre of this phi line with respect to the crystal boundaries.
-                // Calculate the new scattering plane from this mid-point
-                // Done.
-
-                // Define the cone where the central axis is the original direction of propogation and the sides have angle energy_derived_theta1.
-
-                // Get the plane of the Ge crystal from unit vector and central coordinate
-                // grif_clover_unit_vector_110mm[(int)ge1/4];
-                // Find the conic section where the Ge crystal intercepts the cone
-                //
-
-                // Calculate the vectors for the geometric scattering planes
-                vec1[0] = qed_cartesian[pos1][qed1][0];         vec1[1] = qed_cartesian[pos1][qed1][1];         vec1[2] = qed_cartesian[pos1][qed1][2];
-                vec2[0] = grif_crystal_cartesian_110mm[ge1][0]; vec2[1] = grif_crystal_cartesian_110mm[ge1][1]; vec2[2] = grif_crystal_cartesian_110mm[ge1][2];
-                direction1[0] = vec2[0]-vec1[0]; direction1[1] = vec2[1]-vec1[1]; direction1[2] = vec2[2]-vec1[2];
-
-                vec3[0] = qed_cartesian[pos2][qed2][0];         vec3[1] = qed_cartesian[pos2][qed2][1];         vec3[2] = qed_cartesian[pos2][qed2][2];
-                vec4[0] = grif_crystal_cartesian_110mm[ge2][0]; vec4[1] = grif_crystal_cartesian_110mm[ge2][1]; vec4[2] = grif_crystal_cartesian_110mm[ge2][2];
-                direction2[0] = vec3[0]-vec4[0]; direction2[1] = vec3[1]-vec4[1]; direction2[2] = vec3[2]-vec4[2];
-
-                cross_product(vec1,vec2,first_geometric_scattering_plane);   // the Normal vector of the geometric scattering plane (qed1,ge1)
-                cross_product(vec3,vec4,second_geometric_scattering_plane);  // the Normal vector of the geometric scattering plane (qed2,ge2)
-
-
-                // Calculate the Normal unit vectors of the planes
-                mag = sqrt( first_geometric_scattering_plane[0]*first_geometric_scattering_plane[0] + first_geometric_scattering_plane[1]*first_geometric_scattering_plane[1] + first_geometric_scattering_plane[2]*first_geometric_scattering_plane[2] );
-                first_geometric_unit_scattering_plane[0] = first_geometric_scattering_plane[0] / mag;
-                first_geometric_unit_scattering_plane[1] = first_geometric_scattering_plane[1] / mag;
-                first_geometric_unit_scattering_plane[2] = first_geometric_scattering_plane[2] / mag;
-
-                mag = sqrt( second_geometric_scattering_plane[0]*second_geometric_scattering_plane[0] + second_geometric_scattering_plane[1]*second_geometric_scattering_plane[1] + second_geometric_scattering_plane[2]*second_geometric_scattering_plane[2] );
-                second_geometric_unit_scattering_plane[0] = second_geometric_scattering_plane[0] / mag;
-                second_geometric_unit_scattering_plane[1] = second_geometric_scattering_plane[1] / mag;
-                second_geometric_unit_scattering_plane[2] = second_geometric_scattering_plane[2] / mag;
-
-                // The scattering plane does not change yet, but we need a new vector which is vec2 rotated by the rotation angle
-                // The rotation axis is the Normal vector of the scattering plane
-                rotation_angle1 = geometric_theta1 - energy_derived_theta1;
-                rotation_angle2 = geometric_theta2 - energy_derived_theta2;
-
-                //  fprintf(stdout,"\nenergy_corrected_azimuthal_DCS geo_theta,en_theta, diff: %.1f %.1f %.1f | %.1f %.1f %.1f\n",geometric_theta1, energy_derived_theta1, rotation_angle1, geometric_theta2, energy_derived_theta2, rotation_angle2);
-
-                // Rotate
-                rotate_vector(direction1,first_geometric_unit_scattering_plane,rotation_angle1,rotated_vec2);
-                rotate_vector(direction2,second_geometric_unit_scattering_plane,rotation_angle2,rotated_vec4);
-                //  fprintf(stdout,"Original vec2: %.1f %.1f %.1f\n",direction1[0],direction1[1],direction1[2]);
-                //  fprintf(stdout,"Rotates vec2: %.1f %.1f %.1f\n",rotated_vec2[0],rotated_vec2[1],rotated_vec2[2]);
-
-                // Calculate the equation of the plane of the front face of this clover/crystal
-                plane1[0] = grif_clover_unit_vector_110mm[(int)(ge1/4)][0];
-                plane1[1] = grif_clover_unit_vector_110mm[(int)(ge1/4)][1];
-                plane1[2] = grif_clover_unit_vector_110mm[(int)(ge1/4)][2];
-                plane1[3] = plane1[0]*(-1*grif_crystal_cartesian_110mm[ge1][0]) + plane1[1]*(-1*grif_crystal_cartesian_110mm[ge1][1]) + plane1[2]*(-1*grif_crystal_cartesian_110mm[ge1][2]);
-
-                // Calculate the equation of the plane of the front face of this clover/crystal
-                plane2[0] = grif_clover_unit_vector_110mm[(int)(ge2/4)][0];
-                plane2[1] = grif_clover_unit_vector_110mm[(int)(ge2/4)][1];
-                plane2[2] = grif_clover_unit_vector_110mm[(int)(ge2/4)][2];
-                plane2[3] = plane2[0]*(-1*grif_crystal_cartesian_110mm[ge2][0]) + plane2[1]*(-1*grif_crystal_cartesian_110mm[ge2][1]) + plane2[2]*(-1*grif_crystal_cartesian_110mm[ge2][2]);
-
-                // Find the intercept point of the rotated vector and the plane of the Ge crystal face
-                // Ax + By + Cz + D = 0 // plane equation of front face
-                // x=o_1+d_1t, y=o_2+d_2t, z=o_3+d_3t // parametric equations of line (rotated vector)
-                // A(o_1+d_1t) + B(o_2+d_2t) + C(o_3+d_3t) + D = 0 // Substitute line into plane
-                // t = -1* [ A*o_1 + B*o_2 + C*o_3 + D ] / [ A*d_1 + B*d_2 + C*d_3 ] // and rearrange for t and solve.
-                // Calculate intercept point using t, origin and direction vector
-                scalar1 = -1* ((qed_cartesian[pos1][qed1][0]*plane1[0] + qed_cartesian[pos1][qed1][1]*plane1[1] + qed_cartesian[pos1][qed1][2]*plane1[2] + plane1[3])
-                /(rotated_vec2[0]*plane1[0] + rotated_vec2[1]*plane1[1] + rotated_vec2[2]*plane1[2]) );
-                intercept1[0] = qed_cartesian[pos1][qed1][0] + rotated_vec2[0]*scalar1;
-                intercept1[1] = qed_cartesian[pos1][qed1][1] + rotated_vec2[1]*scalar1;
-                intercept1[2] = qed_cartesian[pos1][qed1][2] + rotated_vec2[2]*scalar1;
-
-                scalar2 = -1* ((qed_cartesian[pos2][qed2][0]*plane2[0] + qed_cartesian[pos2][qed2][1]*plane2[1] + qed_cartesian[pos2][qed2][2]*plane2[2] + plane2[3])
-                /(rotated_vec4[0]*plane2[0] + rotated_vec4[1]*plane2[1] + rotated_vec4[2]*plane2[2]) );
-                intercept2[0] = qed_cartesian[pos2][qed2][0] + rotated_vec4[0]*scalar2;
-                intercept2[1] = qed_cartesian[pos2][qed2][1] + rotated_vec4[1]*scalar2;
-                intercept2[2] = qed_cartesian[pos2][qed2][2] + rotated_vec4[2]*scalar2;
-
-                /*
-                fprintf(stdout,"Clover[%d] Blue Center: %.1f %.1f %.1f\n",(int)(ge1/4),grif_crystal_cartesian_110mm[(int)(ge1/4)*4+0][0],grif_crystal_cartesian_110mm[(int)(ge1/4)*4+0][1],grif_crystal_cartesian_110mm[(int)(ge1/4)*4+0][2]);
-                fprintf(stdout,"Clover[%d] Green Center: %.1f %.1f %.1f\n",(int)(ge1/4),grif_crystal_cartesian_110mm[(int)(ge1/4)*4+1][0],grif_crystal_cartesian_110mm[(int)(ge1/4)*4+1][1],grif_crystal_cartesian_110mm[(int)(ge1/4)*4+1][2]);
-                fprintf(stdout,"Clover[%d] Red Center: %.1f %.1f %.1f\n",(int)(ge1/4),grif_crystal_cartesian_110mm[(int)(ge1/4)*4+2][0],grif_crystal_cartesian_110mm[(int)(ge1/4)*4+2][1],grif_crystal_cartesian_110mm[(int)(ge1/4)*4+2][2]);
-                fprintf(stdout,"Clover[%d] White Center: %.1f %.1f %.1f\n",(int)(ge1/4),grif_crystal_cartesian_110mm[(int)(ge1/4)*4+3][0],grif_crystal_cartesian_110mm[(int)(ge1/4)*4+3][1],grif_crystal_cartesian_110mm[(int)(ge1/4)*4+3][2]);
-
-                fprintf(stdout,"Ge[%d] Center: %.1f %.1f %.1f\n",ge1,grif_crystal_cartesian_110mm[ge1][0],grif_crystal_cartesian_110mm[ge1][1],grif_crystal_cartesian_110mm[ge1][2]);
-                fprintf(stdout,"Intercept1: %.1f %.1f %.1f with scalar %f\n",intercept1[0],intercept1[1],intercept1[2],scalar1);
-
-                fprintf(stdout,"Clover[%d] Blue Center: %.1f %.1f %.1f\n",(int)(ge2/4),grif_crystal_cartesian_110mm[(int)(ge2/4)*4+0][0],grif_crystal_cartesian_110mm[(int)(ge2/4)*4+0][1],grif_crystal_cartesian_110mm[(int)(ge2/4)*4+0][2]);
-                fprintf(stdout,"Clover[%d] Green Center: %.1f %.1f %.1f\n",(int)(ge2/4),grif_crystal_cartesian_110mm[(int)(ge2/4)*4+1][0],grif_crystal_cartesian_110mm[(int)(ge2/4)*4+1][1],grif_crystal_cartesian_110mm[(int)(ge2/4)*4+1][2]);
-                fprintf(stdout,"Clover[%d] Red Center: %.1f %.1f %.1f\n",(int)(ge2/4),grif_crystal_cartesian_110mm[(int)(ge2/4)*4+2][0],grif_crystal_cartesian_110mm[(int)(ge2/4)*4+2][1],grif_crystal_cartesian_110mm[(int)(ge2/4)*4+2][2]);
-                fprintf(stdout,"Clover[%d] White Center: %.1f %.1f %.1f\n",(int)(ge2/4),grif_crystal_cartesian_110mm[(int)(ge2/4)*4+3][0],grif_crystal_cartesian_110mm[(int)(ge2/4)*4+3][1],grif_crystal_cartesian_110mm[(int)(ge2/4)*4+3][2]);
-
-                fprintf(stdout,"Ge[%d] Center: %.1f %.1f %.1f\n",ge2,grif_crystal_cartesian_110mm[ge2][0],grif_crystal_cartesian_110mm[ge2][1],grif_crystal_cartesian_110mm[ge2][2]);
-                fprintf(stdout,"Intercept2: %.1f %.1f %.1f with scalar %f\n",intercept2[0],intercept2[1],intercept2[2],scalar2);
-                */
-
-                //  Vec1 is the central axis of the cone, and Normal vector of the conic plane.
-                //  Intercept is a point on the plane.
-                //  Cos(theta) * (intercept - vec1) = centre of cone base plane.
-                //  Vector from cone centre to intercept.
-                //  Cross Product -> tangent line.
-
-                // Define the vector of the central axis of the theta cone
-                // The apex is the QED pixel coordinate
-                // The height of the cone is related to the distance from the QED pixel to intercept point
-                mag = sqrt(vec1[0]*vec1[0] + vec1[1]*vec1[1] + vec1[2]*vec1[2]);
-                unit1[0] = vec1[0]/mag; unit1[1] = vec1[1]/mag; unit1[2] = vec1[2]/mag;
-                cone_height1 = cos(DEGREES_TO_RADIANS*energy_derived_theta1) * sqrt(rotated_vec2[0]*rotated_vec2[0] + rotated_vec2[1]*rotated_vec2[1] + rotated_vec2[2]*rotated_vec2[2]);
-                cone_base_normal1[0] = cone_height1*unit1[0]; cone_base_normal1[1] = cone_height1*unit1[1]; cone_base_normal1[2] = cone_height1*unit1[2];
-
-                cone_base_radius1[0] = rotated_vec2[0]-cone_base_normal1[0]; cone_base_radius1[1] = rotated_vec2[1]-cone_base_normal1[1]; cone_base_radius1[2] = rotated_vec2[2]-cone_base_normal1[2];
-
-                // The orthogonal vector will be the tangent line of the cone base at the intercept point
-                cross_product(cone_base_normal1,cone_base_radius1,tangent1);
-                // Convert this tangent vector to a plane and find the intercepting vector alone the Ge front face plane
-                // cone_base_radius1 is the Normal vector to the tangent plane
-                // intercept is a coordinate on the tangent plane
-                cross_product(cone_base_radius1,grif_clover_unit_vector_110mm[(int)(ge2/4)],phi_arc1);
-                //  fprintf(stdout,"phi arc1 = %.1f %.1f %.1f\n",phi_arc1[0],phi_arc1[1],phi_arc1[2]);
-
-                // Define the vector of the central axis of the theta cone
-                // The apex is the QED pixel coordinate
-                // The height of the cone is related to the distance from the QED pixel to intercept point
-                mag = sqrt(vec3[0]*vec3[0] + vec3[1]*vec3[1] + vec3[2]*vec3[2]);
-                unit3[0] = vec3[0]/mag; unit3[1] = vec3[1]/mag; unit3[2] = vec3[2]/mag;
-                cone_height2 = cos(DEGREES_TO_RADIANS*energy_derived_theta2) * sqrt(rotated_vec4[0]*rotated_vec4[0] + rotated_vec4[1]*rotated_vec4[1] + rotated_vec4[2]*rotated_vec4[2]);
-                cone_base_normal2[0] = cone_height2*unit3[0]; cone_base_normal2[1] = cone_height2*unit3[1]; cone_base_normal2[2] = cone_height2*unit3[2];
-
-                cone_base_radius2[0] = rotated_vec4[0]-cone_base_normal2[0]; cone_base_radius2[1] = rotated_vec4[1]-cone_base_normal2[1]; cone_base_radius2[2] = rotated_vec4[2]-cone_base_normal2[2];
-
-                // The orthogonal vector will be the tangent line of the cone base at the intercept point
-                cross_product(cone_base_normal2,cone_base_radius2,tangent2);
-                // Convert this tangent vector to a plane and find the intercepting vector alone the Ge front face plane
-                // cone_base_radius1 is the Normal vector to the tangent plane
-                // intercept is a coordinate on the tangent plane
-                cross_product(cone_base_radius2,grif_clover_unit_vector_110mm[(int)(ge2/4)],phi_arc2);
-                //    fprintf(stdout,"phi arc2 = %.1f %.1f %.1f\n",phi_arc2[0],phi_arc2[1],phi_arc2[2]);
-
-                // phi_arc1 is in the plane of the ge face.
-                // Ge crystal is 30mm radius around the crystal centre
-                // (x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 - r^2 = 0 // the sphere equation
-                // x=o_1+d_1t, y=o_2+d_2t, z=o_3+d_3t // parametric equations of line
-                // (o_1+d_1t - x_0)^2 + (o_2+d_2t - y_0)^2 + (o_3+d_3t - z_0)^2 - r^2 = 0 // Substitute line into sphere (note the line lies within the plane)
-                // (o_1+d_1*t - x_0)^2 + (o_2+d_2*t - y_0)^2 + (o_3+d_3*t - z_0)^2 - r^2 = 0
-                // here o_1 is origin of line/vector, x_0 is centre of the circle
-                // Treat as a Quadratic and rearrnage to find the solutions for t.
-                // t = [-1*( (o_1+d_1 - x_0) + (o_2+d_2 - y_0) + (o_3+d_3 - z_0) ) +/- SQRT( ( (o_1+d_1 - x_0) + (o_2+d_2 - y_0) + (o_3+d_3 - z_0) )^2 - (d_1^2 + d_2^2 + d_3^2)*((o_1-x_0)^2+(o_2-y_0)^2+(o_3-z_0)^2-r^2) ) ]
-                //     / [ (d_1^2 + d_2^2 + d_3^2 ) ]
-                // Calculate intercept point using t, origin and direction vector
-                //
-                // First need to find an origin coordinate for the vector. The vector is phi_arc
-                o[0] = rotated_vec2[0] - phi_arc1[0]*0.5; o[1] = rotated_vec2[1] - phi_arc1[1]*0.5; o[2] = rotated_vec2[2] - phi_arc1[2]*0.5;
-                denominator = (phi_arc1[0]*phi_arc1[0] + phi_arc1[1]*phi_arc1[1] + phi_arc1[2]*phi_arc1[2] );
-                enumerator1 = -1*( (o[0]+phi_arc1[0] - grif_crystal_cartesian_110mm[ge1][0]) + (o[1]+phi_arc1[2] - grif_crystal_cartesian_110mm[ge1][1]) + (o[2]+phi_arc1[2] - grif_crystal_cartesian_110mm[ge1][2]) );
-                enumerator2 = pow( (o[0]+phi_arc1[0] - grif_crystal_cartesian_110mm[ge1][0]) + (o[1]+phi_arc1[1] - grif_crystal_cartesian_110mm[ge1][1]) + (o[2]+phi_arc1[2] - grif_crystal_cartesian_110mm[ge1][2]) ,2)
-                - (phi_arc1[0]*phi_arc1[0] + phi_arc1[1]*phi_arc1[1] + phi_arc1[2]*phi_arc1[2])
-                * (pow(o[0]-grif_crystal_cartesian_110mm[ge1][0],2)+pow(o[1]-grif_crystal_cartesian_110mm[ge1][1],2)+pow(o[2]-grif_crystal_cartesian_110mm[ge1][2],2) - 30*30);
-                scalar1m = (enumerator1 - enumerator2) / denominator;
-                scalar1p = (enumerator1 + enumerator2) / denominator;
-                boundary1[0] = intercept1[0] + phi_arc1[0]*scalar1m;
-                boundary1[1] = intercept1[1] + phi_arc1[1]*scalar1m;
-                boundary1[2] = intercept1[2] + phi_arc1[2]*scalar1m;
-                boundary2[0] = intercept1[0] + phi_arc1[0]*scalar1p;
-                boundary2[1] = intercept1[1] + phi_arc1[1]*scalar1p;
-                boundary2[2] = intercept1[2] + phi_arc1[2]*scalar1p;
-
-                //  -find mid point of this line.
-                midpoint1[0] = boundary1[0] + (boundary2[0]-boundary1[0])*0.5;
-                midpoint1[1] = boundary1[1] + (boundary2[1]-boundary1[1])*0.5;
-                midpoint1[2] = boundary1[2] + (boundary2[2]-boundary1[2])*0.5;
-
-                //                fprintf(stdout,"Ge[%d] Center: %.1f %.1f %.1f\n",ge1,grif_crystal_cartesian_110mm[ge1][0],grif_crystal_cartesian_110mm[ge1][1],grif_crystal_cartesian_110mm[ge1][2]);
-                //  fprintf(stdout,"Ge1 boundary1: %.1f %.1f %.1f\n",boundary1[0],boundary1[1],boundary1[2]);
-                //  fprintf(stdout,"Ge1 boundary2: %.1f %.1f %.1f\n",boundary2[0],boundary2[1],boundary2[2]);
-                //  fprintf(stdout,"Ge1 midpoint1: %.1f %.1f %.1f\n",midpoint1[0],midpoint1[1],midpoint1[2]);
-
-                o[0] = rotated_vec4[0] - phi_arc2[0]*0.5; o[1] = rotated_vec4[1] - phi_arc2[1]*0.5; o[2] = rotated_vec4[2] - phi_arc2[2]*0.5;
-                denominator = (phi_arc2[0]*phi_arc2[0] + phi_arc2[1]*phi_arc2[1] + phi_arc2[2]*phi_arc2[2] );
-                enumerator1 = -1*( (o[0]+phi_arc2[0] - grif_crystal_cartesian_110mm[ge2][0]) + (o[1]+phi_arc2[2] - grif_crystal_cartesian_110mm[ge2][1]) + (o[2]+phi_arc2[2] - grif_crystal_cartesian_110mm[ge2][2]) );
-                enumerator2 = pow( (o[0]+phi_arc2[0] - grif_crystal_cartesian_110mm[ge2][0]) + (o[1]+phi_arc2[1] - grif_crystal_cartesian_110mm[ge2][1]) + (o[2]+phi_arc2[2] - grif_crystal_cartesian_110mm[ge2][2]) ,2)
-                - (phi_arc2[0]*phi_arc2[0] + phi_arc2[1]*phi_arc2[1] + phi_arc2[2]*phi_arc2[2])
-                * (pow(o[0]-grif_crystal_cartesian_110mm[ge2][0],2)+pow(o[1]-grif_crystal_cartesian_110mm[ge2][1],2)+pow(o[2]-grif_crystal_cartesian_110mm[ge2][2],2) - 30*30);
-                scalar1m = (enumerator1 - enumerator2) / denominator;
-                scalar1p = (enumerator1 + enumerator2) / denominator;
-                boundary1[0] = intercept2[0] + phi_arc2[0]*scalar1m;
-                boundary1[1] = intercept2[1] + phi_arc2[1]*scalar1m;
-                boundary1[2] = intercept2[2] + phi_arc2[2]*scalar1m;
-                boundary2[0] = intercept2[0] + phi_arc2[0]*scalar1p;
-                boundary2[1] = intercept2[1] + phi_arc2[1]*scalar1p;
-                boundary2[2] = intercept2[2] + phi_arc2[2]*scalar1p;
-
-                //  -find mid point of this line.
-                midpoint2[0] = boundary1[0] + (boundary2[0]-boundary1[0])*0.5;
-                midpoint2[1] = boundary1[1] + (boundary2[1]-boundary1[1])*0.5;
-                midpoint2[2] = boundary1[2] + (boundary2[2]-boundary1[2])*0.5;
-
-                //                  fprintf(stdout,"Ge[%d] Center: %.1f %.1f %.1f\n",ge2,grif_crystal_cartesian_110mm[ge2][0],grif_crystal_cartesian_110mm[ge2][1],grif_crystal_cartesian_110mm[ge2][2]);
-                //  fprintf(stdout,"Ge2 boundary1: %.1f %.1f %.1f\n",boundary1[0],boundary1[1],boundary1[2]);
-                //  fprintf(stdout,"Ge2 boundary2: %.1f %.1f %.1f\n",boundary2[0],boundary2[1],boundary2[2]);
-                //  fprintf(stdout,"Ge2 midpoint2: %.1f %.1f %.1f\n",midpoint2[0],midpoint2[1],midpoint2[2]);
-
-                //  -Find where phi_arc1 line intercepts the boundaries of this crystal (might need to save these coordinates in a lookup table).
-                //  -find mid point of this line.
-                //  -This is the new intercept point.
-                //  -Use this point with QED_pixel to define new vector.
-                //  -Calculate new scattering plane.
-                //  -Boom. Mic drop.
-
-
-                // Find the centre of the phi arc of the energy-derived theta - or approximate with a straight line
-                // Determine the new scattering plane from this point and the DSSD pixel
-                cross_product(vec1,midpoint1,first_energy_corrected_scattering_plane);   // the Normal vector of the energy-corrected scattering plane (qed1,ge1)
-                cross_product(vec3,midpoint2,second_energy_corrected_scattering_plane);  // the Normal vector of the geometric scattering plane (qed2,ge2)
-
-                // Use this plane to calculate delta Phi
-
-                // Now find the angle between the two scattering planes, the azimuthal
-                dot = dot_product(first_geometric_scattering_plane,second_geometric_scattering_plane);
-                mag = vector_magnitude_product(first_geometric_scattering_plane,second_geometric_scattering_plane);
-                if(dot==0 && mag==0){ dot = mag = 1; } // Protection from NaN in the division
-                angle = RADIANS_TO_DEGREES*fast_acos( dot / mag ); // acos is very slow
-
-
-                //  fprintf(stdout,"\nazimuthal_DCS, vec1,2,3,4, [%.1f,%.1f,%.1f] [%.1f,%.1f,%.1f] [%.1f,%.1f,%.1f] [%.1f,%.1f,%.1f]\n",vec1[0],vec1[1],vec1[2],vec2[0],vec2[1],vec2[2],vec3[0],vec3[1],vec3[2],vec4[0],vec4[1],vec4[2]);
-                //  fprintf(stdout,"azimuthal_DCS, 1st_geo_scatt_plane,2nd_geo_scatt_plane, [%.1f,%.1f,%.1f] [%.1f,%.1f,%.1f]\n",first_geometric_scattering_plane[0],first_geometric_scattering_plane[1],first_geometric_scattering_plane[2],second_geometric_scattering_plane[0],second_geometric_scattering_plane[1],second_geometric_scattering_plane[2]);
-                //  fprintf(stdout,"azimuthal_DCS, dot, mag, ang, %.1f, %.1f, %.1f\n\n",dot,mag,angle);
-
-                // Now find the angle between the two scattering planes, the azimuthal
-                dot = dot_product(first_energy_corrected_scattering_plane,second_energy_corrected_scattering_plane);
-                mag = vector_magnitude_product(first_energy_corrected_scattering_plane,second_energy_corrected_scattering_plane);
-                if(dot==0 && mag==0){ dot = mag = 1; } // Protection from NaN in the division
-                angle = RADIANS_TO_DEGREES*fast_acos( dot / mag ); // acos is very slow
-
-
-                //    fprintf(stdout,"azimuthal_DCS, 1st_encorr_scatt_plane,2nd_encorr_scatt_plane, [%.1f,%.1f,%.1f] [%.1f,%.1f,%.1f]\n",first_energy_corrected_scattering_plane[0],first_energy_corrected_scattering_plane[1],first_energy_corrected_scattering_plane[2],second_energy_corrected_scattering_plane[0],second_energy_corrected_scattering_plane[1],second_energy_corrected_scattering_plane[2]);
-                //    fprintf(stdout,"azimuthal_DCS, dot, mag, ang, %.1f, %.1f, %.1f\n\n",dot,mag,angle);
-
-
-
-                // Determine the handedness based on if the scatter of the first photon is upstream or downstream
-                // Downstream is positive z and positive handedness (azimuthal is positive 0 ... 180)
-                // Upstream is negative z and negative handedness (azimuthal is negative -1 ... -180)
-                // If the z coordinate of the HPGe is larger than z coordinate of the DSSD pixel then the scatter is in the downstream direction
-                if(vec1[0]>0){
-                  if(vec2[2]<vec1[2]){
-                    //fprintf(stdout,"azimuthal_DCS, vec1 is left. Scatter is upstream\n");
-                    angle *= -1; }
-                    //  fprintf(stdout,"azimuthal_DCS, vec1 is left. Scatter is downstream\n");
-                  }else{
-                    if(vec4[2]<vec3[2]){
-                      //fprintf(stdout,"azimuthal_DCS, vec3 is left. Scatter is upstream\n");
-                      angle *= -1; }
-                      //fprintf(stdout,"azimuthal_DCS, vec3 is left. Scatter is downstream\n");
-                    }
-                    //printf("azimuthal_DCS angle = %f\n",angle);
-                    angle += 180; // angle now runs from 0-360
-
-                    if(isnan(energy_derived_theta1)||isnan(energy_derived_theta2)){
-                      printf("if(isNaN(energy_derived_theta1)||isNaN(energy_derived_theta2) %f,%f ==> ",energy_derived_theta1,energy_derived_theta2);
-                      printf("azimuthal_DCS angle = %f\n",angle);
-                    }
-
-                    return angle;
-                  }
-
-
-                  // Triple Compton Scatter (TCS) - delta phi, angle between the two scattering planes
-                  // TCS for a coincidence of [Si-Ge] and [Si-Ge-Ge] event
-                  // Calculate the azimuthal angle between the two scattering planes defined by a QED-HPGe plane and Ge-Ge plane
-                  // pos1 and ge1 are the QED pixel and HPGe of one event. These define the scattering plane.
-                  // The second photon undergoes an Intermediate Compton Scatter in DSSD which is ignored.
-                  // ge3 and ge4 are the two HPGe of the secondary Compton scatter. These define the scattering plane.
-                  double azimuthal_TCS_SiGe_SiGeGe(int pos1, int qed1, int ge1, int ge2, int ge3){
-                    double vec1[3], vec2[3], vec3[3], vec4[3], first_scattering_plane[3], second_scattering_plane[3], dot, mag, angle;
-
-                    pos1--; // pos1 is now 0-5 within this function
-                    vec1[0] = qed_cartesian[pos1][qed1][0];         vec1[1] = qed_cartesian[pos1][qed1][1];         vec1[2] = qed_cartesian[pos1][qed1][2];
-                    vec2[0] = grif_crystal_cartesian_110mm[ge1][0]; vec2[1] = grif_crystal_cartesian_110mm[ge1][1]; vec2[2] = grif_crystal_cartesian_110mm[ge1][2];
-
-                    vec3[0] = grif_crystal_cartesian_110mm[ge2][0]; vec3[1] = grif_crystal_cartesian_110mm[ge2][1]; vec3[2] = grif_crystal_cartesian_110mm[ge2][2];
-                    vec4[0] = grif_crystal_cartesian_110mm[ge3][0]; vec4[1] = grif_crystal_cartesian_110mm[ge3][1]; vec4[2] = grif_crystal_cartesian_110mm[ge3][2];
-
-                    cross_product(vec1,vec2,first_scattering_plane);   // the Normal vector of the plane (qed1,ge1)
-                    cross_product(vec3,vec4,second_scattering_plane);  // the Normal vector of the plane (ge2,ge3)
-                    // Now find the angle between the two scattering planes, the azimuthal
-                    dot = dot_product(first_scattering_plane,second_scattering_plane);
-                    mag = vector_magnitude_product(first_scattering_plane,second_scattering_plane);
-                    if(dot==0 && mag==0){ dot = mag = 1; } // Protection from NaN in the division
-                    angle = RADIANS_TO_DEGREES*fast_acos( dot / mag ); // acos is very slow
-
-                    // Determine the handedness based on if the scatter of the first photon is upstream or downstream
-                    // Downstream is positive z and positive handedness (azimuthal is positive 0 ... 180)
-                    // Upstream is negative z and negative handedness (azimuthal is negative -1 ... -180)
-                    // If the z coordinate of the HPGe is larger than z coordinate of the DSSD pixel then the scatter is in the downstream direction
-                    if(vec1[0]>0){
-                      if(vec2[2]<vec1[2]){ angle *= -1; }
-                    }else{
-                      if(vec4[2]<vec3[2]){ angle *= -1; }
-                    }
-                    //printf("azimuthal_DCS angle = %f\n",angle);
-                    angle += 180; // angle now runs from 0-360
-                    return angle;
-                  }
-
-                  // Double Compton Scatter (TCS) - delta phi, angle between the two scattering planes
-                  // Calculate the azimuthal angle between the two scattering planes defined by two QED-HPGe scatter events
-                  // c1 and c2 are the QED pixel and HPGe of one event. These define the scattering plane.
-                  // The second photon undergoes an Intermediate Compton Scatter in DSSD which is ignored.
-                  // c3 and c4 are the two HPGe of the secondary Compton scatter. These define the scattering plane.
-                  double azimuthal_TCS_GeGe_SiGeGe(int ge1, int ge2, int ge3, int ge4){
-                    double vec1[3], vec2[3], vec3[3], vec4[3], first_scattering_plane[3], second_scattering_plane[3], dot, mag, angle;
-
-                    vec1[0] = grif_crystal_cartesian_110mm[ge1][0]; vec1[1] = grif_crystal_cartesian_110mm[ge1][1]; vec1[2] = grif_crystal_cartesian_110mm[ge1][2];
-                    vec2[0] = grif_crystal_cartesian_110mm[ge2][0]; vec2[1] = grif_crystal_cartesian_110mm[ge2][1]; vec2[2] = grif_crystal_cartesian_110mm[ge2][2];
-
-                    vec3[0] = grif_crystal_cartesian_110mm[ge3][0]; vec3[1] = grif_crystal_cartesian_110mm[ge3][1]; vec3[2] = grif_crystal_cartesian_110mm[ge3][2];
-                    vec4[0] = grif_crystal_cartesian_110mm[ge4][0]; vec4[1] = grif_crystal_cartesian_110mm[ge4][1]; vec4[2] = grif_crystal_cartesian_110mm[ge4][2];
-
-                    cross_product(vec1,vec2,first_scattering_plane);   // the Normal vector of the plane (qed1,ge1)
-                    cross_product(vec3,vec4,second_scattering_plane);  // the Normal vector of the plane (qed2,ge2)
-                    // Now find the angle between the two scattering planes, the azimuthal
-                    dot = dot_product(first_scattering_plane,second_scattering_plane);
-                    mag = vector_magnitude_product(first_scattering_plane,second_scattering_plane);
-                    if(dot==0 && mag==0){ dot = mag = 1; } // Protection from NaN in the division
-                    angle = RADIANS_TO_DEGREES*fast_acos( dot / mag ); // acos is very slow
-
-                    // Determine the handedness based on if the scatter of the first photon is upstream or downstream
-                    // Downstream is positive z and positive handedness (azimuthal is positive 0 ... 180)
-                    // Upstream is negative z and negative handedness (azimuthal is negative -1 ... -180)
-                    // If the z coordinate of the HPGe is larger than z coordinate of the DSSD pixel then the scatter is in the downstream direction
-                    if(vec1[0]>0){
-                      if(vec2[2]<vec1[2]){ angle *= -1; }
-                    }else{
-                      if(vec4[2]<vec3[2]){ angle *= -1; }
-                    }
-                    angle += 180; // angle now runs from 0-360
-                    return angle;
-                  }
-
-                  // Triple Compton Scatter (TCS) - delta phi, angle between the two scattering planes
-                  // TCS for a coincidence of [Ge-Ge] and [Si-Si-Ge] event
-                  // Calculate the azimuthal angle between the two scattering planes defined by a QED-HPGe plane and HPGe-HPGe plane
-                  // ge2 and ge3 are the HPGe of one Compton event. These define the scattering plane.
-                  // The second photon undergoes an Intermediate Compton Scatter in DSSD which is ignored.
-                  // pos1,qed1 and ge1 are the QED pixel and HPGe of the secondary Compton scatter. These define the scattering plane.
-                  double azimuthal_TCS_GeGe_SiSiGe(int pos1, int qed1, int ge1, int ge2, int ge3){
-                    double vec1[3], vec2[3], vec3[3], vec4[3], first_scattering_plane[3], second_scattering_plane[3], dot, mag, angle;
-
-                    pos1--; // pos are now 0-5 within this function
-                    vec1[0] = qed_cartesian[pos1][qed1][0];         vec1[1] = qed_cartesian[pos1][qed1][1];         vec1[2] = qed_cartesian[pos1][qed1][2];
-                    vec2[0] = grif_crystal_cartesian_110mm[ge1][0]; vec2[1] = grif_crystal_cartesian_110mm[ge1][1]; vec2[2] = grif_crystal_cartesian_110mm[ge1][2];
-
-                    vec3[0] = grif_crystal_cartesian_110mm[ge2][0]; vec3[1] = grif_crystal_cartesian_110mm[ge2][1]; vec3[2] = grif_crystal_cartesian_110mm[ge2][2];
-                    vec4[0] = grif_crystal_cartesian_110mm[ge3][0]; vec4[1] = grif_crystal_cartesian_110mm[ge3][1]; vec4[2] = grif_crystal_cartesian_110mm[ge3][2];
-
-                    cross_product(vec1,vec2,first_scattering_plane);   // the Normal vector of the plane (qed1,ge1)
-                    cross_product(vec3,vec4,second_scattering_plane);  // the Normal vector of the plane (qed3,ge2)
-                    // Now find the angle between the two scattering planes, the azimuthal
-                    dot = dot_product(first_scattering_plane,second_scattering_plane);
-                    mag = vector_magnitude_product(first_scattering_plane,second_scattering_plane);
-                    if(dot==0 && mag==0){ dot = mag = 1; } // Protection from NaN in the division
-                    angle = RADIANS_TO_DEGREES*fast_acos( dot / mag ); // acos is very slow
-
-                    // Determine the handedness based on if the scatter of the first photon is upstream or downstream
-                    // Downstream is positive z and positive handedness (azimuthal is positive 0 ... 180)
-                    // Upstream is negative z and negative handedness (azimuthal is negative -1 ... -180)
-                    // If the z coordinate of the HPGe is larger than z coordinate of the DSSD pixel then the scatter is in the downstream direction
-                    if(vec1[0]>0){
-                      if(vec2[2]<vec1[2]){ angle *= -1; }
-                    }else{
-                      if(vec4[2]<vec3[2]){ angle *= -1; }
-                    }
-                    angle += 180; // angle now runs from 0-360
-                    return angle;
-                  }
-
-                  // Triple Compton Scatter (TCS) - delta phi, angle between the two scattering planes
-                  // TCS for a coincidence of [Si-Ge] and [Si-Si-Ge] event
-                  // Calculate the azimuthal angle between the two scattering planes defined by a QED-HPGe plane and QED-HPGe plane
-                  // pos1,qed1 and ge1 are the QED pixel and HPGe of one Compton event. These define the scattering plane.
-                  // The second photon undergoes an Intermediate Compton Scatter in DSSD (pos2,qed2) which is ignored.
-                  // pos3,qed3 and ge2 are the QED pixel and HPGe of the secondary Compton scatter. These define the scattering plane.
-                  double azimuthal_TCS_SiGe_SiSiGe(int pos1, int qed1, int ge1, int pos3, int qed3, int ge2){
-                    double vec1[3], vec2[3], vec3[3], vec4[3], first_scattering_plane[3], second_scattering_plane[3], dot, mag, angle;
-
-                    pos1--; pos3--; // pos are now 0-5 within this function
-                    vec1[0] = qed_cartesian[pos1][qed1][0];         vec1[1] = qed_cartesian[pos1][qed1][1];         vec1[2] = qed_cartesian[pos1][qed1][2];
-                    vec2[0] = grif_crystal_cartesian_110mm[ge1][0]; vec2[1] = grif_crystal_cartesian_110mm[ge1][1]; vec2[2] = grif_crystal_cartesian_110mm[ge1][2];
-
-                    vec3[0] = qed_cartesian[pos3][qed3][0];         vec3[1] = qed_cartesian[pos3][qed3][1];         vec3[2] = qed_cartesian[pos3][qed3][2];
-                    vec4[0] = grif_crystal_cartesian_110mm[ge2][0]; vec4[1] = grif_crystal_cartesian_110mm[ge2][1]; vec4[2] = grif_crystal_cartesian_110mm[ge2][2];
-
-                    cross_product(vec1,vec2,first_scattering_plane);   // the Normal vector of the plane (qed1,ge1)
-                    cross_product(vec3,vec4,second_scattering_plane);  // the Normal vector of the plane (qed3,ge2)
-                    // Now find the angle between the two scattering planes, the azimuthal
-                    dot = dot_product(first_scattering_plane,second_scattering_plane);
-                    mag = vector_magnitude_product(first_scattering_plane,second_scattering_plane);
-                    if(dot==0 && mag==0){ dot = mag = 1; } // Protection from NaN in the division
-                    angle = RADIANS_TO_DEGREES*fast_acos( dot / mag ); // acos is very slow
-
-                    // Determine the handedness based on if the scatter of the first photon is upstream or downstream
-                    // Downstream is positive z and positive handedness (azimuthal is positive 0 ... 180)
-                    // Upstream is negative z and negative handedness (azimuthal is negative -1 ... -180)
-                    // If the z coordinate of the HPGe is larger than z coordinate of the DSSD pixel then the scatter is in the downstream direction
-                    if(vec1[0]>0){
-                      if(vec2[2]<vec1[2]){ angle *= -1; }
-                    }else{
-                      if(vec4[2]<vec3[2]){ angle *= -1; }
-                    }
-                    angle += 180; // angle now runs from 0-360
-                    return angle;
-                  }
-
-                  // Calculate angular difference between two QED pixels
-                  // pos is DSSD number [1-6], qed is pixel number [0-1023]
-                  double angular_diff_QEDQED(int pos1, int qed1, int pos2, int qed2){
-                    double vec1[3], vec2[3], dot, mag, angle;
-
-                    pos1--;  pos2--;
-                    vec1[0] = qed_cartesian[pos1][qed1][0]; vec1[1] = qed_cartesian[pos1][qed1][1]; vec1[2] = qed_cartesian[pos1][qed1][2];
-                    vec2[0] = qed_cartesian[pos2][qed2][0]; vec2[1] = qed_cartesian[pos2][qed2][1]; vec2[2] = qed_cartesian[pos2][qed2][2];
-
-                    dot = dot_product(vec1,vec2);
-                    mag = vector_magnitude_product(vec1,vec2);
-                    angle = RADIANS_TO_DEGREES*fast_acos( dot / mag ); // acos is very slow
-
-                    return angle;
-                  }
-
-                  // Calculate angular difference between two QED pixels
-                  // pos is DSSD number [1-6], qed is pixel number [0-1023]
-                  double angular_diff_QEDGe(int pos1, int qed1, int c2, int distance){
-                    double vec1[3], vec2[3], dot, mag, angle;
-
-                    pos1--;
-                    vec1[0] = qed_cartesian[pos1][qed1][0]; vec1[1] = qed_cartesian[pos1][qed1][1]; vec1[2] = qed_cartesian[pos1][qed1][2];
-                    vec2[0] = grif_crystal_cartesian_110mm[c2][0]; vec2[1] = grif_crystal_cartesian_110mm[c2][1]; vec2[2] = grif_crystal_cartesian_110mm[c2][2];
-
-                    dot = dot_product(vec1,vec2);
-                    mag = vector_magnitude_product(vec1,vec2);
-                    angle = RADIANS_TO_DEGREES*fast_acos( dot / mag ); // acos is very slow
-
-                    return angle;
-                  }
