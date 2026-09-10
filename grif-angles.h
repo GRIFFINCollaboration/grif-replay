@@ -6900,19 +6900,9 @@ float grif_crystal_cartesian_110mm[64][3]={
             dot = dot_product(first_scattering_plane,second_scattering_plane);
             mag = vector_magnitude_product(first_scattering_plane,second_scattering_plane);
             if(dot==0 && mag==0){ // Protection from NaN in the division
-
-              fprintf(stdout,"\n==================================azimuthal_DCS, vec1,2,3,4, [%.1f,%.1f,%.1f] [%.1f,%.1f,%.1f] [%.1f,%.1f,%.1f] [%.1f,%.1f,%.1f]\n",vec1[0],vec1[1],vec1[2],vec2[0],vec2[1],vec2[2],vec3[0],vec3[1],vec3[2],vec4[0],vec4[1],vec4[2]);
-              fprintf(stdout,"==================================azimuthal_DCS, 1st_scatt_plane,2nd_scatt_plane, [%.1f,%.1f,%.1f] [%.1f,%.1f,%.1f]\n",first_scattering_plane[0],first_scattering_plane[1],first_scattering_plane[2],second_scattering_plane[0],second_scattering_plane[1],second_scattering_plane[2]);
-
               dot = mag = 1;
             }
             angle = RADIANS_TO_DEGREES*fast_acos( dot / mag ); // acos is very slow
-
-            if((angle>-1 && angle<1) || (dot ==1 && mag == 1)){
-              fprintf(stdout,"==================================azimuthal_DCS, dot, mag, ang, %.1f, %.1f, %.1f\n\n",dot,mag,angle);
-            }
-            /*
-            */
 
             // Determine the handedness based on if the scatter of the first photon is upstream or downstream
             // Downstream is positive z and positive handedness (azimuthal is positive 0 ... 180)
@@ -7284,6 +7274,80 @@ float grif_crystal_cartesian_110mm[64][3]={
 
                     cross_product(vec1,vec2,first_scattering_plane);   // the Normal vector of the plane (qed1,ge1)
                     cross_product(vec3,vec4,second_scattering_plane);  // the Normal vector of the plane (qed2,ge2)
+                    // Now find the angle between the two scattering planes, the azimuthal
+                    dot = dot_product(first_scattering_plane,second_scattering_plane);
+                    mag = vector_magnitude_product(first_scattering_plane,second_scattering_plane);
+                    if(dot==0 && mag==0){ dot = mag = 1; } // Protection from NaN in the division
+                    angle = RADIANS_TO_DEGREES*fast_acos( dot / mag ); // acos is very slow
+
+                    // Determine the handedness based on if the scatter of the first photon is upstream or downstream
+                    // Downstream is positive z and positive handedness (azimuthal is positive 0 ... 180)
+                    // Upstream is negative z and negative handedness (azimuthal is negative -1 ... -180)
+                    // If the z coordinate of the HPGe is larger than z coordinate of the DSSD pixel then the scatter is in the downstream direction
+                    if(vec1[0]>0){
+                      if(vec2[2]<vec1[2]){ angle *= -1; }
+                    }else{
+                      if(vec4[2]<vec3[2]){ angle *= -1; }
+                    }
+                    angle += 180; // angle now runs from 0-360
+                    return angle;
+                  }
+
+                  // Triple Compton Scatter (TCS) - delta phi, angle between the two scattering planes
+                  // TCS for a coincidence of [Ge-Ge] and [Si-Si-Ge] event
+                  // Calculate the azimuthal angle between the two scattering planes defined by a QED-HPGe plane and HPGe-HPGe plane
+                  // ge2 and ge3 are the HPGe of one Compton event. These define the scattering plane.
+                  // The second photon undergoes an Intermediate Compton Scatter in DSSD which is ignored.
+                  // pos1,qed1 and ge1 are the QED pixel and HPGe of the secondary Compton scatter. These define the scattering plane.
+                  double azimuthal_TCS_GeGe_SiSiGe(int pos1, int qed1, int ge1, int ge2, int ge3){
+                    double vec1[3], vec2[3], vec3[3], vec4[3], first_scattering_plane[3], second_scattering_plane[3], dot, mag, angle;
+
+                    pos1--; // pos are now 0-5 within this function
+                    vec1[0] = qed_cartesian[pos1][qed1][0];         vec1[1] = qed_cartesian[pos1][qed1][1];         vec1[2] = qed_cartesian[pos1][qed1][2];
+                    vec2[0] = grif_crystal_cartesian_110mm[ge1][0]; vec2[1] = grif_crystal_cartesian_110mm[ge1][1]; vec2[2] = grif_crystal_cartesian_110mm[ge1][2];
+
+                    vec3[0] = grif_crystal_cartesian_110mm[ge2][0]; vec3[1] = grif_crystal_cartesian_110mm[ge2][1]; vec3[2] = grif_crystal_cartesian_110mm[ge2][2];
+                    vec4[0] = grif_crystal_cartesian_110mm[ge3][0]; vec4[1] = grif_crystal_cartesian_110mm[ge3][1]; vec4[2] = grif_crystal_cartesian_110mm[ge3][2];
+
+                    cross_product(vec1,vec2,first_scattering_plane);   // the Normal vector of the plane (qed1,ge1)
+                    cross_product(vec3,vec4,second_scattering_plane);  // the Normal vector of the plane (qed3,ge2)
+                    // Now find the angle between the two scattering planes, the azimuthal
+                    dot = dot_product(first_scattering_plane,second_scattering_plane);
+                    mag = vector_magnitude_product(first_scattering_plane,second_scattering_plane);
+                    if(dot==0 && mag==0){ dot = mag = 1; } // Protection from NaN in the division
+                    angle = RADIANS_TO_DEGREES*fast_acos( dot / mag ); // acos is very slow
+
+                    // Determine the handedness based on if the scatter of the first photon is upstream or downstream
+                    // Downstream is positive z and positive handedness (azimuthal is positive 0 ... 180)
+                    // Upstream is negative z and negative handedness (azimuthal is negative -1 ... -180)
+                    // If the z coordinate of the HPGe is larger than z coordinate of the DSSD pixel then the scatter is in the downstream direction
+                    if(vec1[0]>0){
+                      if(vec2[2]<vec1[2]){ angle *= -1; }
+                    }else{
+                      if(vec4[2]<vec3[2]){ angle *= -1; }
+                    }
+                    angle += 180; // angle now runs from 0-360
+                    return angle;
+                  }
+
+                  // Triple Compton Scatter (TCS) - delta phi, angle between the two scattering planes
+                  // TCS for a coincidence of [Si-Ge] and [Si-Si-Ge] event
+                  // Calculate the azimuthal angle between the two scattering planes defined by a QED-HPGe plane and QED-HPGe plane
+                  // pos1,qed1 and ge1 are the QED pixel and HPGe of one Compton event. These define the scattering plane.
+                  // The second photon undergoes an Intermediate Compton Scatter in DSSD (pos2,qed2) which is ignored.
+                  // pos3,qed3 and ge2 are the QED pixel and HPGe of the secondary Compton scatter. These define the scattering plane.
+                  double azimuthal_TCS_SiGe_SiSiGe(int pos1, int qed1, int ge1, int pos3, int qed3, int ge2){
+                    double vec1[3], vec2[3], vec3[3], vec4[3], first_scattering_plane[3], second_scattering_plane[3], dot, mag, angle;
+
+                    pos1--; pos3--; // pos are now 0-5 within this function
+                    vec1[0] = qed_cartesian[pos1][qed1][0];         vec1[1] = qed_cartesian[pos1][qed1][1];         vec1[2] = qed_cartesian[pos1][qed1][2];
+                    vec2[0] = grif_crystal_cartesian_110mm[ge1][0]; vec2[1] = grif_crystal_cartesian_110mm[ge1][1]; vec2[2] = grif_crystal_cartesian_110mm[ge1][2];
+
+                    vec3[0] = qed_cartesian[pos3][qed3][0];         vec3[1] = qed_cartesian[pos3][qed3][1];         vec3[2] = qed_cartesian[pos3][qed3][2];
+                    vec4[0] = grif_crystal_cartesian_110mm[ge2][0]; vec4[1] = grif_crystal_cartesian_110mm[ge2][1]; vec4[2] = grif_crystal_cartesian_110mm[ge2][2];
+
+                    cross_product(vec1,vec2,first_scattering_plane);   // the Normal vector of the plane (qed1,ge1)
+                    cross_product(vec3,vec4,second_scattering_plane);  // the Normal vector of the plane (qed3,ge2)
                     // Now find the angle between the two scattering planes, the azimuthal
                     dot = dot_product(first_scattering_plane,second_scattering_plane);
                     mag = vector_magnitude_product(first_scattering_plane,second_scattering_plane);

@@ -152,9 +152,9 @@ static void online_loop(Config *cfg, Sort_status *sort)
   sort->odb_ready = 0; // only done on module load atm.
   while(1){
 
-    // quick hack to fix bug - do properly
-    extern int subsys_initialized[24];
-    memset(subsys_initialized, 0, sizeof(int)*24 );
+    // quick hack to fix bug - do properly (24 was used here instead of MAX_SUBSYS which is now 28. Defined in grif-format.h)
+    extern int subsys_initialized[MAX_SUBSYS];
+    memset(subsys_initialized, 0, sizeof(int)*MAX_SUBSYS );
 
     while( !sort->run_in_progress ){ usleep(1); } // wait for run to start
     start =time(NULL);
@@ -371,7 +371,6 @@ int insert_presort_win(Grif_event *ptr, int slot)
     // NOTE event[slot] is out of window - use slot-1 as window-end
     if( (win_end = slot-1) < 0 ){ win_end = PTR_BUFSIZE-1; } // WRAP
     pre_sort_exit(presort_window_start, win_end);
-    //pre_sort_triples(presort_window_start, win_end); // used in QED development
     insert_sort_win(alt, presort_window_start); // add event to next window
     if( ++presort_window_start >= PTR_BUFSIZE ){ presort_window_start=0; } // WRAP
   }
@@ -416,6 +415,8 @@ int insert_sort_win(Grif_event *ptr, int slot)
     // NOTE event[slot] is out of window - use slot-1 as window-end
     if( (win_end = slot-1) < 0 ){ win_end = PTR_BUFSIZE-1; } // WRAP
     if( alt->chan != -1 ){ ++sorted;
+    //  pre_sort_qed_weights(sort_window_start, win_end); // used in QED development Must be called here after all fragments have run through the other presorts
+      pre_sort_triples(sort_window_start, win_end); // used in QED development. Must be called here after all fragments have run through the other presorts
       default_sort(sort_window_start, win_end, SORT_ONE);
       // if( nuser > 0 ){ user_sort(sort_window_start, win_end, SORT_ONE); }
     } else { ++skipped; }

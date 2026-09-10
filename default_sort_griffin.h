@@ -276,15 +276,17 @@ TH2I  *qed_angle_test_g, *qed_angle_test_s, *qedE_ge_dt, *qed_geE_dt, *qedE_ge_d
 TH1I  *qed_dcs_omega, *qed_dcs_omega_t, *qed_dcs_azi, *qed_dcs_azi_t, *qed_dcs_azi_tg, *qed_dcs_azi_TRWF, *qed_dcs_azi_TRWF_t, *qed_dcs_azi_TRWF_tg, *qed_delta_theta1_theta2, *qed_sum_theta1_theta2;
 TH1I  *qed_wf_dcs_azi, *qed_wf_omega;
 TH2I  *qed_angle_theta_g, *qed_angle_theta_s, *qed_angle_phi_s, *qed_angle_phi_a, *qed_angle_phi_b;
-TH1I  *qed_theta, *dcs_theta, *dcs_cs_omega, *qed_phi_s, *qed_phi_a, *qed_phi_b;
+TH1I  *qed_theta, *qed_phi_s, *qed_phi_a, *qed_phi_b;
 TH1I  *qed_dcs_azi_bins1, *qed_dcs_azi_bins2, *qed_dcs_azi_bins3, *qed_dcs_azi_bins4, *qed_dcs_azi_bins5, *qed_dcs_azi_bins6, *qed_dcs_azi_bins7, *qed_dcs_azi_bins8, *qed_dcs_azi_bins8a, *qed_dcs_azi_bins9, *qed_dcs_azi_bins10;
 TH1I  *qed_dcs_azi_TRWF_bins1, *qed_dcs_azi_TRWF_bins2, *qed_dcs_azi_TRWF_bins3, *qed_dcs_azi_TRWF_bins4, *qed_dcs_azi_TRWF_bins5, *qed_dcs_azi_TRWF_bins6, *qed_dcs_azi_TRWF_bins7, *qed_dcs_azi_TRWF_bins8, *qed_dcs_azi_TRWF_bins8a, *qed_dcs_azi_TRWF_bins9, *qed_dcs_azi_TRWF_bins10;
 TH1I  *qed_phi_bins1, *qed_phi_bins2, *qed_phi_bins3, *qed_phi_bins4, *qed_phi_bins5, *qed_phi_bins6, *qed_phi_bins7, *qed_phi_bins8, *qed_phi_bins9, *qed_phi_bins10;
-TH2I  *dcsE_ge_theta, *dcs_geE_theta, *dcs_theta_azi;
-TH1I  *dcs_cs_omega_ge;
-TH2I  *dcs_theta_azi_ge;
+TH2I  *dcsaE_ge_theta, *dcsa_geE_theta, *dcsa_theta_azi, *qed_dcs_omega_dt_TRWF, *dcsa_theta_azi_ge;
+TH1I  *dcsa_cs_omega, *dcsa_cs_omega_ge, *dcsa_theta;
+TH2I  *dcsbE_ge_theta, *dcsb_geE_theta, *dcsb_theta_azi, *dcsb_theta_azi_ge;
+TH1I  *dcsb_cs_omega, *dcsb_cs_omega_ge, *dcsb_theta;
 TH2I  *qed_qed_23, *qed_qed_23_theta2, *qed_qed_23_theta3, *qed_qed_23_totv2, *qed_qed_23_totv3, *qed_qed_12, *qed_qed_12_theta1, *qed_qed_12_theta2, *qed_qed_12_totv1, *qed_qed_12_totv2, *qed_qed_14, *qed_qed_14_theta1, *qed_qed_14_theta4, *qed_qed_14_totv1, *qed_qed_14_totv4;
 TH1I  *qed_qed_23dt, *qed_qed_12dt, *qed_qed_14dt;
+TH2I  *qed_ge_weight;
 
 
 char qed_psd_handles[N_QED_POS][HANDLE_LENGTH] = {"QED01_E_vs_psd","QED02_E_vs_psd","QED03_E_vs_psd","QED04_E_vs_psd","QED05_E_vs_psd","QED06_E_vs_psd"};

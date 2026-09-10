@@ -51,7 +51,7 @@ float alt2_ecal;
 
 // do not alter order without also changing subsys_e_vs_e, subsys_dt
 //                                              in default_sort
-#define MAX_SUBSYS       24
+#define MAX_SUBSYS       28
 #define SUBSYS_HPGE_A     0
 #define SUBSYS_PACES      1
 #define SUBSYS_LABR_L     2
@@ -73,10 +73,14 @@ float alt2_ecal;
 #define SUBSYS_ZDS_B     18 // CAEN
 #define SUBSYS_TAC_ZDS   19
 #define SUBSYS_TAC_ART   20
-#define SUBSYS_COMPTON   21
-#define SUBSYS_DCOMPTON  15
+#define SUBSYS_COMPTON   21 // QED Single Compton (Si-Ge)
+#define SUBSYS_DCOMPTONA 15 // QED Double Compton Type A (Si-Ge-Ge)
+#define SUBSYS_DCOMPTONB 23 // QED Double Compton Type B (Si-Si-Ge)
 #define SUBSYS_QED_PIXEL 22
-#define SUBSYS_UNKNOWN   23
+#define SUBSYS_IGNORE3   24
+#define SUBSYS_IGNORE4   25
+#define SUBSYS_IGNORE5   26
+#define SUBSYS_UNKNOWN   27
 
 extern char subsys_handle[MAX_SUBSYS][8];
 extern char subsys_name[MAX_SUBSYS][STRING_LEN];
@@ -101,6 +105,7 @@ extern int insert_sort_win(Grif_event *ptr, int slot);
 extern int pre_sort_enter(int start_idx, int frag_idx);
 extern int pre_sort_exit(int frag_idx, int end_idx);
 extern int pre_sort_triples(int frag_idx, int end_idx);
+extern int pre_sort_qed_weights(int frag_idx, int end_idx);
 
 // User sort function declarations
 extern int calc_coincvars(Grif_event *ptr1, Grif_event *ptr2);
