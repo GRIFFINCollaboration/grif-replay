@@ -1568,7 +1568,10 @@ int add_sortfile(char *path, char *histodir, char *confdir, char *calsrc)
       for(i=0; ; i++){
          fname = subrun_filename(sort, i);
          if( stat(fname, &statbuf) != 0 ){
-            fprintf(stderr,"can't stat multi-subrun: %s\n", path); break;
+           // This is not actually an error, it is just being used to find the number of subrun files to sort
+           // fprintf(stderr,"can't stat multi-subrun: %s\n", path);
+            fprintf(stdout,"multi-subrun file of %.2fGB with %d subrun files\n", (double)((double)sort->data_size/1000000000),i);
+            break;
          }
          sort->data_size += (long)statbuf.st_size;
       }

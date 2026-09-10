@@ -2861,11 +2861,11 @@ int init_default_histos(Config *cfg, Sort_status *arg)
       // In DCOMPTONB event, crystal_table[ tof]=pos will be second QED DSSD number [1-6], alt2_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
       // In DCOMPTONB event, net_id will be the HPGe crystal number [1-64]
 
-      pos1 = crystal_table[ptr->chan];
-      qed1 = (ptr->alt_chan&1023);
-      pos2 = crystal_table[ptr->tof];
-      qed2 = (ptr->alt2_chan&1023);
-      c1 = ptr->net_id;
+      pos1 = crystal_table[alt->chan];
+      qed1 = (alt->alt_chan&1023);
+      pos2 = crystal_table[alt->tof];
+      qed2 = (alt->alt2_chan&1023);
+      c1 = alt->net_id;
 
       c2 = crystal_table[ptr->chan];
       c3 = crystal_table[ptr->alt_chan];

@@ -258,8 +258,8 @@ int unpack_grif3_event(unsigned *evntbuf, int evlen, Grif_event *ptr, int proces
         wf_ptr = (wave_ptr-2-WF_WINDOW_GAP-WF_WINDOW_WIDTH-WF_WINDOW_WIDTH);
         if(wf_ptr>=0){
           for(k=0; k<WF_WINDOW_WIDTH; k++){
-            wf_window1[wf_ptr+k]   = waveform[wf_ptr+k];
-            wf_window2[wf_ptr+k]   = waveform[wf_ptr+WF_WINDOW_GAP+k];
+            wf_window1[k]   = waveform[wf_ptr+k];
+            wf_window2[k]   = waveform[wf_ptr+WF_WINDOW_GAP+k];
             wf_sum1 += waveform[wf_ptr+k];
             wf_sum2 += waveform[wf_ptr+WF_WINDOW_GAP+k];
           }
