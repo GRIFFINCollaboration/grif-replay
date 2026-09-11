@@ -222,8 +222,6 @@
         int clover, ge1, c1,c2,bin, p_strip, n_strip;
         float energy,ecal,correction,angle;
 
-        //  if(ptr->ts>10663580856){ DEBUG_OUTPUT=0; } // Only save some debugging info otherwise a >5GB file!
-        if(DEBUG_OUTPUT){ fprintf(stdout,"Start of pre_sort_exit"); }
         // Assign chan local variable and check it is a valid channel number
         chan = ptr->chan;
         if( (unsigned int)chan >= (unsigned int)odb_daqsize ){
@@ -249,7 +247,7 @@
           if( alt->subsys == ptr->subsys ){
             if(ptr->subsys == SUBSYS_HPGE_A){
               // Prompt coincidence window for HPGe multiplicity
-              if( (dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_HPGE_A]) && (dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_HPGE_A]) ){
+              if( (dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_HPGE_A]) & (dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_HPGE_A]) ){
                 ++ptr->multiplicity;
               }
             }else if(ptr->subsys == SUBSYS_QED_STRIP){
@@ -264,7 +262,6 @@
           }
 
           // SubSystem-specific pre-processing
-          if(DEBUG_OUTPUT){ fprintf(stdout,"\n%d: %d %d %ld | %.1f %.1f %.1f | %d vs %d %d %ld | %.1f %.1f %.1f | %d, dt=%d, sumE=%.1f",frag_idx,ptr->subsys,ptr->chan,ptr->ts,ptr->ecal,ptr->alt_ecal,ptr->esum,ptr->net_id,alt->subsys,alt->chan,alt->ts,alt->ecal,alt->alt_ecal,alt->esum,alt->net_id,dt,(ptr->ecal+alt->ecal)); }
           switch(ptr->subsys){
             case SUBSYS_HPGE_A:
 
@@ -336,7 +333,6 @@
                     alt->alt2_ecal = 0;
                     alt->alt2_chan = -1;
                   }
-                  if(DEBUG_OUTPUT){ fprintf(stdout," --> COMPTON GE INFO SAVED INTO QED_STRIP: esum=%.1f, ecal=%.1f, alt_ecal=%.1f",alt->esum,alt->ecal,alt->alt_ecal); }
                 }
               }
             }
@@ -462,15 +458,12 @@
                     // Single strip vs theta needed for strip-energy calibration
                     qedp_ge_theta[p_strip + pos*N_QED_STRIPS]->Fill(qedp_ge_theta[p_strip + pos*N_QED_STRIPS], ptr->ecal, angle, 1);
                     qedn_ge_theta[n_strip + pos*N_QED_STRIPS]->Fill(qedn_ge_theta[n_strip + pos*N_QED_STRIPS], alt->ecal, angle, 1);
-
-                    if(DEBUG_OUTPUT){ fprintf(stdout," --> QED_STRIP_P to COMPTON: esum=%.1f, ecal=%.1f, alt_ecal=%.1f, alt_chan=%d",ptr->esum,ptr->ecal,ptr->alt_ecal,((element_table[ptr->chan] * N_QED_STRIPS) + element_table[alt->chan])); }
                   }else{
 
                     // PIXEL identified
                     ptr->esum = ptr->ecal;
                     ptr->alt_ecal = alt->ecal;
                     ptr->subsys = SUBSYS_QED_PIXEL;
-                    if(DEBUG_OUTPUT){ fprintf(stdout," --> QED_STRIP_P to QED_PIXEL: esum=%.1f, ecal=%.1f, alt_ecal=%.1f",ptr->esum,ptr->ecal,ptr->alt_ecal); }
                   }
                   ptr->alt_chan = (element_table[ptr->chan] * N_QED_STRIPS) + element_table[alt->chan];
                 }else{ // alt is P strip, ptr is N strip
@@ -492,12 +485,10 @@
                     // Single strip vs theta needed for strip-energy calibration
                     qedp_ge_theta[p_strip + pos*N_QED_STRIPS]->Fill(qedp_ge_theta[p_strip + pos*N_QED_STRIPS], alt->ecal, angle, 1);
                     qedn_ge_theta[n_strip + pos*N_QED_STRIPS]->Fill(qedn_ge_theta[n_strip + pos*N_QED_STRIPS], ptr->ecal, angle, 1);
-                    if(DEBUG_OUTPUT){ fprintf(stdout," --> QED_STRIP_N to COMPTON: esum=%.1f, ecal=%.1f, alt_ecal=%.1f, alt_chan=%d",ptr->esum,ptr->ecal,ptr->alt_ecal,((element_table[alt->chan] * N_QED_STRIPS) + element_table[ptr->chan])); }
                   }else{
                     ptr->alt_ecal = ptr->ecal;
                     ptr->esum = ptr->ecal = alt->ecal;
                     ptr->subsys = SUBSYS_QED_PIXEL;
-                    if(DEBUG_OUTPUT){ fprintf(stdout," --> QED_STRIP_N to QED_PIXEL: esum=%.1f, ecal=%.1f, alt_ecal=%.1f",ptr->esum,ptr->ecal,ptr->alt_ecal); }
                   }
                   ptr->alt_chan = (element_table[alt->chan] * N_QED_STRIPS) + element_table[ptr->chan];
                 }
@@ -522,7 +513,6 @@
                     }else{ // just add the energies
                       ptr->ecal += alt->ecal;
                     }
-                    if(DEBUG_OUTPUT){ fprintf(stdout," --> QED_STRIP ADDBACK for alt=P"); }
                   }
                 }else{ // alt is N strip
                   // This could change the pixel number, but pixel energy came from p strips
@@ -533,7 +523,6 @@
                   }else{
                     ptr->alt_ecal += alt->ecal;
                   }
-                  if(DEBUG_OUTPUT){ fprintf(stdout," --> QED_STRIP ADDBACK for alt=N"); }
                 }
               }
             }
@@ -571,7 +560,6 @@
                       ptr->alt2_ecal = 0;
                       ptr->alt2_chan = -1;
                     }
-                    if(DEBUG_OUTPUT){ fprintf(stdout," --> QED_PIXEL to COMPTON: esum=%.1f, ecal=%.1f, alt_ecal=%.1f, alt_chan=%d",ptr->esum,ptr->ecal,ptr->alt_ecal,ptr->alt_chan); }
                   }
                 }
               }
@@ -672,8 +660,6 @@
             }
           }// end of while
         }
-
-        if(DEBUG_OUTPUT){ fprintf(stdout,"\nEnd of pre_sort_exit\n"); }
         return(0);
       }
 

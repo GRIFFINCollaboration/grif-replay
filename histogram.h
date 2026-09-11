@@ -51,6 +51,7 @@ extern Config *add_histoset();
 extern TH1I *H1_BOOK(Config *cfg, char *name, char *title, int xbins, int xmin, int xmax);
 extern int TH1I_Reset(TH1I *);
 extern int TH1I_Fill(TH1I *, int bin, int count);
+extern int TH1I_Batch_Fill(TH1I *this, int *batch_data);
 extern int TH1I_SetBinContent(TH1I *, int bin, int value);
 extern int TH1I_GetBinContent(TH1I *, int bin);
 extern int TH1I_SetValidLen(TH1I *, int bins);

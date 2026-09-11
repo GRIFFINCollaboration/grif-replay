@@ -266,6 +266,7 @@ void sort_main(Sort_status *arg)
     process_event(&grif_event[nxtpos], nxtpos);
     nxtpos = ++grifevent_nxtpos % PTR_BUFSIZE;
   }
+  fill_batch_histos(); // Final batch fill
   printf("sort_main finished\n");
   return;
 }

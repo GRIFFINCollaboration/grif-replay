@@ -27,6 +27,7 @@ int end_current_sortfile(int fd);
 void unload_midas_module();
 int user_addto_window(int win_strt, int new_frag);
 int default_sort(int win_idx, int frag_idx, int flag);
+int fill_batch_histos();
 int sort_built_event(int window_start, int win_end);
 
 // Sorting window sizes. Can be set as Globals
