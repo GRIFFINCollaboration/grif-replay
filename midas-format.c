@@ -382,7 +382,7 @@ int translate_caen_bank(unsigned *ptr, int len)
 unsigned bankbuf[BANK_BUFSIZE];
 volatile unsigned long bankbuf_wrpos;
 volatile unsigned long bankbuf_rdpos;
-int copy_bank(unsigned *ptr, int size)
+int copy_bank(const void *ptr, int size)
 {
    int words_used, words_left, wrpos, words_to_end;
    unsigned int usecs=100;
@@ -393,12 +393,13 @@ int copy_bank(unsigned *ptr, int size)
       if( size > words_left ){ usleep(usecs); continue; }
       wrpos = bankbuf_wrpos % BANK_BUFSIZE;
       words_to_end = BANK_BUFSIZE - wrpos;
-      if( size < words_to_end ){ // no wrap
-         memcpy((char *)(bankbuf+wrpos), ptr, 4*size);
+      if( size < words_to_end ){ // no wrap case
+        // Standard array indexing tells the compiler this is a properly aligned element
+         memcpy(&bankbuf[wrpos], ptr, 4*size);
       } else { // write at end and wrap to start of bankbuf
-         memcpy((char *)(bankbuf+wrpos), ptr,  4*words_to_end);
-         memcpy((char *)(bankbuf),       ptr + words_to_end,
-                                                    4*(size - words_to_end));
+         memcpy(&bankbuf[wrpos], ptr,  4*words_to_end);
+         // Casting ptr to char* first ensures byte-level arithmetic if ptr itself is unaligned
+         memcpy(bankbuf, (const char *)ptr + (4*words_to_end), 4*(size - words_to_end));
       }
       bankbuf_wrpos += size; return(0);
    }
