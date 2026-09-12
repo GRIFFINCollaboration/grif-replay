@@ -4,11 +4,13 @@
 #include <string.h>
 #include <unistd.h>
 #include <math.h>
+#include <stdalign.h>
 
 #include "grif-replay.h"
 #include "midas-format.h"
 
-static char recbuf[RECORDSIZE];
+ // Need to align the char buffer so that the cast to int in next_event() does not cause misalignment of the pointer
+alignas(int) static char recbuf[RECORDSIZE];
 static int recbufpos, recordlen;
 static int midas_evstart; // start of event data - just after event-header
 
@@ -49,7 +51,7 @@ void midas_status(int current_time)
 //////////////////////////////////////////////////////////////////////////
 // read data banks from midas file (additionally handle odb record at BOR)
 //   either copy data to buffer or process it immediately[if single thread]
-// 
+//
 // buffer-wraparound easy to handle during simple data copies
 //  - but messier if doing more complex decoding into buffer
 //  - in this case do not wraparound - allow extra space after end of buffer
@@ -172,7 +174,7 @@ void midas_main(Sort_status *arg)
             unpack_head_event(evt);
          } else if( evt->type == TAIL_EVENT ){
             unpack_tail_event(evt);
-         } 
+         }
          if( single_thread ){
             // ????????????
          } else { //update wrpos (and handle any buffer overrun)
@@ -494,10 +496,25 @@ int next_event(Sort_status *arg)
    int bytes, bytes_done, bytes_avail, bytes_remain;
 
    // check if full event available, if not, grab new record
-   while( recordlen-recbufpos <                                 MIDAS_HDRLEN ||
-          recordlen-recbufpos < *(int *)(recbuf+recbufpos+12) + MIDAS_HDRLEN ){
-      //printf("nextEvent: evlen=%6d bank:[wr:%ld rd:%ld]\n", *(int *)(recbuf+recbufpos+12), bankbuf_wrpos, bankbuf_rdpos );
-      if( next_record(arg) <= 0 ){ return(-1); }
+   while(1){
+      // Check if we have enough bytes left just to read the header length
+      if (recordlen - recbufpos < MIDAS_HDRLEN) {
+         if (next_record(arg) <= 0) return -1;
+         continue;
+      }
+
+      // Safely extract the unaligned event size from offset 12 using memcpy
+      int next_event_size;
+      memcpy(&next_event_size, recbuf + recbufpos + 12, sizeof(int));
+
+      // Check if the full event (header + payload size) fits in the current record
+      if (recordlen - recbufpos < next_event_size + MIDAS_HDRLEN) {
+         if (next_record(arg) <= 0) return -1;
+         continue;
+      }
+
+      // If both checks pass, we have a complete event ready
+      break;
    }
    memcpy((char *)&ev_head, recbuf+recbufpos, sizeof(Midas_event_header) );
    recbufpos += sizeof(Midas_event_header);
