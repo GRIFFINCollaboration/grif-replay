@@ -27,7 +27,7 @@ int end_current_sortfile(int fd);
 void unload_midas_module();
 int user_addto_window(int win_strt, int new_frag);
 int default_sort(int win_idx, int frag_idx, int flag);
-int fill_batch_histos();
+void fill_batch_histos();
 int sort_built_event(int window_start, int win_end);
 
 // Sorting window sizes. Can be set as Globals
@@ -153,7 +153,7 @@ typedef struct config_set_struct { int  type; // memory(live,sort) or disk
    int nuser;            Histogram *user_histos[MAX_HISTOGRAMS];
    int nhistos;          Histogram *histo_list[MAX_HISTOGRAMS];
    int nsortvar;         Sortvar varlist[MAX_SORT_VARS];           // 33921336
-   Cond cond_array[MAX_GATES];  Gate gate_array[MAX_GATES]; // unsorted lists
+   Cond cond_array[MAX_CONDS];  Gate gate_array[MAX_GATES]; // unsorted lists
    Global global_array[MAX_GLOBALS];                               // 34115896
    Histogram histo_array[MAX_HISTOGRAMS];
    Cal_coeff calib_array[MAX_CALIB];  int odb_daqsize;

@@ -8,8 +8,9 @@ DRAGON_OBJECTS = config_io.o config_usersort.o config_util.o web_command.o\
           web_server.o dragon-reorder.o user_sort_dragon.o \
           default_sort_dragon.o dragon-format.o odb.o
 
-CFLAGS  = -g -O3 -fPIC
-//CFLAGS  = -g -O0 -fPIC
+CC=clang
+//CFLAGS  = -g -O3 -fPIC
+CFLAGS  = -g -O0 -fPIC -fsanitize=address,undefined
 
 griffin-replay: grif-replay
 griffin:  grif-replay
@@ -24,7 +25,7 @@ dragon-replay: $(DRAGON_OBJECTS)
 	$(CC) $(CFLAGS) $(SYS) -o $@ $^ -rdynamic -lz -ldl -lm -lpthread
 
 grif-replay: $(GRIF_OBJECTS)
-	$(CC) $(CFLAGS) $(SYS) -o $@ $^ -rdynamic -lz -ldl -lm -lpthread -flto -ffast-math
+	$(CC) $(CFLAGS) $(SYS) -o $@ $^ -rdynamic -lz -ldl -lm -lpthread -flto -ffast-math -fsanitize=address,undefined
 
 midas: midas_module.so
 

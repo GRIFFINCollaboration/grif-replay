@@ -301,11 +301,11 @@ int translate_caen_bank(unsigned *ptr, int len)
             addr = (0x0000 + (board_to_grifc[board_id] * 0x1000) +
 		                               2*chan_pair + msb);
 
-   /* 0 */  tmp_bankbuf[outpos++] = (0x8<<28) + ((CAEN_ID)<<25) +
+   /* 0 */  tmp_bankbuf[outpos++] = (0x8U<<28) + ((CAEN_ID)<<25) +
                ((CAEN_WORDS)<<20) + (addr<<4) + (DESCANT_DTYPE);
    /* 1 */  tmp_bankbuf[outpos++] = (use_waveform<<15) | dual_trace;
    /* 2 */  tmp_bankbuf[outpos++] = caen_event_id++ & 0x7FFFFFFF;
-   /* 3 */  tmp_bankbuf[outpos++] = (0x9<<28) + 0;
+   /* 3 */  tmp_bankbuf[outpos++] = (0x9U<<28) + 0;
    /* 4 */  tmp_bankbuf[outpos++] = 0; // fill in timestamp later
    /* 5 */  tmp_bankbuf[outpos++] = 0; // fill in timestamp later
 
@@ -348,14 +348,14 @@ int translate_caen_bank(unsigned *ptr, int len)
             default: ++i; break;
             }
             grif_ts = (unsigned long)(ceil(timestamp / 5)); // (timestamp was in 2ns units)
-            tmp_bankbuf[out_start+4] = (0xA<<28) +  (grif_ts & 0xFFFFFFF);
-            tmp_bankbuf[out_start+5] = (0xB<<28) + ((grif_ts>>28) & 0x3fff);
+            tmp_bankbuf[out_start+4] = (0xAU<<28) +  (grif_ts & 0xFFFFFFF);
+            tmp_bankbuf[out_start+5] = (0xBU<<28) + ((grif_ts>>28) & 0x3fff);
             e   =  ptr[i  ] >> 16; ovr = (ptr[i] >> 15) & 0x1;
             cc  = (ptr[i++]      ) & 0x7fff; // 15bits
             tmp_bankbuf[outpos++] = (ovr<<25) + e;
           //  tmp_bankbuf[outpos++] = ((cc<<10) | cfd); // cfd:10 bits
             tmp_bankbuf[outpos++] = ((cc<<10) | (timestamp&0x3ff)); // Save lower 10 bits of 2ns timestamp. Largest value is 2048ns
-            tmp_bankbuf[outpos++] = (0xE<<28) + ((lost&0x3fff)<<14)
+            tmp_bankbuf[outpos++] = (0xEU<<28) + ((lost&0x3fff)<<14)
                               + (tmp_bankbuf[out_start+3] & 0x3fff);
          }
       }

@@ -51,7 +51,7 @@ extern void midas_main(Sort_status *arg);
 extern int next_record(Sort_status *arg);
 extern int next_event(Sort_status *arg);
 extern int next_bank(Sort_status *arg, char **bank_name);
-extern int copy_bank(unsigned *ptr, int size);
+extern int copy_bank(const void *ptr, int size);
 
 #define REORDER_BUFSIZE (1024*1024)
 #define EVENTBUFSIZE (8*REORDER_BUFSIZE)

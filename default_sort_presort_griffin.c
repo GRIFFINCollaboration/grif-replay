@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <math.h>
+#include <limits.h>
 
 #include "config.h"
 #include "grif-format.h"
@@ -50,6 +51,11 @@
       energy = ( ptr->integ1 == 0 ) ? ptr->q1 : spread(ptr->q1)/ptr->integ1;
       ptr->ecal = ptr->esum=offsets[chan]+energy*(gains[chan]+energy*quads[chan]);
       // NOBODY CURRENTLY USES e2,e3,e4 ...
+
+      // Protect against Float cast overflow or negative energy values
+      if(ptr->ecal < (float)0.0 || ptr->ecal > (float)INT_MAX){
+        ptr->ecal = 0;
+      }
 
       // Assign the subsys type
       if( (ptr->subsys = subsys_table[chan]) == -1 ){ return(-1); }

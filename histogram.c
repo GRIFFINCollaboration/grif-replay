@@ -308,6 +308,35 @@ TH1I *H1_BOOK(Config *cfg, char *name, char *title, int nbins, int xmin, int xma
     return 0;
   }
 
+  int TH2I_Batch_Fill(TH2I *this, int *batch_data)
+  {
+    int *data = this->data;
+    int xbins = this->xbins;
+    int ybins = this->ybins;
+    int i,j;
+    size_t total_bins = (size_t)xbins * (size_t)ybins;
+
+    // Allocate memory if required
+    if (data == NULL) {
+      data = (int *)malloc(total_bins * sizeof(int));
+      if (data == NULL) {
+        fprintf(stderr, "TH2I_Fill: data malloc failed for %s\n", this->handle);
+        return -1;
+      }
+      memset(data, 0, total_bins * sizeof(int));
+    }
+
+    for(i=0; i<xbins; i++){
+      for(j=0; j<ybins; j++){
+        if((i + j*xbins) > 0 && (i + j*xbins)<total_bins){
+          data[i + j*xbins] += batch_data[i + j*xbins];
+        }
+      }
+    }
+    this->data = data;
+    return 0;
+  }
+
 
   int TH2I_SetBinContent(TH2I *this, int xbin, int ybin, int value)
   {

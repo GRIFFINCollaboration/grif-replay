@@ -68,6 +68,7 @@ void init_acos_table(void){
 
 // Fast lookup function with linear interpolation because acos is slow
 float fast_acos(float x){
+  if(isnan(x)){ return(0); }
   // Bound input to valid acos range [-1.0, 1.0]
   if(x < -1.0f) x = -1.0f;
   if(x > 1.0f) x = 1.0f;

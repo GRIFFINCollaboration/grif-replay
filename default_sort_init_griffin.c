@@ -671,18 +671,18 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
               open_folder(cfg, "PSD");
               sprintf(title,  "%s_PSD",         chan_name[i] );
               sprintf(handle, "%s_PSD",         chan_name[i] );
-              desw_psd[pos] = H1_BOOK(cfg, handle, title, E_PSD_SPEC_LENGTH, 0, E_PSD_SPEC_LENGTH);
+              desw_psd[pos-1] = H1_BOOK(cfg, handle, title, E_PSD_SPEC_LENGTH, 0, E_PSD_SPEC_LENGTH);
               close_folder(cfg);
               open_folder(cfg, "Time_Of_Flight");
               sprintf(title,  "%s_TOF_PSD-gated", chan_name[i] );
               sprintf(handle, "%s_CTOF_PSDn",         chan_name[i] );
-              desw_tof_psd[pos] = H1_BOOK(cfg, handle, title, E_TOF_SPEC_LENGTH, 0, E_TOF_SPEC_LENGTH);
+              desw_tof_psd[pos-1] = H1_BOOK(cfg, handle, title, E_TOF_SPEC_LENGTH, 0, E_TOF_SPEC_LENGTH);
               sprintf(title,  "%s_Corrected_TOF", chan_name[i] );
               sprintf(handle, "%s_CTOF",         chan_name[i] );
-              desw_tof_corr[pos] = H1_BOOK(cfg, handle, title, E_TOF_SPEC_LENGTH, 0, E_TOF_SPEC_LENGTH);
+              desw_tof_corr[pos-1] = H1_BOOK(cfg, handle, title, E_TOF_SPEC_LENGTH, 0, E_TOF_SPEC_LENGTH);
               sprintf(title,  "%s_TOF",         chan_name[i] );
               sprintf(handle, "%s_TOF",         chan_name[i] );
-              desw_tof[pos] = H1_BOOK(cfg, handle, title, E_TOF_SPEC_LENGTH, 0, E_TOF_SPEC_LENGTH);
+              desw_tof[pos-1] = H1_BOOK(cfg, handle, title, E_TOF_SPEC_LENGTH, 0, E_TOF_SPEC_LENGTH);
               close_folder(cfg);
             }
           }

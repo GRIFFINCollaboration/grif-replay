@@ -58,6 +58,7 @@ extern int TH1I_SetValidLen(TH1I *, int bins);
 extern TH2I *H2_BOOK(Config *cfg, char *name, char *title, int xbins, int xmin, int xmax, int ybins, int ymin, int ymax);
 extern int TH2I_Reset(TH2I *);
 extern int TH2I_Fill(TH2I *, int xbin, int ybin, int count);
+extern int TH2I_Batch_Fill(TH2I *this, int *batch_data);
 extern int TH2I_SetBinContent(TH2I *, int xbin, int ybin, int value);
 extern int TH2I_GetBinContent(TH2I *, int xbin, int ybin);
 extern int TH2I_SetValidLen(TH2I *, int bins);
