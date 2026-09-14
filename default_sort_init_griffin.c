@@ -601,6 +601,9 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
         init_chan_histos(cfg);
         init_histos(cfg, SUBSYS_HPGE_A); // always create Ge histos
 
+        // Initial zero the batch filling arrays
+        reset_batch_histos_arrays(); 
+
         // Reset the deadtime counters and previous_trig_acc at BOR
         memset(subsys_deadtime_count,0,MAX_SUBSYS*sizeof(int));
         memset(previous_trig_acc,0,MAX_DAQSIZE*sizeof(int));

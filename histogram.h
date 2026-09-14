@@ -17,6 +17,8 @@
 #define INT_1D        INT32_1D
 #define INT_2D        INT32_2D
 #define INT_2D_SYMM   INT32_2D_SYMM
+#define BATCH_FILLING_MAX_EVENTS 16383 // Controls the frequency of batch filling, and the size allocated for 2D lists
+
 
 // to allow flexible histogram ranges and scaling ...
 // should provide BOTH variable scaling var[gain+offset]->bin#

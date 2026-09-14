@@ -109,6 +109,7 @@ extern int init_histos(Config *cfg, int subsystem);
 extern int fill_chan_histos(Grif_event *ptr);
 extern int fill_singles_histos(Grif_event *ptr);
 extern int fill_coinc_histos(int win_idx, int frag_idx);
+extern void reset_batch_histos_arrays();
 
 //#######################################################################
 //########             PPG variables and patterns              ##########
@@ -339,3 +340,24 @@ extern int tac_lbl_combo_offset[(int)((N_LABR)*(N_LABR-1)/2)+2]; // TAC coincide
 
 // BGO HV alignment histograms
 extern TH1I *ge_bgo_gated[N_BGO];
+
+// Batch filling storage arrays - 1D
+extern int batch_data_q_hit[MAX_DAQSIZE],batch_data_e_hit[MAX_DAQSIZE],batch_data_t_hit[MAX_DAQSIZE],batch_data_w_hit[MAX_DAQSIZE],
+batch_data_r_hit[MAX_DAQSIZE],batch_data_s_hit[MAX_DAQSIZE],batch_data_d_hit[MAX_DAQSIZE];
+extern int batch_data_ge_sum[E_SPECLEN],batch_data_ge_sum_us[E_SPECLEN],batch_data_ge_sum_ds[E_SPECLEN];
+extern int batch_data_ge_sum_ab[E_SPECLEN],batch_data_ge_sum_ab_us[E_SPECLEN],batch_data_ge_sum_ab_ds[E_SPECLEN];
+extern int batch_data_ge_pu_type[64],batch_data_ge_nhits_type[64];
+extern int batch_data_ge_cycle_activity[CYCLE_SPEC_LENGTH];
+// Pointer array mapping for branchless filling: Index 0 (False) -> us array, Index 1 (True) -> ds array
+extern int* ge_sum_targets[2];
+extern int* ge_sum_ab_targets[2];
+// Batch filling storage arrays - 2D
+// First element is the length (to enable fast incrementing). The following elements are the bin index to be incremented by 1 count.
+extern int batch_data_cycle_num_vs_ge[BATCH_FILLING_MAX_EVENTS+1];
+extern int batch_data_cycle_num_vs_sh[BATCH_FILLING_MAX_EVENTS+1];
+extern int batch_data_ge_e_vs_cycle_time[BATCH_FILLING_MAX_EVENTS+1];
+extern int batch_data_ge_xtal[BATCH_FILLING_MAX_EVENTS+1];
+extern int batch_data_bgo_xtal[BATCH_FILLING_MAX_EVENTS+1];
+extern int batch_data_bgof_xtal[BATCH_FILLING_MAX_EVENTS+1];
+extern int batch_data_bgob_xtal[BATCH_FILLING_MAX_EVENTS+1];
+extern int batch_data_bgos_xtal[BATCH_FILLING_MAX_EVENTS+1];

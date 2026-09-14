@@ -313,7 +313,7 @@ TH1I *H1_BOOK(Config *cfg, char *name, char *title, int nbins, int xmin, int xma
     int *data = this->data;
     int xbins = this->xbins;
     int ybins = this->ybins;
-    int i,j;
+    int i, index, length;
     size_t total_bins = (size_t)xbins * (size_t)ybins;
 
     // Allocate memory if required
@@ -326,13 +326,20 @@ TH1I *H1_BOOK(Config *cfg, char *name, char *title, int nbins, int xmin, int xma
       memset(data, 0, total_bins * sizeof(int));
     }
 
-    for(i=0; i<xbins; i++){
-      for(j=0; j<ybins; j++){
-        if((i + j*xbins) > 0 && (i + j*xbins)<total_bins){
-          data[i + j*xbins] += batch_data[i + j*xbins];
+    // The first element is the length of this array
+    // First check for valid length
+    length = batch_data[0];
+    if (length >= 1 && length < BATCH_FILLING_MAX_EVENTS) {
+      // The following elements are the bin index to be incremented by 1 count
+      for(i=1; i<length; i++){
+        index = batch_data[i];
+        // Predictable or branchless bound check
+        if ((unsigned int)index < (unsigned int)total_bins) {
+          data[index]++;
         }
       }
     }
+
     this->data = data;
     return 0;
   }

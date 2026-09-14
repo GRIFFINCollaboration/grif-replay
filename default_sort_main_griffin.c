@@ -25,10 +25,16 @@ int batch_data_ge_cycle_activity[CYCLE_SPEC_LENGTH];
 // Pointer array mapping for branchless filling: Index 0 (False) -> us array, Index 1 (True) -> ds array
 int* ge_sum_targets[2] = { batch_data_ge_sum_us, batch_data_ge_sum_ds };
 int* ge_sum_ab_targets[2] = { batch_data_ge_sum_ab_us, batch_data_ge_sum_ab_ds };
-// Batch filling storage arrays - 2D. Dont use for large matrices
-// easiest to use int initially
-// Could save space here by using uint16_t type, but would need to handle indexes carefully if i,j are tye int etc.
-//int batch_data_cycle_num_vs_ge[MAX_CYCLES*CYCLE_SPEC_LENGTH]; // 512*1024
+// Batch filling storage arrays - 2D
+// First element is the length (to enable fast incrementing). The following elements are the bin index to be incremented by 1 count.
+int batch_data_cycle_num_vs_ge[BATCH_FILLING_MAX_EVENTS+1];
+int batch_data_cycle_num_vs_sh[BATCH_FILLING_MAX_EVENTS+1];
+int batch_data_ge_e_vs_cycle_time[BATCH_FILLING_MAX_EVENTS+1];
+int batch_data_ge_xtal[BATCH_FILLING_MAX_EVENTS+1];
+int batch_data_bgo_xtal[BATCH_FILLING_MAX_EVENTS+1];
+int batch_data_bgof_xtal[BATCH_FILLING_MAX_EVENTS+1];
+int batch_data_bgob_xtal[BATCH_FILLING_MAX_EVENTS+1];
+int batch_data_bgos_xtal[BATCH_FILLING_MAX_EVENTS+1];
 
 int default_sort(int win_idx, int frag_idx, int flag)
 {
@@ -54,7 +60,7 @@ int default_sort(int win_idx, int frag_idx, int flag)
   fill_coinc_histos(win_idx, frag_idx);
   //printf("=================End of Event================\n");
 
-  if(__builtin_expect(evt_count>16383,0)){
+  if(__builtin_expect(evt_count>BATCH_FILLING_MAX_EVENTS,0)){
     fill_batch_histos();
     evt_count=0;
   }else{
@@ -117,41 +123,68 @@ void fill_batch_histos()
 {
   // Batch fill the chan histograms and reset the data arrays
   TH1I_Batch_Fill(hit_hist[0], &batch_data_q_hit[0]);  // q hit pattern
-  memset(batch_data_q_hit,0,MAX_DAQSIZE*sizeof(int));
   TH1I_Batch_Fill(hit_hist[1], &batch_data_e_hit[0]);  // e hit pattern
-  memset(batch_data_e_hit,0,MAX_DAQSIZE*sizeof(int));
   TH1I_Batch_Fill(hit_hist[2], &batch_data_t_hit[0]);  // t hit pattern
-  memset(batch_data_t_hit,0,MAX_DAQSIZE*sizeof(int));
   //TH1I_Batch_Fill(hit_hist[3], &batch_data_w_hit[0]);  // w hit pattern
-  //memset(batch_data_w_hit,0,MAX_DAQSIZE*sizeof(int));
   //TH1I_Batch_Fill(hit_hist[4], &batch_data_r_hit[0]);  // r hit pattern
-  //memset(batch_data_r_hit,0,MAX_DAQSIZE*sizeof(int));
   TH1I_Batch_Fill(hit_hist[5], &batch_data_s_hit[0]);  // s hit pattern
-  memset(batch_data_s_hit,0,MAX_DAQSIZE*sizeof(int));
   TH1I_Batch_Fill(hit_hist[6], &batch_data_d_hit[0]);  // d hit pattern
-  memset(batch_data_d_hit,0,MAX_DAQSIZE*sizeof(int));
+
   // Batch fill the singles histograms and reset the data arrays
   TH1I_Batch_Fill(ge_sum, &batch_data_ge_sum[0]);  // ge_sum
-  memset(batch_data_ge_sum,0,E_SPECLEN*sizeof(int));
   TH1I_Batch_Fill(ge_sum_us, &batch_data_ge_sum_us[0]);  // ge_sum_us
-  memset(batch_data_ge_sum_us,0,E_SPECLEN*sizeof(int));
   TH1I_Batch_Fill(ge_sum_ds, &batch_data_ge_sum_ds[0]);  // ge_sum_ds
-  memset(batch_data_ge_sum_ds,0,E_SPECLEN*sizeof(int));
   TH1I_Batch_Fill(ge_sum_ds, &batch_data_ge_sum_ab[0]);  // ge_sum_ab
-  memset(batch_data_ge_sum_ab,0,E_SPECLEN*sizeof(int));
   TH1I_Batch_Fill(ge_sum_ab_us, &batch_data_ge_sum_ab_us[0]);  // ge_sum_ab_us
-  memset(batch_data_ge_sum_ab_us,0,E_SPECLEN*sizeof(int));
   TH1I_Batch_Fill(ge_sum_ab_ds, &batch_data_ge_sum_ab_ds[0]);  // ge_sum_ab_ds
-  memset(batch_data_ge_sum_ab_ds,0,E_SPECLEN*sizeof(int));
   TH1I_Batch_Fill(ge_pu_type, &batch_data_ge_pu_type[0]);  // ge_pu_type
-  memset(batch_data_ge_pu_type,0,64*sizeof(int));
   TH1I_Batch_Fill(ge_nhits_type, &batch_data_ge_nhits_type[0]);  // ge_nhits_type
-  memset(batch_data_ge_nhits_type,0,64*sizeof(int));
   TH1I_Batch_Fill(ge_cycle_activity, &batch_data_ge_cycle_activity[0]);  // ge_cycle_activity
-  memset(batch_data_ge_cycle_activity,0,CYCLE_SPEC_LENGTH*sizeof(int));
+
   // 2d histograms
-  //TH2I_Batch_Fill(cycle_num_vs_ge, &batch_data_cycle_num_vs_ge[0]);  // cycle_num_vs_ge
-  //  memset(batch_data_cycle_num_vs_ge,0,MAX_CYCLES*CYCLE_SPEC_LENGTH*sizeof(int));
+  TH2I_Batch_Fill(cycle_num_vs_ge, &batch_data_cycle_num_vs_ge[0]);  // cycle_num_vs_ge
+  TH2I_Batch_Fill(cycle_num_vs_sh, &batch_data_cycle_num_vs_sh[0]);  // cycle_num_vs_sh
+  TH2I_Batch_Fill(ge_e_vs_cycle_time, &batch_data_ge_e_vs_cycle_time[0]);  // ge_e_vs_cycle_time
+  TH2I_Batch_Fill(ge_xtal, &batch_data_ge_xtal[0]);  // ge_xtal
+  TH2I_Batch_Fill(bgo_xtal, &batch_data_bgo_xtal[0]);  // bgo_xtal
+  TH2I_Batch_Fill(bgof_xtal, &batch_data_bgof_xtal[0]);  // bgof_xtal
+  TH2I_Batch_Fill(bgob_xtal, &batch_data_bgob_xtal[0]);  // bgob_xtal
+  TH2I_Batch_Fill(bgos_xtal, &batch_data_bgos_xtal[0]);  // bgos_xtal
+
+  reset_batch_histos_arrays(); // zero the arrays after this fill
+}
+
+void reset_batch_histos_arrays()
+{
+  // Batch fill the chan histograms and reset the data arrays
+  memset(batch_data_q_hit,0,MAX_DAQSIZE*sizeof(int));       // q hit pattern
+  memset(batch_data_e_hit,0,MAX_DAQSIZE*sizeof(int));       // e hit pattern
+  memset(batch_data_t_hit,0,MAX_DAQSIZE*sizeof(int));       // t hit pattern
+  //memset(batch_data_w_hit,0,MAX_DAQSIZE*sizeof(int));     // w hit pattern
+  //memset(batch_data_r_hit,0,MAX_DAQSIZE*sizeof(int));     // r hit pattern
+  memset(batch_data_s_hit,0,MAX_DAQSIZE*sizeof(int));       // s hit pattern
+  memset(batch_data_d_hit,0,MAX_DAQSIZE*sizeof(int));       // d hit pattern
+
+  // Batch fill the singles histograms and reset the data arrays
+  memset(batch_data_ge_sum,0,E_SPECLEN*sizeof(int));        // ge_sum
+  memset(batch_data_ge_sum_us,0,E_SPECLEN*sizeof(int));     // ge_sum_us
+  memset(batch_data_ge_sum_ds,0,E_SPECLEN*sizeof(int));     // ge_sum_ds
+  memset(batch_data_ge_sum_ab,0,E_SPECLEN*sizeof(int));     // ge_sum_ab
+  memset(batch_data_ge_sum_ab_us,0,E_SPECLEN*sizeof(int));  // ge_sum_ab_us
+  memset(batch_data_ge_sum_ab_ds,0,E_SPECLEN*sizeof(int));  // ge_sum_ab_ds
+  memset(batch_data_ge_pu_type,0,64*sizeof(int));           // ge_pu_type
+  memset(batch_data_ge_nhits_type,0,64*sizeof(int));        // ge_nhits_type
+  memset(batch_data_ge_cycle_activity,0,CYCLE_SPEC_LENGTH*sizeof(int)); // ge_cycle_activity
+
+  // 2d histograms
+  memset(batch_data_cycle_num_vs_ge,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // cycle_num_vs_ge
+  memset(batch_data_cycle_num_vs_sh,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // cycle_num_vs_sh
+  memset(batch_data_ge_e_vs_cycle_time,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // ge_e_vs_cycle_time
+  memset(batch_data_ge_xtal,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // ge_xtal
+  memset(batch_data_bgo_xtal,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // bgo_xtal
+  memset(batch_data_bgof_xtal,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // bgof_xtal
+  memset(batch_data_bgob_xtal,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // bgob_xtal
+  memset(batch_data_bgos_xtal,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // bgos_xtal
 }
 
 //#######################################################################
@@ -247,7 +280,8 @@ int fill_singles_histos(Grif_event *ptr)
     if( (unsigned int)pos < 64 ){
       //ge_sum->Fill(ge_sum, ptr_ecal, 1);
       batch_data_ge_sum[ptr_ecal]++;
-      ge_xtal->Fill(ge_xtal, pos, ptr_ecal, 1);
+      //ge_xtal->Fill(ge_xtal, pos, ptr_ecal, 1);
+      batch_data_ge_xtal[++batch_data_ge_xtal[0]] = pos + (ptr_ecal*E_2D_SPECLEN);
 
       // Separate Ge energy sum for upstream and downstream
       ge_sum_targets[grif_ge_us_ds[pos]][ptr_ecal]++; // Increment branchlessly. Batch fill happens infrequently
@@ -320,16 +354,18 @@ int fill_singles_histos(Grif_event *ptr)
         if(bin>=0 && bin<CYCLE_SPEC_LENGTH){
           //ge_cycle_activity->Fill(ge_cycle_activity, bin, 1);
           batch_data_ge_cycle_activity[bin]++;
-          ge_e_vs_cycle_time->Fill(ge_e_vs_cycle_time, bin, ptr_ecal, 1);
+          //ge_e_vs_cycle_time->Fill(ge_e_vs_cycle_time, bin, ptr_ecal, 1);
+          batch_data_ge_e_vs_cycle_time[++batch_data_ge_e_vs_cycle_time[0]] = bin+(ptr_ecal*CYCLE_SPEC_LENGTH);
           if(ppg_cycle_number>=0 && ppg_cycle_number<MAX_CYCLES){
             gea_cycle_num[ppg_cycle_number]->Fill(gea_cycle_num[ppg_cycle_number], bin, 1);
-            cycle_num_vs_ge->Fill(cycle_num_vs_ge, ppg_cycle_number, bin, 1);
-            //  fprintf(stdout,"fill %d,%d = %d. limit %x\n",ppg_cycle_number,bin,(ppg_cycle_number+(bin*(cycle_num_vs_ge->xbins))),(MAX_CYCLES*CYCLE_SPEC_LENGTH));
-            //  batch_data_cycle_num_vs_ge[ppg_cycle_number+(bin*(cycle_num_vs_ge->xbins))]++;
+            //cycle_num_vs_ge->Fill(cycle_num_vs_ge, ppg_cycle_number, bin, 1);
+            index = ppg_cycle_number+(bin*MAX_CYCLES);
+            batch_data_cycle_num_vs_ge[++batch_data_cycle_num_vs_ge[0]] = index;
             cycle_num_vs_geEnergy[pos]->Fill(cycle_num_vs_geEnergy[pos], ppg_cycle_number, ptr_ecal, 1);
             if(class == PU_SINGLE_HIT){
               gea_cycle_num_sh[ppg_cycle_number]->Fill(gea_cycle_num_sh[ppg_cycle_number], bin, 1);
-              cycle_num_vs_sh->Fill(cycle_num_vs_sh, ppg_cycle_number, bin, 1);
+              //cycle_num_vs_sh->Fill(cycle_num_vs_sh, ppg_cycle_number, bin, 1);
+              batch_data_cycle_num_vs_sh[++batch_data_cycle_num_vs_sh[0]] = index;
             }else{
               gea_cycle_num_pu[ppg_cycle_number]->Fill(gea_cycle_num_pu[ppg_cycle_number], bin, 1);
               cycle_num_vs_pu->Fill(cycle_num_vs_pu, ppg_cycle_number, bin, 1);
@@ -383,18 +419,23 @@ int fill_singles_histos(Grif_event *ptr)
       fprintf(stderr,"bad bgo element[%d] for chan %d, %s, subsys %d\n", elem, chan, chan_name[chan], sys);
     } else {
       pos *= 5; pos += (elem-1);
-      bgo_xtal->Fill(bgo_xtal, pos, ptr_ecal, 1);
+      //bgo_xtal->Fill(bgo_xtal, pos, ptr_ecal, 1);
+      bin = (ptr_ecal*E_2D_SPECLEN);
+      batch_data_bgo_xtal[++batch_data_bgo_xtal[0]] = pos + bin;
       if(elem <3){ // front
         pos  = crystal_table[chan];
         pos *= 2; pos += (elem-1);
-        bgof_xtal->Fill(bgof_xtal, pos, ptr_ecal, 1);
+        //bgof_xtal->Fill(bgof_xtal, pos, ptr_ecal, 1);
+        batch_data_bgof_xtal[++batch_data_bgof_xtal[0]] = pos + bin;
       } else if(elem>4){ // back
         pos  = crystal_table[chan];
-        bgob_xtal->Fill(bgob_xtal, pos, ptr_ecal, 1);
+        //bgob_xtal->Fill(bgob_xtal, pos, ptr_ecal, 1);
+        batch_data_bgob_xtal[++batch_data_bgob_xtal[0]] = pos + bin;
       } else{ // side
         pos  = crystal_table[chan];
         pos *= 2; pos += (elem-3);
-        bgos_xtal->Fill(bgos_xtal, pos, ptr_ecal, 1);
+        //bgos_xtal->Fill(bgos_xtal, pos, ptr_ecal, 1);
+        batch_data_bgos_xtal[++batch_data_bgos_xtal[0]] = pos + bin;
       }
     }  break;
     case SUBSYS_LABR_BGO: // Ancillary BGOs
