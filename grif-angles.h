@@ -1,5 +1,6 @@
 //////////////////////////// Angles ////////////////////////////////
 #include <stdalign.h>
+#include <stdint.h>
 
 #define DEGREES_TO_RADIANS 0.01745329251 // (3.14/180)
 #define RADIANS_TO_DEGREES 57.2957795131 // (180/3.14)
