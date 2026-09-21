@@ -275,7 +275,7 @@ extern TH2I  *dcsbE_ge_theta, *dcsb_geE_theta, *dcsb_theta_azi, *dcsb_theta_azi_
 extern TH1I  *dcsb_cs_omega, *dcsb_cs_omega_ge, *dcsb_theta;
 extern TH2I  *qed_qed_23, *qed_qed_23_theta2, *qed_qed_23_theta3, *qed_qed_23_totv2, *qed_qed_23_totv3, *qed_qed_12, *qed_qed_12_theta1, *qed_qed_12_theta2, *qed_qed_12_totv1, *qed_qed_12_totv2, *qed_qed_14, *qed_qed_14_theta1, *qed_qed_14_theta4, *qed_qed_14_totv1, *qed_qed_14_totv4;
 extern TH1I  *qed_qed_23dt, *qed_qed_12dt, *qed_qed_14dt;
-extern TH2I  *qed_ge_weight;
+extern TH2I  *qed_ge_weight_indiv, *qed_ge_weight_coinc;
 
 // DESCANT WALL
 extern TH1I  *desw_sum_e, *desw_sum_tof, *desw_sum_psd;  // Sums of energies and corTOF and PSD
@@ -356,7 +356,7 @@ extern int* ge_sum_ab_targets[2];
 extern int batch_data_cycle_num_vs_ge[BATCH_FILLING_MAX_EVENTS+1];
 extern int batch_data_cycle_num_vs_sh[BATCH_FILLING_MAX_EVENTS+1];
 extern int batch_data_ge_e_vs_cycle_time[BATCH_FILLING_MAX_EVENTS+1];
-extern int batch_data_ge_xtal[BATCH_FILLING_MAX_EVENTS+1];
+//extern int batch_data_ge_xtal[BATCH_FILLING_MAX_EVENTS+1];
 extern int batch_data_bgo_xtal[BATCH_FILLING_MAX_EVENTS+1];
 extern int batch_data_bgof_xtal[BATCH_FILLING_MAX_EVENTS+1];
 extern int batch_data_bgob_xtal[BATCH_FILLING_MAX_EVENTS+1];

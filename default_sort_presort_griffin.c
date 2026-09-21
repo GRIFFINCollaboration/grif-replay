@@ -49,6 +49,7 @@
 
       // Calculate the energy and calibrated energies
       energy = ( ptr->integ1 == 0 ) ? ptr->q1 : spread(ptr->q1)/ptr->integ1;
+      ph_hist[chan] -> Fill(ph_hist[chan],  (int)energy,  1); // Fill the ph histogram here so dont need to calculate energy again in the fill_chan_histos function
       ptr->ecal = ptr->esum=offsets[chan]+energy*(gains[chan]+energy*quads[chan]);
       // NOBODY CURRENTLY USES e2,e3,e4 ...
 

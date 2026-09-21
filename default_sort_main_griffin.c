@@ -30,7 +30,7 @@ int* ge_sum_ab_targets[2] = { batch_data_ge_sum_ab_us, batch_data_ge_sum_ab_ds }
 int batch_data_cycle_num_vs_ge[BATCH_FILLING_MAX_EVENTS+1];
 int batch_data_cycle_num_vs_sh[BATCH_FILLING_MAX_EVENTS+1];
 int batch_data_ge_e_vs_cycle_time[BATCH_FILLING_MAX_EVENTS+1];
-int batch_data_ge_xtal[BATCH_FILLING_MAX_EVENTS+1];
+//int batch_data_ge_xtal[BATCH_FILLING_MAX_EVENTS+1];
 int batch_data_bgo_xtal[BATCH_FILLING_MAX_EVENTS+1];
 int batch_data_bgof_xtal[BATCH_FILLING_MAX_EVENTS+1];
 int batch_data_bgob_xtal[BATCH_FILLING_MAX_EVENTS+1];
@@ -85,12 +85,14 @@ int fill_chan_histos(Grif_event *ptr)
     fprintf(stderr,"Invalid channel number in fill_chan_histos(), %d\n",chan);
     return(-1);
   }
+
   if( ++event < 16384 ){
     ts_hist -> Fill(ts_hist, event,  (int)(ptr->ts/100));
   } else if( (event % 1000) == 0 ){
     ts_hist -> Fill(ts_hist, 16367+(int)(event/1000),  (int)(ptr->ts/100));
   }
-  ph_hist[chan] -> Fill(ph_hist[chan],  (int)(( ptr->integ1 == 0 ) ? ptr->q1 : spread(ptr->q1)/ptr->integ1),  1);
+  // ph_hist filling moved to presort_enter to avoid the recalculation
+  //ph_hist[chan] -> Fill(ph_hist[chan],  (int)(( ptr->integ1 == 0 ) ? ptr->q1 : spread(ptr->q1)/ptr->integ1),  1);
 
   if(ptr->ecal > (float)0.0 && ptr->ecal < (float)E_TAC_SPECLEN){
     ptr_ecal = ptr->ecal;
@@ -145,7 +147,7 @@ void fill_batch_histos()
   TH2I_Batch_Fill(cycle_num_vs_ge, &batch_data_cycle_num_vs_ge[0]);  // cycle_num_vs_ge
   TH2I_Batch_Fill(cycle_num_vs_sh, &batch_data_cycle_num_vs_sh[0]);  // cycle_num_vs_sh
   TH2I_Batch_Fill(ge_e_vs_cycle_time, &batch_data_ge_e_vs_cycle_time[0]);  // ge_e_vs_cycle_time
-  TH2I_Batch_Fill(ge_xtal, &batch_data_ge_xtal[0]);  // ge_xtal
+  //TH2I_Batch_Fill(ge_xtal, &batch_data_ge_xtal[0]);  // ge_xtal
   TH2I_Batch_Fill(bgo_xtal, &batch_data_bgo_xtal[0]);  // bgo_xtal
   TH2I_Batch_Fill(bgof_xtal, &batch_data_bgof_xtal[0]);  // bgof_xtal
   TH2I_Batch_Fill(bgob_xtal, &batch_data_bgob_xtal[0]);  // bgob_xtal
@@ -180,7 +182,7 @@ void reset_batch_histos_arrays()
   memset(batch_data_cycle_num_vs_ge,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // cycle_num_vs_ge
   memset(batch_data_cycle_num_vs_sh,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // cycle_num_vs_sh
   memset(batch_data_ge_e_vs_cycle_time,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // ge_e_vs_cycle_time
-  memset(batch_data_ge_xtal,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // ge_xtal
+  //memset(batch_data_ge_xtal,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // ge_xtal
   memset(batch_data_bgo_xtal,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // bgo_xtal
   memset(batch_data_bgof_xtal,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // bgof_xtal
   memset(batch_data_bgob_xtal,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // bgob_xtal
@@ -280,8 +282,8 @@ int fill_singles_histos(Grif_event *ptr)
     if( (unsigned int)pos < 64 ){
       //ge_sum->Fill(ge_sum, ptr_ecal, 1);
       batch_data_ge_sum[ptr_ecal]++;
-      //ge_xtal->Fill(ge_xtal, pos, ptr_ecal, 1);
-      batch_data_ge_xtal[++batch_data_ge_xtal[0]] = pos + (ptr_ecal*E_2D_SPECLEN);
+      ge_xtal->Fill(ge_xtal, pos, ptr_ecal, 1);
+      //batch_data_ge_xtal[++batch_data_ge_xtal[0]] = pos + (ptr_ecal*E_2D_SPECLEN);
 
       // Separate Ge energy sum for upstream and downstream
       ge_sum_targets[grif_ge_us_ds[pos]][ptr_ecal]++; // Increment branchlessly. Batch fill happens infrequently
@@ -635,6 +637,10 @@ int fill_singles_histos(Grif_event *ptr)
   qedE_ge_theta_sum_c->Fill(qedE_ge_theta_sum_c, ptr_ecal, angle, 1);
   qed_geE_theta_sum_c->Fill(qed_geE_theta_sum_c, alt_ecal, angle, 1);
   qed_theta->Fill(qed_theta, angle, 1);
+
+  // Histogram to calculate weighting factors post sorting
+  // Here we remember the associated Ge for each qed pixel
+  qed_ge_weight_indiv->Fill(qed_ge_weight_indiv,((pos-1)*1024)+c2, c1, 1);
 
   if((angle>=compton_angle(ptr->alt_ecal,QED_GAMMA_ENERGY)-QED_ANGLE_WINDOW) && (angle<=compton_angle(ptr->alt_ecal,QED_GAMMA_ENERGY)+QED_ANGLE_WINDOW)){
     qedE_ge_theta_sum_c_s->Fill(qedE_ge_theta_sum_c_s, ptr_ecal, angle, 1);
@@ -1298,8 +1304,8 @@ int fill_coinc_histos(int win_idx, int frag_idx)
 
                         // Histogram to calculate weighting factors post sorting
                         // Here we remember the associated Ge for each qed pixel that was in a true coincidence
-                        qed_ge_weight->Fill(qed_ge_weight,((pos1-1)*1024)+qed1, ge1, 1);
-                        qed_ge_weight->Fill(qed_ge_weight,((pos2-1)*1024)+qed2, ge2, 1);
+                        qed_ge_weight_coinc->Fill(qed_ge_weight_coinc,((pos1-1)*1024)+qed1, ge1, 1);
+                        qed_ge_weight_coinc->Fill(qed_ge_weight_coinc,((pos2-1)*1024)+qed2, ge2, 1);
 
                         qed_delta_theta1_theta2->Fill(qed_delta_theta1_theta2, (int)delta_theta, 1);
                         qed_sum_theta1_theta2->Fill(qed_sum_theta1_theta2, (int)(theta1+theta2), 1);

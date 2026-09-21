@@ -420,7 +420,7 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
     TH1I  *dcsb_cs_omega, *dcsb_cs_omega_ge, *dcsb_theta;
     TH2I  *qed_qed_23, *qed_qed_23_theta2, *qed_qed_23_theta3, *qed_qed_23_totv2, *qed_qed_23_totv3, *qed_qed_12, *qed_qed_12_theta1, *qed_qed_12_theta2, *qed_qed_12_totv1, *qed_qed_12_totv2, *qed_qed_14, *qed_qed_14_theta1, *qed_qed_14_theta4, *qed_qed_14_totv1, *qed_qed_14_totv4;
     TH1I  *qed_qed_23dt, *qed_qed_12dt, *qed_qed_14dt;
-    TH2I  *qed_ge_weight;
+    TH2I  *qed_ge_weight_indiv, *qed_ge_weight_coinc;
 
     // DESCANT WALL
     TH1I  *desw_sum_e, *desw_sum_tof, *desw_sum_psd;  // Sums of energies and corTOF and PSD
@@ -602,7 +602,7 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
         init_histos(cfg, SUBSYS_HPGE_A); // always create Ge histos
 
         // Initial zero the batch filling arrays
-        reset_batch_histos_arrays(); 
+        reset_batch_histos_arrays();
 
         // Reset the deadtime counters and previous_trig_acc at BOR
         memset(subsys_deadtime_count,0,MAX_SUBSYS*sizeof(int));
@@ -996,7 +996,8 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
         {(void **)&qed2_theta1_vs_theta2,"COMP_QED2_theta1_vs_theta2",  "",SUBSYS_QED_STRIP, 192, 192},
         {(void **)&qed2_theta1_azi,      "COMP_QED2_theta1_vs_azi",  "",SUBSYS_QED_STRIP, 192, 384},
         {(void **)&qed2_theta2_azi,      "COMP_QED2_theta2_vs_azi",  "",SUBSYS_QED_STRIP, 192, 384},
-        {(void **)&qed_ge_weight,        "COMP_QED_GE_weights",      "",SUBSYS_QED_STRIP, 6144, 64},
+        {(void **)&qed_ge_weight_indiv,        "COMP_QED_GE_weights_indiv",      "",SUBSYS_QED_STRIP, 6144, 64},
+        {(void **)&qed_ge_weight_coinc,        "COMP_QED_GE_weights_coinc",      "",SUBSYS_QED_STRIP, 6144, 64},
         {NULL,                   "QED/Dbl-COMPTON-SiGeGe",        ""},
         {(void **)&dcsa_theta,         "DCSA_theta",                                   "",SUBSYS_QED_STRIP, 192},
         {(void **)&dcsaE_ge_theta,     "DCSA_E_vs_ICStheta",                           "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},

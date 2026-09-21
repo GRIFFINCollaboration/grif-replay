@@ -340,6 +340,7 @@ TH1I *H1_BOOK(Config *cfg, char *name, char *title, int nbins, int xmin, int xma
       }
     }
 
+
     this->data = data;
     return 0;
   }
