@@ -49,6 +49,7 @@ void reorder_status(int current_time)
 #define REORDER_TSLOTS_MASK  (REORDER_TSLOTS - 1)
 #define BUCKET_SIZE_BITS      7  // 128 timestamps per slot -> 1us
 #define OVERFULL_FRACTION   0.5
+#define OVERFILL_LIMIT (OVERFULL_FRACTION*REORDER_EVENTS)
 #define OUTPUT_FRACTION    0.25
 #define INIT_WAIT           250 // allow # junk events per grifc at run start
 //#define REORDER_MAXEVENTSIZE 20 // max 20 words - 80 bytes
@@ -76,6 +77,21 @@ void reorder_main(Sort_status *arg)
   volatile Tsbuf *bufptr, *nxtptr, *newptr;
   unsigned long ts, tslo;
 
+  // Create the dispatch table using the GCC "&&" label syntax.
+  // This creates a dense array of code addresses.
+  static const void* const dispatch_table[16] = {
+      [0x0] = &&do_default, [0x1] = &&do_default, [0x2] = &&do_default,
+      [0x3] = &&do_default, [0x4] = &&do_default, [0x5] = &&do_default,
+      [0x6] = &&do_default, [0x7] = &&do_default,
+      [0x8] = &&do_case_8,
+      [0x9] = &&do_default,
+      [0xA] = &&do_case_A,
+      [0xB] = &&do_case_B,
+      [0xC] = &&do_default, [0xD] = &&do_default,
+      [0xE] = &&do_case_E,
+      [0xF] = &&do_default
+  };
+
   startup = 1;  ++guard_var;
   memset(err,           0, REORDER_ERRTYPES*sizeof(int));
   //for(i=0; i<MAX_GRIFC; i++){ reorder_init[i] = INIT_WAIT; }
@@ -87,47 +103,72 @@ void reorder_main(Sort_status *arg)
   tsevents_in = reorder_bufpos = len = ev_done = ts_stat = err_format = scaler_event = 0;
   evstart = NULL; evptr = bankbuf; bufend = bankbuf + BANK_BUFSIZE;
   while(1){
-    if( tsevents_in - tsevents_out > OVERFULL_FRACTION*REORDER_EVENTS ){
-      usleep(usecs); continue; // do not over-fill buffer
-    }
-    if( (rd_avail = bankbuf_wrpos - bankbuf_rdpos) < 1 ){
+    rd_avail = bankbuf_wrpos - bankbuf_rdpos;
+    if( rd_avail < 1 ){
       if( arg->end_of_data ){ break; }
       usleep(usecs); continue;
     }
-    type = (((*evptr) >> 28) & 0xf);
-    if( evstart == NULL && type != 0x8 ){ err_format=1; /*fprintf(stdout,"ERR_FORMAT_IN: ( evstart == NULL && type[%d] != 0x8 )\n",type);*/ }
-    switch(type){
-      case 0x8:
-      if( evstart != NULL ){ err_format=1; /*fprintf(stdout,"ERR_FORMAT_IN: case 0x8:( evstart != NULL)\n");*/ } else { evstart=evptr; }
-      if( (grifc = ((*evptr) >> 16) & 0xF) == 0xF ){
-        type = 0;
-        break;
-      }
-      if( (dtype = (*evptr) & 0xf) == 0xf){ // Scaler event
-        while((((*evptr) >> 28) & 0xf) != 0xe ){
-          ++len; ++bankbuf_rdpos; ++evptr; // Skip to the trailer
-          if( evptr >= bufend ){ break; }
-        }
-        ev_done = scaler_event = 1;
-      }
-      break;
-      case 0xE:
-      if( ts_stat != 2 && dtype != 0xF){ err_format=1;
-        // This format error seems more common than any of the others in 2026 data
-        // fprintf(stdout,"ERR_FORMAT_IN: case 0xE:( ts_stat[%d] != 2 ) type = 0x%x, dtype = %d, tslo=%ld, ts=%ld, tslo=0x%x, ts=0x%x\n",ts_stat,type,dtype,tslo,ts,tslo,ts);
-      } ev_done = 1; break;
-      case 0xA:
-      if( ts_stat != 0 ){ err_format=1; /*fprintf(stdout,"ERR_FORMAT_IN: case 0xA:( ts_stat[%d] != 0 )\n",ts_stat);*/ }
-      tslo = *evptr & 0x0FFFFFFF; ts_stat = 1;
-      break;
-      case 0xB:
-      if( ts_stat != 1 ){ err_format=1; /*fprintf(stdout,"ERR_FORMAT_IN: case 0xB:( ts_stat[%d] != 1 )\n",ts_stat);*/ }
-      ts   = *evptr &    0x00003FFF;
-      ts <<= 28; ts += tslo; ts_stat = 2; break;
-      default:  break;
+    if( tsevents_in - tsevents_out > OVERFILL_LIMIT ){
+      usleep(usecs); continue; // do not over-fill buffer
     }
+    type = (((*evptr) >> 28) & 0xf);
+    err_format |= ((evstart == NULL) & (type != 0x8));
+
+    // The magic line: Jumps directly to the target block instantly to avoid branch misprediction and pipline stalls.
+    // No switch overhead, no function call overhead, no argument passing!
+    goto *dispatch_table[type];
+
+    do_case_8:
+    err_format |= (evstart != NULL);
+    if(evstart == NULL) { evstart = evptr; }
+    if((grifc = ((*evptr) >> 16) & 0xF) == 0xF){
+      type = 0;
+      goto loop_end; // Equivalent to 'break;'
+    }
+    if((dtype = (*evptr) & 0xf) == 0xf){ // Scaler event
+      while((((*evptr) >> 28) & 0xf) != 0xe){
+        ++len; ++bankbuf_rdpos; ++evptr;
+        if (evptr >= bufend) { break; }
+      }
+      ev_done = scaler_event = 1;
+    }else{
+      // Skip to the timestamp but be careful of different event lengths
+      len+=3; bankbuf_rdpos+=3; evptr+=3;
+    }
+    goto loop_end;
+
+    do_case_A:
+    err_format |= (ts_stat != 0);
+    tslo = *evptr & 0x0FFFFFFF;
+    ts_stat = 1;
+    goto loop_end;
+
+    do_case_B:
+    err_format |= (ts_stat != 1);
+    ts   = *evptr &    0x00003FFF;
+    ts <<= 28;
+    ts += tslo;
+    ts_stat = 2;
+    // Skip to the trailer but be careful of different event lengths
+    len+=2; bankbuf_rdpos+=2; evptr+=2;
+    goto loop_end;
+
+    do_case_E:
+    err_format |= (ts_stat != 2 && dtype != 0xF);
+    ev_done = 1;
+    goto loop_end;
+
+    do_default:
+    goto loop_end;
+
+    loop_end: // Proceed with the remainder of the while loop
+
     ++len;
-    ++bankbuf_rdpos; ++evptr; if( evptr >= bufend ){ evptr -= BANK_BUFSIZE; }
+    ++bankbuf_rdpos;
+    ++evptr;
+    if( evptr >= bufend ){
+      evptr -= BANK_BUFSIZE;
+    }
     if( !ev_done ){ continue; }
     ++reorder_events_read;
     // now have full event
@@ -152,6 +193,7 @@ void reorder_main(Sort_status *arg)
       reorder_init[grifc] = 0;
     }
     // now have full event without any obvious format errors
+    //  printf("good event\n");
 
     // events that are so late, that we have already output their timeslot
     // can no longer be made to be in order
@@ -194,6 +236,7 @@ void reorder_main(Sort_status *arg)
       memcpy((char *)(newptr->event),  (char *)(evstart),i);
       memcpy((char *)(newptr->event)+i,(char *)(bankbuf),4*len-i);
     }
+    //  printf("event copied into buffer\n");
     // update linked list ...
     bufptr = NULL;
     pthread_mutex_lock(&nxtlock);
@@ -218,7 +261,8 @@ void reorder_main(Sort_status *arg)
         bufptr = nxtptr; nxtptr = nxtptr->next;
       }
     }
-    pthread_mutex_unlock(&nxtlock);  ++tsevents_in;
+    pthread_mutex_unlock(&nxtlock);
+    ++tsevents_in;
     evstart = NULL;  len = ev_done = ts_stat = 0; err_format=0;
   }
   arg->reorder_in_done = 1;
@@ -247,7 +291,7 @@ void reorder_out(Sort_status *arg)
       usleep(usecs); continue;
     }
     while(1){ ts += bucket_length; // check slots, in order, for next event
-      if( ts - prev_ts >= MAX_DATA_GAP ){ // what is this?
+      if( __builtin_expect(ts - prev_ts >= MAX_DATA_GAP, 0) ){ // what is this?
         if( arg->reorder_in_done ){
           arg->reorder_out_done = 1;
           printf("Reorder: end output thread [ts:%3ds] ...\n",
