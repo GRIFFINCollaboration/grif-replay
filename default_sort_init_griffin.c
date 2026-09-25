@@ -23,8 +23,8 @@ char subsys_handle[MAX_SUBSYS][8] = {
   "BGO",  "SEP",  "DSC",  "DSW",
   "DSG",  "QEDs", "XXX",  "DCSA",
   "GRGB", "ARTB", "ZDSB", "TACZ", // secondary names start after #16
-  "TACA", "CS",   "QED",  "DCSB",
-  "XXX3", "XXX4", "XXX5", "UNK"
+  "TACA", "CS_A",   "QED",  "DCSB",
+  "CS_B", "XXX4", "XXX5", "UNK"
 };
 char subsys_name[MAX_SUBSYS][STRING_LEN] = {
   "Griffin",   "PACES",    "LaBrX",   "RCMP",     //  0- 3
@@ -32,8 +32,8 @@ char subsys_name[MAX_SUBSYS][STRING_LEN] = {
   "BGO",       "Sceptar",  "Descant", "DES_WALL", //  8-11
   "Des_Ancil", "QEDs",     "Ignore",  "DCSA",     // 12-15
   "Grif_B",    "ARS_B",    "ZDS_B",   "TAC_ZDS",  // 16-19
-  "TAC_ART",   "CS",       "QED",     "DCSB",     // 20-23
-  "Ignore3",   "Ignore4",  "Ignore5", "Unknown"   // 24-27
+  "TAC_ART",   "CS_A",       "QED",     "DCSB",     // 20-23
+  "CS_B",   "Ignore4",  "Ignore5", "Unknown"   // 24-27
 }; // final entry will be used if not found - make sure it is not empty
 
 int          odb_daqsize;// number of daq channels currently defined in the odb
@@ -139,7 +139,8 @@ char qed_totE_theta_handles[N_QED_POS][HANDLE_LENGTH]={"QED01_totalE_vs_theta", 
 char qed_E_theta_handles[N_QED_POS][HANDLE_LENGTH]={"QED01_E_vs_theta", "QED02_E_vs_theta", "QED03_E_vs_theta", "QED04_E_vs_theta", "QED05_E_vs_theta", "QED06_E_vs_theta"};
 char qed_geE_theta_handles[N_QED_POS][HANDLE_LENGTH]={"QED01_geE_vs_theta", "QED02_geE_vs_theta", "QED03_geE_vs_theta", "QED04_geE_vs_theta", "QED05_geE_vs_theta", "QED06_geE_vs_theta"};
 char qed_E_cycle_handles[N_QED_POS][HANDLE_LENGTH]={"cycle_vs_QED01_Energy", "cycle_vs_QED02_Energy", "cycle_vs_QED03_Energy", "cycle_vs_QED04_Energy", "cycle_vs_QED05_Energy", "cycle_vs_QED06_Energy", };
-char qedx_dcs_omega_dt_handles[N_QED_POS][HANDLE_LENGTH] = {"QED01_DCS_omega_vs_dt","QED02_DCS_omega_vs_dt","QED03_DCS_omega_vs_dt","QED04_DCS_omega_vs_dt","QED05_DCS_omega_vs_dt","QED06_DCS_omega_vs_dt"};
+char qedx_dcs_omega_dt_handles[N_QED_POS][HANDLE_LENGTH] = {"QED01_DCSA_omega_vs_dt","QED02_DCSA_omega_vs_dt","QED03_DCSA_omega_vs_dt","QED04_DCSA_omega_vs_dt","QED05_DCSA_omega_vs_dt","QED06_DCSA_omega_vs_dt"};
+char qedx_compB_dcs_omega_dt_handles[N_QED_POS][HANDLE_LENGTH] = {"QED01_DCSB_omega_vs_dt","QED02_DCSB_omega_vs_dt","QED03_DCSB_omega_vs_dt","QED04_DCSB_omega_vs_dt","QED05_DCSB_omega_vs_dt","QED06_DCSB_omega_vs_dt"};
 
 char qed_geE_theta_clov_handles[N_CLOVER][HANDLE_LENGTH] = {
   "QED_Clover01E_vs_theta","QED_Clover02E_vs_theta","QED_Clover03E_vs_theta","QED_Clover04E_vs_theta",
@@ -406,7 +407,11 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
     TH2I  *qedE_ge_theta_sum, *qed_geE_theta_sum, *qed_E_totE_sum_t, *qed_geE_totE_sum_t, *qedE_ge_theta_sum_t, *qed_geE_theta_sum_t, *qedE_ge_thetaI_sum_t, *qed_geE_thetaDiff_sum_t, *qed_geE_thetaI_sum_t;
     TH2I  *qedE_ge_theta_sum_c, *qed_geE_theta_sum_c, *qedE_ge_theta_sum_c_g, *qed_geE_theta_sum_c_g, *qedE_ge_theta_sum_c_s, *qed_geE_theta_sum_c_s, *ge_qed_c;
     TH2I  *qed_geE_theta_clov[N_CLOVER], *qed_geE_theta_clov_t[N_CLOVER], *qed_E_theta_dssd[N_QED_POS], *qed_geE_theta_dssd[N_QED_POS];
-    TH2I  *qedE_ge_dt, *qed_geE_dt, *qedE_ge_dt_c, *qed_geE_dt_c, *qed_theta_dt_c, *qed_theta_dt, *qed_theta_dt_cfd, *qed_dcs_omega_dt, *qed_dcs_omega_dtx, *qedx_dcs_omega_dt[N_QED_POS], *qed_theta1_vs_theta2, *qed_theta1_azi, *qed_theta2_azi, *qed2_theta1_vs_theta2, *qed2_theta1_azi, *qed2_theta2_azi;
+    TH2I  *qedE_ge_dt, *qed_geE_dt;
+    TH2I  *qedE_ge_dt_c, *qed_geE_dt_c, *qed_theta_dt_c, *qed_theta_dt, *qed_theta_dt_cfd, *qed_dcs_omega_dt, *qed_dcs_omega_dtx, *qedx_dcs_omega_dt[N_QED_POS], *qed_theta1_vs_theta2, *qed_theta1_azi, *qed_theta2_azi, *qed2_theta1_vs_theta2, *qed2_theta1_azi, *qed2_theta2_azi;
+    TH2I  *qed_compB_E_ge_dt_c, *qed_compB_geE_dt_c, *qed_compB_theta_dt_c, *ge_compB_qed_c, *qed_compB_E_ge_theta_sum_c, *qed_compB_geE_theta_sum_c, *qed_qed_weight_indiv, *qed_compB_E_ge_theta_sum_c_s, *qed_compB_geE_theta_sum_c_s, *qed_compB_E_ge_theta_sum_c_g, *qed_compB_geE_theta_sum_c_g;
+    TH1I  *qed_compB_theta, *qed_compB_dcs_omega;
+    TH2I  *qed_compB_dcs_omega_dt, *qedx_compB_dcs_omega_dt[N_QED_POS];
     TH1I  *qed_dcs_omega, *qed_dcs_omega_t, *qed_dcs_azi, *qed_dcs_azi_t, *qed_dcs_azi_tg, *qed_dcs_azi_TRWF, *qed_dcs_azi_TRWF_t, *qed_dcs_azi_TRWF_tg, *qed_delta_theta1_theta2, *qed_sum_theta1_theta2;
     TH1I  *qed_wf_dcs_azi, *qed_wf_omega;
     TH2I  *qed_angle_theta_g, *qed_angle_theta_s, *qed_angle_phi_s, *qed_angle_phi_a, *qed_angle_phi_b;
@@ -460,7 +465,7 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
     // 2D Energy vs Energy Coincidence matrices
     TH2I *gea_self_dt,*geb_self_dt;
     TH2I *gg, *gg_ab, *gg_opp, *gg_ab_opp, *ge_bgo, *ge_paces, *ge_labr, *ge_rcmp, *labr_labr, *labr_zds, *labr_rcmp;
-    TH2I *ge_art, *ge_zds, *paces_art, *labr_art, *art_art, *dsw_dsw, *ge_dsw, *art_dsw, *ge_qed, *qed_qed, *comp_comp, *ge_comp, *geadd_comp, *ge_dcs, *geadd_dcs, *comp_dcs;
+    TH2I *ge_art, *ge_zds, *paces_art, *labr_art, *art_art, *dsw_dsw, *ge_dsw, *art_dsw, *ge_qed, *qed_qed, *comp_comp, *compb_compb, *ge_comp, *geadd_comp, *ge_dcs, *geadd_dcs, *comp_dcs;
     TH1I *gg_energy[N_HPGE];
 
     // Angular Correlation histograms
@@ -603,6 +608,7 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
 
         // Initial zero the batch filling arrays
         reset_batch_histos_arrays();
+        reset_batch_cycles_histos_arrays();
 
         // Reset the deadtime counters and previous_trig_acc at BOR
         memset(subsys_deadtime_count,0,MAX_SUBSYS*sizeof(int));
@@ -820,11 +826,12 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
         {(void **)&ge_labr,     "GeLabr",             "",  SUBSYS_LABR_L,  E_2D_SPECLEN, E_2D_SPECLEN},
         {(void **)&ge_zds,      "GeZds",              "",  SUBSYS_ZDS_A,   E_2D_SPECLEN, E_2D_SPECLEN},
         {(void **)&ge_art,      "GeAries",            "",  SUBSYS_ARIES_A, E_2D_SPECLEN, E_2D_SPECLEN},
-        {(void **)&ge_qed,      "GeQED",            "",  SUBSYS_QED_STRIP, E_2D_SPECLEN, E_2D_SPECLEN},
-        {(void **)&qed_qed,      "QEDQED",            "",  SUBSYS_QED_STRIP, E_2D_SPECLEN, E_2D_SPECLEN},
-        {(void **)&ge_comp,      "GeCOMP",            "",  SUBSYS_QED_STRIP, E_2D_SPECLEN, E_2D_SPECLEN},
-        {(void **)&geadd_comp,   "GeAddCOMP",         "",  SUBSYS_QED_STRIP, E_2D_SPECLEN, E_2D_SPECLEN},
-        {(void **)&comp_comp,    "COMPCOMP",          "",  SUBSYS_QED_STRIP, E_2D_SPECLEN, E_2D_SPECLEN},
+        {(void **)&ge_qed,      "GeQED",              "",  SUBSYS_QED_STRIP, E_2D_SPECLEN, E_2D_SPECLEN},
+        {(void **)&qed_qed,     "QEDQED",             "",  SUBSYS_QED_STRIP, E_2D_SPECLEN, E_2D_SPECLEN},
+        {(void **)&ge_comp,     "GeCOMP",             "",  SUBSYS_QED_STRIP, E_2D_SPECLEN, E_2D_SPECLEN},
+        {(void **)&geadd_comp,  "GeAddCOMP",          "",  SUBSYS_QED_STRIP, E_2D_SPECLEN, E_2D_SPECLEN},
+        {(void **)&comp_comp,   "COMPA-COMPA",        "",  SUBSYS_QED_STRIP, E_2D_SPECLEN, E_2D_SPECLEN},
+        {(void **)&compb_compb, "COMPB-COMPB",        "",  SUBSYS_QED_STRIP, E_2D_SPECLEN, E_2D_SPECLEN},
         {(void **)&ge_dcs,      "GeDCS",              "",  SUBSYS_QED_STRIP, E_2D_SPECLEN, E_2D_SPECLEN},
         {(void **)&geadd_dcs,   "GeAddDCS",           "",  SUBSYS_QED_STRIP, E_2D_SPECLEN, E_2D_SPECLEN},
         {(void **)&comp_dcs,    "COMP_DCS",           "",  SUBSYS_QED_STRIP, E_2D_SPECLEN, E_2D_SPECLEN},
@@ -996,8 +1003,28 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
         {(void **)&qed2_theta1_vs_theta2,"COMP_QED2_theta1_vs_theta2",  "",SUBSYS_QED_STRIP, 192, 192},
         {(void **)&qed2_theta1_azi,      "COMP_QED2_theta1_vs_azi",  "",SUBSYS_QED_STRIP, 192, 384},
         {(void **)&qed2_theta2_azi,      "COMP_QED2_theta2_vs_azi",  "",SUBSYS_QED_STRIP, 192, 384},
+        {(void **)&qedE_ge_dt_c,  "QED_COMP_E_vs_dt",        "",SUBSYS_QED_STRIP, 1024, E_2D_QED_SPECLEN},
+        {(void **)&qed_geE_dt_c,  "QED_COMP_GeE_vs_dt",        "",SUBSYS_QED_STRIP, 1024, E_2D_QED_SPECLEN},
+        {(void **)&qed_theta_dt_cfd,  "QED_theta_vs_dt_cfd",        "",SUBSYS_QED_STRIP, 2048, 192},
+        {(void **)&qed_theta_dt_c,  "QED_COMP_theta_vs_dt",        "",SUBSYS_QED_STRIP, 1024, 192},
         {(void **)&qed_ge_weight_indiv,        "COMP_QED_GE_weights_indiv",      "",SUBSYS_QED_STRIP, 6144, 64},
         {(void **)&qed_ge_weight_coinc,        "COMP_QED_GE_weights_coinc",      "",SUBSYS_QED_STRIP, 6144, 64},
+        {NULL,                   "QED/Compton-SiSi",        ""},
+        {(void **)&ge_compB_qed_c,              "QEDQED_COMP",                         "",SUBSYS_QED_STRIP, E_2D_SPECLEN, E_2D_SPECLEN},
+        {(void **)&qed_compB_E_ge_theta_sum_c,  "COMP_QEDQED_E_vs_theta",              "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+        {(void **)&qed_compB_geE_theta_sum_c,   "COMP_QEDQED_GeE_vs_theta",            "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+        {(void **)&qed_compB_E_ge_theta_sum_c_s,"COMP_QEDQED_E_vs_theta_Si_first",     "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+        {(void **)&qed_compB_geE_theta_sum_c_s, "COMP_QEDQED_GeE_vs_theta_Si_first",   "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+        {(void **)&qed_compB_E_ge_theta_sum_c_g,"COMP_QEDQED_E_vs_theta_2ndSi_first",  "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+        {(void **)&qed_compB_geE_theta_sum_c_g, "COMP_QEDQED_GeE_vs_theta_2ndSi_first","",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
+        {(void **)&qed_compB_dcs_omega_dt,      "QED_DCSB_omega_vs_dt",                "", SUBSYS_QED_STRIP, 1024,   192},
+        {(void **) qedx_compB_dcs_omega_dt,     "",qedx_compB_dcs_omega_dt_handles[0],     SUBSYS_QED_STRIP, 1024,   192, N_QED_POS},
+        {(void **)&qed_compB_dcs_omega,         "QED_DCSB_omega",                      "", SUBSYS_QED_STRIP, 192},
+        {(void **)&qed_compB_theta,             "COMP_QEDQED_theta",                   "",SUBSYS_QED_STRIP, 192},
+        {(void **)&qed_compB_E_ge_dt_c,         "QEDQED_COMP_E_vs_dt",                 "",SUBSYS_QED_STRIP, 1024, E_2D_QED_SPECLEN},
+        {(void **)&qed_compB_geE_dt_c,          "QEDQED_COMP_GeE_vs_dt",               "",SUBSYS_QED_STRIP, 1024, E_2D_QED_SPECLEN},
+        {(void **)&qed_compB_theta_dt_c,        "QEDQED_COMP_theta_vs_dt",             "",SUBSYS_QED_STRIP, 1024, 192},
+        {(void **)&qed_qed_weight_indiv,        "COMP_QED_QED_weights_indiv",          "",SUBSYS_QED_STRIP, 6144, 6144},
         {NULL,                   "QED/Dbl-COMPTON-SiGeGe",        ""},
         {(void **)&dcsa_theta,         "DCSA_theta",                                   "",SUBSYS_QED_STRIP, 192},
         {(void **)&dcsaE_ge_theta,     "DCSA_E_vs_ICStheta",                           "",SUBSYS_QED_STRIP, E_2D_QED_SPECLEN,   192},
@@ -1054,10 +1081,6 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
         {(void **)&qedE_ge_dt,  "QED_Ge_E_vs_dt",       "",SUBSYS_QED_STRIP, 1024, E_2D_QED_SPECLEN},
         {(void **)&qed_geE_dt,  "QED_GeE_vs_dt",        "",SUBSYS_QED_STRIP, 1024, E_2D_QED_SPECLEN},
         {(void **)&qed_theta_dt,  "QED_theta_vs_dt",        "",SUBSYS_QED_STRIP, 1024, 192},
-        {(void **)&qed_theta_dt_cfd,  "QED_theta_vs_dt_cfd",        "",SUBSYS_QED_STRIP, 2048, 192},
-        {(void **)&qedE_ge_dt_c,  "QED_COMP_E_vs_dt",        "",SUBSYS_QED_STRIP, 1024, E_2D_QED_SPECLEN},
-        {(void **)&qed_geE_dt_c,  "QED_COMP_GeE_vs_dt",        "",SUBSYS_QED_STRIP, 1024, E_2D_QED_SPECLEN},
-        {(void **)&qed_theta_dt_c,  "QED_COMP_theta_vs_dt",        "",SUBSYS_QED_STRIP, 1024, 192},
       }; // Note initialized array variable is CONST (not same as double-pointer)
       // TH1I *hist;  hist = (TH1I *) 0;   ptr = &hist = (TH1I **)addr;  *ptr =
 
@@ -1182,8 +1205,8 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
             subsys_dt[SUBSYS_DESWALL][SUBSYS_ZDS_A   ] = dt_hist[21];
             subsys_dt[SUBSYS_HPGE_A ][SUBSYS_QED_PIXEL  ] = dt_hist[27];
             subsys_dt[SUBSYS_QED_PIXEL][SUBSYS_QED_PIXEL] = dt_hist[28];
-            subsys_dt[SUBSYS_COMPTON][SUBSYS_COMPTON] = dt_hist[29];
-            subsys_dt[SUBSYS_HPGE_A][SUBSYS_COMPTON] = dt_hist[30];
+            subsys_dt[SUBSYS_COMPTONA][SUBSYS_COMPTONA] = dt_hist[29];
+            subsys_dt[SUBSYS_HPGE_A][SUBSYS_COMPTONA] = dt_hist[30];
             // CFD differences in 10ns units
             subsys_dcfd[SUBSYS_HPGE_A ][SUBSYS_HPGE_A  ] = dcfd_hist[ 0];
             subsys_dcfd[SUBSYS_HPGE_A ][SUBSYS_PACES   ] = dcfd_hist[ 4];
@@ -1211,8 +1234,8 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
             subsys_dcfd[SUBSYS_DESWALL][SUBSYS_ZDS_A   ] = dcfd_hist[21];
             subsys_dcfd[SUBSYS_HPGE_A ][SUBSYS_QED_PIXEL  ] = dcfd_hist[27];
             subsys_dcfd[SUBSYS_QED_PIXEL][SUBSYS_QED_PIXEL] = dcfd_hist[28];
-            subsys_dcfd[SUBSYS_COMPTON][SUBSYS_COMPTON] = dcfd_hist[29];
-            subsys_dcfd[SUBSYS_HPGE_A][SUBSYS_COMPTON] = dcfd_hist[30];
+            subsys_dcfd[SUBSYS_COMPTONA][SUBSYS_COMPTONA] = dcfd_hist[29];
+            subsys_dcfd[SUBSYS_HPGE_A][SUBSYS_COMPTONA] = dcfd_hist[30];
 
             return(0);
           }

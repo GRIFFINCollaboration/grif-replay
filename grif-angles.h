@@ -25,7 +25,7 @@ double azimuthal_GeGeGe(int c1, int c2, int c3, int distance);
 double scattering_angle_QEDGe(int pos, int qed, int ge);
 double scattering_angle_GeQED(int pos, int qed, int ge);
 double scattering_angle_QEDQED(int pos1, int qed1, int pos2, int qed2);
-double azimuthal_DCS(int pos1, int qed1, int ge1, int pos2, int qed2, int ge2);
+double azimuthal_DCS_SiGe_SiGe(int pos1, int qed1, int ge1, int pos2, int qed2, int ge2);
 double energy_corrected_azimuthal_DCS(int pos1, int qed1, int ge1, float ecal1, int pos2, int qed2, int ge2, float ecal2);
 double azimuthal_TCS_SiGe_SiGeGe(int pos1, int qed1, int ge1, int ge2, int ge3);
 double azimuthal_TCS_GeGe_SiGeGe(int ge1, int ge2, int ge3, int ge4);

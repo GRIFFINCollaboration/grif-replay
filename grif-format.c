@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <unistd.h>
 #include "grif-replay.h"
@@ -7,8 +8,33 @@
 #include "grif-format.h"
 #include "midas-format.h"
 
+// State for xoshiro128** (Must be initialized with a non-zero seed)
+uint32_t s[4] = {12345, 67890, 11121, 13141};
+
+// Fast 32-bit integer PRNG
+uint32_t next32(void) {
+    const uint32_t result = s[0] + s[3]; // or some other scrambler
+    const uint32_t t = s[1] << 9;
+
+    s[2] ^= s[0];
+    s[3] ^= s[1];
+    s[1] ^= s[2];
+    s[0] ^= s[3];
+
+    s[2] ^= t;
+    s[3] = (s[3] << 11) | (s[3] >> 21); // rotl
+
+    return result;
+}
+
+// FASTEST float generation between [0, 1)
+float rand_float(void) {
+    // 0x1.0p-32f is hexadecimal literal for 2^-32
+    return next32() * 0x1.0p-32f;
+}
+float spread(int val){ return val + rand_float(); }
 //float spread(int val){ return( val + rand()/(1.0*RAND_MAX) ); }
-float spread(int val){ return val + (rand() * (1.0f / RAND_MAX)); }
+//float spread(int val){ return val + (rand() * (1.0f / RAND_MAX)); }
 //inline __attribute__((always_inline)) float spread(int val){ return val + (rand() * (1.0f / RAND_MAX)); }
 
 

@@ -30,6 +30,7 @@
 #define QED_GAMMA_ENERGY         511  //  511keV
 #define QED_GAMMA2_ENERGY       1274  // 1274keV
 #define QED_GAMMA_ENERGY_WINDOW   20  //   20keV
+#define QED_QED_ENERGY_WINDOW     20  //   20keV
 #define QED_ANGLE_WINDOW          15  // 15 degrees
 
 #define N_PPG_PATTERNS  7
@@ -110,6 +111,8 @@ extern int fill_chan_histos(Grif_event *ptr);
 extern int fill_singles_histos(Grif_event *ptr);
 extern int fill_coinc_histos(int win_idx, int frag_idx);
 extern void reset_batch_histos_arrays();
+extern void fill_batch_cycles_histos();
+extern void reset_batch_cycles_histos_arrays();
 
 //#######################################################################
 //########             PPG variables and patterns              ##########
@@ -276,6 +279,9 @@ extern TH1I  *dcsb_cs_omega, *dcsb_cs_omega_ge, *dcsb_theta;
 extern TH2I  *qed_qed_23, *qed_qed_23_theta2, *qed_qed_23_theta3, *qed_qed_23_totv2, *qed_qed_23_totv3, *qed_qed_12, *qed_qed_12_theta1, *qed_qed_12_theta2, *qed_qed_12_totv1, *qed_qed_12_totv2, *qed_qed_14, *qed_qed_14_theta1, *qed_qed_14_theta4, *qed_qed_14_totv1, *qed_qed_14_totv4;
 extern TH1I  *qed_qed_23dt, *qed_qed_12dt, *qed_qed_14dt;
 extern TH2I  *qed_ge_weight_indiv, *qed_ge_weight_coinc;
+extern TH2I  *qed_compB_E_ge_dt_c, *qed_compB_geE_dt_c, *qed_compB_theta_dt_c, *ge_compB_qed_c, *qed_compB_E_ge_theta_sum_c, *qed_compB_geE_theta_sum_c, *qed_qed_weight_indiv, *qed_compB_E_ge_theta_sum_c_s, *qed_compB_geE_theta_sum_c_s, *qed_compB_E_ge_theta_sum_c_g, *qed_compB_geE_theta_sum_c_g;
+extern TH1I  *qed_compB_theta, *qed_compB_dcs_omega;
+extern TH2I  *qed_compB_dcs_omega_dt, *qedx_compB_dcs_omega_dt[N_QED_POS];
 
 // DESCANT WALL
 extern TH1I  *desw_sum_e, *desw_sum_tof, *desw_sum_psd;  // Sums of energies and corTOF and PSD
@@ -316,7 +322,7 @@ extern TH2I *gg_hit, *bgobgo_hit, *aa_hit, *gea_hit, *lba_hit, *dsw_hit;
 // 2D Energy vs Energy Coincidence matrices
 extern TH2I *gea_self_dt,*geb_self_dt;
 extern TH2I *gg, *gg_ab, *gg_opp, *gg_ab_opp, *ge_bgo, *ge_paces, *ge_labr, *ge_rcmp, *labr_labr, *labr_zds, *labr_rcmp;
-extern TH2I *ge_art, *ge_zds, *paces_art, *labr_art, *art_art, *dsw_dsw, *ge_dsw, *art_dsw, *ge_qed, *qed_qed, *comp_comp, *ge_comp, *geadd_comp, *ge_dcs, *geadd_dcs, *comp_dcs;
+extern TH2I *ge_art, *ge_zds, *paces_art, *labr_art, *art_art, *dsw_dsw, *ge_dsw, *art_dsw, *ge_qed, *qed_qed, *comp_comp, *compb_compb, *ge_comp, *geadd_comp, *ge_dcs, *geadd_dcs, *comp_dcs;
 extern TH1I *gg_energy[N_HPGE];
 
 // Angular Correlation histograms
@@ -351,13 +357,27 @@ extern int batch_data_ge_cycle_activity[CYCLE_SPEC_LENGTH];
 // Pointer array mapping for branchless filling: Index 0 (False) -> us array, Index 1 (True) -> ds array
 extern int* ge_sum_targets[2];
 extern int* ge_sum_ab_targets[2];
+// Batch filling storage arrays - Arrays of 1D
+extern int batch_data_gea_cycle_num[CYCLE_SPEC_LENGTH];
+extern int batch_data_gea_cycle_num_sh[CYCLE_SPEC_LENGTH];
+extern int batch_data_gea_cycle_num_pu[CYCLE_SPEC_LENGTH];
+extern int batch_data_gea_cycle_num_g[CYCLE_SPEC_LENGTH];
+extern int batch_data_gea_cycle_num_sh_g[CYCLE_SPEC_LENGTH];
+extern int batch_data_geb_cycle_num[CYCLE_SPEC_LENGTH];
+extern int batch_data_geb_cycle_num_sh[CYCLE_SPEC_LENGTH];
+extern int batch_data_geb_cycle_num_pu[CYCLE_SPEC_LENGTH];
+extern int batch_data_geb_cycle_num_g[CYCLE_SPEC_LENGTH];
+extern int batch_data_geb_cycle_num_sh_g[CYCLE_SPEC_LENGTH];
+extern int batch_data_2d_cycle_num_vs_sh[CYCLE_SPEC_LENGTH];
+// Batch filling storage arrays - arrays of 1d histograms
+extern int batch_data_ph_hist[MAX_DAQSIZE][E_SPECLEN];
 // Batch filling storage arrays - 2D
 // First element is the length (to enable fast incrementing). The following elements are the bin index to be incremented by 1 count.
-extern int batch_data_cycle_num_vs_ge[BATCH_FILLING_MAX_EVENTS+1];
-extern int batch_data_cycle_num_vs_sh[BATCH_FILLING_MAX_EVENTS+1];
-extern int batch_data_ge_e_vs_cycle_time[BATCH_FILLING_MAX_EVENTS+1];
+//extern int batch_data_cycle_num_vs_ge[BATCH_FILLING_MAX_EVENTS+1];
+//extern int batch_data_cycle_num_vs_sh[BATCH_FILLING_MAX_EVENTS+1];
+//extern int batch_data_ge_e_vs_cycle_time[BATCH_FILLING_MAX_EVENTS+1];
 //extern int batch_data_ge_xtal[BATCH_FILLING_MAX_EVENTS+1];
-extern int batch_data_bgo_xtal[BATCH_FILLING_MAX_EVENTS+1];
-extern int batch_data_bgof_xtal[BATCH_FILLING_MAX_EVENTS+1];
-extern int batch_data_bgob_xtal[BATCH_FILLING_MAX_EVENTS+1];
-extern int batch_data_bgos_xtal[BATCH_FILLING_MAX_EVENTS+1];
+//extern int batch_data_bgo_xtal[BATCH_FILLING_MAX_EVENTS+1];
+//extern int batch_data_bgof_xtal[BATCH_FILLING_MAX_EVENTS+1];
+//extern int batch_data_bgob_xtal[BATCH_FILLING_MAX_EVENTS+1];
+//extern int batch_data_bgos_xtal[BATCH_FILLING_MAX_EVENTS+1];

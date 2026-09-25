@@ -73,11 +73,11 @@ float alt2_ecal;
 #define SUBSYS_ZDS_B     18 // CAEN
 #define SUBSYS_TAC_ZDS   19
 #define SUBSYS_TAC_ART   20
-#define SUBSYS_COMPTON   21 // QED Single Compton (Si-Ge)
+#define SUBSYS_COMPTONA  21 // QED Single Compton (Si-Ge)
 #define SUBSYS_DCOMPTONA 15 // QED Double Compton Type A (Si-Ge-Ge)
 #define SUBSYS_DCOMPTONB 23 // QED Double Compton Type B (Si-Si-Ge)
 #define SUBSYS_QED_PIXEL 22
-#define SUBSYS_IGNORE3   24
+#define SUBSYS_COMPTONB  24 // QED Single Compton (Si-Si)
 #define SUBSYS_IGNORE4   25
 #define SUBSYS_IGNORE5   26
 #define SUBSYS_UNKNOWN   27

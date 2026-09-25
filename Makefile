@@ -10,7 +10,7 @@ DRAGON_OBJECTS = config_io.o config_usersort.o config_util.o web_command.o\
 
 //CC=clang
 CFLAGS  = -g -O3 -fPIC
-//CFLAGS  = -g -O0 -fPIC -fsanitize=address
+//CFLAGS  = -g -O0 -fPIC -fsanitize=address,undefined
 
 griffin-replay: grif-replay
 griffin:  grif-replay

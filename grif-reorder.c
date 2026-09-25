@@ -62,7 +62,7 @@ struct reorderbuf_struct {
 };
 Tsbuf  reorder_buffer[REORDER_EVENTS]; // ~100bytes ea -> 100Mbytes
 int guard_var;
-volatile Tsbuf *tslot[REORDER_TSLOTS];
+volatile Tsbuf *tslot[REORDER_TSLOTS] __attribute__((aligned(64)));
 int reorder_bufpos; // next slot to be written
 
 #define MAX_GRIFC 16
@@ -290,7 +290,8 @@ void reorder_out(Sort_status *arg)
     if( i < OUTPUT_FRACTION * REORDER_EVENTS && !arg->reorder_in_done ){
       usleep(usecs); continue;
     }
-    while(1){ ts += bucket_length; // check slots, in order, for next event
+    while(1){
+      ts += bucket_length; // check slots, in order, for next event
       if( __builtin_expect(ts - prev_ts >= MAX_DATA_GAP, 0) ){ // what is this?
         if( arg->reorder_in_done ){
           arg->reorder_out_done = 1;
@@ -303,7 +304,9 @@ void reorder_out(Sort_status *arg)
         }
       }
       ts_slot = (ts >> BUCKET_SIZE_BITS) & REORDER_TSLOTS_MASK;
-      if( (buf = tslot[ts_slot]) == NULL ){ continue; }
+      if( tslot[ts_slot] == NULL ){ continue; }
+      buf = tslot[ts_slot];
+      //if( buf == NULL ){ printf("buf==NULL, continue\n"); continue; }
       if( buf->ts > ts+bucket_length ){ continue; }
       break;
     }

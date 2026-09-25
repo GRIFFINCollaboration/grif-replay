@@ -263,7 +263,7 @@ double scattering_angle_QEDQED(int pos1, int qed1, int pos2, int qed2){
 // Calculate the azimuthal angle between the two scattering planes defined by two QED-HPGe scatter events
 // c1 and c2 are the QED pixel and HPGe of one event. These define the scattering plane.
 // c3 and c4 are the QED pixel and HPGe of one event. These define the scattering plane.
-double azimuthal_DCS(int pos1, int qed1, int ge1, int pos2, int qed2, int ge2){
+double azimuthal_DCS_SiGe_SiGe(int pos1, int qed1, int ge1, int pos2, int qed2, int ge2){
   double vec1[3], vec2[3], vec3[3], vec4[3], first_scattering_plane[3], second_scattering_plane[3], dot, mag, angle;
 
   pos1--; // pos1 is now 0-5 within this function
@@ -290,16 +290,16 @@ double azimuthal_DCS(int pos1, int qed1, int ge1, int pos2, int qed2, int ge2){
   // If the z coordinate of the HPGe is larger than z coordinate of the DSSD pixel then the scatter is in the downstream direction
   if(vec1[0]>0){
     if(vec2[2]<vec1[2]){
-      //fprintf(stdout,"azimuthal_DCS, vec1 is left. Scatter is upstream\n");
+      //fprintf(stdout,"azimuthal_DCS_SiGe_SiGe, vec1 is left. Scatter is upstream\n");
       angle *= -1; }
-      //  fprintf(stdout,"azimuthal_DCS, vec1 is left. Scatter is downstream\n");
+      //  fprintf(stdout,"azimuthal_DCS_SiGe_SiGe, vec1 is left. Scatter is downstream\n");
     }else{
       if(vec4[2]<vec3[2]){
-        //fprintf(stdout,"azimuthal_DCS, vec3 is left. Scatter is upstream\n");
+        //fprintf(stdout,"azimuthal_DCS_SiGe_SiGe, vec3 is left. Scatter is upstream\n");
         angle *= -1; }
-        //fprintf(stdout,"azimuthal_DCS, vec3 is left. Scatter is downstream\n");
+        //fprintf(stdout,"azimuthal_DCS_SiGe_SiGe, vec3 is left. Scatter is downstream\n");
       }
-      //printf("azimuthal_DCS angle = %f\n",angle);
+      //printf("azimuthal_DCS_SiGe_SiGe angle = %f\n",angle);
       angle += 180; // angle now runs from 0-360
       return angle;
     }

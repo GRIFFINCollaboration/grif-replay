@@ -25,16 +25,31 @@ int batch_data_ge_cycle_activity[CYCLE_SPEC_LENGTH];
 // Pointer array mapping for branchless filling: Index 0 (False) -> us array, Index 1 (True) -> ds array
 int* ge_sum_targets[2] = { batch_data_ge_sum_us, batch_data_ge_sum_ds };
 int* ge_sum_ab_targets[2] = { batch_data_ge_sum_ab_us, batch_data_ge_sum_ab_ds };
+// Batch filling storage arrays - arrays of 1d histograms
+int batch_data_ph_hist[MAX_DAQSIZE][E_SPECLEN];
+// Batch filling storage arrays - Cycles 1D histograms (Only filled at end of cycles)
+int batch_data_gea_cycle_num[CYCLE_SPEC_LENGTH];
+int batch_data_gea_cycle_num_sh[CYCLE_SPEC_LENGTH];
+int batch_data_gea_cycle_num_pu[CYCLE_SPEC_LENGTH];
+int batch_data_gea_cycle_num_g[CYCLE_SPEC_LENGTH];
+int batch_data_gea_cycle_num_sh_g[CYCLE_SPEC_LENGTH];
+int batch_data_geb_cycle_num[CYCLE_SPEC_LENGTH];
+int batch_data_geb_cycle_num_sh[CYCLE_SPEC_LENGTH];
+int batch_data_geb_cycle_num_pu[CYCLE_SPEC_LENGTH];
+int batch_data_geb_cycle_num_g[CYCLE_SPEC_LENGTH];
+int batch_data_geb_cycle_num_sh_g[CYCLE_SPEC_LENGTH];
+int batch_data_2d_cycle_num_vs_sh[CYCLE_SPEC_LENGTH];
+
 // Batch filling storage arrays - 2D
 // First element is the length (to enable fast incrementing). The following elements are the bin index to be incremented by 1 count.
-int batch_data_cycle_num_vs_ge[BATCH_FILLING_MAX_EVENTS+1];
-int batch_data_cycle_num_vs_sh[BATCH_FILLING_MAX_EVENTS+1];
-int batch_data_ge_e_vs_cycle_time[BATCH_FILLING_MAX_EVENTS+1];
+//int batch_data_cycle_num_vs_ge[BATCH_FILLING_MAX_EVENTS+1];
+//int batch_data_cycle_num_vs_sh[BATCH_FILLING_MAX_EVENTS+1];
+//int batch_data_ge_e_vs_cycle_time[BATCH_FILLING_MAX_EVENTS+1];
 //int batch_data_ge_xtal[BATCH_FILLING_MAX_EVENTS+1];
-int batch_data_bgo_xtal[BATCH_FILLING_MAX_EVENTS+1];
-int batch_data_bgof_xtal[BATCH_FILLING_MAX_EVENTS+1];
-int batch_data_bgob_xtal[BATCH_FILLING_MAX_EVENTS+1];
-int batch_data_bgos_xtal[BATCH_FILLING_MAX_EVENTS+1];
+//int batch_data_bgo_xtal[BATCH_FILLING_MAX_EVENTS+1];
+//int batch_data_bgof_xtal[BATCH_FILLING_MAX_EVENTS+1];
+//int batch_data_bgob_xtal[BATCH_FILLING_MAX_EVENTS+1];
+//int batch_data_bgos_xtal[BATCH_FILLING_MAX_EVENTS+1];
 
 int default_sort(int win_idx, int frag_idx, int flag)
 {
@@ -123,6 +138,7 @@ int fill_chan_histos(Grif_event *ptr)
 
 void fill_batch_histos()
 {
+  int i;
   // Batch fill the chan histograms and reset the data arrays
   TH1I_Batch_Fill(hit_hist[0], &batch_data_q_hit[0]);  // q hit pattern
   TH1I_Batch_Fill(hit_hist[1], &batch_data_e_hit[0]);  // e hit pattern
@@ -132,7 +148,7 @@ void fill_batch_histos()
   TH1I_Batch_Fill(hit_hist[5], &batch_data_s_hit[0]);  // s hit pattern
   TH1I_Batch_Fill(hit_hist[6], &batch_data_d_hit[0]);  // d hit pattern
 
-  // Batch fill the singles histograms and reset the data arrays
+  // Batch fill the 1d histograms
   TH1I_Batch_Fill(ge_sum, &batch_data_ge_sum[0]);  // ge_sum
   TH1I_Batch_Fill(ge_sum_us, &batch_data_ge_sum_us[0]);  // ge_sum_us
   TH1I_Batch_Fill(ge_sum_ds, &batch_data_ge_sum_ds[0]);  // ge_sum_ds
@@ -143,17 +159,23 @@ void fill_batch_histos()
   TH1I_Batch_Fill(ge_nhits_type, &batch_data_ge_nhits_type[0]);  // ge_nhits_type
   TH1I_Batch_Fill(ge_cycle_activity, &batch_data_ge_cycle_activity[0]);  // ge_cycle_activity
 
-  // 2d histograms
-  TH2I_Batch_Fill(cycle_num_vs_ge, &batch_data_cycle_num_vs_ge[0]);  // cycle_num_vs_ge
-  TH2I_Batch_Fill(cycle_num_vs_sh, &batch_data_cycle_num_vs_sh[0]);  // cycle_num_vs_sh
-  TH2I_Batch_Fill(ge_e_vs_cycle_time, &batch_data_ge_e_vs_cycle_time[0]);  // ge_e_vs_cycle_time
-  //TH2I_Batch_Fill(ge_xtal, &batch_data_ge_xtal[0]);  // ge_xtal
-  TH2I_Batch_Fill(bgo_xtal, &batch_data_bgo_xtal[0]);  // bgo_xtal
-  TH2I_Batch_Fill(bgof_xtal, &batch_data_bgof_xtal[0]);  // bgof_xtal
-  TH2I_Batch_Fill(bgob_xtal, &batch_data_bgob_xtal[0]);  // bgob_xtal
-  TH2I_Batch_Fill(bgos_xtal, &batch_data_bgos_xtal[0]);  // bgos_xtal
+    // Batch fill the arrays of 1d histograms
+    for(i=0; i<MAX_DAQSIZE; i++){
+      if(ph_hist[i] == NULL){ continue; }
+      TH1I_Batch_Fill(ph_hist[i],&batch_data_ph_hist[i][0]); // ph_hist[chan]
+    }
 
-  reset_batch_histos_arrays(); // zero the arrays after this fill
+  // 2d histograms
+  //TH2I_Batch_Fill(cycle_num_vs_ge, &batch_data_cycle_num_vs_ge[0]);  // cycle_num_vs_ge
+  //TH2I_Batch_Fill(cycle_num_vs_sh, &batch_data_cycle_num_vs_sh[0]);  // cycle_num_vs_sh
+  //TH2I_Batch_Fill(ge_e_vs_cycle_time, &batch_data_ge_e_vs_cycle_time[0]);  // ge_e_vs_cycle_time
+  //TH2I_Batch_Fill(ge_xtal, &batch_data_ge_xtal[0]);  // ge_xtal
+  //TH2I_Batch_Fill(bgo_xtal, &batch_data_bgo_xtal[0]);  // bgo_xtal
+  //TH2I_Batch_Fill(bgof_xtal, &batch_data_bgof_xtal[0]);  // bgof_xtal
+  //TH2I_Batch_Fill(bgob_xtal, &batch_data_bgob_xtal[0]);  // bgob_xtal
+  //TH2I_Batch_Fill(bgos_xtal, &batch_data_bgos_xtal[0]);  // bgos_xtal
+
+  reset_batch_histos_arrays(); // zero the data arrays after this fill
 }
 
 void reset_batch_histos_arrays()
@@ -178,17 +200,62 @@ void reset_batch_histos_arrays()
   memset(batch_data_ge_nhits_type,0,64*sizeof(int));        // ge_nhits_type
   memset(batch_data_ge_cycle_activity,0,CYCLE_SPEC_LENGTH*sizeof(int)); // ge_cycle_activity
 
+  // reset memory for the arrays of 1d histograms
+  memset(batch_data_ph_hist,0,MAX_DAQSIZE*E_SPECLEN*sizeof(int));  // ph_hist
+
+
   // 2d histograms
-  memset(batch_data_cycle_num_vs_ge,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // cycle_num_vs_ge
-  memset(batch_data_cycle_num_vs_sh,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // cycle_num_vs_sh
-  memset(batch_data_ge_e_vs_cycle_time,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // ge_e_vs_cycle_time
+  //memset(batch_data_cycle_num_vs_ge,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // cycle_num_vs_ge
+  //memset(batch_data_cycle_num_vs_sh,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // cycle_num_vs_sh
+  //memset(batch_data_ge_e_vs_cycle_time,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // ge_e_vs_cycle_time
   //memset(batch_data_ge_xtal,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // ge_xtal
-  memset(batch_data_bgo_xtal,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // bgo_xtal
-  memset(batch_data_bgof_xtal,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // bgof_xtal
-  memset(batch_data_bgob_xtal,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // bgob_xtal
-  memset(batch_data_bgos_xtal,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // bgos_xtal
+  //memset(batch_data_bgo_xtal,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // bgo_xtal
+  //memset(batch_data_bgof_xtal,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // bgof_xtal
+  //memset(batch_data_bgob_xtal,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // bgob_xtal
+  //  memset(batch_data_bgos_xtal,0,(BATCH_FILLING_MAX_EVENTS+1)*sizeof(int)); // bgos_xtal
 }
 
+void fill_batch_cycles_histos()
+{
+  int i;
+  // Function is called when the ppg_cycle_number changes.
+  // Fill the histrogam for the finishing cycle, and reset the batch array
+  if(ppg_cycle_number<MAX_CYCLES){
+    TH1I_Batch_Fill(gea_cycle_num[ppg_cycle_number], &batch_data_gea_cycle_num[0]);           // gea_cycle_num
+    TH1I_Batch_Fill(gea_cycle_num_sh[ppg_cycle_number], &batch_data_gea_cycle_num_sh[0]);     // gea_cycle_num_sh
+    TH1I_Batch_Fill(gea_cycle_num_pu[ppg_cycle_number], &batch_data_gea_cycle_num_pu[0]);     // gea_cycle_num_pu
+    TH1I_Batch_Fill(gea_cycle_num_g[ppg_cycle_number], &batch_data_gea_cycle_num_g[0]);       // gea_cycle_num_g
+    TH1I_Batch_Fill(gea_cycle_num_sh_g[ppg_cycle_number], &batch_data_gea_cycle_num_sh_g[0]); // gea_cycle_num_sh_g
+    TH1I_Batch_Fill(geb_cycle_num[ppg_cycle_number], &batch_data_geb_cycle_num[0]);           // geb_cycle_num
+    TH1I_Batch_Fill(geb_cycle_num_sh[ppg_cycle_number], &batch_data_geb_cycle_num_sh[0]);     // geb_cycle_num_sh
+    TH1I_Batch_Fill(geb_cycle_num_pu[ppg_cycle_number], &batch_data_geb_cycle_num_pu[0]);     // geb_cycle_num_pu
+    TH1I_Batch_Fill(geb_cycle_num_g[ppg_cycle_number], &batch_data_geb_cycle_num_g[0]);       // geb_cycle_num_g
+    TH1I_Batch_Fill(geb_cycle_num_sh_g[ppg_cycle_number], &batch_data_geb_cycle_num_sh_g[0]); // geb_cycle_num_sh_g
+    // 2d histograms
+    for(i=0; i<CYCLE_SPEC_LENGTH; i++){
+    cycle_num_vs_sh->Fill(cycle_num_vs_sh, ppg_cycle_number, i, batch_data_2d_cycle_num_vs_sh[i]);
+  }
+  }
+
+  reset_batch_cycles_histos_arrays();
+}
+
+void reset_batch_cycles_histos_arrays()
+{
+  // Reset the arrays of 1d histograms
+  memset(batch_data_gea_cycle_num,0,CYCLE_SPEC_LENGTH*sizeof(int));      // gea_cycle_num
+  memset(batch_data_gea_cycle_num_sh,0,CYCLE_SPEC_LENGTH*sizeof(int));   // gea_cycle_num_sh
+  memset(batch_data_gea_cycle_num_pu,0,CYCLE_SPEC_LENGTH*sizeof(int));   // gea_cycle_num_pu
+  memset(batch_data_gea_cycle_num_g,0,CYCLE_SPEC_LENGTH*sizeof(int));    // gea_cycle_num_g
+  memset(batch_data_gea_cycle_num_sh_g,0,CYCLE_SPEC_LENGTH*sizeof(int)); // gea_cycle_num_sh_g
+  memset(batch_data_geb_cycle_num,0,CYCLE_SPEC_LENGTH*sizeof(int));      // geb_cycle_num
+  memset(batch_data_geb_cycle_num_sh,0,CYCLE_SPEC_LENGTH*sizeof(int));   // geb_cycle_num_sh
+  memset(batch_data_geb_cycle_num_pu,0,CYCLE_SPEC_LENGTH*sizeof(int));   // geb_cycle_num_pu
+  memset(batch_data_geb_cycle_num_g,0,CYCLE_SPEC_LENGTH*sizeof(int));    // geb_cycle_num_g
+  memset(batch_data_geb_cycle_num_sh_g,0,CYCLE_SPEC_LENGTH*sizeof(int)); // geb_cycle_num_sh_g
+  // 2d where on column is a single cycle number
+  memset(batch_data_2d_cycle_num_vs_sh,0,CYCLE_SPEC_LENGTH*sizeof(int)); // 2d cycle_num_vs_sh
+}
 //#######################################################################
 //########               Sums and coinc  HISTOGRAMS            ##########
 //#######################################################################
@@ -230,7 +297,7 @@ void pileup_fill_three_hit(int pos, int ecal, int integ, int alt_ecal) {  // thr
 int fill_singles_histos(Grif_event *ptr)
 {
   int i, j, dt, pu, nhits, chan, pos, sys, elem, clover, class, c1,c2, index, offset, bin, ptr_ecal, esum, alt_ecal, integ, psd;
-  int angle, ge_corrected_angle;
+  int pos1, pos2, angle, ge_corrected_angle;
   char *name, c;
 
   int quick_reorder_qed_strips[NUM_QED_REORDERS][32] = {
@@ -277,93 +344,110 @@ int fill_singles_histos(Grif_event *ptr)
     ptr_ecal = (int)(ptr->ecal);
   }else{ return(-1); }
 
-  switch (sys){
-    case SUBSYS_HPGE_A: // GRGa
-    if( (unsigned int)pos < 64 ){
-      //ge_sum->Fill(ge_sum, ptr_ecal, 1);
-      batch_data_ge_sum[ptr_ecal]++;
-      ge_xtal->Fill(ge_xtal, pos, ptr_ecal, 1);
-      //batch_data_ge_xtal[++batch_data_ge_xtal[0]] = pos + (ptr_ecal*E_2D_SPECLEN);
+  // Process singles using branchless dispatch table
+  // Create the dispatch table using the GCC "&&" label syntax.
+  // This creates a dense array of code addresses.
+  static const void* const fill_singles_dispatch_table[MAX_SUBSYS] = {
+    [ 0] =  &&do_singles_HPGE_A,
+    [ 1] =  &&do_singles_PACES,
+    [ 2] =  &&do_singles_LABR_L,
+    [ 3] =  &&do_singles_RCMP,
+    [ 4] =  &&do_singles_ARIES_A,
+    [ 5] =  &&do_singles_ZDS_A,
+    [ 6] =  &&do_singles_TAC_LABR,
+    [ 7] =  &&do_singles_default, //&&do_singles_LABR_BGO,
+    [ 8] =  &&do_singles_BGO,
+    [ 9] =  &&do_singles_SCEPTAR,
+    [10] =  &&do_singles_default, //&&do_singles_DESCANT,
+    [11] =  &&do_singles_DESWALL,
+    [12] =  &&do_singles_default, //&&do_singles_DSG,
+    [13] =  &&do_singles_default, //&&do_singles_QED_STRIP,
+    [14] =  &&do_singles_default, //&&do_singles_IGNORE,
+    [15] =  &&do_singles_DCOMPTONA,
+    [16] =  &&do_singles_HPGE_B,
+    [17] =  &&do_singles_default, //&&do_singles_ARIES_B,
+    [18] =  &&do_singles_ZDS_B,
+    [19] =  &&do_singles_default, //&&do_singles_TAC_ZDS,
+    [20] =  &&do_singles_default, //&&do_singles_TAC_ART,
+    [21] =  &&do_singles_COMPTONA,
+    [22] =  &&do_singles_QED_PIXEL,
+    [23] =  &&do_singles_default, //&&do_singles_DCOMPTONB,
+    [24] =  &&do_singles_COMPTONB,
+    [25] =  &&do_singles_default, //&&do_singles_IGNORE4,
+    [26] =  &&do_singles_default, //&&do_singles_IGNORE5,
+    [27] =  &&do_singles_default  //&&do_singles_UNKNOWN
+  };
+  // The magic line: Jumps directly to the target block instantly to avoid branch misprediction and pipline stalls.
+  // No switch overhead, no function call overhead, no argument passing!
+  goto *fill_singles_dispatch_table[sys];
 
-      // Separate Ge energy sum for upstream and downstream
-      ge_sum_targets[grif_ge_us_ds[pos]][ptr_ecal]++; // Increment branchlessly. Batch fill happens infrequently
+  do_singles_HPGE_A:
+  if( (unsigned int)pos < 64 ){
+    //ge_sum->Fill(ge_sum, ptr_ecal, 1);
+    batch_data_ge_sum[ptr_ecal]++;
+    ge_xtal->Fill(ge_xtal, pos, ptr_ecal, 1);
+    //batch_data_ge_xtal[++batch_data_ge_xtal[0]] = pos + (ptr_ecal*E_2D_SPECLEN);
 
-      // Beta-gated HPGe singles spectra
-      if(ptr->tof>0){
-        ge_sum_b->Fill(ge_sum_b, ptr_ecal, 1);       // beta-gated Ge sum energy spectrum
-        ge_sum_b_ab->Fill(ge_sum_b_ab, (int)ptr->esum, 1); // beta-gated Ge addback spectrum
-      }
-      if(ptr->tof & 1){ ge_sum_b_sep->Fill(ge_sum_b_sep, ptr_ecal, 1); } // Sceptar-gated Ge sum energy spectrum
-      if(ptr->tof & 2){ ge_sum_b_zds->Fill(ge_sum_b_zds, ptr_ecal, 1); } // Zds-gated Ge sum energy spectrum
-      if(ptr->tof & 4){ ge_sum_b_art->Fill(ge_sum_b_art, ptr_ecal, 1); } // Aries-gated Ge sum energy spectrum
-      if(ptr->tof & 8){ ge_sum_b_artT->Fill(ge_sum_b_artT, ptr_ecal, 1); } // Aries-gated Ge sum energy spectrum
-      if(ptr->tof & 16){ ge_sum_b_artR->Fill(ge_sum_b_artR, ptr_ecal, 1); } // Aries-gated Ge sum energy spectrum
-      if(ptr->tof & 32){ ge_sum_b_artS->Fill(ge_sum_b_artS, ptr_ecal, 1); } // Aries-gated Ge sum energy spectrum
+    // Separate Ge energy sum for upstream and downstream
+    ge_sum_targets[grif_ge_us_ds[pos]][ptr_ecal]++; // Increment branchlessly. Batch fill happens infrequently
 
-      // Pile-up
-      pu = ptr->pileup;
-      //ge_pu_type->Fill(ge_pu_type, pu, 1);
-      if((unsigned int)pu<64){ batch_data_ge_pu_type[pu]++; }
-      nhits = ptr->nhit;
-      //ge_nhits_type->Fill(ge_nhits_type, nhits, 1);
-      if((unsigned int)nhits<64){ batch_data_ge_nhits_type[nhits]++; }
+    // Beta-gated HPGe singles spectra
+    if(ptr->tof>0){
+      ge_sum_b->Fill(ge_sum_b, ptr_ecal, 1);       // beta-gated Ge sum energy spectrum
+      ge_sum_b_ab->Fill(ge_sum_b_ab, (int)ptr->esum, 1); // beta-gated Ge addback spectrum
+    }
+    if(ptr->tof & 1){ ge_sum_b_sep->Fill(ge_sum_b_sep, ptr_ecal, 1); } // Sceptar-gated Ge sum energy spectrum
+    if(ptr->tof & 2){ ge_sum_b_zds->Fill(ge_sum_b_zds, ptr_ecal, 1); } // Zds-gated Ge sum energy spectrum
+    if(ptr->tof & 4){ ge_sum_b_art->Fill(ge_sum_b_art, ptr_ecal, 1); } // Aries-gated Ge sum energy spectrum
+    if(ptr->tof & 8){ ge_sum_b_artT->Fill(ge_sum_b_artT, ptr_ecal, 1); } // Aries-gated Ge sum energy spectrum
+    if(ptr->tof & 16){ ge_sum_b_artR->Fill(ge_sum_b_artR, ptr_ecal, 1); } // Aries-gated Ge sum energy spectrum
+    if(ptr->tof & 32){ ge_sum_b_artS->Fill(ge_sum_b_artS, ptr_ecal, 1); } // Aries-gated Ge sum energy spectrum
 
-      // The PU class is assigned in the presort, use ptr->pu_class for pileup class
-      class = ptr->pu_class;
-      integ = ptr->integ1;
-      ge_pu_class->Fill(ge_pu_class, class, 1);  // pileup class value
-      ge_sum_class[class]->Fill(ge_sum_class[class], ptr_ecal, 1);  // energy spectrum of pileup class value
-      ge_e_vs_k_class[class]->Fill(ge_e_vs_k_class[class], ptr_ecal, integ, 1);  // energy spectrum of pileup class value
+    // Pile-up
+    pu = ptr->pileup;
+    //ge_pu_type->Fill(ge_pu_type, pu, 1);
+    if((unsigned int)pu<64){ batch_data_ge_pu_type[pu]++; }
+    nhits = ptr->nhit;
+    //ge_nhits_type->Fill(ge_nhits_type, nhits, 1);
+    if((unsigned int)nhits<64){ batch_data_ge_nhits_type[nhits]++; }
 
-      alt_ecal = ptr->alt_ecal;
-      /*
-      // Fill pileup histograms using branchless jump table
-      typedef void (*func_pu_ptr)(int pos, int ecal, int integ, int alt_ecal);
-      static func_pu_ptr pileup_jump_table[N_PU_CLASSES] = {
-      pileup_fill_default,                                               // Index  0, PU_ERROR
-      pileup_fill_single,pileup_fill_default,                            // Index  1 & 2, PU_SINGLE_HIT, PU_SINGLE_HIT_ERROR
-      pileup_fill_two_hit_first,pileup_fill_two_hit_second,              // Index  3 & 4, PU_2HIT_A1ST, PU_2HIT_A2ND
-      pileup_fill_two_hit_first,pileup_fill_two_hit_second,              // Index  5 & 6, PU_2HIT_B1ST, PU_2HIT_B2ND
-      pileup_fill_two_hit_first,pileup_fill_two_hit_second,              // Index  7 & 8, PU_2HIT_C1ST, PU_2HIT_C2ND
-      pileup_fill_default,                                               // Index  9, PU_2HIT_ERROR
-      pileup_fill_three_hit,pileup_fill_three_hit,pileup_fill_three_hit, // Index 11, PU_3HIT_1ST, PU_3HIT_2ND, PU_3HIT_3RD
-      pileup_fill_default,                                               // Index 13, PU_3HIT_ERROR
-      pileup_fill_default                                                // Index 14, PU_OTHER
-    };
-    // Fill pileup histograms using branchless jump table
-    pileup_jump_table[class](pos, ptr_ecal, integ, alt_ecal);
-    */
+    // The PU class is assigned in the presort, use ptr->pu_class for pileup class
+    class = ptr->pu_class;
+    integ = ptr->integ1;
+    ge_pu_class->Fill(ge_pu_class, class, 1);  // pileup class value
+    ge_sum_class[class]->Fill(ge_sum_class[class], ptr_ecal, 1);  // energy spectrum of pileup class value
+    ge_e_vs_k_class[class]->Fill(ge_e_vs_k_class[class], ptr_ecal, integ, 1);  // energy spectrum of pileup class value
 
-
+    alt_ecal = ptr->alt_ecal;
     // Fill pileup histograms using branchless dispatch table
     // Create the dispatch table using the GCC "&&" label syntax.
     // This creates a dense array of code addresses.
     static const void* const pileup_dispatch_table[N_PU_CLASSES] = {
-      [0] = &&do_default,                                   // Index  0, PU_ERROR
-      [1] = &&do_singles,  [2] = &&do_singles,              // Index  1 & 2, PU_SINGLE_HIT, PU_SINGLE_HIT_ERROR
-      [3] = &&do_2hit_1st, [4] = &&do_2hit_2nd,             // Index  3 & 4, PU_2HIT_A1ST, PU_2HIT_A2ND
-      [5] = &&do_2hit_1st, [6] = &&do_2hit_2nd,             // Index  5 & 6, PU_2HIT_B1ST, PU_2HIT_B2ND
-      [7] = &&do_2hit_1st, [8] = &&do_2hit_2nd,             // Index  7 & 8, PU_2HIT_C1ST, PU_2HIT_C2ND
-      [9] = &&do_singles,                                   // Index  9, PU_2HIT_ERROR
+      [0] = &&do_pu_default,                                // Index  0, PU_ERROR
+      [1] = &&do_pu_singles,[2] = &&do_pu_singles,          // Index  1 & 2, PU_SINGLE_HIT, PU_SINGLE_HIT_ERROR
+      [3] = &&do_2hit_1st,  [4] = &&do_2hit_2nd,            // Index  3 & 4, PU_2HIT_A1ST, PU_2HIT_A2ND
+      [5] = &&do_2hit_1st,  [6] = &&do_2hit_2nd,            // Index  5 & 6, PU_2HIT_B1ST, PU_2HIT_B2ND
+      [7] = &&do_2hit_1st,  [8] = &&do_2hit_2nd,            // Index  7 & 8, PU_2HIT_C1ST, PU_2HIT_C2ND
+      [9] = &&do_pu_singles,                                // Index  9, PU_2HIT_ERROR
       [10] = &&do_3hit,[11] = &&do_3hit,[12] = &&do_3hit,   // Index 10,11,12, PU_3HIT_1ST, PU_3HIT_2ND, PU_3HIT_3RD
-      [13] = &&do_default,                                  // Index 13, PU_3HIT_ERROR
-      [14] = &&do_default                                   // Index 14, PU_OTHER
+      [13] = &&do_pu_default,                               // Index 13, PU_3HIT_ERROR
+      [14] = &&do_pu_default                                // Index 14, PU_OTHER
     };
     // The magic line: Jumps directly to the target block instantly to avoid branch misprediction and pipline stalls.
     // No switch overhead, no function call overhead, no argument passing!
     goto *pileup_dispatch_table[class];
 
-    do_singles: // single hit
+    do_pu_singles: // single hit
     ge_1hit[pos]->Fill(ge_1hit[pos], ptr_ecal, 1);
     ge_xtal_1hit->Fill(ge_xtal_1hit, pos, ptr_ecal, 1);
-    goto loop_end;
+    goto pu_loop_end;
 
     do_2hit_1st: // first Hit of two pileup events
     ge_2hit[pos]->Fill(ge_2hit[pos], ptr_ecal, 1); // 2-hit pileup
     ge_xtal_2hit->Fill(ge_xtal_2hit, pos, ptr_ecal, 1);
     // The following used for mapping the k2 dependant correction
     ge_e_vs_k_2hit_first[pos]->Fill(ge_e_vs_k_2hit_first[pos], ptr_ecal, integ, 1);  // energy1 vs k1 spectrum of 1st Hit of 2hit pileup events
-    goto loop_end;
+    goto pu_loop_end;
 
     do_2hit_2nd: // second Hit of two pileup events
     ge_2hit[pos]->Fill(ge_2hit[pos], ptr_ecal, 1); // 2-hit pileup
@@ -381,19 +465,19 @@ int fill_singles_histos(Grif_event *ptr)
         ge_PU2_e2_v_k_gatedxrays[pos]->Fill(ge_PU2_e2_v_k_gatedxrays[pos], (ptr_ecal - 1272), integ, 1);  // e2 vs k2 for fixed e1
       }
     }
-    goto loop_end;
+    goto pu_loop_end;
 
     do_3hit: // three hits
     ge_3hit[pos]->Fill(ge_3hit[pos], ptr_ecal, 1);
     ge_xtal_3hit->Fill(ge_xtal_3hit, pos, ptr_ecal, 1);
-    goto loop_end;
+    goto pu_loop_end;
 
-    do_default:
-    goto loop_end;
+    do_pu_default:
+    goto pu_loop_end;
 
-    loop_end: // Proceed
+    pu_loop_end: // Proceed
 
-// Clover and addback histograms
+    // Clover and addback histograms
     clover = (int)(pos>>2)+1;
     if( clover >= 0 && clover < N_CLOVER){   // ge addback
       esum = (int)ptr->esum;
@@ -412,69 +496,80 @@ int fill_singles_histos(Grif_event *ptr)
     }
 
     // PPG Cycles histograms
-    if(ppg_cycles_active==1){
-      ge_cycle_code[ppg_current_pattern]->Fill(ge_cycle_code[ppg_current_pattern], ptr_ecal, 1);
-      bin = (int)((ptr->ts-ppg_cycle_start)/ppg_cycles_binning_factor);  // convert 10ns to binning size set as Global
-      if(bin>=0 && bin<CYCLE_SPEC_LENGTH){
-        //ge_cycle_activity->Fill(ge_cycle_activity, bin, 1);
-        batch_data_ge_cycle_activity[bin]++;
-        //ge_e_vs_cycle_time->Fill(ge_e_vs_cycle_time, bin, ptr_ecal, 1);
-        batch_data_ge_e_vs_cycle_time[++batch_data_ge_e_vs_cycle_time[0]] = bin+(ptr_ecal*CYCLE_SPEC_LENGTH);
-        if(ppg_cycle_number>=0 && ppg_cycle_number<MAX_CYCLES){
-          gea_cycle_num[ppg_cycle_number]->Fill(gea_cycle_num[ppg_cycle_number], bin, 1);
-          //cycle_num_vs_ge->Fill(cycle_num_vs_ge, ppg_cycle_number, bin, 1);
-          index = ppg_cycle_number+(bin*MAX_CYCLES);
-          batch_data_cycle_num_vs_ge[++batch_data_cycle_num_vs_ge[0]] = index;
-          cycle_num_vs_geEnergy[pos]->Fill(cycle_num_vs_geEnergy[pos], ppg_cycle_number, ptr_ecal, 1);
+    ge_cycle_code[ppg_current_pattern]->Fill(ge_cycle_code[ppg_current_pattern], ptr_ecal, 1);
+    bin = (int)((ptr->ts-ppg_cycle_start)/ppg_cycles_binning_factor);  // convert 10ns to binning size set as Global
+    if(bin>=0 && bin<CYCLE_SPEC_LENGTH){
+      //ge_cycle_activity->Fill(ge_cycle_activity, bin, 1);
+      batch_data_ge_cycle_activity[bin]++;
+      ge_e_vs_cycle_time->Fill(ge_e_vs_cycle_time, bin, ptr_ecal, 1);
+      //batch_data_ge_e_vs_cycle_time[++batch_data_ge_e_vs_cycle_time[0]] = bin+(ptr_ecal*CYCLE_SPEC_LENGTH);
+      if(ppg_cycle_number>=0 && ppg_cycle_number<MAX_CYCLES){
+      //  gea_cycle_num[ppg_cycle_number]->Fill(gea_cycle_num[ppg_cycle_number], bin, 1);
+        batch_data_gea_cycle_num[bin]++;
+        cycle_num_vs_ge->Fill(cycle_num_vs_ge, ppg_cycle_number, bin, 1);
+        //index = ppg_cycle_number+(bin*MAX_CYCLES);
+        //batch_data_cycle_num_vs_ge[++batch_data_cycle_num_vs_ge[0]] = index;
+        cycle_num_vs_geEnergy[pos]->Fill(cycle_num_vs_geEnergy[pos], ppg_cycle_number, ptr_ecal, 1);
+        if(class == PU_SINGLE_HIT){
+          //gea_cycle_num_sh[ppg_cycle_number]->Fill(gea_cycle_num_sh[ppg_cycle_number], bin, 1);
+          batch_data_gea_cycle_num_sh[bin]++;
+          //cycle_num_vs_sh->Fill(cycle_num_vs_sh, ppg_cycle_number, bin, 1);
+          batch_data_2d_cycle_num_vs_sh[bin]++;
+          //batch_data_cycle_num_vs_sh[++batch_data_cycle_num_vs_sh[0]] = index;
+        }else{
+          //gea_cycle_num_pu[ppg_cycle_number]->Fill(gea_cycle_num_pu[ppg_cycle_number], bin, 1);
+          batch_data_gea_cycle_num_pu[bin]++;
+          cycle_num_vs_pu->Fill(cycle_num_vs_pu, ppg_cycle_number, bin, 1);
+        }
+        if((ptr_ecal>=ppg_cycles_gamma_gate_min) && (ptr_ecal<=ppg_cycles_gamma_gate_max)){
+          //gea_cycle_num_g[ppg_cycle_number]->Fill(gea_cycle_num_g[ppg_cycle_number], bin, 1);
+          batch_data_gea_cycle_num_g[bin]++;
           if(class == PU_SINGLE_HIT){
-            gea_cycle_num_sh[ppg_cycle_number]->Fill(gea_cycle_num_sh[ppg_cycle_number], bin, 1);
-            //cycle_num_vs_sh->Fill(cycle_num_vs_sh, ppg_cycle_number, bin, 1);
-            batch_data_cycle_num_vs_sh[++batch_data_cycle_num_vs_sh[0]] = index;
-          }else{
-            gea_cycle_num_pu[ppg_cycle_number]->Fill(gea_cycle_num_pu[ppg_cycle_number], bin, 1);
-            cycle_num_vs_pu->Fill(cycle_num_vs_pu, ppg_cycle_number, bin, 1);
-          }
-          if((ptr_ecal>=ppg_cycles_gamma_gate_min) && (ptr_ecal<=ppg_cycles_gamma_gate_max)){
-            gea_cycle_num_g[ppg_cycle_number]->Fill(gea_cycle_num_g[ppg_cycle_number], bin, 1);
-            if(class == PU_SINGLE_HIT){
-              gea_cycle_num_sh_g[ppg_cycle_number]->Fill(gea_cycle_num_sh_g[ppg_cycle_number], bin, 1);
-              cycle_num_vs_ge_sh_g->Fill(cycle_num_vs_ge_sh_g, ppg_cycle_number, bin, 1);
-            }
+            //gea_cycle_num_sh_g[ppg_cycle_number]->Fill(gea_cycle_num_sh_g[ppg_cycle_number], bin, 1);
+            batch_data_gea_cycle_num_sh_g[bin]++;
+            cycle_num_vs_ge_sh_g->Fill(cycle_num_vs_ge_sh_g, ppg_cycle_number, bin, 1);
           }
         }
       }
     }
   }else {
     fprintf(stderr,"bad ge crystal[%d] for chan %d\n", pos, ptr->chan);
-  } break;
-  case SUBSYS_HPGE_B: // GRGb
+  }
+  goto singles_loop_end;
+
+  do_singles_HPGE_B:
   if( pos >= 0 && pos < 64 ){
     geb_xtal->Fill(geb_xtal, pos, ptr_ecal, 1);
     // PPG Cycles histograms
-    if(ppg_cycles_active==1){
-      bin = (int)((ptr->ts-ppg_cycle_start)/ppg_cycles_binning_factor);  // convert 10ns to binning size set as Global
-      if(ppg_cycle_number<MAX_CYCLES){
-        geb_cycle_num[ppg_cycle_number]->Fill(geb_cycle_num[ppg_cycle_number], bin, 1);
-        cycle_num_vs_ge_b->Fill(cycle_num_vs_ge_b, ppg_cycle_number, bin, 1);
-        class = ptr->pu_class;
+    bin = (int)((ptr->ts-ppg_cycle_start)/ppg_cycles_binning_factor);  // convert 10ns to binning size set as Global
+    if(ppg_cycle_number<MAX_CYCLES){
+      //geb_cycle_num[ppg_cycle_number]->Fill(geb_cycle_num[ppg_cycle_number], bin, 1);
+      batch_data_geb_cycle_num[bin]++;
+      cycle_num_vs_ge_b->Fill(cycle_num_vs_ge_b, ppg_cycle_number, bin, 1);
+      class = ptr->pu_class;
+      if(class == PU_SINGLE_HIT){
+        //geb_cycle_num_sh[ppg_cycle_number]->Fill(geb_cycle_num_sh[ppg_cycle_number], bin, 1);
+        batch_data_geb_cycle_num_sh[bin]++;
+        cycle_num_vs_sh_b->Fill(cycle_num_vs_sh_b, ppg_cycle_number, bin, 1);
+      }else{
+        //geb_cycle_num_pu[ppg_cycle_number]->Fill(geb_cycle_num_pu[ppg_cycle_number], bin, 1);
+        batch_data_geb_cycle_num_pu[bin]++;
+        cycle_num_vs_pu_b->Fill(cycle_num_vs_pu_b, ppg_cycle_number, bin, 1);
+      }
+      if((ptr_ecal>=ppg_cycles_gamma_gate_min) && (ptr_ecal<=ppg_cycles_gamma_gate_max)){
+        //geb_cycle_num_g[ppg_cycle_number]->Fill(geb_cycle_num_g[ppg_cycle_number], bin, 1);
+        batch_data_geb_cycle_num_g[bin]++;
         if(class == PU_SINGLE_HIT){
-          geb_cycle_num_sh[ppg_cycle_number]->Fill(geb_cycle_num_sh[ppg_cycle_number], bin, 1);
-          cycle_num_vs_sh_b->Fill(cycle_num_vs_sh_b, ppg_cycle_number, bin, 1);
-        }else{
-          geb_cycle_num_pu[ppg_cycle_number]->Fill(geb_cycle_num_pu[ppg_cycle_number], bin, 1);
-          cycle_num_vs_pu_b->Fill(cycle_num_vs_pu_b, ppg_cycle_number, bin, 1);
-        }
-        if((ptr_ecal>=ppg_cycles_gamma_gate_min) && (ptr_ecal<=ppg_cycles_gamma_gate_max)){
-          geb_cycle_num_g[ppg_cycle_number]->Fill(geb_cycle_num_g[ppg_cycle_number], bin, 1);
-          if(class == PU_SINGLE_HIT){
-            geb_cycle_num_sh_g[ppg_cycle_number]->Fill(geb_cycle_num_sh_g[ppg_cycle_number], bin, 1);
-            cycle_num_vs_ge_b_sh_g->Fill(cycle_num_vs_ge_b_sh_g, ppg_cycle_number, bin, 1);
-          }
+          //geb_cycle_num_sh_g[ppg_cycle_number]->Fill(geb_cycle_num_sh_g[ppg_cycle_number], bin, 1);
+          batch_data_geb_cycle_num_sh_g[bin]++;
+          cycle_num_vs_ge_b_sh_g->Fill(cycle_num_vs_ge_b_sh_g, ppg_cycle_number, bin, 1);
         }
       }
     }
-  } break;
-  case SUBSYS_BGO: // BGOs
+  }
+  goto singles_loop_end;
+
+  do_singles_BGO: // BGOs
   pos  = crystal_table[chan];
   elem = element_table[chan];
   if( pos < 0 || pos > 63 ){
@@ -483,26 +578,28 @@ int fill_singles_histos(Grif_event *ptr)
     fprintf(stderr,"bad bgo element[%d] for chan %d, %s, subsys %d\n", elem, chan, chan_name[chan], sys);
   } else {
     pos *= 5; pos += (elem-1);
-    //bgo_xtal->Fill(bgo_xtal, pos, ptr_ecal, 1);
-    bin = (ptr_ecal*E_2D_SPECLEN);
-    batch_data_bgo_xtal[++batch_data_bgo_xtal[0]] = pos + bin;
+    bgo_xtal->Fill(bgo_xtal, pos, ptr_ecal, 1);
+    //bin = (ptr_ecal*E_2D_SPECLEN);
+    //batch_data_bgo_xtal[++batch_data_bgo_xtal[0]] = pos + bin;
     if(elem <3){ // front
       pos  = crystal_table[chan];
       pos *= 2; pos += (elem-1);
-      //bgof_xtal->Fill(bgof_xtal, pos, ptr_ecal, 1);
-      batch_data_bgof_xtal[++batch_data_bgof_xtal[0]] = pos + bin;
+      bgof_xtal->Fill(bgof_xtal, pos, ptr_ecal, 1);
+      //batch_data_bgof_xtal[++batch_data_bgof_xtal[0]] = pos + bin;
     } else if(elem>4){ // back
       pos  = crystal_table[chan];
-      //bgob_xtal->Fill(bgob_xtal, pos, ptr_ecal, 1);
-      batch_data_bgob_xtal[++batch_data_bgob_xtal[0]] = pos + bin;
+      bgob_xtal->Fill(bgob_xtal, pos, ptr_ecal, 1);
+      //batch_data_bgob_xtal[++batch_data_bgob_xtal[0]] = pos + bin;
     } else{ // side
       pos  = crystal_table[chan];
       pos *= 2; pos += (elem-3);
-      //bgos_xtal->Fill(bgos_xtal, pos, ptr_ecal, 1);
-      batch_data_bgos_xtal[++batch_data_bgos_xtal[0]] = pos + bin;
+      bgos_xtal->Fill(bgos_xtal, pos, ptr_ecal, 1);
+      //  batch_data_bgos_xtal[++batch_data_bgos_xtal[0]] = pos + bin;
     }
-  }  break;
-  case SUBSYS_LABR_BGO: // Ancillary BGOs
+  }
+  goto singles_loop_end;
+
+  do_singles_LABR_BGO: // Ancillary BGOs
   pos  = crystal_table[chan];
   elem = element_table[chan];
   if( pos < 1 || pos > 8 ){
@@ -512,8 +609,10 @@ int fill_singles_histos(Grif_event *ptr)
   } else {
     pos *= 3; pos += (elem-1);
     bgoa_xtal->Fill(bgoa_xtal, pos, ptr_ecal, 1);
-  } break;
-  case SUBSYS_PACES: // PACES
+  }
+  goto singles_loop_end;
+
+  do_singles_PACES: // PACES
   paces_sum->Fill(paces_sum, ptr_ecal, 1);
   if(ptr->tof>0){ paces_sum_b->Fill(paces_sum_b, ptr_ecal, 1); }      // beta-gated PACES sum energy spectrum
   pos  = crystal_table[chan];
@@ -521,22 +620,27 @@ int fill_singles_histos(Grif_event *ptr)
     fprintf(stderr,"bad PACES crystal[%d] for chan %d\n", pos, chan);
   } else {
     paces_xtal->Fill(paces_xtal, pos, ptr_ecal, 1);
-  } break;
-  case SUBSYS_LABR_L: // LaBr3 (LBL)
+  }
+  goto singles_loop_end;
+
+  do_singles_LABR_L: // LaBr3 (LBL)
   labr_sum->Fill(labr_sum, ptr_ecal, 1);
   pos  = crystal_table[chan];
   if( pos < 1 || pos > 8 ){
     fprintf(stderr,"bad LaBr3 crystal[%d] for chan %d\n", pos, chan);
   } else {
     labr_xtal->Fill(labr_xtal, pos, ptr_ecal, 1);
-  } break;
-  case SUBSYS_SCEPTAR:
+  }
+  goto singles_loop_end;
+
+  do_singles_SCEPTAR:
   sceptar_xtal->Fill(sceptar_xtal, crystal_table[chan], ptr_ecal, 1);
-  break;
-  case SUBSYS_TAC_LABR:
+  goto singles_loop_end;
+
+  do_singles_TAC_LABR:
   // Save LBL channel number into ptr->integ2 or integ3 or integ4
   // Save LBL energy ecal into TAC ptr-ecal2 or ecal3 or ecal4
-  if( ptr->q4 > 0 ){ break; } // more than two LaBr3 in coincidence with this TAC event so reject
+  if( ptr->q4 > 0 ){ goto singles_loop_end; } // more than two LaBr3 in coincidence with this TAC event so reject
   if( ptr->integ2 >=          0 && ptr->integ3 >=           0 &&
     ptr->integ2 < MAX_DAQSIZE && ptr->integ3  < MAX_DAQSIZE ){
       c1 = crystal_table[ptr->integ2]-1; // c1 runs from 0 to 7. c1 is position of first LBL in coincidence with this TAC.
@@ -574,9 +678,10 @@ int fill_singles_histos(Grif_event *ptr)
           }
         }
       }
-    } break;
-    case SUBSYS_DESCANT: break;
-    case SUBSYS_DESWALL: // DESCANT Wall
+    }
+    goto singles_loop_end;
+
+    do_singles_DESWALL: // DESCANT Wall
     pos  = crystal_table[chan];
     if( pos < 1 || pos > 60 ){
       fprintf(stderr,"bad descant wall detector[%d] for chan %d\n", pos, chan);
@@ -610,26 +715,30 @@ int fill_singles_histos(Grif_event *ptr)
         if(psd>5){ desw_psd_tof->Fill(desw_psd_tof, psd, alt_ecal, 1); }
       }
     }
-    break;
-    case SUBSYS_ARIES_A: // ARIES Standard Output
+    goto singles_loop_end;
+
+    do_singles_ARIES_A: // ARIES Standard Output
     aries_sum->Fill(aries_sum, ptr_ecal, 1);
     pos  = crystal_table[chan];
     if( pos < 1 || pos > 76 ){
       fprintf(stderr,"bad aries tile[%d] for chan %d\n", pos, chan);
     } else {
       aries_xtal->Fill(aries_xtal, pos, ptr_ecal, 1);
-    } break;
-    case SUBSYS_ZDS_A:
+    }
+    goto singles_loop_end;
+
+    do_singles_ZDS_A:
     gc_hist->Fill(gc_hist, 2, 1);
 
     // PPG Cycles histograms
-    if(ppg_cycles_active==1){
-      bin = (int)((ptr->ts-ppg_cycle_start)/ppg_cycles_binning_factor); // binning size set in Global
-      zds_cycle_activity->Fill(zds_cycle_activity, bin, 1);
-    }
-    break;
-    case SUBSYS_ZDS_B: gc_hist->Fill(gc_hist, 1, 1); break;
-    case SUBSYS_RCMP:
+    bin = (int)((ptr->ts-ppg_cycle_start)/ppg_cycles_binning_factor); // binning size set in Global
+    zds_cycle_activity->Fill(zds_cycle_activity, bin, 1);
+    goto singles_loop_end;
+
+    do_singles_ZDS_B: gc_hist->Fill(gc_hist, 1, 1);
+    goto singles_loop_end;
+
+    do_singles_RCMP:
     rcmp_sum->Fill(rcmp_sum, ptr_ecal, 1);
     if(esum>0){
       rcmp_fb_sum->Fill(rcmp_fb_sum, esum, 1);
@@ -643,8 +752,9 @@ int fill_singles_histos(Grif_event *ptr)
     } else {
       rcmp_strips[(pos-1)]->Fill(rcmp_strips[(pos-1)], elem, ptr_ecal, 1);
     }
-    break;
-    case SUBSYS_QED_PIXEL: // QED pixel is a coincidence between a front and back strip
+    goto singles_loop_end;
+
+    do_singles_QED_PIXEL: // QED pixel is a coincidence between a front and back strip
     qed_sum->Fill(qed_sum, ptr_ecal, 1);     // p strips
     qed_sum->Fill(qed_sum, (int)ptr->alt_ecal, 1); // n strips
     qed_fb_sum->Fill(qed_fb_sum, ptr_ecal, 1);     // fb coincidence
@@ -657,408 +767,446 @@ int fill_singles_histos(Grif_event *ptr)
       qed_strips[pos]->Fill(qed_strips[pos], (int)(elem/N_QED_STRIPS), ptr_ecal, 1); // p strip energies
       qed_strips[pos]->Fill(qed_strips[pos], (elem%N_QED_STRIPS)+N_QED_STRIPS, (int)ptr->alt_ecal, 1); // n strip energies
 
-      /*
+
       // Channel mapping, strip reorder trials.
-      for(i=0; i<NUM_QED_REORDERS; i++){
-      for(j=0; j<NUM_QED_REORDERS; j++){
-      qed_hit_trials[pos]->Fill(qed_hit_trials[pos], (int)(quick_reorder_qed_strips[i][elem/N_QED_STRIPS])+(i*64), (quick_reorder_qed_strips[j][elem%N_QED_STRIPS])+(j*64), 1); // QED DSSD hitpattern
-    }
-  }
-  */
-
-  // PPG Cycles histograms
-  if(ppg_cycles_active==1){
-    if(ppg_cycle_number<MAX_CYCLES){
-      if((int)(elem/N_QED_STRIPS) == 10){
-        cycle_num_vs_qedEnergy[pos]->Fill(cycle_num_vs_qedEnergy[pos], ppg_cycle_number, ptr_ecal, 1);
-      }
-    }
-  }
-
-}
-break;
-case SUBSYS_COMPTON: // COMPTON is a coincidence between a DSSD pixel and a HPGE with sum energy of 511keV
-// QED COMPTON EVENTS
-// Identified as subsys==SUBSYS_COMPTON
-// pos is HPGE crystal number
-// In COMPTON event, ecal will be Ge and alt_ecal will be QED_PIXEL, esum is to total energy
-// In COMPTON event, crystal_table[chan]=pos will be Ge, alt_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
-pos  = crystal_table[chan]; // QED DSSD number [1-6]
-c2 = (ptr->alt_chan&1023);        // Pixel number [0-1023]
-c1 = ptr->net_id; // HPGe crystal number
-angle = (int)scattering_angle_QEDGe(pos,c2,c1);
-alt_ecal = (int)ptr->alt_ecal;
-
-if(DEBUG_OUTPUT){ fprintf(stdout,"\nfill_singles_histos(): COMPTON FILL HISTOS: %d %d %ld | %.1f %.1f %.1f | %d dt=%d\n",ptr->subsys,ptr->chan,ptr->ts,ptr->ecal,ptr->alt_ecal,ptr->esum,ptr->net_id,ptr->delta_t); }
-//fprintf(stdout,"\nfill_singles_histos(): COMPTON FILL HISTOS: %d %d %ld | %.1f %.1f %.1f | %d dt=%d | %d %d %d %d\n",ptr->subsys,ptr->chan,ptr->ts,ptr->ecal,ptr->alt_ecal,ptr->esum,ptr->net_id,ptr->delta_t,(int)(scattering_angle_QEDGe(pos,c2,c1)),(int)(scattering_angle_GeQED(pos,c2,c1)),(int)compton_angle(ptr->alt_ecal,511.0),(int)compton_angle(ptr->ecal,511.0));
-
-qedE_ge_dt_c->Fill(qedE_ge_dt_c, ptr->delta_t+512, ptr_ecal, 1);
-qed_geE_dt_c->Fill(qed_geE_dt_c, ptr->delta_t+512, alt_ecal, 1);
-qed_theta_dt_c->Fill(qed_theta_dt_c, ptr->delta_t+512, angle, 1);
-ge_qed_c->Fill(ge_qed_c, alt_ecal, ptr_ecal, 1);
-qedE_ge_theta_sum_c->Fill(qedE_ge_theta_sum_c, ptr_ecal, angle, 1);
-qed_geE_theta_sum_c->Fill(qed_geE_theta_sum_c, alt_ecal, angle, 1);
-qed_theta->Fill(qed_theta, angle, 1);
-
-// Histogram to calculate weighting factors post sorting
-// Here we remember the associated Ge for each qed pixel
-qed_ge_weight_indiv->Fill(qed_ge_weight_indiv,((pos-1)*1024)+c2, c1, 1);
-
-if((angle>=compton_angle(ptr->alt_ecal,QED_GAMMA_ENERGY)-QED_ANGLE_WINDOW) && (angle<=compton_angle(ptr->alt_ecal,QED_GAMMA_ENERGY)+QED_ANGLE_WINDOW)){
-  qedE_ge_theta_sum_c_s->Fill(qedE_ge_theta_sum_c_s, ptr_ecal, angle, 1);
-  qed_geE_theta_sum_c_s->Fill(qed_geE_theta_sum_c_s, alt_ecal, angle, 1);
-
-}else if(((int)(scattering_angle_GeQED(pos,c2,c1))>=compton_angle(ptr_ecal,QED_GAMMA_ENERGY)-QED_ANGLE_WINDOW) && ((int)(scattering_angle_GeQED(pos,c2,c1))<=compton_angle(ptr_ecal,QED_GAMMA_ENERGY)+QED_ANGLE_WINDOW)){
-  // Look for Ge-Si backwards scattering where Ge was first
-  qedE_ge_theta_sum_c_g->Fill(qedE_ge_theta_sum_c_g, ptr_ecal, angle, 1);
-  qed_geE_theta_sum_c_g->Fill(qed_geE_theta_sum_c_g, alt_ecal, angle, 1);
-}
-break;
-
-case SUBSYS_DCOMPTONA: // DCOMPTONA is a coincidence between a DSSD pixel and a HPGE addback with sum energy of 511keV
-// QED DCOMPTONA EVENTS
-// Ge with addback is a Double Compton scatter (DSSD-Ge-Ge)
-// Identified as subsys==SUBSYS_DCOMPTONA
-// In DCOMPTONA event, ecal will be QED_PIXEL and alt_ecal will be Ge addback sum energy
-// In DCOMPTONA event, crystal_table[chan]=pos will be QED DSSD number [1-6], alt_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
-// In DCOMPTONA event, net_id will be first HPGe crystal number [1-64], alt2_chan will be second HPGe crystal number [1-64]
-pos  = crystal_table[chan]; // QED DSSD number [1-6]
-c2 = (ptr->alt_chan&1023);  // Pixel number [0-1023] (faster than alt_chan%1024)
-c1 = ptr->net_id; // HPGe crystal number
-angle = (int)scattering_angle_QEDGe(pos,c2,c1); // This is the initial theta angle in DCompton
-
-dcsa_theta->Fill(dcsa_theta, (int)(angle), 1);
-dcsaE_ge_theta->Fill(dcsaE_ge_theta, ptr_ecal, (int)(angle), 1);
-dcsa_geE_theta->Fill(dcsa_geE_theta, (int)ptr->alt_ecal, (int)(angle), 1);
-break;
-default: break; // Unrecognized or unprocessed dtype
-}// end of switch
-return(0);
-}
-
-int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
-{
-  int c1, c2, c3, c4, pos, bin, angle_idx, angle_idx2, coinc_ecal, scatt_esum, totalEnergy, ge_corrected_angle;
-  int pos1, qed1, pos2, qed2, ptr_ecal, alt_ecal, ptr_esum, alt_esum, p_strip, n_strip;
-  double angle, initial_theta, omega, azimuthal;
-  switch(alt->subsys){
-    case SUBSYS_HPGE_A:
-    ptr_ecal = (int)ptr->ecal; alt_ecal = (int)alt->ecal;
-    gg_dt->Fill(gg_dt, (int)((ptr->ts - alt->ts)+(DT_SPEC_LENGTH>>1)), ptr_ecal, 1); // This dt result is always negative
-    gg_dt->Fill(gg_dt, (int)((alt->ts - ptr->ts)+(DT_SPEC_LENGTH>>1)), alt_ecal, 1); // This dt result is always positive
-    if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_HPGE_A]) & (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_HPGE_A]) ){
+      //for(i=0; i<NUM_QED_REORDERS; i++){
+      //  for(j=0; j<NUM_QED_REORDERS; j++){
+      //  qed_hit_trials[pos]->Fill(qed_hit_trials[pos], (int)(quick_reorder_qed_strips[i][elem/N_QED_STRIPS])+(i*64), (quick_reorder_qed_strips[j][elem%N_QED_STRIPS])+(j*64), 1); // QED DSSD hitpattern
+      //}
+      //}
 
       // PPG Cycles histograms
-      if(ppg_cycles_active==1){
+      if(ppg_cycle_number<MAX_CYCLES){
+        if((int)(elem/N_QED_STRIPS) == 10){
+          cycle_num_vs_qedEnergy[pos]->Fill(cycle_num_vs_qedEnergy[pos], ppg_cycle_number, ptr_ecal, 1);
+        }
+      }
+
+    }
+    goto singles_loop_end;
+
+    do_singles_COMPTONA: // COMPTON is a coincidence between a DSSD pixel and a HPGE with sum energy of 511keV
+    // QED COMPTON EVENTS
+    // Identified as subsys==SUBSYS_COMPTONA
+    // pos is HPGE crystal number
+    // In COMPTON event, ecal will be Ge and alt_ecal will be QED_PIXEL, esum is to total energy
+    // In COMPTON event, crystal_table[chan]=pos will be Ge, alt_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
+    pos  = crystal_table[chan]; // QED DSSD number [1-6]
+    c2 = (ptr->alt_chan&1023);        // Pixel number [0-1023]
+    c1 = ptr->net_id; // HPGe crystal number
+    angle = (int)scattering_angle_QEDGe(pos,c2,c1);
+    alt_ecal = (int)ptr->alt_ecal;
+
+    if(DEBUG_OUTPUT){ fprintf(stdout,"\nfill_singles_histos(): COMPTON FILL HISTOS: %d %d %ld | %.1f %.1f %.1f | %d dt=%d\n",ptr->subsys,ptr->chan,ptr->ts,ptr->ecal,ptr->alt_ecal,ptr->esum,ptr->net_id,ptr->delta_t); }
+    //fprintf(stdout,"\nfill_singles_histos(): COMPTON FILL HISTOS: %d %d %ld | %.1f %.1f %.1f | %d dt=%d | %d %d %d %d\n",ptr->subsys,ptr->chan,ptr->ts,ptr->ecal,ptr->alt_ecal,ptr->esum,ptr->net_id,ptr->delta_t,(int)(scattering_angle_QEDGe(pos,c2,c1)),(int)(scattering_angle_GeQED(pos,c2,c1)),(int)compton_angle(ptr->alt_ecal,511.0),(int)compton_angle(ptr->ecal,511.0));
+
+    qedE_ge_dt_c->Fill(qedE_ge_dt_c, ptr->delta_t+512, ptr_ecal, 1);
+    qed_geE_dt_c->Fill(qed_geE_dt_c, ptr->delta_t+512, alt_ecal, 1);
+    qed_theta_dt_c->Fill(qed_theta_dt_c, ptr->delta_t+512, angle, 1);
+    ge_qed_c->Fill(ge_qed_c, alt_ecal, ptr_ecal, 1);
+    qedE_ge_theta_sum_c->Fill(qedE_ge_theta_sum_c, ptr_ecal, angle, 1);
+    qed_geE_theta_sum_c->Fill(qed_geE_theta_sum_c, alt_ecal, angle, 1);
+    qed_theta->Fill(qed_theta, angle, 1);
+
+    // Histogram to calculate weighting factors post sorting
+    // Here we remember the associated Ge for each qed pixel
+    qed_ge_weight_indiv->Fill(qed_ge_weight_indiv,((pos-1)*1024)+c2, c1, 1);
+
+    if((angle>=compton_angle(ptr->alt_ecal,QED_GAMMA_ENERGY)-QED_ANGLE_WINDOW) && (angle<=compton_angle(ptr->alt_ecal,QED_GAMMA_ENERGY)+QED_ANGLE_WINDOW)){
+      qedE_ge_theta_sum_c_s->Fill(qedE_ge_theta_sum_c_s, ptr_ecal, angle, 1);
+      qed_geE_theta_sum_c_s->Fill(qed_geE_theta_sum_c_s, alt_ecal, angle, 1);
+
+    }else if(((int)(scattering_angle_GeQED(pos,c2,c1))>=compton_angle(ptr_ecal,QED_GAMMA_ENERGY)-QED_ANGLE_WINDOW) && ((int)(scattering_angle_GeQED(pos,c2,c1))<=compton_angle(ptr_ecal,QED_GAMMA_ENERGY)+QED_ANGLE_WINDOW)){
+      // Look for Ge-Si backwards scattering where Ge was first
+      qedE_ge_theta_sum_c_g->Fill(qedE_ge_theta_sum_c_g, ptr_ecal, angle, 1);
+      qed_geE_theta_sum_c_g->Fill(qed_geE_theta_sum_c_g, alt_ecal, angle, 1);
+    }
+    goto singles_loop_end;
+
+    do_singles_COMPTONB: // Singles COMPTONB is a coincidence between two DSSD pixels with sum energy of 511keV
+    // QED COMPTONB EVENTS
+    // Identified as subsys==SUBSYS_COMPTONB
+    // In COMPTONB event, ecal will be 1st QED_PIXEL and alt_ecal will be 2nd QED_PIXEL, esum will be the full energy
+    // In COMPTONB event, crystal_table[chan]=pos will be  first QED DSSD number [1-6],  alt_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
+    // In COMPTONB event, crystal_table[ tof]=pos will be second QED DSSD number [1-6], alt2_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
+    pos1  = crystal_table[chan];     // QED DSSD number [1-6]
+    c1 = (ptr->alt_chan&1023);       // Pixel number [0-1023]
+    pos2  = crystal_table[ptr->tof]; // QED DSSD number [1-6]
+    c2 = (ptr->alt2_chan&1023);      // Pixel number [0-1023]
+    angle = (int)scattering_angle_QEDQED(pos1,c1,pos2,c2);
+    alt_ecal = (int)ptr->alt_ecal;
+
+    qed_compB_E_ge_dt_c->Fill(qed_compB_E_ge_dt_c, ptr->delta_t+512, ptr_ecal, 1);
+    qed_compB_geE_dt_c->Fill(qed_compB_geE_dt_c, ptr->delta_t+512, alt_ecal, 1);
+
+    qed_compB_theta_dt_c->Fill(qed_compB_theta_dt_c, ptr->delta_t+512, angle, 1);
+    ge_compB_qed_c->Fill(ge_compB_qed_c, alt_ecal, ptr_ecal, 1);
+
+    qed_compB_E_ge_theta_sum_c->Fill(qed_compB_E_ge_theta_sum_c, ptr_ecal, angle, 1);
+    qed_compB_geE_theta_sum_c->Fill(qed_compB_geE_theta_sum_c, alt_ecal, angle, 1);
+    qed_compB_theta->Fill(qed_compB_theta, angle, 1);
+
+    // Histogram to calculate weighting factors post sorting
+    // Here we remember the associated pixel for each qed pixel
+    qed_qed_weight_indiv->Fill(qed_qed_weight_indiv,((pos1-1)*1024)+c1, ((pos2-1)*1024)+c2, 1);
+
+    if((angle>=compton_angle(alt_ecal,QED_GAMMA_ENERGY)-QED_ANGLE_WINDOW) && (angle<=compton_angle(alt_ecal,QED_GAMMA_ENERGY)+QED_ANGLE_WINDOW)){
+      qed_compB_E_ge_theta_sum_c_s->Fill(qed_compB_E_ge_theta_sum_c_s, ptr_ecal, angle, 1);
+      qed_compB_geE_theta_sum_c_s->Fill(qed_compB_geE_theta_sum_c_s, alt_ecal, angle, 1);
+
+    }else if(((int)(scattering_angle_QEDQED(pos2,c2,pos1,c1))>=compton_angle(ptr_ecal,QED_GAMMA_ENERGY)-QED_ANGLE_WINDOW) && ((int)(scattering_angle_QEDQED(pos2,c2,pos1,c1))<=compton_angle(ptr_ecal,QED_GAMMA_ENERGY)+QED_ANGLE_WINDOW)){
+      // Look for Ge-Si backwards scattering where Ge was first
+      qed_compB_E_ge_theta_sum_c_g->Fill(qed_compB_E_ge_theta_sum_c_g, ptr_ecal, angle, 1);
+      qed_compB_geE_theta_sum_c_g->Fill(qed_compB_geE_theta_sum_c_g, alt_ecal, angle, 1);
+    }
+    goto singles_loop_end;
+
+    do_singles_DCOMPTONA: // DCOMPTONA is a coincidence between a DSSD pixel and a HPGE addback with sum energy of 511keV
+    // QED DCOMPTONA EVENTS
+    // Ge with addback is a Double Compton scatter (DSSD-Ge-Ge)
+    // Identified as subsys==SUBSYS_DCOMPTONA
+    // In DCOMPTONA event, ecal will be QED_PIXEL and alt_ecal will be Ge addback sum energy
+    // In DCOMPTONA event, crystal_table[chan]=pos will be QED DSSD number [1-6], alt_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
+    // In DCOMPTONA event, net_id will be first HPGe crystal number [1-64], alt2_chan will be second HPGe crystal number [1-64]
+    pos  = crystal_table[chan]; // QED DSSD number [1-6]
+    c2 = (ptr->alt_chan&1023);  // Pixel number [0-1023] (faster than alt_chan%1024)
+    c1 = ptr->net_id; // HPGe crystal number
+    angle = (int)scattering_angle_QEDGe(pos,c2,c1); // This is the initial theta angle in DCompton
+
+    dcsa_theta->Fill(dcsa_theta, (int)(angle), 1);
+    dcsaE_ge_theta->Fill(dcsaE_ge_theta, ptr_ecal, (int)(angle), 1);
+    dcsa_geE_theta->Fill(dcsa_geE_theta, (int)ptr->alt_ecal, (int)(angle), 1);
+    goto singles_loop_end;
+
+    do_singles_default:
+    goto singles_loop_end;
+
+    singles_loop_end:
+
+    return(0);
+  }
+
+  int fill_ge_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
+  {
+    int c1, c2, c3, c4, pos, bin, angle_idx, angle_idx2, coinc_ecal, scatt_esum, totalEnergy, ge_corrected_angle;
+    int pos1, qed1, pos2, qed2, ptr_ecal, alt_ecal, ptr_esum, alt_esum, p_strip, n_strip;
+    double angle, initial_theta, omega, azimuthal;
+    switch(alt->subsys){
+      case SUBSYS_HPGE_A:
+      ptr_ecal = (int)ptr->ecal; alt_ecal = (int)alt->ecal;
+      gg_dt->Fill(gg_dt, (int)((ptr->ts - alt->ts)+(DT_SPEC_LENGTH>>1)), ptr_ecal, 1); // This dt result is always negative
+      gg_dt->Fill(gg_dt, (int)((alt->ts - ptr->ts)+(DT_SPEC_LENGTH>>1)), alt_ecal, 1); // This dt result is always positive
+      if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_HPGE_A]) & (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_HPGE_A]) ){
+
+        // PPG Cycles histograms
         gg_cycle_code[ppg_current_pattern]->Fill(gg_cycle_code[ppg_current_pattern], ptr_ecal, alt_ecal, 1);
-      }
 
-      c1 = crystal_table[ptr->chan];
-      c2 = crystal_table[alt->chan];
-      if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 < 64 ){
-        if((ptr_ecal < 5) | (alt_ecal < 5)){ break; } // Both crystals must have a valid energy
-        ptr_esum = (int)ptr->esum; alt_esum = (int)alt->esum;
-        gg_hit->Fill(gg_hit, c1, c2, 1); // 2d crystal hitpattern
-
-        // Individual Ge crystal energy in coincidence, used for angular correlations weighting factors
-        gg_energy[c1]->Fill(gg_energy[c1], ptr_ecal, 1);
-        gg_energy[c2]->Fill(gg_energy[c2], alt_ecal, 1);
-
-        if( c2 == grif_opposite[c1] ){
-          // 180 degree coinc matrix for summing corrections
-          gg_opp->Fill(gg_opp, ptr_ecal, alt_ecal, 1);
-          gg_ab_opp->Fill(gg_ab_opp, ptr_esum, alt_esum, 1);
-        }
-
-        // Ge-Ge angular correlations
-        // Fill the appropriate angular bin spectrum
-        // c1 and c2 run from 0 to 63 for ge_angles_145mm.
-        angle_idx = ge_angles_110mm[c1][c2];
-        gg_angcor_110[angle_idx]->Fill(gg_angcor_110[angle_idx], ptr_ecal, alt_ecal, 1);
-        //fprintf(stdout,"%d %d have angular difference of: calculate %lf [%f]\n",c1,c2,angular_diff_GeGe(c1,c2,110),angular_bins_110mm[angle_idx]);
-        // double atan2(double y, double x);
-        angle_idx2 = ge_angles_145mm[c1][c2];
-        gg_angcor_145[angle_idx2]->Fill(gg_angcor_145[angle_idx2], ptr_ecal, alt_ecal, 1);
-
-        if( (ptr_esum > 5) | (alt_esum > 5) ){ // if( ptr_esum > 5 || alt_esum > 5 ){ // addback energies
-          gg_ab->Fill(gg_ab, ptr_esum, alt_esum, 1);
-          // Fill Compton polarimetry matrices Here
-          // c1 and c2 are the same as for angular correlations. These define the plane.
-          // c3 is another crystal in one of the clovers.
-          // The azimuthal scattering angle is between c3 and the plane of polarization.
-          if((angle_idx2>11) & (angle_idx2<41)){ // Only look at Compton Polarimetry for clovers at 90 degrees to each other. (Always checked with 145mm)
-            c3 = ptr->alt_chan;
-            if(c3<0){ // c1 is coincident, c2+c3 are the scattering event
-              c3 = alt->alt_chan; scatt_esum = alt_esum; coinc_ecal = ptr_esum;
-            }else{ // c2 is coincident, c1+c3 are the scattering event
-              scatt_esum = alt_esum; coinc_ecal = ptr_esum;
-            }
-            if((c3<0) | (c3>63)){ break; }
-            // Determine angle_idx from azimuthal.
-            angle = azimuthal_GeGeGe(c1,c2,c3,110);
-            angle_idx = (int)(angle / 15);
-            if(angle_idx==12){ angle_idx=11; } // Put 180 degree scatters into the last valid bin
-            if(angle_idx>=0 && angle_idx<N_GE_COMP_POL){
-              gg_comp_pol_110[angle_idx]->Fill(gg_comp_pol_110[angle_idx], coinc_ecal, scatt_esum, 1); // Asymmetric matrix
-            }
-          }
-        }
-      }
-    }
-    break;
-    case SUBSYS_BGO:
-    if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_BGO]) & (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_BGO]) ){
-      c1 = crystal_table[ptr->chan];
-      c2 = crystal_table[alt->chan];
-      if( c1 >= 0 && c1 < 64 && c1==c2 && ptr->ecal>5 && alt->ecal>5){
-        bin = (c2*5)+(element_table[alt->chan]-1);
-        if((bin>=0) & (bin<N_BGO)){
-          ge_bgo_gated[bin]->Fill(ge_bgo_gated[bin], (int)alt->ecal, 1);
-        }
-      }
-    }
-    break;
-    case SUBSYS_SCEPTAR:
-    gb_dt->Fill(gb_dt, (int)((ptr->ts - alt->ts)+(DT_SPEC_LENGTH>>1)), (int)ptr->esum, 1);
-    if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_SCEPTAR]) & (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_SCEPTAR]) ){
-      //  ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1); // beta-gated Ge sum energy spectrum
-      //  ge_sum_b_sep->Fill(ge_sum_b_sep, (int)ptr->ecal, 1); // Sceptar-gated Ge sum energy spectrum
-    }else if((ptr->ts - alt->ts)<-25){
-      ge_isomer_popu->Fill(ge_isomer_popu, (int)ptr->ecal, 1); // Early gamma rays appearing earlier in time than the prompt
-    }else if((ptr->ts - alt->ts)>25){
-      ge_isomer_depop->Fill(ge_isomer_depop, (int)ptr->ecal, 1); // Delayed gamma rays appearing later in time than the prompt
-    }
-    break;
-    case SUBSYS_ARIES_A:
-    gb_dt->Fill(gb_dt, (int)((ptr->ts - alt->ts)+(DT_SPEC_LENGTH>>1)), (int)ptr->esum, 1);
-    if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_ARIES_A]) & (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_ARIES_A]) ){
-      if(ptr->ecal > 10 && alt->ecal > 10){
-        //  ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1);         // beta-gated Ge sum energy spectrum
-        //  ge_sum_b_art->Fill(ge_sum_b_art, (int)ptr->ecal, 1); // Aries-gated Ge sum energy spectrum
-        ge_art->Fill(ge_art, (int)ptr->ecal, (int)alt->esum, 1);
         c1 = crystal_table[ptr->chan];
         c2 = crystal_table[alt->chan];
-        if( c1 >= 0 && c1 < 64 && c2 >= 1 && c2 <= 76 ){
-          gea_hit->Fill(gea_hit, c2, c1, 1); // c's start at zero
-          // Ge-ARIES angular correlations
-          // Fill the appropriate angular bin spectrum
-          angle_idx = GRG_ART_angles_110mm[c1][c2-1];
-          ge_art_angcor[angle_idx]->Fill(ge_art_angcor[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
+        if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 < 64 ){
+          if((ptr_ecal < 5) | (alt_ecal < 5)){ break; } // Both crystals must have a valid energy
+          ptr_esum = (int)ptr->esum; alt_esum = (int)alt->esum;
+          gg_hit->Fill(gg_hit, c1, c2, 1); // 2d crystal hitpattern
 
-          // Angle veto method for Bremmstrahlung veto. Angle >30 degrees
-          if(angle_idx>8){
-            ge_sum_b_art_brems->Fill(ge_sum_b_art_brems, (int)ptr->ecal, 1); // Aries-gated Ge sum energy spectrum with Bremmstrahlung veto
+          // Individual Ge crystal energy in coincidence, used for angular correlations weighting factors
+          gg_energy[c1]->Fill(gg_energy[c1], ptr_ecal, 1);
+          gg_energy[c2]->Fill(gg_energy[c2], alt_ecal, 1);
+
+          if( c2 == grif_opposite[c1] ){
+            // 180 degree coinc matrix for summing corrections
+            gg_opp->Fill(gg_opp, ptr_ecal, alt_ecal, 1);
+            gg_ab_opp->Fill(gg_ab_opp, ptr_esum, alt_esum, 1);
+          }
+
+          // Ge-Ge angular correlations
+          // Fill the appropriate angular bin spectrum
+          // c1 and c2 run from 0 to 63 for ge_angles_145mm.
+          angle_idx = ge_angles_110mm[c1][c2];
+          gg_angcor_110[angle_idx]->Fill(gg_angcor_110[angle_idx], ptr_ecal, alt_ecal, 1);
+          //fprintf(stdout,"%d %d have angular difference of: calculate %lf [%f]\n",c1,c2,angular_diff_GeGe(c1,c2,110),angular_bins_110mm[angle_idx]);
+          // double atan2(double y, double x);
+          angle_idx2 = ge_angles_145mm[c1][c2];
+          gg_angcor_145[angle_idx2]->Fill(gg_angcor_145[angle_idx2], ptr_ecal, alt_ecal, 1);
+
+          if( (ptr_esum > 5) | (alt_esum > 5) ){ // if( ptr_esum > 5 || alt_esum > 5 ){ // addback energies
+            gg_ab->Fill(gg_ab, ptr_esum, alt_esum, 1);
+            // Fill Compton polarimetry matrices Here
+            // c1 and c2 are the same as for angular correlations. These define the plane.
+            // c3 is another crystal in one of the clovers.
+            // The azimuthal scattering angle is between c3 and the plane of polarization.
+            if((angle_idx2>11) & (angle_idx2<41)){ // Only look at Compton Polarimetry for clovers at 90 degrees to each other. (Always checked with 145mm)
+              c3 = ptr->alt_chan;
+              if(c3<0){ // c1 is coincident, c2+c3 are the scattering event
+                c3 = alt->alt_chan; scatt_esum = alt_esum; coinc_ecal = ptr_esum;
+              }else{ // c2 is coincident, c1+c3 are the scattering event
+                scatt_esum = alt_esum; coinc_ecal = ptr_esum;
+              }
+              if((c3<0) | (c3>63)){ break; }
+              // Determine angle_idx from azimuthal.
+              angle = azimuthal_GeGeGe(c1,c2,c3,110);
+              angle_idx = (int)(angle / 15);
+              if(angle_idx==12){ angle_idx=11; } // Put 180 degree scatters into the last valid bin
+              if(angle_idx>=0 && angle_idx<N_GE_COMP_POL){
+                gg_comp_pol_110[angle_idx]->Fill(gg_comp_pol_110[angle_idx], coinc_ecal, scatt_esum, 1); // Asymmetric matrix
+              }
+            }
           }
         }
       }
-    }else if((ptr->ts - alt->ts)<0){
-      ge_isomer_popu->Fill(ge_isomer_popu, (int)ptr->ecal, 1); // Early gamma rays appearing earlier in time than the prompt
-    }else if((ptr->ts - alt->ts)>0){
-      ge_isomer_depop->Fill(ge_isomer_depop, (int)ptr->ecal, 1); // Delayed gamma rays appearing later in time than the prompt
-    }
-    break;
-    case SUBSYS_ZDS_A:
-    gb_dt->Fill(gb_dt, (int)((ptr->ts - alt->ts)+(DT_SPEC_LENGTH>>1)), (int)ptr->esum, 1);
-    if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_ZDS_A]) & (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_ZDS_A]) ){
-      //  ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1);         // beta-gated Ge sum energy spectrum
-      //  ge_sum_b_zds->Fill(ge_sum_b_zds, (int)ptr->ecal, 1); // Zds-gated Ge sum energy spectrum
-    }else if((ptr->ts - alt->ts)<0){
-      ge_isomer_popu->Fill(ge_isomer_popu, (int)ptr->ecal, 1); // Early gamma rays appearing earlier in time than the prompt
-    }else if((ptr->ts - alt->ts)>0){
-      ge_isomer_depop->Fill(ge_isomer_depop, (int)ptr->ecal, 1); // Delayed gamma rays appearing later in time than the prompt
-    }
-    break;
-    case SUBSYS_DESWALL: // ge-DSW
-    ge_dsw->Fill(ge_dsw, (int)ptr->ecal, (int)alt->alt_ecal, 1); // alt_ecal = DSW corrected time-of-flight
-    break;
-    case SUBSYS_RCMP: // ge-RCMP
-    c1 = crystal_table[ptr->chan]; // HPGe crystal number
-    pos  = crystal_table[alt->chan]; // RCMP DSSD number
-    c2 = (int)(element_table[alt->chan] + (int)((pos-1)*N_RCMP_STRIPS)); // RCMP strip number
-    if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 <= 192 && ptr->ecal>5 && alt->ecal>5 ){
-      if(polarity_table[alt->chan]==0){ rcmp_x_ge_hit->Fill(rcmp_x_ge_hit, c2, c1, 1); }
-      else{ rcmp_y_ge_hit->Fill(rcmp_y_ge_hit, c2, c1, 1); }
-    }
-    break;
-    case SUBSYS_QED_PIXEL: // ge-QED
-    c1 = crystal_table[ptr->chan]; // HPGe crystal number
-    pos  = crystal_table[alt->chan]; // QED DSSD number [1-6]
-    c2 = alt->alt_chan; // QED pixel number [0-1023]
-    //  (int)(c2/N_QED_STRIPS); // QED p strip number [0-31]
-    //  (c2%N_QED_STRIPS); // QED n strip number [0-31]
-    if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 < 1024 && ptr->ecal>5 && (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_QED_PIXEL]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_QED_PIXEL])){
-      qed_p_ge_hit->Fill(qed_p_ge_hit, (int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS)), c1, 1);
-      qed_n_ge_hit->Fill(qed_n_ge_hit, (int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS)), c1, 1);
-
-      //  fprintf(stdout,"Theta Geometric,idealized: %d,%d\n",(int)(scattering_angle_QEDGe(pos,c2,c1)),compton_angle(ptr->ecal,662.0));
-      angle = (int)scattering_angle_QEDGe(pos,c2,c1);
-      ptr_ecal = (int)ptr->ecal;
-      alt_ecal = (int)alt->ecal;
-      qedE_ge_theta_sum->Fill(qedE_ge_theta_sum, alt_ecal, angle, 1);
-      qed_geE_theta_sum->Fill(qed_geE_theta_sum, ptr_ecal, angle, 1);
-      qed_geE_theta_clov[(int)(c1>>2)]->Fill(qed_geE_theta_clov[(int)(c1>>2)], ptr_ecal, angle, 1);
-      qed_E_theta_dssd[pos-1]->Fill(qed_E_theta_dssd[pos-1], alt_ecal, angle, 1);
-      qed_geE_theta_dssd[pos-1]->Fill(qed_geE_theta_dssd[pos-1], ptr_ecal, angle, 1);
-      qed_geE_theta_clov_t[(int)(c1>>2)]->Fill(qed_geE_theta_clov_t[(int)(c1>>2)], ptr_ecal, angle, 1);
-      totalEnergy = ptr_ecal+alt_ecal;
-      //  qed_totE_theta_sum->Fill(qed_totE_theta_sum, totalEnergy, (int)(angle), 1);
-      //  qed_totE_theta[pos-1]->Fill(qed_totE_theta[pos-1], totalEnergy, (int)(angle), 1);
-      qed_E_totE_sum_t->Fill(qed_E_totE_sum_t, alt_ecal, totalEnergy, 1);
-      qed_geE_totE_sum_t->Fill(qed_geE_totE_sum_t, ptr_ecal, totalEnergy, 1);
-      qed_theta_dt->Fill(qed_theta_dt, (int)(alt->ts-ptr->ts)+512, angle, 1);
-      qed_theta_dt_cfd->Fill(qed_theta_dt_cfd, (int)(alt->cfd-ptr->cfd)+512, angle, 1);
-
-      if(ptr_ecal>=1264 && ptr_ecal<=1284 && alt->ecal>450 && alt->ecal<650){ // Gate on 1274keV in Ge - to show 511keV peak in Si
-        // Single strip vs theta needed for strip-energy calibration
-        pos--; p_strip = (int)(c2/N_QED_STRIPS); n_strip = c2%N_QED_STRIPS;
-        qedp_ge_theta[p_strip + pos*N_QED_STRIPS]->Fill(qedp_ge_theta[p_strip + pos*N_QED_STRIPS], alt->ecal, angle, 1);
-        qedn_ge_theta[n_strip + pos*N_QED_STRIPS]->Fill(qedn_ge_theta[n_strip + pos*N_QED_STRIPS], alt->alt_ecal, angle, 1);
+      break;
+      case SUBSYS_BGO:
+      if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_BGO]) & (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_BGO]) ){
+        c1 = crystal_table[ptr->chan];
+        c2 = crystal_table[alt->chan];
+        if( c1 >= 0 && c1 < 64 && c1==c2 && ptr->ecal>5 && alt->ecal>5){
+          bin = (c2*5)+(element_table[alt->chan]-1);
+          if((bin>=0) & (bin<N_BGO)){
+            ge_bgo_gated[bin]->Fill(ge_bgo_gated[bin], (int)alt->ecal, 1);
+          }
+        }
       }
-      // 60 to 120 degree scattering angles to use the Compton scattering of 1274keV for Si strip calibration
-      if(angle>100 && angle<170 && ptr_ecal>=210 && ptr_ecal<=330 && alt->ecal>850 && alt->ecal<1300){ // Gate on scattered 1274keV in Ge - to show Comptons in Si
-        //if((angle>=compton_angle(ptr->ecal,QED_GAMMA2_ENERGY)-QED_ANGLE_WINDOW) && (angle<=compton_angle(ptr->ecal,QED_GAMMA2_ENERGY)+QED_ANGLE_WINDOW)){
-        //  if(ptr->ecal+alt->ecal > QED_GAMMA2_ENERGY-QED_GAMMA_ENERGY_WINDOW && ptr->ecal+alt->ecal < QED_GAMMA2_ENERGY+QED_GAMMA_ENERGY_WINDOW){
-        if(ptr->ecal >= secondary_energy(angle, QED_GAMMA2_ENERGY)-5 && ptr->ecal <= secondary_energy(angle, QED_GAMMA2_ENERGY)+35){
+      break;
+      case SUBSYS_SCEPTAR:
+      gb_dt->Fill(gb_dt, (int)((ptr->ts - alt->ts)+(DT_SPEC_LENGTH>>1)), (int)ptr->esum, 1);
+      if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_SCEPTAR]) & (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_SCEPTAR]) ){
+        //  ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1); // beta-gated Ge sum energy spectrum
+        //  ge_sum_b_sep->Fill(ge_sum_b_sep, (int)ptr->ecal, 1); // Sceptar-gated Ge sum energy spectrum
+      }else if((ptr->ts - alt->ts)<-25){
+        ge_isomer_popu->Fill(ge_isomer_popu, (int)ptr->ecal, 1); // Early gamma rays appearing earlier in time than the prompt
+      }else if((ptr->ts - alt->ts)>25){
+        ge_isomer_depop->Fill(ge_isomer_depop, (int)ptr->ecal, 1); // Delayed gamma rays appearing later in time than the prompt
+      }
+      break;
+      case SUBSYS_ARIES_A:
+      gb_dt->Fill(gb_dt, (int)((ptr->ts - alt->ts)+(DT_SPEC_LENGTH>>1)), (int)ptr->esum, 1);
+      if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_ARIES_A]) & (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_ARIES_A]) ){
+        if(ptr->ecal > 10 && alt->ecal > 10){
+          //  ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1);         // beta-gated Ge sum energy spectrum
+          //  ge_sum_b_art->Fill(ge_sum_b_art, (int)ptr->ecal, 1); // Aries-gated Ge sum energy spectrum
+          ge_art->Fill(ge_art, (int)ptr->ecal, (int)alt->esum, 1);
+          c1 = crystal_table[ptr->chan];
+          c2 = crystal_table[alt->chan];
+          if( c1 >= 0 && c1 < 64 && c2 >= 1 && c2 <= 76 ){
+            gea_hit->Fill(gea_hit, c2, c1, 1); // c's start at zero
+            // Ge-ARIES angular correlations
+            // Fill the appropriate angular bin spectrum
+            angle_idx = GRG_ART_angles_110mm[c1][c2-1];
+            ge_art_angcor[angle_idx]->Fill(ge_art_angcor[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
+
+            // Angle veto method for Bremmstrahlung veto. Angle >30 degrees
+            if(angle_idx>8){
+              ge_sum_b_art_brems->Fill(ge_sum_b_art_brems, (int)ptr->ecal, 1); // Aries-gated Ge sum energy spectrum with Bremmstrahlung veto
+            }
+          }
+        }
+      }else if((ptr->ts - alt->ts)<0){
+        ge_isomer_popu->Fill(ge_isomer_popu, (int)ptr->ecal, 1); // Early gamma rays appearing earlier in time than the prompt
+      }else if((ptr->ts - alt->ts)>0){
+        ge_isomer_depop->Fill(ge_isomer_depop, (int)ptr->ecal, 1); // Delayed gamma rays appearing later in time than the prompt
+      }
+      break;
+      case SUBSYS_ZDS_A:
+      gb_dt->Fill(gb_dt, (int)((ptr->ts - alt->ts)+(DT_SPEC_LENGTH>>1)), (int)ptr->esum, 1);
+      if( (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_ZDS_A]) & (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_ZDS_A]) ){
+        //  ge_sum_b->Fill(ge_sum_b, (int)ptr->ecal, 1);         // beta-gated Ge sum energy spectrum
+        //  ge_sum_b_zds->Fill(ge_sum_b_zds, (int)ptr->ecal, 1); // Zds-gated Ge sum energy spectrum
+      }else if((ptr->ts - alt->ts)<0){
+        ge_isomer_popu->Fill(ge_isomer_popu, (int)ptr->ecal, 1); // Early gamma rays appearing earlier in time than the prompt
+      }else if((ptr->ts - alt->ts)>0){
+        ge_isomer_depop->Fill(ge_isomer_depop, (int)ptr->ecal, 1); // Delayed gamma rays appearing later in time than the prompt
+      }
+      break;
+      case SUBSYS_DESWALL: // ge-DSW
+      ge_dsw->Fill(ge_dsw, (int)ptr->ecal, (int)alt->alt_ecal, 1); // alt_ecal = DSW corrected time-of-flight
+      break;
+      case SUBSYS_RCMP: // ge-RCMP
+      c1 = crystal_table[ptr->chan]; // HPGe crystal number
+      pos  = crystal_table[alt->chan]; // RCMP DSSD number
+      c2 = (int)(element_table[alt->chan] + (int)((pos-1)*N_RCMP_STRIPS)); // RCMP strip number
+      if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 <= 192 && ptr->ecal>5 && alt->ecal>5 ){
+        if(polarity_table[alt->chan]==0){ rcmp_x_ge_hit->Fill(rcmp_x_ge_hit, c2, c1, 1); }
+        else{ rcmp_y_ge_hit->Fill(rcmp_y_ge_hit, c2, c1, 1); }
+      }
+      break;
+      case SUBSYS_QED_PIXEL: // ge-QED
+      c1 = crystal_table[ptr->chan]; // HPGe crystal number
+      pos  = crystal_table[alt->chan]; // QED DSSD number [1-6]
+      c2 = alt->alt_chan; // QED pixel number [0-1023]
+      //  (int)(c2/N_QED_STRIPS); // QED p strip number [0-31]
+      //  (c2%N_QED_STRIPS); // QED n strip number [0-31]
+      if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 < 1024 && ptr->ecal>5 && (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_QED_PIXEL]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_QED_PIXEL])){
+        qed_p_ge_hit->Fill(qed_p_ge_hit, (int)((int)(c2/N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS)), c1, 1);
+        qed_n_ge_hit->Fill(qed_n_ge_hit, (int)((c2%N_QED_STRIPS) + (int)((pos-1)*N_QED_STRIPS)), c1, 1);
+
+        //  fprintf(stdout,"Theta Geometric,idealized: %d,%d\n",(int)(scattering_angle_QEDGe(pos,c2,c1)),compton_angle(ptr->ecal,662.0));
+        angle = (int)scattering_angle_QEDGe(pos,c2,c1);
+        ptr_ecal = (int)ptr->ecal;
+        alt_ecal = (int)alt->ecal;
+        qedE_ge_theta_sum->Fill(qedE_ge_theta_sum, alt_ecal, angle, 1);
+        qed_geE_theta_sum->Fill(qed_geE_theta_sum, ptr_ecal, angle, 1);
+        qed_geE_theta_clov[(int)(c1>>2)]->Fill(qed_geE_theta_clov[(int)(c1>>2)], ptr_ecal, angle, 1);
+        qed_E_theta_dssd[pos-1]->Fill(qed_E_theta_dssd[pos-1], alt_ecal, angle, 1);
+        qed_geE_theta_dssd[pos-1]->Fill(qed_geE_theta_dssd[pos-1], ptr_ecal, angle, 1);
+        qed_geE_theta_clov_t[(int)(c1>>2)]->Fill(qed_geE_theta_clov_t[(int)(c1>>2)], ptr_ecal, angle, 1);
+        totalEnergy = ptr_ecal+alt_ecal;
+        //  qed_totE_theta_sum->Fill(qed_totE_theta_sum, totalEnergy, (int)(angle), 1);
+        //  qed_totE_theta[pos-1]->Fill(qed_totE_theta[pos-1], totalEnergy, (int)(angle), 1);
+        qed_E_totE_sum_t->Fill(qed_E_totE_sum_t, alt_ecal, totalEnergy, 1);
+        qed_geE_totE_sum_t->Fill(qed_geE_totE_sum_t, ptr_ecal, totalEnergy, 1);
+        qed_theta_dt->Fill(qed_theta_dt, (int)(alt->ts-ptr->ts)+512, angle, 1);
+        qed_theta_dt_cfd->Fill(qed_theta_dt_cfd, (int)(alt->cfd-ptr->cfd)+512, angle, 1);
+
+        if(ptr_ecal>=1264 && ptr_ecal<=1284 && alt->ecal>450 && alt->ecal<650){ // Gate on 1274keV in Ge - to show 511keV peak in Si
           // Single strip vs theta needed for strip-energy calibration
           pos--; p_strip = (int)(c2/N_QED_STRIPS); n_strip = c2%N_QED_STRIPS;
           qedp_ge_theta[p_strip + pos*N_QED_STRIPS]->Fill(qedp_ge_theta[p_strip + pos*N_QED_STRIPS], alt->ecal, angle, 1);
           qedn_ge_theta[n_strip + pos*N_QED_STRIPS]->Fill(qedn_ge_theta[n_strip + pos*N_QED_STRIPS], alt->alt_ecal, angle, 1);
         }
+        // 60 to 120 degree scattering angles to use the Compton scattering of 1274keV for Si strip calibration
+        if(angle>100 && angle<170 && ptr_ecal>=210 && ptr_ecal<=330 && alt->ecal>850 && alt->ecal<1300){ // Gate on scattered 1274keV in Ge - to show Comptons in Si
+          //if((angle>=compton_angle(ptr->ecal,QED_GAMMA2_ENERGY)-QED_ANGLE_WINDOW) && (angle<=compton_angle(ptr->ecal,QED_GAMMA2_ENERGY)+QED_ANGLE_WINDOW)){
+          //  if(ptr->ecal+alt->ecal > QED_GAMMA2_ENERGY-QED_GAMMA_ENERGY_WINDOW && ptr->ecal+alt->ecal < QED_GAMMA2_ENERGY+QED_GAMMA_ENERGY_WINDOW){
+          if(ptr->ecal >= secondary_energy(angle, QED_GAMMA2_ENERGY)-5 && ptr->ecal <= secondary_energy(angle, QED_GAMMA2_ENERGY)+35){
+            // Single strip vs theta needed for strip-energy calibration
+            pos--; p_strip = (int)(c2/N_QED_STRIPS); n_strip = c2%N_QED_STRIPS;
+            qedp_ge_theta[p_strip + pos*N_QED_STRIPS]->Fill(qedp_ge_theta[p_strip + pos*N_QED_STRIPS], alt->ecal, angle, 1);
+            qedn_ge_theta[n_strip + pos*N_QED_STRIPS]->Fill(qedn_ge_theta[n_strip + pos*N_QED_STRIPS], alt->alt_ecal, angle, 1);
+          }
+        }
+
+        if((totalEnergy>QED_GAMMA_ENERGY-QED_GAMMA_ENERGY_WINDOW) & (totalEnergy<QED_GAMMA_ENERGY+QED_GAMMA_ENERGY_WINDOW)){
+
+          //    fprintf(stdout,"ge-QED coinc. [%d][%d,%d,%d,%d], dt = %ld - %ld = %ld\n",crystal_table[ptr->chan],crystal_table[alt->chan],alt->alt_chan,(int)(alt->alt_chan/N_QED_STRIPS),(int)(alt->alt_chan%N_QED_STRIPS),ptr->ts,alt->ts,ptr->ts - alt->ts);
+          /*
+          if(c1==13){
+          fprintf(stdout,"COINCS: %d %f %d %ld %d %ld\n",c1,ptr->ecal,ptr->trig_acc,ptr->ts,alt->trig_acc,alt->ts);
+          fprintf(stdout,"COINC, %d %d scattering_angle_QEDGe(%d,%d,%d) %f\n",(int)ptr->ecal,(int)alt->ecal,pos,c2,c1,angle);
+        }
+        */
+        if(DEBUG_OUTPUT){ fprintf(stdout,"\nCOINC PIXEL: %d %d %ld | %.1f %.1f %.1f | %d vs %d %d %ld | %.1f %.1f %.1f | %d, dt=%ld, sumE=%.1f\n",ptr->subsys,ptr->chan,ptr->ts,ptr->ecal,ptr->alt_ecal,ptr->esum,ptr->net_id,alt->subsys,alt->chan,alt->ts,alt->ecal,alt->alt_ecal,alt->esum,alt->net_id,(ptr->ts-alt->ts),(ptr->ecal+alt->ecal)); }
+        qedE_ge_dt->Fill(qedE_ge_dt, (int)(alt->ts-ptr->ts)+512, alt_ecal, 1);
+        qed_geE_dt->Fill(qed_geE_dt, (int)(alt->ts-ptr->ts)+512, ptr_ecal, 1);
+        qedE_ge_theta_sum_t->Fill(qedE_ge_theta_sum_t, alt_ecal, angle, 1);
+        qed_geE_theta_sum_t->Fill(qed_geE_theta_sum_t, ptr_ecal, angle, 1);
+
+        ge_corrected_angle = compton_angle(ptr->ecal,QED_GAMMA_ENERGY);
+        qedE_ge_thetaI_sum_t->Fill(qedE_ge_thetaI_sum_t, alt_ecal, ge_corrected_angle, 1);
+        qed_geE_thetaI_sum_t->Fill(qed_geE_thetaI_sum_t, ptr_ecal, ge_corrected_angle, 1);
+        qed_geE_thetaDiff_sum_t->Fill(qed_geE_thetaDiff_sum_t, ptr_ecal, (int)(angle - ge_corrected_angle)+90, 1);
       }
+    }
+    break;
+    case SUBSYS_COMPTONA: // ge-COMPTON where is a coincidence between a DSSD pixel and a HPGE with sum energy of 511keV
+    // QED COMPTON EVENTS
+    // Identified as subsys==SUBSYS_COMPTONA
+    // pos is HPGE crystal number
+    // In COMPTON event, ecal will be Ge and alt_ecal will be QED_PIXEL
+    // In COMPTON event, crystal_table[chan]=pos will be Ge, alt_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
+    //  pos  = crystal_table[ptr->chan]; // QED DSSD number [1-6]
+    //  c2 = (ptr->alt_chan%1024);        // Pixel number [0-1023]
+    //  c1 = ptr->net_id; // HPGe crystal number
+    pos  = crystal_table[alt->chan]; // QED DSSD number [1-6]
+    c2 = (alt->alt_chan&1023);        // Pixel number [0-1023] (faster than alt_chan%1024)
+    c1 = alt->net_id; // HPGe crystal number
+    angle = (int)scattering_angle_QEDGe(pos,c2,c1);
+    ptr_ecal = (int)ptr->ecal;
+    alt_ecal = (int)alt->ecal;
 
-      if((totalEnergy>QED_GAMMA_ENERGY-QED_GAMMA_ENERGY_WINDOW) & (totalEnergy<QED_GAMMA_ENERGY+QED_GAMMA_ENERGY_WINDOW)){
+    ge_comp->Fill(ge_comp, ptr_ecal, alt_ecal, 1);
+    if(ptr->esum>ptr_ecal){
+      geadd_comp->Fill(geadd_comp, (int)ptr->esum, (int)(alt->esum), 1);
+    }
 
-        //    fprintf(stdout,"ge-QED coinc. [%d][%d,%d,%d,%d], dt = %ld - %ld = %ld\n",crystal_table[ptr->chan],crystal_table[alt->chan],alt->alt_chan,(int)(alt->alt_chan/N_QED_STRIPS),(int)(alt->alt_chan%N_QED_STRIPS),ptr->ts,alt->ts,ptr->ts - alt->ts);
-        /*
-        if(c1==13){
-        fprintf(stdout,"COINCS: %d %f %d %ld %d %ld\n",c1,ptr->ecal,ptr->trig_acc,ptr->ts,alt->trig_acc,alt->ts);
-        fprintf(stdout,"COINC, %d %d scattering_angle_QEDGe(%d,%d,%d) %f\n",(int)ptr->ecal,(int)alt->ecal,pos,c2,c1,angle);
+    if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 < 1024 && ptr_ecal>5 && alt_ecal>5 && (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_QED_PIXEL]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_QED_PIXEL])){
+      if(alt->esum>QED_GAMMA_ENERGY-QED_GAMMA_ENERGY_WINDOW && alt->esum<QED_GAMMA_ENERGY+QED_GAMMA_ENERGY_WINDOW){
+
+        if(DEBUG_OUTPUT){ fprintf(stdout,"\nCOINC COMPTON: %d %d %ld | %.1f %.1f %.1f | %d vs %d %d %ld | %.1f %.1f %.1f | %d, dt=%ld, sumE=%.1f\n",ptr->subsys,ptr->chan,ptr->ts,ptr->ecal,ptr->alt_ecal,ptr->esum,ptr->net_id,alt->subsys,alt->chan,alt->ts,alt->ecal,alt->alt_ecal,alt->esum,alt->net_id,(ptr->ts-alt->ts),(ptr->ecal+alt->ecal)); }
+
+        qedE_ge_theta_sum_t->Fill(qedE_ge_theta_sum_t, alt_ecal, angle, 1);
+        qed_geE_theta_sum_t->Fill(qed_geE_theta_sum_t, ptr_ecal, angle, 1);
       }
-      */
-      if(DEBUG_OUTPUT){ fprintf(stdout,"\nCOINC PIXEL: %d %d %ld | %.1f %.1f %.1f | %d vs %d %d %ld | %.1f %.1f %.1f | %d, dt=%ld, sumE=%.1f\n",ptr->subsys,ptr->chan,ptr->ts,ptr->ecal,ptr->alt_ecal,ptr->esum,ptr->net_id,alt->subsys,alt->chan,alt->ts,alt->ecal,alt->alt_ecal,alt->esum,alt->net_id,(ptr->ts-alt->ts),(ptr->ecal+alt->ecal)); }
-      qedE_ge_dt->Fill(qedE_ge_dt, (int)(alt->ts-ptr->ts)+512, alt_ecal, 1);
-      qed_geE_dt->Fill(qed_geE_dt, (int)(alt->ts-ptr->ts)+512, ptr_ecal, 1);
-      qedE_ge_theta_sum_t->Fill(qedE_ge_theta_sum_t, alt_ecal, angle, 1);
-      qed_geE_theta_sum_t->Fill(qed_geE_theta_sum_t, ptr_ecal, angle, 1);
-
-      ge_corrected_angle = compton_angle(ptr->ecal,QED_GAMMA_ENERGY);
-      qedE_ge_thetaI_sum_t->Fill(qedE_ge_thetaI_sum_t, alt_ecal, ge_corrected_angle, 1);
-      qed_geE_thetaI_sum_t->Fill(qed_geE_thetaI_sum_t, ptr_ecal, ge_corrected_angle, 1);
-      qed_geE_thetaDiff_sum_t->Fill(qed_geE_thetaDiff_sum_t, ptr_ecal, (int)(angle - ge_corrected_angle)+90, 1);
     }
-  }
-  break;
-  case SUBSYS_COMPTON: // ge-COMPTON where is a coincidence between a DSSD pixel and a HPGE with sum energy of 511keV
-  // QED COMPTON EVENTS
-  // Identified as subsys==SUBSYS_COMPTON
-  // pos is HPGE crystal number
-  // In COMPTON event, ecal will be Ge and alt_ecal will be QED_PIXEL
-  // In COMPTON event, crystal_table[chan]=pos will be Ge, alt_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
-  //  pos  = crystal_table[ptr->chan]; // QED DSSD number [1-6]
-  //  c2 = (ptr->alt_chan%1024);        // Pixel number [0-1023]
-  //  c1 = ptr->net_id; // HPGe crystal number
-  pos  = crystal_table[alt->chan]; // QED DSSD number [1-6]
-  c2 = (alt->alt_chan&1023);        // Pixel number [0-1023] (faster than alt_chan%1024)
-  c1 = alt->net_id; // HPGe crystal number
-  angle = (int)scattering_angle_QEDGe(pos,c2,c1);
-  ptr_ecal = (int)ptr->ecal;
-  alt_ecal = (int)alt->ecal;
 
-  ge_comp->Fill(ge_comp, ptr_ecal, alt_ecal, 1);
-  if(ptr->esum>ptr_ecal){
-    geadd_comp->Fill(geadd_comp, (int)ptr->esum, (int)(alt->esum), 1);
-  }
-
-  if( c1 >= 0 && c1 < 64 && c2 >= 0 && c2 < 1024 && ptr_ecal>5 && alt_ecal>5 && (abs_dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_QED_PIXEL]) && (abs_dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_QED_PIXEL])){
-    if(alt->esum>QED_GAMMA_ENERGY-QED_GAMMA_ENERGY_WINDOW && alt->esum<QED_GAMMA_ENERGY+QED_GAMMA_ENERGY_WINDOW){
-
-      if(DEBUG_OUTPUT){ fprintf(stdout,"\nCOINC COMPTON: %d %d %ld | %.1f %.1f %.1f | %d vs %d %d %ld | %.1f %.1f %.1f | %d, dt=%ld, sumE=%.1f\n",ptr->subsys,ptr->chan,ptr->ts,ptr->ecal,ptr->alt_ecal,ptr->esum,ptr->net_id,alt->subsys,alt->chan,alt->ts,alt->ecal,alt->alt_ecal,alt->esum,alt->net_id,(ptr->ts-alt->ts),(ptr->ecal+alt->ecal)); }
-
-      qedE_ge_theta_sum_t->Fill(qedE_ge_theta_sum_t, alt_ecal, angle, 1);
-      qed_geE_theta_sum_t->Fill(qed_geE_theta_sum_t, ptr_ecal, angle, 1);
+    break;
+    case SUBSYS_DCOMPTONA: // ge-DCOMPTONA where is a coincidence between a DSSD pixel and a HPGE addback with sum energy of 511keV
+    // QED DCOMPTONA EVENTS
+    // Ge with addback is a Double Compton scatter (DSSD-Ge-Ge)
+    // Identified as subsys==SUBSYS_DCOMPTONA
+    // In DCOMPTONA event, ecal will be QED_PIXEL and alt_ecal will be Ge addback sum energy
+    // In DCOMPTONA event, crystal_table[chan]=pos will be QED DSSD number [1-6], alt_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
+    // In DCOMPTONA event, net_id will be first HPGe crystal number [1-64], alt2_chan will be second HPGe crystal number [1-64]
+    ge_dcs->Fill(ge_dcs, (int)ptr->ecal, (int)(alt->esum), 1);
+    if(ptr->esum<=ptr->ecal){
+      break; // only interested in addback Ge after this point
     }
-  }
+    geadd_dcs->Fill(geadd_dcs, (int)ptr->esum, (int)(alt->esum), 1);
 
-  break;
-  case SUBSYS_DCOMPTONA: // ge-DCOMPTONA where is a coincidence between a DSSD pixel and a HPGE addback with sum energy of 511keV
-  // QED DCOMPTONA EVENTS
-  // Ge with addback is a Double Compton scatter (DSSD-Ge-Ge)
-  // Identified as subsys==SUBSYS_DCOMPTONA
-  // In DCOMPTONA event, ecal will be QED_PIXEL and alt_ecal will be Ge addback sum energy
-  // In DCOMPTONA event, crystal_table[chan]=pos will be QED DSSD number [1-6], alt_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
-  // In DCOMPTONA event, net_id will be first HPGe crystal number [1-64], alt2_chan will be second HPGe crystal number [1-64]
-  ge_dcs->Fill(ge_dcs, (int)ptr->ecal, (int)(alt->esum), 1);
-  if(ptr->esum<=ptr->ecal){
-    break; // only interested in addback Ge after this point
-  }
-  geadd_dcs->Fill(geadd_dcs, (int)ptr->esum, (int)(alt->esum), 1);
+    pos1 = crystal_table[alt->chan];
+    qed1 = (alt->alt_chan%1024);
+    c1 = alt->net_id;
+    c2 = alt->alt2_chan;
 
-  pos1 = crystal_table[alt->chan];
-  qed1 = (alt->alt_chan%1024);
-  c1 = alt->net_id;
-  c2 = alt->alt2_chan;
-
-  c3 = crystal_table[ptr->chan];
-  c4 = crystal_table[ptr->alt_chan];
-  if( c1 >= 0 && c1 < 64 &&  c2 >= 0 && c2 < 64 &&  c3 >= 0 && c3 < 64 &&  c4 >= 0 && c4 < 64 ){
-    if(c1 != c3 && c1 != c4 && c2 != c3 && c2 != c4){
-      initial_theta = scattering_angle_QEDGe(pos1, qed1, c1);
-      omega = angular_diff_QEDGe(pos1,qed1, c3, 110);
-      azimuthal = azimuthal_TCS_GeGe_SiGeGe(c3, c4, c1, c2);
-      //fprintf(stdout,"TCS %d %d %d %d | %d %d | %0.1f %0.1f\n",pos1, qed1, ge1, c2, c3, c4,initial_theta,azimuthal);
+    c3 = crystal_table[ptr->chan];
+    c4 = crystal_table[ptr->alt_chan];
+    if( c1 >= 0 && c1 < 64 &&  c2 >= 0 && c2 < 64 &&  c3 >= 0 && c3 < 64 &&  c4 >= 0 && c4 < 64 ){
+      if(c1 != c3 && c1 != c4 && c2 != c3 && c2 != c4){
+        initial_theta = scattering_angle_QEDGe(pos1, qed1, c1);
+        omega = angular_diff_QEDGe(pos1,qed1, c3, 110);
+        azimuthal = azimuthal_TCS_GeGe_SiGeGe(c3, c4, c1, c2);
+        //fprintf(stdout,"TCS %d %d %d %d | %d %d | %0.1f %0.1f\n",pos1, qed1, ge1, c2, c3, c4,initial_theta,azimuthal);
 
 
-      // Weighting factor for delta-phi plot
-      // Here use a coincidence between DSSD-GE (511keV) with the Ge-Ge (1274keV)
-      // This will be an isotropic relationship to essentially count the active DSSD-Ge combinations
-      if(ptr->esum>1274-6 && ptr->esum>1274+6){
-        qed_wf_omega->Fill(qed_wf_omega, (int)omega, 1);
-        if(omega>90){
-          qed_wf_dcs_azi->Fill(qed_wf_dcs_azi, (int)azimuthal, 1);
+        // Weighting factor for delta-phi plot
+        // Here use a coincidence between DSSD-GE (511keV) with the Ge-Ge (1274keV)
+        // This will be an isotropic relationship to essentially count the active DSSD-Ge combinations
+        if(ptr->esum>1274-6 && ptr->esum>1274+6){
+          qed_wf_omega->Fill(qed_wf_omega, (int)omega, 1);
+          if(omega>90){
+            qed_wf_dcs_azi->Fill(qed_wf_dcs_azi, (int)azimuthal, 1);
+          }
+        }
+
+        dcsa_cs_omega_ge->Fill(dcsa_cs_omega_ge, (int)(omega), 1);
+        if(omega>159){
+          dcsa_theta_azi_ge->Fill(dcsa_theta_azi_ge, (int)(initial_theta), (int)(azimuthal), 1);
         }
       }
+    }
+    break;
+    case SUBSYS_DCOMPTONB: // ge-DCOMPTONB where is a coincidence between a DSSD pixel and a HPGE addback with sum energy of 511keV
+    // QED DCOMPTONB EVENTS
+    //  (DSSD-DSSD-Ge)
+    // Identified as subsys==SUBSYS_DCOMPTONB
+    // In DCOMPTONB event, ecal will be the first QED_PIXEL, alt_ecal will be the second QED_PIXEL, alt2_ecal will be Ge energy
+    // In DCOMPTONB event, crystal_table[chan]=pos will be  first QED DSSD number [1-6],  alt_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
+    // In DCOMPTONB event, crystal_table[ tof]=pos will be second QED DSSD number [1-6], alt2_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
+    // In DCOMPTONB event, net_id will be the HPGe crystal number [1-64]
+    if(ptr->alt_chan<0 || ptr->alt_chan>63){ break; } // must be an addback event
 
-      dcsa_cs_omega_ge->Fill(dcsa_cs_omega_ge, (int)(omega), 1);
-      if(omega>159){
-        dcsa_theta_azi_ge->Fill(dcsa_theta_azi_ge, (int)(initial_theta), (int)(azimuthal), 1);
+    pos1 = crystal_table[alt->chan];
+    qed1 = (alt->alt_chan&1023);
+    pos2 = crystal_table[alt->tof];
+    qed2 = (alt->alt2_chan&1023);
+    c1 = alt->net_id;
+
+    c2 = crystal_table[ptr->chan];
+    c3 = crystal_table[ptr->alt_chan];
+    if( c1 >= 0 && c1 < 64 &&  c2 >= 0 && c2 < 64 &&  c3 >= 0 && c3 < 64 ){
+      if(c1 != c2 && c1 != c3 && c2 != c3){
+        initial_theta = (int)scattering_angle_QEDQED(pos1, qed1, pos2, qed2);
+        omega = (int)angular_diff_QEDGe(pos1,qed1, c2, 110);
+        azimuthal = (int)azimuthal_TCS_GeGe_SiSiGe(pos2, qed2, c1, c2, c3);
+
+        dcsb_cs_omega_ge->Fill(dcsb_cs_omega_ge, omega, 1);
+        if(omega>159){
+          dcsb_theta_azi_ge->Fill(dcsb_theta_azi_ge, initial_theta, azimuthal, 1);
+        }
       }
     }
+    break;
+    default: break;
   }
-  break;
-  case SUBSYS_DCOMPTONB: // ge-DCOMPTONB where is a coincidence between a DSSD pixel and a HPGE addback with sum energy of 511keV
-  // QED DCOMPTONB EVENTS
-  //  (DSSD-DSSD-Ge)
-  // Identified as subsys==SUBSYS_DCOMPTONB
-  // In DCOMPTONB event, ecal will be the first QED_PIXEL, alt_ecal will be the second QED_PIXEL, alt2_ecal will be Ge energy
-  // In DCOMPTONB event, crystal_table[chan]=pos will be  first QED DSSD number [1-6],  alt_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
-  // In DCOMPTONB event, crystal_table[ tof]=pos will be second QED DSSD number [1-6], alt2_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
-  // In DCOMPTONB event, net_id will be the HPGe crystal number [1-64]
-  if(ptr->alt_chan<0 || ptr->alt_chan>63){ break; } // must be an addback event
-
-  pos1 = crystal_table[alt->chan];
-  qed1 = (alt->alt_chan&1023);
-  pos2 = crystal_table[alt->tof];
-  qed2 = (alt->alt2_chan&1023);
-  c1 = alt->net_id;
-
-  c2 = crystal_table[ptr->chan];
-  c3 = crystal_table[ptr->alt_chan];
-  if( c1 >= 0 && c1 < 64 &&  c2 >= 0 && c2 < 64 &&  c3 >= 0 && c3 < 64 ){
-    if(c1 != c2 && c1 != c3 && c2 != c3){
-      initial_theta = (int)scattering_angle_QEDQED(pos1, qed1, pos2, qed2);
-      omega = (int)angular_diff_QEDGe(pos1,qed1, c2, 110);
-      azimuthal = (int)azimuthal_TCS_GeGe_SiSiGe(pos2, qed2, c1, c2, c3);
-
-      dcsb_cs_omega_ge->Fill(dcsb_cs_omega_ge, omega, 1);
-      if(omega>159){
-        dcsb_theta_azi_ge->Fill(dcsb_theta_azi_ge, initial_theta, azimuthal, 1);
-      }
-    }
-  }
-  break;
-  default: break;
-}
-return(0);
+  return(0);
 }
 
 int fill_labr_coinc_histos(Grif_event *ptr, Grif_event *alt, int abs_dt)
@@ -1318,10 +1466,10 @@ int fill_coinc_histos(int win_idx, int frag_idx)
                   }
                 }
                 break;
-                case SUBSYS_COMPTON:
-                if( alt_subsys == SUBSYS_COMPTON ){ // COMPTON-COMPTON where is a coincidence between a DSSD pixel and a HPGE with sum energy of 511keV
+                case SUBSYS_COMPTONA:
+                if( alt_subsys == SUBSYS_COMPTONA ){ // COMPTON-COMPTON where is a coincidence between a DSSD pixel and a HPGE with sum energy of 511keV
                   // QED COMPTON EVENTS
-                  // Identified as subsys==SUBSYS_COMPTON
+                  // Identified as subsys==SUBSYS_COMPTONA
                   // pos is HPGE crystal number
                   // In COMPTON event, ecal will be Ge and alt_ecal will be QED_PIXEL
                   // In COMPTON event, crystal_table[chan]=pos will be Ge, alt_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
@@ -1340,11 +1488,12 @@ int fill_coinc_histos(int win_idx, int frag_idx)
                   qed_dcs_omega_dt->Fill(qed_dcs_omega_dt, dt+512, (int)omega, 1);
                   qedx_dcs_omega_dt[pos1-1]->Fill(qedx_dcs_omega_dt[pos1-1], dt+512, (int)omega, 1);
                   if(pos1 != pos2 && ge1 != ge2){
+                    comp_comp->Fill(comp_comp, (int)ptr->esum, (int)(alt->esum), 1);
                     qed_dcs_omega_dtx->Fill(qed_dcs_omega_dtx, dt+512, (int)omega, 1);
                     qed_dcs_omega_t->Fill(qed_dcs_omega_t, (int)omega, 1);
                     theta1 = scattering_angle_QEDGe(pos1, qed1, ge1);
                     theta2 = scattering_angle_QEDGe(pos2, qed2, ge2);
-                    azimuthal = azimuthal_DCS(pos1, qed1, ge1, pos2, qed2, ge2);
+                    azimuthal = azimuthal_DCS_SiGe_SiGe(pos1, qed1, ge1, pos2, qed2, ge2);
                     delta_theta = (theta1>theta2) ? theta1-theta2 : theta2-theta1;
                     //    if(){  }
                     //  fprintf(stdout,"omega = %f, theta1 = %f, theta2 = %f, azimuth = %f, for [%d %d %d] - [%d %d %d]\n",omega,theta1,theta2,azimuthal,pos1, qed1, ge1, pos2, qed2, ge2);
@@ -1385,7 +1534,6 @@ int fill_coinc_histos(int win_idx, int frag_idx)
                         qed_dcs_azi_t->Fill(qed_dcs_azi_t, (int)azimuthal, 1);
                         // Scattering angle 70 to 110
                         if(theta1>69 && theta1<111 && theta2>69 && theta2<111){
-                          comp_comp->Fill(comp_comp, (int)ptr->esum, (int)(alt->esum), 1);
                           qed_dcs_azi->Fill(qed_dcs_azi, (int)azimuthal, 1);
                           // Scattering angle 93 to 103
                           if(theta1>92 && theta1<104 && theta2>92 && theta2<104){
@@ -1505,10 +1653,32 @@ int fill_coinc_histos(int win_idx, int frag_idx)
 }
 }
 break;
+case SUBSYS_COMPTONB:
+if( alt_subsys == SUBSYS_COMPTONB ){ // Coincidence of COMPTONB-COMPTONB where is a coincidence between two DSSD pixels with sum energy of 511keV
+  // QED COMPTONB EVENTS
+  // Identified as subsys==SUBSYS_COMPTONB
+  // In COMPTONB event, ecal will be 1st QED_PIXEL and alt_ecal will be 2nd QED_PIXEL, esum will be the full energy
+  // In COMPTONB event, crystal_table[chan]=pos will be  first QED DSSD number [1-6],  alt_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
+  // In COMPTONB event, crystal_table[ tof]=pos will be second QED DSSD number [1-6], alt2_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
+  pos1 = crystal_table[ptr->chan]; // First Si of hit
+  qed1 = (ptr->alt_chan&1023);
+
+  pos2 = crystal_table[alt->chan]; // First Si of hit
+  qed2 = (alt->alt_chan&1023);
+
+  omega = angular_diff_QEDQED(pos1, qed1, pos2, qed2);
+  qed_compB_dcs_omega->Fill(qed_compB_dcs_omega, (int)omega, 1);
+  qed_compB_dcs_omega_dt->Fill(qed_compB_dcs_omega_dt, dt+512, (int)omega, 1);
+  qedx_compB_dcs_omega_dt[pos1-1]->Fill(qedx_compB_dcs_omega_dt[pos1-1], dt+512, (int)omega, 1);
+  if(pos1 != pos2){
+    compb_compb->Fill(compb_compb, (int)ptr->esum, (int)(alt->esum), 1);
+  }
+}
+break;
 case SUBSYS_DCOMPTONA:
-if( alt_subsys == SUBSYS_COMPTON ){ // COMPTON-DCOMPTONA where is a coincidence between a DSSD pixel and a HPGE with sum energy of 511keV
+if( alt_subsys == SUBSYS_COMPTONA ){ // COMPTON-DCOMPTONA where is a coincidence between a DSSD pixel and a HPGE with sum energy of 511keV
   // QED COMPTON EVENTS
-  // Identified as subsys==SUBSYS_COMPTON
+  // Identified as subsys==SUBSYS_COMPTONA
   // In COMPTON event, ecal will be Ge and alt_ecal will be QED_PIXEL
   // In COMPTON event, crystal_table[chan]=pos will be Ge, alt_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
   //  pos  = crystal_table[ptr->chan]; // QED DSSD number [1-6]
@@ -1547,9 +1717,9 @@ if( alt_subsys == SUBSYS_COMPTON ){ // COMPTON-DCOMPTONA where is a coincidence 
 }
 break;
 case SUBSYS_DCOMPTONB:
-if( alt_subsys == SUBSYS_COMPTON ){ // COMPTON-DCOMPTONB where is a coincidence between two DSSD pixels and a HPGE with total energy of 511keV
+if( alt_subsys == SUBSYS_COMPTONA ){ // COMPTON-DCOMPTONB where is a coincidence between two DSSD pixels and a HPGE with total energy of 511keV
   // QED COMPTON EVENTS
-  // Identified as subsys==SUBSYS_COMPTON
+  // Identified as subsys==SUBSYS_COMPTONA
   // In COMPTON event, ecal will be Ge and alt_ecal will be QED_PIXEL
   // In COMPTON event, crystal_table[chan]=pos will be Ge, alt_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
   //  pos  = crystal_table[ptr->chan]; // QED DSSD number [1-6]
