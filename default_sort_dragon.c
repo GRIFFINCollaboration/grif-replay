@@ -201,6 +201,13 @@ int read_dragon_odb(int bank_len, int *bank_data)
    err += odbarray_float("dragon/bgo/variables/position/z",
                          bgo_tdc_zposn,    BGO_MAXCHAN);
 
+   printf("--- BGO ADC calibration ---\n");
+   for(i=0; i<BGO_MAXCHAN; i++){
+      if( bgo_adc_chan[i] == -1 ) continue;
+      printf("  BGO[%2d]: slope %10.6f  offset %10.6f  pedestal %4d\n",
+             i, bgo_adc_slope[i], bgo_adc_offset[i], bgo_adc_pedestal[i]);
+   }
+
    memset(sb_adc_chan,  -1,  SB_MAXCHAN*sizeof(int) );
    err += odbarray_int  ("dragon/sb/variables/adc/channel",
                          sb_adc_chan,      SB_MAXCHAN);
@@ -475,12 +482,13 @@ int pre_sort_exit(int frag_idx, int end_idx)
       int k = 0;
       float tmp_e;  int tmp_id, tmp_t;
 
-      // Pass 1: collect channels that fired above BGO_THRESHOLD.
-      // Channels below threshold are skipped so they don't inflate multiplicity.
+      // Pass 1: collect channels that fired. Threshold zero-suppression already
+      // happened in dragon-format.c before calibration, so bgo_energy[i] is either
+      // 0 (suppressed) or a calibrated value; just check for a nonzero hit here.
       // The three parallel arrays (bgo_id, bgo_esort, bgo_tsort) are packed
       // into indices [0..k-1] as hits are found.
       for(i = 0; i < BGO_MAXCHAN; i++){
-         if( head->bgo_energy[i] > BGO_THRESHOLD ){
+         if( head->bgo_energy[i] > 0 ){
             head->bgo_id[k]    = i;                   // original BGO channel number
             head->bgo_esort[k] = head->bgo_energy[i]; // calibrated energy
             head->bgo_tsort[k] = head->bgo_time[i];   // TDC time for this channel
@@ -547,6 +555,11 @@ TH1I  *hit_hist[N_HITPAT];
 
 #define ADC_CHAN 64
 #define ADC_BINS 8192
+
+// BGO energy is calibrated in MeV; display at 20 keV/channel over 2048 channels (0-40.96 MeV)
+#define BGO_E_BINS 2048
+#define BGO_KEV_PER_BIN 20
+#define BGO_MEV_TO_BIN(e) ((int)((e) * 1000.0 / BGO_KEV_PER_BIN))
 TH1I  *adc_hist_head[ADC_CHAN];
 TH1I  *adc_hist_tail[ADC_CHAN];
 
@@ -756,8 +769,8 @@ int init_histos(Config *cfg)
     
     // BGO Histograms
     bgo_chan = H1_BOOK(cfg, "BGO_CHAN",   "BGO Channel Number", 32, 0, 32);
-    bgo_e0   = H1_BOOK(cfg, "BGO_E0",   "BGO Energy spectrum [chan0]", ADC_BINS, 0, ADC_BINS);
-    bgo_e0_e1 = H2_BOOK(cfg, "BGO_E0_E1",   "BGO Cascade", ADC_BINS, 0, ADC_BINS, ADC_BINS, 0, ADC_BINS);
+    bgo_e0   = H1_BOOK(cfg, "BGO_E0",   "BGO Energy spectrum [chan0]", BGO_E_BINS, 0, BGO_E_BINS);
+    bgo_e0_e1 = H2_BOOK(cfg, "BGO_E0_E1",   "BGO Cascade", BGO_E_BINS, 0, BGO_E_BINS, BGO_E_BINS, 0, BGO_E_BINS);
 
     close_folder(cfg);
     close_folder(cfg);
@@ -783,8 +796,8 @@ int init_histos(Config *cfg)
     
     // BGO Coincidence Histograms
     bgo_chan_c = H1_BOOK(cfg, "BGO_CHAN_c",   "BGO Channel Number", 32, 0, 32);
-    bgo_e0_c   = H1_BOOK(cfg, "BGO_E0_c",   "BGO Energy spectrum [chan0]", ADC_BINS, 0, ADC_BINS);
-    bgo_e0_e1_c = H2_BOOK(cfg, "BGO_E0_E1_c",   "BGO Cascade", ADC_BINS, 0, ADC_BINS, ADC_BINS, 0, ADC_BINS);
+    bgo_e0_c   = H1_BOOK(cfg, "BGO_E0_c",   "BGO Energy spectrum [chan0]", BGO_E_BINS, 0, BGO_E_BINS);
+    bgo_e0_e1_c = H2_BOOK(cfg, "BGO_E0_E1_c",   "BGO Cascade", BGO_E_BINS, 0, BGO_E_BINS, BGO_E_BINS, 0, BGO_E_BINS);
     
     // Cross-Trigger Coincidence Histograms
     xtofh    = H1_BOOK(cfg, "XTOFH",    "Separator TOF (gamma->HI)", 5000, -10000, 9999);
@@ -818,13 +831,13 @@ int fill_singles_histos(Dragon_event *ptr)
 //         // bgo_e0_e1: fill highest two BGO energies — needs a small find-top-two loop
        // This was the old way. Next code is the new way.
        
-      // if( head->bgo_mult > 0 ){
-      //       bgo_e0->Fill(bgo_e0, head->bgo_esort[0], 1);
-      //       bgo_chan->Fill(bgo_chan, head->bgo_id[0], 1);
-      //   }
-      //   if( head->bgo_mult > 1 ){
-      //       bgo_e0_e1->Fill(bgo_e0_e1, head->bgo_esort[0], head->bgo_esort[1], 1);
-      //   }
+      if( head->bgo_mult > 0 ){
+            bgo_e0->Fill(bgo_e0, BGO_MEV_TO_BIN(head->bgo_esort[0]), 1);
+            bgo_chan->Fill(bgo_chan, head->bgo_id[0], 1);
+        }
+        if( head->bgo_mult > 1 ){
+            bgo_e0_e1->Fill(bgo_e0_e1, BGO_MEV_TO_BIN(head->bgo_esort[0]), BGO_MEV_TO_BIN(head->bgo_esort[1]), 1);
+        }
 
    } else if(  ptr->type == TAIL_EVENT ){
       for(i=0; i<SB_MAXCHAN; i++){

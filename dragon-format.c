@@ -295,10 +295,13 @@ int unpack_head_event(Dragon_event *evt)
       head->bgo_energy[i] -= bgo_adc_pedestal[i];
    }
    for(i=0; i<BGO_MAXCHAN; i++){
-      if( head->bgo_energy[i] < BGO_THRESHOLD ){ head->bgo_energy[i] = 0; }
-   }
-   for(i=0; i<BGO_MAXCHAN; i++){
-      head->bgo_energy[i] = bgo_adc_offset[i] + bgo_adc_slope[i] * head->bgo_energy[i];
+      // suppressed channels must stay exactly 0 - applying offset/slope to them
+      // would leave a nonzero value (bgo_adc_offset[i]) that looks like a real hit
+      if( head->bgo_energy[i] < BGO_THRESHOLD ){
+         head->bgo_energy[i] = 0;
+      } else {
+         head->bgo_energy[i] = bgo_adc_offset[i] + bgo_adc_slope[i] * head->bgo_energy[i];
+      }
    }
 
    // v1190 tdc data words ...
