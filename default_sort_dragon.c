@@ -634,7 +634,7 @@ int fill_chan_histos(Dragon_event *ptr)
          data = &ptr->v1190.data[0];
          for(i=0; i<count; i++){
             chan = (data[i] >> 24) & 0x7F;
-            val  = (data[i]      ) & 0xFFFFF; val >> 4;
+            val  = (data[i]      ) & 0xFFFFF; //LEE commenting this unused calculation due to warning: val >> 4;
             if( chan >= 0 && chan < 64 ){
                hit_hist[1] -> Fill(hit_hist[1], chan, 1);
                tdc_hist_head[chan] -> Fill(tdc_hist_head[chan], val, 1);
@@ -669,7 +669,7 @@ int fill_chan_histos(Dragon_event *ptr)
          data = &ptr->v1190.data[0];
          for(i=0; i<count; i++){
             chan = (data[i] >> 24) & 0x7F;
-            val  = (data[i]      ) & 0xFFFFF; val >> 4;
+            val  = (data[i]      ) & 0xFFFFF; //LEE commenting this unused calculation due to warning: val >> 4;
             if( chan >= 0 && chan < 64 ){
                hit_hist[3] -> Fill(hit_hist[3], chan, 1);
                tdc_hist_tail[chan] -> Fill(tdc_hist_tail[chan], val, 1);
@@ -717,33 +717,48 @@ TH2I  *ic_anode_c;
 TH1I  *xtofh;  // gamma to hvy-ion
 TH1I  *xtofg;  // hvy-ion to gamma
 
-TH1I  *bgo_chan;
-TH1I  *bgo_e0;
-TH2I  *bgo_e0_e1;
-TH1I  *bgo_zpat;
-TH1I  *bgo_chan_c;
-TH1I  *bgo_e0_c;
-TH2I  *bgo_e0_e1_c;
+//---- BGO histograms ---------------------
+struct BGOHistos
+{
+    TH1I  *bgo_detector_hit_pattern;
+    TH1I  *bgo_e0;
+    TH2I  *bgo_e0_vs_e1;
+    TH2I  *bgo_e0_vs_detector;
+    TH1I  *bgo_energies;
+    TH2I  *bgo_energies_vs_detector;
+    TH1I  *bgo_z_hit_pattern;
+};
+
+struct BGOHistos gBGOSingleHistos;
+struct BGOHistos gBGOCoincHistos;
 
 TH1I  *test;
 
+//----------------------------------------
+//---- init_histos -----------------------
+//----------------------------------------
 int init_histos(Config *cfg)
 {
-   char hnd[32], title[256];
-   static Config *save_cfg;
-   int i, j, k;
+char hnd[32], title[256];
+static Config *save_cfg;
+int i, j, k;
 
-   if( cfg == NULL ){ cfg = save_cfg; } else { save_cfg = cfg; }
+   if( cfg == NULL )
+       cfg = save_cfg;
+   else
+       save_cfg = cfg;
     
     // Singles Histograms --------------------------------------
     open_folder(cfg, "Singles");
     open_folder(cfg, "Basic");
+    
     // Surface Barrier Histograms
     for(i=0; i<2; i++){
       sprintf(hnd,  "SB_%d", i);
       sprintf(title,"Surface Barrier (target scattering monitor) %d", i);
       sb_ecal[i] = H1_BOOK(cfg, hnd, title, ADC_BINS, 0, ADC_BINS);
     }
+    
     // DSSD Histograms
     e_front = H1_BOOK(cfg, "E_front", "DSSD Front Strip Energy", 4096, 0, 4096);
     e_back  = H1_BOOK(cfg, "E_back", "DSSD Back Strip Energy", 4096, 0, 4096);
@@ -766,11 +781,14 @@ int init_histos(Config *cfg)
       nai_ecal[i] = H1_BOOK(cfg, hnd, title, ADC_BINS, 0, ADC_BINS);
     }
    
-    
-    // BGO Histograms
-    bgo_chan = H1_BOOK(cfg, "BGO_CHAN",   "BGO Channel Number", 32, 0, 32);
-    bgo_e0   = H1_BOOK(cfg, "BGO_E0",   "BGO Energy spectrum [chan0]", BGO_E_BINS, 0, BGO_E_BINS);
-    bgo_e0_e1 = H2_BOOK(cfg, "BGO_E0_E1",   "BGO Cascade", BGO_E_BINS, 0, BGO_E_BINS, BGO_E_BINS, 0, BGO_E_BINS);
+    // BGO singles Histograms
+    gBGOSingleHistos.bgo_e0                    = H1_BOOK(cfg, "BGO_E0",   "BGO Energy [e0]", BGO_E_BINS, 0, BGO_E_BINS);
+    gBGOSingleHistos.bgo_energies              = H1_BOOK(cfg, "BGO_E", "BGO Energy [all]", BGO_E_BINS, 0, BGO_E_BINS);
+    gBGOSingleHistos.bgo_e0_vs_e1              = H2_BOOK(cfg, "BGO_E0_E1","BGO Energy [e0] vs [e1] Cascade", BGO_E_BINS, 0, BGO_E_BINS, BGO_E_BINS, 0, BGO_E_BINS);
+    gBGOSingleHistos.bgo_e0_vs_detector        = H2_BOOK(cfg, "BGO_E0_CHAN", "BGO Energy [e0] vs Detector", BGO_E_BINS, 0, BGO_E_BINS, BGO_MAXCHAN, 0, BGO_MAXCHAN);
+    gBGOSingleHistos.bgo_energies_vs_detector  = H2_BOOK(cfg, "BGO_E_CHAN", "BGO Energy [all] vs Detector", BGO_E_BINS, 0, BGO_E_BINS, BGO_MAXCHAN, 0, BGO_MAXCHAN);
+    gBGOSingleHistos.bgo_detector_hit_pattern  = H1_BOOK(cfg, "BGO_CHAN", "BGO Hit Pattern [detector]", BGO_MAXCHAN, 0, BGO_MAXCHAN);
+    gBGOSingleHistos.bgo_z_hit_pattern         = H1_BOOK(cfg, "BGO_Z", "BGO Hit Pattern [z]", 41, -20, 20); //LEE - hard coding Z range! FIX!
 
     close_folder(cfg);
     close_folder(cfg);
@@ -795,14 +813,25 @@ int init_histos(Config *cfg)
     mcp_tac_c    = H1_BOOK(cfg, "MCP_TAC_c",    "MCP TAC (coinc)",               4096, 0, 4096);
     
     // BGO Coincidence Histograms
-    bgo_chan_c = H1_BOOK(cfg, "BGO_CHAN_c",   "BGO Channel Number", 32, 0, 32);
-    bgo_e0_c   = H1_BOOK(cfg, "BGO_E0_c",   "BGO Energy spectrum [chan0]", BGO_E_BINS, 0, BGO_E_BINS);
-    bgo_e0_e1_c = H2_BOOK(cfg, "BGO_E0_E1_c",   "BGO Cascade", BGO_E_BINS, 0, BGO_E_BINS, BGO_E_BINS, 0, BGO_E_BINS);
-    
+//    bgo_e0_c                   = H1_BOOK(cfg, "BGO_E0_c", "BGO Energy [e0] (Coinc)", BGO_E_BINS, 0, BGO_E_BINS);
+//    bgo_energies_c             = H1_BOOK(cfg, "BGO_E_c", "BGO Energy [all] (Coinc)", BGO_E_BINS, 0, BGO_E_BINS);
+//    bgo_e0_vs_e1_c             = H2_BOOK(cfg, "BGO_E0_E1_c","BGO Energy [e0] vs [e1] Cascade (Coinc)", BGO_E_BINS, 0, BGO_E_BINS, BGO_E_BINS, 0, BGO_E_BINS);
+//    bgo_e0_vs_detector_c       = H2_BOOK(cfg, "BGO_E0_CHAN_c", "BGO Energy [e0] vs Detector (Coinc)", BGO_E_BINS, 0, BGO_E_BINS, BGO_MAXCHAN, 0, BGO_MAXCHAN);
+//    bgo_energies_vs_detector_c = H2_BOOK(cfg, "BGO_E_CHAN_c", "BGO Energy [all] vs Detector (Coinc)", BGO_E_BINS, 0, BGO_E_BINS, BGO_MAXCHAN, 0, BGO_MAXCHAN);
+//    bgo_detector_hit_pattern_c = H1_BOOK(cfg, "BGO_CHAN_c", "BGO Hit Pattern [detector] (Coinc)", BGO_MAXCHAN, 0, BGO_MAXCHAN);
+//    bgo_z_hit_pattern_c        = H1_BOOK(cfg, "BGO_Z_c", "BGO Hit Pattern [z] (Coinc)", 41, -20, 20); //LEE - hard coding Z range! FIX!
+    gBGOCoincHistos.bgo_e0                    = H1_BOOK(cfg, "BGO_E0_c",   "BGO Energy [e0] (coinc)", BGO_E_BINS, 0, BGO_E_BINS);
+    gBGOCoincHistos.bgo_energies              = H1_BOOK(cfg, "BGO_E_c", "BGO Energy [all] (coinc)", BGO_E_BINS, 0, BGO_E_BINS);
+    gBGOCoincHistos.bgo_e0_vs_e1              = H2_BOOK(cfg, "BGO_E0_E1_c","BGO Energy [e0] vs [e1] Cascade (coinc)", BGO_E_BINS, 0, BGO_E_BINS, BGO_E_BINS, 0, BGO_E_BINS);
+    gBGOCoincHistos.bgo_e0_vs_detector        = H2_BOOK(cfg, "BGO_E0_CHAN_c", "BGO Energy [e0] vs Detector (coinc)", BGO_E_BINS, 0, BGO_E_BINS, BGO_MAXCHAN, 0, BGO_MAXCHAN);
+    gBGOCoincHistos.bgo_energies_vs_detector  = H2_BOOK(cfg, "BGO_E_CHAN_c", "BGO Energy [all] vs Detector (coinc)", BGO_E_BINS, 0, BGO_E_BINS, BGO_MAXCHAN, 0, BGO_MAXCHAN);
+    gBGOCoincHistos.bgo_detector_hit_pattern  = H1_BOOK(cfg, "BGO_CHAN_c", "BGO Hit Pattern [detector] (coinc)", BGO_MAXCHAN, 0, BGO_MAXCHAN);
+    gBGOCoincHistos.bgo_z_hit_pattern         = H1_BOOK(cfg, "BGO_Z_c", "BGO Hit Pattern [z] (coinc)", 41, -20, 20); //LEE - hard coding Z range! FIX!
+
     // Cross-Trigger Coincidence Histograms
     xtofh    = H1_BOOK(cfg, "XTOFH",    "Separator TOF (gamma->HI)", 5000, -10000, 9999);
     xtofg    = H1_BOOK(cfg, "XTOFG",    "Separator TOF (HI->gamma)", 5000, -10000, 9999);
-    bgo_zpat = H1_BOOK(cfg, "BGO_ZPAT", "BGO Z HITPATTERN", 100, -50, 49);
+    //LEE bgo_zpat = H1_BOOK(cfg, "BGO_ZPAT", "BGO Z HITPATTERN", 100, -50, 49);
     
 
     test   = H1_BOOK(cfg, "Test",   "Debug histogram", ADC_BINS, 0, ADC_BINS);
@@ -813,76 +842,132 @@ int init_histos(Config *cfg)
    return(0);
 }
 
+//-----------------------------------------
+//---- fill_bgo_histos --------------------
+//-----------------------------------------
+void
+fill_bgo_histos(struct BGOHistos pHistos, Head_data* pHeadData)
+{
+    if (pHeadData->bgo_mult > 0)
+    {
+        //BGO counts per BGO detector
+        pHistos.bgo_detector_hit_pattern->Fill(pHistos.bgo_detector_hit_pattern, pHeadData->bgo_id[0], 1);
+        //BGO highest energy only spectrum
+        pHistos.bgo_e0->Fill(pHistos.bgo_e0, BGO_MEV_TO_BIN(pHeadData->bgo_esort[0]), 1);
+        //BGO e0 vs e1
+        if( pHeadData->bgo_mult > 1 )
+            pHistos.bgo_e0_vs_e1->Fill(pHistos.bgo_e0_vs_e1, BGO_MEV_TO_BIN(pHeadData->bgo_esort[0]), BGO_MEV_TO_BIN(pHeadData->bgo_esort[1]), 1);
+        //BGO highest energy spectrum vs detector
+        pHistos.bgo_e0_vs_detector->Fill(pHistos.bgo_e0_vs_detector, BGO_MEV_TO_BIN(pHeadData->bgo_esort[0]), pHeadData->bgo_id[0], 1);
+        for ( int index = 0; index < pHeadData->bgo_mult; index++)
+        {
+            //BGO all energies spectrum
+            pHistos.bgo_energies->Fill(pHistos.bgo_energies, BGO_MEV_TO_BIN(pHeadData->bgo_esort[index]), 1);
+            //BGO all energies spectrum vs detector
+            pHistos.bgo_energies_vs_detector->Fill(pHistos.bgo_energies_vs_detector, BGO_MEV_TO_BIN(pHeadData->bgo_esort[index]), pHeadData->bgo_id[index], 1);
+            //BGO counts per detector z position
+            pHistos.bgo_z_hit_pattern->Fill(pHistos.bgo_z_hit_pattern, bgo_tdc_zposn[pHeadData->bgo_id[index]], 1);
+        }
+    }
+}
+
+//-----------------------------------------
+//---- fill_singles_histos ----------------
+//-----------------------------------------
 int fill_singles_histos(Dragon_event *ptr)
 {
-   Head_data *head = &ptr->head_tail_data.head_data;
-   Tail_data *tail = &ptr->head_tail_data.tail_data;
-   int i, j, chan, val, cnt;
-   float v_cal, sum;
+Head_data *head = &ptr->head_tail_data.head_data;
+Tail_data *tail = &ptr->head_tail_data.tail_data;
+int i, j, chan, val, cnt;
+float v_cal, sum;
 
-   if( ptr->type == HEAD_EVENT ){
-      
-       // BGO
-//         for(i = 0; i < BGO_MAXCHAN; i++){
-//             if( head->bgo_energy[i] > 0 ) bgo_chan->Fill(bgo_chan, i, 1);
-//             if( head->bgo_energy[i] > 0 ) bgo_e0->Fill(bgo_e0, head->bgo_energy[i], 1);
-//         }
-//         
-//         // bgo_e0_e1: fill highest two BGO energies — needs a small find-top-two loop
-       // This was the old way. Next code is the new way.
-       
-      if( head->bgo_mult > 0 ){
-            bgo_e0->Fill(bgo_e0, BGO_MEV_TO_BIN(head->bgo_esort[0]), 1);
-            bgo_chan->Fill(bgo_chan, head->bgo_id[0], 1);
+    if( ptr->type == HEAD_EVENT )
+    {
+        fill_bgo_histos(gBGOSingleHistos, head);
+        //BGOs
+//        if (head->bgo_mult > 0)
+//        {
+//            //BGO counts per BGO detector
+//            bgo_detector_hit_pattern->Fill(bgo_detector_hit_pattern, head->bgo_id[0], 1);
+//            //BGO highest energy only spectrum
+//            bgo_e0->Fill(bgo_e0, BGO_MEV_TO_BIN(head->bgo_esort[0]), 1);
+//            //BGO e0 vs e1
+//            if( head->bgo_mult > 1 )
+//                bgo_e0_vs_e1->Fill(bgo_e0_vs_e1, BGO_MEV_TO_BIN(head->bgo_esort[0]), BGO_MEV_TO_BIN(head->bgo_esort[1]), 1);
+//            //BGO highest energy spectrum vs detector
+//            bgo_e0_vs_detector->Fill(bgo_e0_vs_detector, BGO_MEV_TO_BIN(head->bgo_esort[0]), head->bgo_id[0], 1);
+//            for ( int index = 0; index < head->bgo_mult; index++)
+//            {
+//                //BGO all energies spectrum
+//                bgo_energies->Fill(bgo_energies, BGO_MEV_TO_BIN(head->bgo_esort[index]), 1);
+//                //BGO all energies spectrum vs detector
+//                bgo_energies_vs_detector->Fill(bgo_energies_vs_detector, BGO_MEV_TO_BIN(head->bgo_esort[index]), head->bgo_id[index], 1);
+//                //BGO counts per detector z position
+//                bgo_z_hit_pattern->Fill(bgo_z_hit_pattern, bgo_tdc_zposn[head->bgo_id[index]], 1);
+//            }
+//        }
+    }
+    else if (ptr->type == TAIL_EVENT)
+    {
+        //surface barriers
+        for(i=0; i<SB_MAXCHAN; i++)
+        {
+            if( tail->sb_energy[i] > 0 )
+                sb_ecal[i]->Fill(sb_ecal[i], tail->sb_energy[i], 1);
         }
-        if( head->bgo_mult > 1 ){
-            bgo_e0_e1->Fill(bgo_e0_e1, BGO_MEV_TO_BIN(head->bgo_esort[0]), BGO_MEV_TO_BIN(head->bgo_esort[1]), 1);
+        //DSSD front
+        for(i = 0; i < 16; i++)
+        {
+            if( tail->dssd_energy[i] > 0 )
+                e_front->Fill(e_front, tail->dssd_energy[i], 1);
+        }
+        //DSSD back
+        for(i = 16; i < 32; i++)
+        {
+            if( tail->dssd_energy[i] > 0 )
+                e_back->Fill(e_back, tail->dssd_energy[i], 1);
+        }
+        //DSSD all energies
+        for(i = 0; i < DSSD_MAXCHAN; i++)
+        {
+            if( tail->dssd_energy[i] > 0 )
+                dssd_echan->Fill(dssd_echan, tail->dssd_energy[i], i, 1);
+        }
+        //DSSD hit pattern
+        for(i = 0; i < 16; i++)
+        for(j = 16; j < 32; j++)
+        {
+            if( tail->dssd_energy[i] > 0 && tail->dssd_energy[j] > 0 )
+                dssd_hit_pat->Fill(dssd_hit_pat, i, j-16, 1);
         }
 
-   } else if(  ptr->type == TAIL_EVENT ){
-      for(i=0; i<SB_MAXCHAN; i++){
-         if( tail->sb_energy[i] > 0 ) sb_ecal[i]->Fill(sb_ecal[i], tail->sb_energy[i], 1);
-      }
-       // DSSD
-         for(i = 0; i < 16; i++){
-             if( tail->dssd_energy[i] > 0 ) e_front->Fill(e_front, tail->dssd_energy[i], 1);
-         }
-         for(i = 16; i < 32; i++){
-             if( tail->dssd_energy[i] > 0 ) e_back->Fill(e_back, tail->dssd_energy[i], 1);
-         }
-         for(i = 0; i < DSSD_MAXCHAN; i++){
-             if( tail->dssd_energy[i] > 0 )
-                 dssd_echan->Fill(dssd_echan, tail->dssd_energy[i], i, 1);
-         }
-         for(i = 0; i < 16; i++){
-             for(j = 16; j < 32; j++){
-                 if( tail->dssd_energy[i] > 0 && tail->dssd_energy[j] > 0 )
-                     dssd_hit_pat->Fill(dssd_hit_pat, i, j-16, 1);
-             }
-         }
-         // MCP
-         if( tail->mcptac_energy > 0 ) mcp_tac->Fill(mcp_tac, tail->mcptac_energy, 1);
-         if( tail->mcp_time[0]   > 0 ) mcp_tdc->Fill(mcp_tdc, tail->mcp_time[0],   1);
-         // IC
-         sum = 0;
-         for(i = 0; i < IC_MAXCHAN; i++){ sum += tail->ic_energy[i]; }
-         ic_sum->Fill(ic_sum, (int)sum, 1);
-         if( tail->ic_energy[0] > 0 && tail->ic_energy[1] > 0 )
-             ic_0v1->Fill(ic_0v1, tail->ic_energy[0], tail->ic_energy[1], 1);
-         for(i = 0; i < IC_MAXCHAN; i++){
-             if( tail->ic_energy[i] > 0 )
-                 ic_anode->Fill(ic_anode, tail->ic_energy[i], i, 1);
-         }
-         // NaI
-         for(i = 0; i < NAI_MAXCHAN; i++){
-             if( tail->nai_energy[i] > 0 ) nai_ecal[i]->Fill(nai_ecal[i], tail->nai_energy[i], 1);
-         }
-      //sum = 0; for(i=0; i<IC_MAXCHAN; i++){ sum += tail->ic_energy[i]; }  // moved to coinc
-      //ic_sum->Fill(ic_sum, (int)sum, 1);
-      //if( tail->ic_energy[0] > 0 && tail->ic_energy[1] > 0 ){
-      //   ic_0v1->Fill(ic_0v1, tail->ic_energy[0], tail->ic_energy[1], 1 );
-      //}
-   }
+        // MCP
+        if( tail->mcptac_energy > 0 ) mcp_tac->Fill(mcp_tac, tail->mcptac_energy, 1);
+        if( tail->mcp_time[0]   > 0 ) mcp_tdc->Fill(mcp_tdc, tail->mcp_time[0],   1);
+        // IC
+        sum = 0;
+        for(i = 0; i < IC_MAXCHAN; i++)
+            sum += tail->ic_energy[i];
+        ic_sum->Fill(ic_sum, (int)sum, 1);
+        if( tail->ic_energy[0] > 0 && tail->ic_energy[1] > 0 )
+            ic_0v1->Fill(ic_0v1, tail->ic_energy[0], tail->ic_energy[1], 1);
+        for(i = 0; i < IC_MAXCHAN; i++)
+        {
+            if( tail->ic_energy[i] > 0 )
+                ic_anode->Fill(ic_anode, tail->ic_energy[i], i, 1);
+        }
+        // NaI
+        for(i = 0; i < NAI_MAXCHAN; i++)
+        {
+            if( tail->nai_energy[i] > 0 )
+                nai_ecal[i]->Fill(nai_ecal[i], tail->nai_energy[i], 1);
+        }
+        //sum = 0; for(i=0; i<IC_MAXCHAN; i++){ sum += tail->ic_energy[i]; }  // moved to coinc
+        //ic_sum->Fill(ic_sum, (int)sum, 1);
+        //if( tail->ic_energy[0] > 0 && tail->ic_energy[1] > 0 ){
+        //   ic_0v1->Fill(ic_0v1, tail->ic_energy[0], tail->ic_energy[1], 1 );
+        //}
+    }
    return(0);
 }
 
@@ -890,48 +975,65 @@ int fill_singles_histos(Dragon_event *ptr)
 // loop over window and sort all head-tail pairs
 int fill_coinc_histos(int win_idx, int frag_idx)
 {
-   Dragon_event *alt, *tmp, *ptr = &evbuf[frag_idx];
-   Head_data *head;   Tail_data *tail;
-   int i, j, max_ch, dt, abs_dt;
-   float sum, max;
+Dragon_event *alt, *tmp, *ptr = &evbuf[frag_idx];
+Head_data    *head;
+Tail_data    *tail;
+int          i, j, max_ch, dt, abs_dt;
+float        sum, max;
 
-   // histogram of coincwin-size
-   //dt = (frag_idx - win_idx + 2*EVT_BUFSIZE) %  EVT_BUFSIZE; ++frag_hist[dt];
-   while( win_idx != frag_idx ){ alt = &evbuf[win_idx]; // check all conicidences in window
-      if( ++win_idx == EVT_BUFSIZE ){ win_idx = 0; } // update for next coinc (check for wrap)
-      if( ptr->type == alt->type ){ continue; }// ignore head-head and tail-tail
-      if( ptr->type == TAIL_EVENT ){ // swap so ptr is always head and alt is always the tail event
-	 tmp = ptr; ptr = alt; alt = tmp;
-      }
-      // apply any time gates (coinditions on dt), and increment head-tail stuff here
-      //
-      //
-      dt = ptr->ts - alt->ts; abs_dt = ( dt < 0 ) ? -1*dt : dt;
-      if( abs_dt > 200 ){ continue; }
-      head = &ptr->head_tail_data.head_data;
-      tail = &alt->head_tail_data.tail_data;
-      //printf("Coinc H[ ser %d, t %ld ] --- T[ ser %d, t %ld ]  ", ptr->io32.trig_count, ptr->ts,
-      //       alt->io32.trig_count, alt->ts);
+    // histogram of coincwin-size
+    //dt = (frag_idx - win_idx + 2*EVT_BUFSIZE) %  EVT_BUFSIZE; ++frag_hist[dt];
+    while( win_idx != frag_idx )
+    {
+        alt = &evbuf[win_idx]; // check all conicidences in window
+        if( ++win_idx == EVT_BUFSIZE )
+            win_idx = 0; // update for next coinc (check for wrap)
+        if( ptr->type == alt->type )
+            continue; // ignore head-head and tail-tail
+        
+        // swap so ptr is always head and alt is always the tail event
+        if( ptr->type == TAIL_EVENT )
+        {
+            tmp = ptr;
+            ptr = alt;
+            alt = tmp;
+        }
+        
+        // apply any time gates (coinditions on dt), and increment head-tail stuff here
+        dt = ptr->ts - alt->ts;
+        abs_dt = ( dt < 0 ) ? -1*dt : dt;
+        if( abs_dt > 200 ) //LEE WHY?
+            continue;
 
-      for(i=0; i<ptr->v792a.d_count; i++){
-         max_ch = (ptr->v792a.data[i] >> 16) & 0x1f;
-         if( max_ch == 29 || max_ch == 31 ){
-            //printf("ExtraBGO%d=%d ", max_ch, ptr->v792a.data[i] & 0xfff);
-         }
-      }
+        head = &ptr->head_tail_data.head_data;
+        tail = &alt->head_tail_data.tail_data;
+        //printf("Coinc H[ ser %d, t %ld ] --- T[ ser %d, t %ld ]  ", ptr->io32.trig_count, ptr->ts,
+        //       alt->io32.trig_count, alt->ts);
 
-      xtofh->Fill(xtofh, dt, 1);
-      xtofg->Fill(xtofg, dt, 1); // need to figure out how to properly fill this
+        for(i=0; i<ptr->v792a.d_count; i++)
+        {
+            max_ch = (ptr->v792a.data[i] >> 16) & 0x1f;
+            //LEE debugging
+            //if( max_ch == 29 || max_ch == 31 )
+            //{
+            //    printf("ExtraBGO%d=%d ", max_ch, ptr->v792a.data[i] & 0xfff);
+            //}
+        }
 
-      // BGO (from head) - sorted arrays populated by pre_sort_exit
-      // if( head->bgo_mult > 0 ){
-      //    bgo_e0_c->Fill(bgo_e0_c, head->bgo_esort[0], 1);
-      //    bgo_chan_c->Fill(bgo_chan_c, head->bgo_id[0], 1);
-      //    bgo_zpat->Fill(bgo_zpat, bgo_tdc_zposn[head->bgo_id[0]], 1);
-      // }
-      // if( head->bgo_mult > 1 ){
-      //    bgo_e0_e1_c->Fill(bgo_e0_e1_c, head->bgo_esort[0], head->bgo_esort[1], 1);
-      // }
+        xtofh->Fill(xtofh, dt, 1);
+        xtofg->Fill(xtofg, dt, 1); // need to figure out how to properly fill this
+
+        //BGO
+        fill_bgo_histos(gBGOCoincHistos, head);
+        // BGO (from head) - sorted arrays populated by pre_sort_exit
+        // if( head->bgo_mult > 0 ){
+        //    bgo_e0_c->Fill(bgo_e0_c, head->bgo_esort[0], 1);
+        //    bgo_chan_c->Fill(bgo_chan_c, head->bgo_id[0], 1);
+        //    bgo_zpat->Fill(bgo_zpat, bgo_tdc_zposn[head->bgo_id[0]], 1);
+        // }
+        // if( head->bgo_mult > 1 ){
+        //    bgo_e0_e1_c->Fill(bgo_e0_e1_c, head->bgo_esort[0], head->bgo_esort[1], 1);
+        // }
        
        // DSSD (from tail)
         for(i = 0; i < 16; i++){
