@@ -375,11 +375,11 @@ int insert_sort_win(Grif_event *ptr, int slot)
       // should exit while-loop when no more events outside window
       //    *BUT* add error recovery - if window too full, dump events
       if( dt < sort_window_width ){
-       //if( win_count >= 0.45*PTR_BUFSIZE ){ ++sortfull; } else {
+        //if( win_count >= 0.45*PTR_BUFSIZE ){ ++sortfull; } else {
          if( win_count > coinc_events_cutoff ){ ++sortfull; } else {
             // now removed all events not in coinc with newly added fragment
             //   so can update coinc window counters with just-added frag
-            user_addto_window(sort_window_start, slot);
+            // user_addto_window(sort_window_start, slot);
             break;
          }
       }

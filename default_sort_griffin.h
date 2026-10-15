@@ -239,7 +239,7 @@ TH1I  *ge_sum_b_art, *ge_sum_b_art_brems, *ge_sum_b_artT, *ge_sum_b_artR, *ge_su
 
 // ARIES, PACES and LaBr3
 TH1I  *aries_sum;  // aries_sum is sum of tile energies
-TH1I  *paces_sum;  // paces_sum is sum of crystal energies
+TH1I  *paces_sum, *paces_sum_b;  // paces_sum is sum of crystal energies, *paces_sum_b has a beta-coincidence
 TH1I  *labr_sum;  // labr_sum is sum of crystal energies
 
 // RCMP
@@ -252,7 +252,7 @@ TH2I  *rcmp_x_ge_hit, *rcmp_y_ge_hit; // rcmp strips vs Ge hitpatterns
 // QED
 TH1I  *qed_sum, *qed_fb_sum;  // qed_sum is sum of strip energies, fb is with front-back coincidence
 TH2I  *qed_strips[N_QED_POS];
-TH2I  *qed_hit[N_QED_POS], *qed_hit_trials[N_QED_POS];
+TH2I  *qed_hit[N_QED_POS];// *qed_hit_trials[N_QED_POS];
 TH2I  *qed_fb[N_QED_POS];
 TH2I  *qed_psd_e[N_QED_POS];
 TH2I  *qed_p_ge_hit, *qed_n_ge_hit; // qed strips vs Ge hitpatterns

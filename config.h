@@ -53,9 +53,9 @@ typedef struct cal_coeff_struct {
 } Cal_coeff;
 
 typedef struct sortvar_struct {     // sortvars used by histos AND conditions
-   int value;      int offset;    int dtype;     //  but "use_count" only used
-   int use_count_x;  int valid;   int local;     //  to refer to histo_use
-   Histogram *histo_list_x[MAX_HISTOGRAMS];      // (inc/dec in add/rmv_histo)
+   // int value;      int offset;    int dtype;  //  but "use_count" only used
+   //int use_count_x;  int valid;   int local;   //  to refer to histo_use
+   //Histogram *histo_list_x[MAX_HISTOGRAMS];    // (inc/dec in add/rmv_histo)
    char name[STRING_LEN]; char title[STRING_LEN];
    int subsys1; int subsys2;
    float (*get_value)(void *, void *, int, int);
@@ -134,14 +134,13 @@ typedef struct config_set_struct { int  type; // memory(live,sort) or disk
    int current_depth;    Folder *treepath[HISTO_FOLDER_LENGTH]; // length 2296
    int ncal;             Cal_coeff *calib[MAX_CALIB];
    int nglobal;          Global *globals[MAX_GLOBALS];
-   int nconds;           Cond  *condlist[MAX_CONDS];       //   sorted list
-   int ngates;           Gate  *gatelist[MAX_GATES];//(inactive at end)           47384
-   int nusedvar;         Sortvar *usedvars[MAX_SORT_VARS];
+   int nconds;           Cond  *condlist[MAX_CONDS]; // sorted lists
+   int ngates;           Gate  *gatelist[MAX_GATES]; //(inactive at end) 47384
    int nuser;            Histogram *user_histos[MAX_HISTOGRAMS];
    int nhistos;          Histogram *histo_list[MAX_HISTOGRAMS];
-   int nsortvar;         Sortvar varlist[MAX_SORT_VARS];                     // 33921336
-   Cond cond_array[MAX_GATES];  Gate gate_array[MAX_GATES]; // unsorted
-   Global global_array[MAX_GLOBALS];                                         // 34115896
+   int nsortvar;         Sortvar varlist[MAX_SORT_VARS];           // 33921336
+   Cond cond_array[MAX_GATES];  Gate gate_array[MAX_GATES]; // unsorted lists
+   Global global_array[MAX_GLOBALS];                               // 34115896
    Histogram histo_array[MAX_HISTOGRAMS];
    Cal_coeff calib_array[MAX_CALIB];  int odb_daqsize;
 } Config;

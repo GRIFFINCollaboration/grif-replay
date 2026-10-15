@@ -140,7 +140,7 @@ int TH1I_Reset(TH1I *this)
    this->entries       = 0;
 }
 
-int TH1I_Fill(TH1I *this, int xval, int count)
+inline __attribute__((always_inline)) int TH1I_Fill(TH1I *this, int xval, int count)
 {
   float bin;
   if(this->xmin != 0 || this->xbins != this->xrange){
@@ -248,7 +248,7 @@ int TH2I_Reset(TH2I *this)
    this->entries       = 0;
 }
 
-int TH2I_Fill(TH2I *this, int xval, int yval, int count)
+inline __attribute__((always_inline)) int TH2I_Fill(TH2I *this, int xval, int yval, int count)
 {
   float xbin, ybin;
   if(this->xmin != 0 || this->xbins != this->xrange){

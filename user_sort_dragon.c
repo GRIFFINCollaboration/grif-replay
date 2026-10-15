@@ -12,10 +12,6 @@ extern float spread(int val);
 //#####              USER SORT - custom user histograms             #####
 //#######################################################################
 
-int user_addto_window(int win_strt, int new_frag){ return(0); }
-
-int user_removefrom_window(int win_strt, int new_frag){ return(0); }
-
 int test_gate(Dragon_event *ptr, Dragon_event *alt, Gate *gate)
 {
    Sortvar *var;
@@ -40,19 +36,6 @@ int test_gate(Dragon_event *ptr, Dragon_event *alt, Gate *gate)
    }
    gate->valid  = ( i >= gate->nconds-1 ); // tested all conditions
    gate->passed = ( i == gate->nconds   );
-   return(0);
-}
-
-int user_sort_init()
-{
-return(0);
-   Config *cfg = configs[1]; // ** Sort is using config[1]
-   Cond *cond;
-   int i;
-   for(i=0; i<cfg->nconds; i++){ cond = cfg->condlist[i];
-      if( cond->use_count == 0 ){ continue; }
-      cond->pass_count = 0;
-   }
    return(0);
 }
 
@@ -117,7 +100,7 @@ int user_sort(int win_strt, int win_end, int flag)
          }
       }
    }
-   user_removefrom_window(win_strt, win_end);
+   //user_removefrom_window(win_strt, win_end);
    return(0);
 }
 

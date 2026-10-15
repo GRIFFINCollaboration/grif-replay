@@ -46,7 +46,7 @@ void web_main(int *arg)
 
    if( *arg > 9080 && *arg <= 10099 ){ port = *arg; }
    else { port = DEFAULT_WEBPORT; }
-   
+
    signal(SIGPIPE, SIG_IGN);
 
     if(PLATFORM_IS_MACOS){ // MAC Os
@@ -348,13 +348,16 @@ int get_request(int fd)
 int get_line(int fd, char *buf, int maxlen)
 {
    int i, status;
-   for(i=0; i<(maxlen-1); i++){
+   for(i=0; i<(maxlen-1); i++){ // maxlen-1: leave buf null terminated
       if( (status=read(fd, buf, 1)) < 0 ){     /* error  -  could probably */
          perror("get_line failed"); return(-1);/*  continue on some errors */
       }
       if( status == 0  ){ *(buf)  ='\0'; return(i);   } /* EOF */
       if( *buf == '\n' ){ *(buf+1)='\0'; return(i+1); } /* End of Line */
       ++buf;
+   }
+   if( i == maxlen-1 ){
+      printf("WARNING web_server.c:get_line() url exceeded max length\n");
    }
    return(0);
 }
