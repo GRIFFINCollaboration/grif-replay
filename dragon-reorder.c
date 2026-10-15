@@ -130,7 +130,7 @@ void reorder_main(Sort_status *arg)
       if( inptr + DRAGON_EVENTWORDS < bufend ){
          memcpy((char *)(newptr->event),(char *)(inptr),sizeof(Dragon_event));
       } else {  // wrapped in middle of event
-         i = bufend - inptr;
+         i = (bufend - inptr) * sizeof(*inptr); // pointer diff is words; convert to bytes
          memcpy((char *)(newptr->event),  (char *)(inptr),i);
          memcpy((char *)(newptr->event)+i,(char *)(bankbuf),sizeof(Dragon_event)-i);
       }

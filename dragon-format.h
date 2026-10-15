@@ -54,10 +54,14 @@ typedef struct v792_event_struct { // 32+2 = 34
 #define SUBSYS_TDC0  11
 
 typedef struct head_data {
-   int  xtdc; int rftdc; int tdc0;
-   float bgo_energy[BGO_MAXCHAN];
-   int   bgo_time  [BGO_MAXCHAN];
-   float bgo_e0;  int bgo_ch0;
+    int  xtdc; int rftdc; int tdc0;
+    float bgo_energy[BGO_MAXCHAN];
+    int   bgo_time  [BGO_MAXCHAN];
+    float bgo_e0;  int bgo_ch0;
+    int   bgo_mult;                   // number of hits above threshold
+    int   bgo_id   [BGO_MAXCHAN];     // channel indices, energy-sorted descending
+    float bgo_esort[BGO_MAXCHAN];     // energies in that order
+    int   bgo_tsort[BGO_MAXCHAN];     // TDC times in that order
 } Head_data;
 
 typedef struct tail_data {
