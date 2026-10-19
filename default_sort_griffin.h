@@ -33,7 +33,7 @@
 #define QED_QED_ENERGY_WINDOW     20  //   20keV
 #define QED_ANGLE_WINDOW          15  // 15 degrees
 
-#define N_PPG_PATTERNS  7
+#define N_PPG_PATTERNS  8
 #define MAX_ODB_PPG_CYCLES 50
 #define MAX_CYCLES 512                          // Used as an axis length for some 2d histograms so must be a multiple of 16
 #define N_HITPAT  7
@@ -237,6 +237,9 @@ extern TH2I  *ge_e_vs_k_2hit_first[N_HPGE]; // Ge Hit1 energy vs k1 for 2-hit pi
 extern TH2I  *ge_e_vs_k_2hit_second[N_HPGE]; // Ge Hit2 energy vs k2 for 2-hit pileup events
 extern TH2I  *ge_PU2_e2_v_k_gatedxrays[N_HPGE]; // Ge e2 vs k2 for fixed e1 energy gates
 extern TH2I  *ge_PU2_e2_v_k_gated1408[N_HPGE]; // Ge e2 vs k2 for fixed e1 energy gates
+extern TH1I  *pac_pu_class; // The value of pile-up class
+extern TH2I  *pac_e_vs_k_2hit_first[N_PACES];  // PACES Hit1 energy vs k1 for 2-hit pileup events
+extern TH2I  *pac_e_vs_k_2hit_second[N_PACES]; // PACES Hit2 energy vs k2 for 2-hit pileup events
 
 // for most subsystem-pair-combinations, there is a
 // a 1d time-difference and a 2d ecal-vs-ecal matrix

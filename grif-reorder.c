@@ -133,7 +133,7 @@ void reorder_main(Sort_status *arg)
       ev_done = scaler_event = 1;
     }else{
       // Skip to the timestamp but be careful of different event lengths
-      len+=3; bankbuf_rdpos+=3; evptr+=3;
+      len+=2; bankbuf_rdpos+=2; evptr+=2;
     }
     goto loop_end;
 
@@ -270,7 +270,7 @@ void reorder_main(Sort_status *arg)
   return;
 }
 
-#define MAX_DATA_GAP 4000000000 // 40 seconds
+#define MAX_DATA_GAP 6000000000 // 60 seconds
 void reorder_out(Sort_status *arg)
 {
   int i, j, wr_avail, wrpos, ts_slot, *err;
@@ -300,7 +300,7 @@ void reorder_out(Sort_status *arg)
           reorder_status(0);
           return;
         } else { //  error?
-          printf("REORDER ERROR-VERY-LONG-DATA-GAP\n");
+          printf("REORDER ERROR-VERY-LONG-DATA-GAP: ts - prev_ts >= MAX_DATA_GAP: %ld - %ld = %ld >= %ld\n",ts,prev_ts,ts-prev_ts,MAX_DATA_GAP);
         }
       }
       ts_slot = (ts >> BUCKET_SIZE_BITS) & REORDER_TSLOTS_MASK;

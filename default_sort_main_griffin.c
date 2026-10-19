@@ -152,7 +152,7 @@ void fill_batch_histos()
   TH1I_Batch_Fill(ge_sum, &batch_data_ge_sum[0]);  // ge_sum
   TH1I_Batch_Fill(ge_sum_us, &batch_data_ge_sum_us[0]);  // ge_sum_us
   TH1I_Batch_Fill(ge_sum_ds, &batch_data_ge_sum_ds[0]);  // ge_sum_ds
-  TH1I_Batch_Fill(ge_sum_ds, &batch_data_ge_sum_ab[0]);  // ge_sum_ab
+  TH1I_Batch_Fill(ge_sum_ab, &batch_data_ge_sum_ab[0]);  // ge_sum_ab
   TH1I_Batch_Fill(ge_sum_ab_us, &batch_data_ge_sum_ab_us[0]);  // ge_sum_ab_us
   TH1I_Batch_Fill(ge_sum_ab_ds, &batch_data_ge_sum_ab_ds[0]);  // ge_sum_ab_ds
   TH1I_Batch_Fill(ge_pu_type, &batch_data_ge_pu_type[0]);  // ge_pu_type
@@ -259,40 +259,6 @@ void reset_batch_cycles_histos_arrays()
 //#######################################################################
 //########               Sums and coinc  HISTOGRAMS            ##########
 //#######################################################################
-
-// Pilseup fill functions for branchless jump table
-void pileup_fill_default(int pos, int ecal, int integ, int alt_ecal) { }
-void pileup_fill_single(int pos, int ecal, int integ, int alt_ecal) {  // single hit
-  ge_1hit[pos]->Fill(ge_1hit[pos], ecal, 1);
-  ge_xtal_1hit->Fill(ge_xtal_1hit, pos, ecal, 1);
-}
-void pileup_fill_two_hit_first(int pos, int ecal, int integ, int alt_ecal) {  // first Hit of two pileup events
-  ge_2hit[pos]->Fill(ge_2hit[pos], ecal, 1); // 2-hit pileup
-  ge_xtal_2hit->Fill(ge_xtal_2hit, pos, ecal, 1);
-  // The following used for mapping the k2 dependant correction
-  ge_e_vs_k_2hit_first[pos]->Fill(ge_e_vs_k_2hit_first[pos], ecal, integ, 1);  // energy1 vs k1 spectrum of 1st Hit of 2hit pileup events
-}
-void pileup_fill_two_hit_second(int pos, int ecal, int integ, int alt_ecal) {  // second Hit of two pileup events
-  ge_2hit[pos]->Fill(ge_2hit[pos], ecal, 1); // 2-hit pileup
-  ge_xtal_2hit->Fill(ge_xtal_2hit, pos, ecal, 1);
-  // The following is not used for mapping the corrections but is a useful diagnostic
-  ge_e_vs_k_2hit_second[pos]->Fill(ge_e_vs_k_2hit_second[pos], ecal, integ, 1);  // energy2 vs k2 spectrum of 2nd Hit of 2hit pileup events
-
-  // The following 1408keV matrix used for mapping the E1 offset correction
-  if(alt_ecal > 1380 && alt_ecal < 1420){ // Require 152Eu 1408keV as E1 for mapping the E1 offset
-    ge_PU2_e2_v_k_gated1408[pos]->Fill(ge_PU2_e2_v_k_gated1408[pos], ecal, integ, 1);  // e2 vs k2 for fixed e1
-    // The following x-rays matrix used for mapping the k2 dependant correction for E2
-    // E2 vs k2 gated on fixed x-ray energies
-    // The E2 energy has 1272keV subtracted from it to put the 1408keV peak around 136keV to allow a smaller matrix side and easier processing in the app
-    if(alt_ecal > 5 && alt_ecal < 130){ // Require 152Eu x rays (or 121keV because x rays are attenuated in some channels) as E1 for mapping the k2 dependance
-      ge_PU2_e2_v_k_gatedxrays[pos]->Fill(ge_PU2_e2_v_k_gatedxrays[pos], (ecal - 1272), integ, 1);  // e2 vs k2 for fixed e1
-    }
-  }
-}
-void pileup_fill_three_hit(int pos, int ecal, int integ, int alt_ecal) {  // three hits
-  ge_3hit[pos]->Fill(ge_3hit[pos], ecal, 1);
-  ge_xtal_3hit->Fill(ge_xtal_3hit, pos, ecal, 1);
-}
 
 int fill_singles_histos(Grif_event *ptr)
 {
@@ -620,6 +586,21 @@ int fill_singles_histos(Grif_event *ptr)
     fprintf(stderr,"bad PACES crystal[%d] for chan %d\n", pos, chan);
   } else {
     paces_xtal->Fill(paces_xtal, pos, ptr_ecal, 1);
+
+
+    pac_pu_class->Fill(pac_pu_class, class, 1);  // pileup class value
+        if(ptr->pileup == PU_2HIT_A1ST || ptr->pileup == PU_2HIT_B1ST || ptr->pileup == PU_2HIT_C1ST){ // first Hit of two pileup events
+        //ge_2hit[pos]->Fill(ge_2hit[pos], ptr_ecal, 1); // 2-hit pileup
+        //ge_xtal_2hit->Fill(ge_xtal_2hit, pos, ptr_ecal, 1);
+        // The following used for mapping the k2 dependant correction
+        pac_e_vs_k_2hit_first[pos-1]->Fill(pac_e_vs_k_2hit_first[pos-1], ptr_ecal, integ, 1);  // energy1 vs k1 spectrum of 1st Hit of 2hit pileup events
+      }else if(ptr->pileup == PU_2HIT_A2ND || ptr->pileup == PU_2HIT_B2ND || ptr->pileup == PU_2HIT_C2ND){  // second Hit of two pileup events
+        //ge_2hit[pos]->Fill(ge_2hit[pos], ptr_ecal, 1); // 2-hit pileup
+        //ge_xtal_2hit->Fill(ge_xtal_2hit, pos, ptr_ecal, 1);
+        // The following is not used for mapping the corrections but is a useful diagnostic
+        pac_e_vs_k_2hit_second[pos-1]->Fill(pac_e_vs_k_2hit_second[pos-1], ptr_ecal, integ, 1);  // energy2 vs k2 spectrum of 2nd Hit of 2hit pileup events
+      }
+
   }
   goto singles_loop_end;
 

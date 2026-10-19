@@ -93,6 +93,7 @@ extern char subsys_name[MAX_SUBSYS][STRING_LEN];
 #define N_ARIES 76
 #define N_LABR 8
 #define N_TACS 12
+#define N_PACES 5
 #define N_RCMP_POS 6
 #define N_RCMP_STRIPS 32
 #define N_QED_POS 6

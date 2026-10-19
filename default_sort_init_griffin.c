@@ -91,14 +91,14 @@ long ppg_bin_end;         // Timestamp of the end of the current bin (used for d
 //#######################################################################
 
 // Cycles & PPG handles
-int ppg_patterns[N_PPG_PATTERNS]={ 0xC008,0xC002,0xC001,0xC004,0xC0F0,0xC009,0xC00A };
-char ppg_handles[N_PPG_PATTERNS][32]={ "0xC008","0xC002","0xC001","0xC004","0xC0F0","0xC009","0xC00A" };
+int ppg_patterns[N_PPG_PATTERNS]={ 0xC008,0xC002,0xC001,0xC004,0xC0F0,0xC009,0xC00A,0xFFFF };
+char ppg_handles[N_PPG_PATTERNS][32]={ "0xC008","0xC002","0xC001","0xC004","0xC0F0","0xC009","0xC00A","0xFFFF" };
 char ppg_names[N_PPG_PATTERNS][32]={
-  "Move_Tape", "Background", "Beam_on_Implant", "Beam_off_Decay", "Source_data", "Continuous_Tape_Beam_on", "Continuous_Tape_Background"
+  "Move_Tape", "Background", "Beam_on_Implant", "Beam_off_Decay", "Source_data", "Continuous_Tape_Beam_on", "Continuous_Tape_Background", "Early_Source_data"
 };
 
-char ge_cycle_code_titles[N_PPG_PATTERNS][HANDLE_LENGTH]={ "0xC008_Move_Tape","0xC002_Background","0xC001_Beam_on_Implant","0xC004_Beam_off_Decay","0xC0F0_Source_data","0xC009_Continuous_Tape_Beam_on", "0xC00A_Continuous_Tape_Background" };
-char gg_cycle_code_titles[N_PPG_PATTERNS][HANDLE_LENGTH]={ "0xC008_GG_Move_Tape","0xC002_GG_Background","0xC001_GG_Beam_on_Implant","0xC004_GG_Beam_off_Decay","0xC0F0_GG_Source_data","0xC009_GG_Continuous_Tape_Beam_on", "0xC00A_GG_Continuous_Tape_Background" };
+char ge_cycle_code_titles[N_PPG_PATTERNS][HANDLE_LENGTH]={ "0xC008_Move_Tape","0xC002_Background","0xC001_Beam_on_Implant","0xC004_Beam_off_Decay","0xC0F0_Source_data","0xC009_Continuous_Tape_Beam_on", "0xC00A_Continuous_Tape_Background", "0xFFFF_Early_Source_data" };
+char gg_cycle_code_titles[N_PPG_PATTERNS][HANDLE_LENGTH]={ "0xC008_GG_Move_Tape","0xC002_GG_Background","0xC001_GG_Beam_on_Implant","0xC004_GG_Beam_off_Decay","0xC0F0_GG_Source_data","0xC009_GG_Continuous_Tape_Beam_on", "0xC00A_GG_Continuous_Tape_Background", "0xFFFF_GG_Early_Source_data" };
 // Hitpatterns
 char hit_handles[N_HITPAT][32]={ "q_hit","e_hit","t_hit","w_hit","r_hit", "s_hit", "d_hit" };
 char   hit_names[N_HITPAT][32]={
@@ -372,6 +372,9 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
     TH2I  *ge_e_vs_k_2hit_second[N_HPGE]; // Ge Hit2 energy vs k2 for 2-hit pileup events
     TH2I  *ge_PU2_e2_v_k_gatedxrays[N_HPGE]; // Ge e2 vs k2 for fixed e1 energy gates
     TH2I  *ge_PU2_e2_v_k_gated1408[N_HPGE]; // Ge e2 vs k2 for fixed e1 energy gates
+    TH1I  *pac_pu_class; // The value of pile-up class
+    TH2I  *pac_e_vs_k_2hit_first[N_PACES];  // PACES Hit1 energy vs k1 for 2-hit pileup events
+    TH2I  *pac_e_vs_k_2hit_second[N_PACES]; // PACES Hit2 energy vs k2 for 2-hit pileup events
 
     // for most subsystem-pair-combinations, there is a
     // a 1d time-difference and a 2d ecal-vs-ecal matrix
@@ -798,6 +801,7 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
         {(void **)&gea_self_dt,  "GeA_crystal_vs_self_dt",    "",                         SUBSYS_HPGE_A,  E_2D_SPECLEN, 64},
         {(void **)&geb_self_dt,  "GeB_crystal_vs_self_dt",    "",                         SUBSYS_HPGE_A,  E_2D_SPECLEN, 64},
         {(void **)&ge_pu_class,  "Pile_up_class",           "",                          SUBSYS_HPGE_A,         64},
+        {(void **)&pac_pu_class,  "PACES Pile_up_class",           "",                   SUBSYS_PACES,          64},
         {(void **) ge_sum_class,    "", ge_pu_class_sum_titles[0],                       SUBSYS_HPGE_A,  E_SPECLEN,   0, N_PU_CLASSES},
         {(void **) ge_e_vs_k_class, "", ge_pu_class_2d_titles[0],                        SUBSYS_HPGE_A,       2048, 512, N_PU_CLASSES},
         {(void **)&ge_pu_type,   "Pile_up_type",            "",                          SUBSYS_HPGE_A,         64},
@@ -810,6 +814,8 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
         {(void **) ge_e_vs_k_2hit_second,     "Ge%02d_E_vs_k_2nd_of_2hit",              "", SUBSYS_HPGE_A,  2048, 720, 64},
         {(void **) ge_PU2_e2_v_k_gatedxrays,  "Ge%02d_PU2_E2_vs_k2_E1gated_on_Xrays",   "", SUBSYS_HPGE_A,   256, 720, 64},
         {(void **) ge_PU2_e2_v_k_gated1408,   "Ge%02d_PU2_E2_vs_k2_E1gated_on_1408keV", "", SUBSYS_HPGE_A,   256, 720, 64},
+        {(void **) pac_e_vs_k_2hit_first,      "PAC%02d_E_vs_k_1st_of_2hit",              "", SUBSYS_PACES,  1024, 720, 5},
+        {(void **) pac_e_vs_k_2hit_second,     "PAC%02d_E_vs_k_2nd_of_2hit",              "", SUBSYS_PACES,  1024, 720, 5},
         {NULL,                   "Hits_and_Sums/BGO_HV_Alignment",     "",                         },
         {(void **) ge_bgo_gated, "",   ge_bgo_handles[0],  SUBSYS_HPGE_A,  E_2D_SPECLEN, 0, N_BGO},
         // Coinc

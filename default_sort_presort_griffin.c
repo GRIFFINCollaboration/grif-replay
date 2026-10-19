@@ -147,6 +147,14 @@ int pre_sort_enter(int start_idx, int frag_idx)
     ptr->psd = (int)(psd*1000.0); // psd = long integration divided by short integration
   }
 
+  // PACES
+  if( ptr_subsys == SUBSYS_PACES){
+    ptr->pu_class = PU_OTHER; // Pileup class - default value for all PACES events
+    if(ptr->pileup==1 && ptr->nhit ==1){
+      ptr->pu_class = PU_SINGLE_HIT; // Single hit events, no pileup, this is the most common type of PACES event
+    }
+  }
+
   // HPGe B
   if( ptr_subsys == SUBSYS_HPGE_B){
     ptr->pu_class = PU_OTHER; // Pileup class - default value for all HPGe events
@@ -453,6 +461,10 @@ int pre_sort_enter(int start_idx, int frag_idx)
       }
       goto presort_loop_end;
       do_presort_PACES:
+      // PACES pile-up corrections
+      if(alt_subsys == SUBSYS_PACES && chan2 == chan){
+        perform_pileup_correction(ptr, alt, dt, chan, chan2, i, end_idx);
+      }
       // Tag PACES events which have a beta-coincidence
       // Use the ptr->tof
       // ptr->tof = 0 = No beta coincidence
@@ -767,7 +779,7 @@ int pre_sort_enter(int start_idx, int frag_idx)
       }
       // Determine absolute time difference between timestamps
       dt = ptr->ts - alt->ts; if( dt < 0 ){ dt = -1*dt; }
-      if(dt>40){ continue; } // Limit to +/- 400 nanoseconds
+      if(dt>60){ continue; } // Limit to +/- 600 nanoseconds
       //  fprintf(stdout,"Scanning Doubles: %d %d: %d: %d %d, %.1f %.1f (%.1f)\n",frag_idx,i,(ptr->ts - alt->ts),ptr->subsys,alt->subsys,ptr->ecal,alt->ecal,(ptr->ecal+alt->ecal));
 
       // Only interested in HPGe - PIXEL coincidences in this presort
@@ -794,7 +806,7 @@ int pre_sort_enter(int start_idx, int frag_idx)
               // In COMPTONB event, crystal_table[chan]=pos will be  first QED DSSD number [1-6],  alt_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
               // In COMPTONB event, crystal_table[ tof]=pos will be second QED DSSD number [1-6], alt2_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
               ptr->subsys = SUBSYS_COMPTONB;                  // First Si hit becomes COMPTONB event, Si-Si scatter
-              ptr->alt_ecal  = alt->ecal;                     // Second QED pixel energy
+              ptr->alt_ecal = alt->ecal;                      // Second QED pixel energy
               ptr->esum = ptr->ecal + alt->ecal;              // esum will be the full energy (511keV)
               ptr->tof  = alt->chan;                          // Second QED DSSD number [1-6]
               ptr->alt2_chan = alt->alt_chan;                 // Second QED pixel number [DSSD*PIXELnumber],[0-5*0-1023]
@@ -811,7 +823,7 @@ int pre_sort_enter(int start_idx, int frag_idx)
               // In COMPTONB event, crystal_table[chan]=pos will be  first QED DSSD number [1-6],  alt_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
               // In COMPTONB event, crystal_table[ tof]=pos will be second QED DSSD number [1-6], alt2_chan will be [DSSD*PIXELnumber],[0-5*0-1023]
               alt->subsys = SUBSYS_COMPTONB;                  // First Si hit becomes COMPTONB event, Si-Si scatter
-              alt->alt_ecal  = ptr->ecal;                     // Second QED pixel energy
+              alt->alt_ecal = ptr->ecal;                      // Second QED pixel energy
               alt->esum = ptr->ecal + alt->ecal;              // esum will be the full energy (511keV)
               alt->tof  = ptr->chan;                          // Second QED DSSD number [1-6]
               alt->alt2_chan = ptr->alt_chan;                 // Second QED pixel number [DSSD*PIXELnumber],[0-5*0-1023]
@@ -1249,6 +1261,12 @@ int perform_pileup_correction(Grif_event *ptr, Grif_event *alt, int dt, int chan
       } // end of while for triple coincidence
     }
   } // end of 3Hit pileup type assignments
+
+  // Temporary skip the correction for PACES because the pileup parameters are not implemented yet
+  if(ptr->subsys == SUBSYS_PACES){
+    alt->alt_ecal=ptr->ecal; // Remember the ecal of the first Hit in this second Hit. Must be done regardless if a correction is made
+    return(0);
+  }
 
   // Now apply hit-specific energy corrections
   if(pileupk1[chan][0] != 1){
