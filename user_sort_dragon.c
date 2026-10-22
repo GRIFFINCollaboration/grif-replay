@@ -110,11 +110,11 @@ int user_sort(int win_strt, int win_end, int flag)
 // to allow simple adding of more below, as required, web interface should request the list of variables
 
 float uval_empty    (Dragon_event *ptr, Dragon_event *alt, int s1, int s2){ printf("Unimplemented variable Value\n"); return( 0 ); }
-float uval_sb0      (Dragon_event *ptr, Dragon_event *alt, int s1, int s2){ }
-float uval_septof   (Dragon_event *ptr, Dragon_event *alt, int s1, int s2){ }
+float uval_sb0      (Dragon_event *ptr, Dragon_event *alt, int s1, int s2){ return 0; }  //LEE stubbed!
+float uval_septof   (Dragon_event *ptr, Dragon_event *alt, int s1, int s2){ return 0; }  //LEE stubbed!
 float uval_icsum    (Dragon_event *ptr, Dragon_event *alt, int s1, int s2){ return( ptr->type == s1 && alt->type == s2 ? ptr->head_tail_data.tail_data.ic_sum : -1 ); }
-float uval_icanode0 (Dragon_event *ptr, Dragon_event *alt, int s1, int s2){ }
-float uval_icanode1 (Dragon_event *ptr, Dragon_event *alt, int s1, int s2){ }
+float uval_icanode0 (Dragon_event *ptr, Dragon_event *alt, int s1, int s2){ return 0; }  //LEE stubbed!
+float uval_icanode1 (Dragon_event *ptr, Dragon_event *alt, int s1, int s2){ return 0; }  //LEE stubbed!
 float uval_bgoes0   (Dragon_event *ptr, Dragon_event *alt, int s1, int s2){
    return( ptr->type == s1 && alt->type == s2 ? ptr->head_tail_data.head_data.bgo_e0 : -1 );
 }

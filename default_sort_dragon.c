@@ -531,7 +531,9 @@ int default_sort(int win_strt, int win_end, int flag)
 
    // sort first event, even if window only contains that event
    // (usually require at least two)
-   for(i=win_strt; ; i++){ ptr = &evbuf[i];
+   for(i=win_strt; ; i++)
+   {
+       ptr = &evbuf[i];
       if( i >= EVT_BUFSIZE ){ i=0; } // WRAP
       if( i != win_strt && flag == SORT_ONE ){ break; }
       if( i != win_strt && i==win_end ){ break; }
@@ -607,7 +609,7 @@ int init_chan_histos(Config *cfg)
 int fill_chan_histos(Dragon_event *ptr)
 {
    static int event;
-   int i, j, count, chan, val, *data;
+   int i, j, chan, val, *data;
 
    //if( ++event < 16384 ){
    //   //ts_hist -> Fill(ts_hist, event,  (int)(ptr->ts/100));
@@ -619,10 +621,13 @@ int fill_chan_histos(Dragon_event *ptr)
    //if( ptr->ecal        >= 1 ){ hit_hist[1] -> Fill(hit_hist[1], chan, 1);
    //hit_hist[6] -> Fill(hit_hist[6], ptr->dtype, 1);
 
+    //printf("Debug fill_chan_histos %i %i\n", ptr->type, ptr->v792a.d_count);
+
+
    if( ptr->type == HEAD_EVENT ){
-      if( (count = ptr->v792a.d_count) <= MAX_V792_WORDS ){
+      if( ptr->v792a.d_count <= MAX_V792_WORDS ){
          data = &ptr->v792a.data[0];
-         for(i=0; i<count; i++){
+         for(i=0; i < ptr->v792a.d_count; i++){
             chan = (data[i] >> 16) & 0x01F;
             val  = (data[i]      ) & 0xFFF;
             if( chan >= 0 && chan < 32 ){
@@ -631,9 +636,9 @@ int fill_chan_histos(Dragon_event *ptr)
             }
          }
       }
-      if( (count = ptr->v1190.d_count) <= MAX_V1190_WORDS ){
+      if( ptr->v1190.d_count <= MAX_V1190_WORDS ){
          data = &ptr->v1190.data[0];
-         for(i=0; i<count; i++){
+         for(i=0; i < ptr->v1190.d_count; i++){
             chan = (data[i] >> 24) & 0x7F;
             val  = (data[i]      ) & 0xFFFFF; //LEE commenting this unused calculation due to warning: val >> 4;
             if( chan >= 0 && chan < 64 ){
@@ -644,9 +649,9 @@ int fill_chan_histos(Dragon_event *ptr)
       }
    }
    if( ptr->type == TAIL_EVENT ){
-      if( (count = ptr->v792a.d_count) <= MAX_V792_WORDS ){
+      if( ptr->v792a.d_count <= MAX_V792_WORDS ){
          data = &ptr->v792a.data[0];
-         for(i=0; i<count; i++){
+         for(i=0; i < ptr->v792a.d_count; i++){
             chan = (data[i] >> 16) & 0x01F;
             val  = (data[i]      ) & 0xFFF;
             if( chan >= 0 && chan < 32 ){
@@ -655,9 +660,9 @@ int fill_chan_histos(Dragon_event *ptr)
             }
          }
       }
-      if( (count = ptr->v792b.d_count) <= MAX_V792_WORDS ){
-      data = &ptr->v792b.data[0];
-         for(i=0; i<count; i++){
+      if( ptr->v792b.d_count <= MAX_V792_WORDS ){
+         data = &ptr->v792b.data[0];
+         for(i=0; i < ptr->v792b.d_count; i++){
             chan = (data[i] >> 16) & 0x01F;
             val  = (data[i]      ) & 0xFFF;
             if( chan >= 0 && chan < 32 ){ chan += 32;
@@ -666,9 +671,9 @@ int fill_chan_histos(Dragon_event *ptr)
             }
          }
       }
-      if( (count = ptr->v1190.d_count) <= MAX_V1190_WORDS ){
+      if( ptr->v1190.d_count <= MAX_V1190_WORDS ){
          data = &ptr->v1190.data[0];
-         for(i=0; i<count; i++){
+         for(i=0; i < ptr->v1190.d_count; i++){
             chan = (data[i] >> 24) & 0x7F;
             val  = (data[i]      ) & 0xFFFFF; //LEE commenting this unused calculation due to warning: val >> 4;
             if( chan >= 0 && chan < 64 ){
@@ -714,6 +719,7 @@ TH1I  *mcp_tac_c;
 TH1I  *ic_sum_c;
 TH2I  *ic_0v1_c;
 TH2I  *ic_anode_c;
+TH2I  *ic_sum_vs_dssd_c;
 
 TH1I  *xtofh;  // gamma to hvy-ion
 TH1I  *xtofg;  // hvy-ion to gamma
@@ -758,28 +764,36 @@ int i, j, k;
       sprintf(hnd,  "SB_%d", i);
       sprintf(title,"Surface Barrier (target scattering monitor) %d", i);
       sb_ecal[i] = H1_BOOK(cfg, hnd, title, ADC_BINS, 0, ADC_BINS);
+      //sb_ecal[i]->axisTitleX = "Energy (Channel)";
     }
     
     // DSSD Histograms
     e_front = H1_BOOK(cfg, "E_front", "DSSD Front Strip Energy", 4096, 0, 4096);
     e_back  = H1_BOOK(cfg, "E_back", "DSSD Back Strip Energy", 4096, 0, 4096);
+    //e_front->axisTitleX = "Energy (Channel)";
+    //e_back->axisTitleX = "Energy (Channel)";
     dssd_hit_pat = H2_BOOK(cfg, "dssd_hit_pat", "DSSD Hit Pattern", 16, 0, 16, 16, 0, 16);
     dssd_echan   = H2_BOOK(cfg, "dssd_echan", "DSSD Channel vs Energy", 2048, 0, 4096, DSSD_MAXCHAN, 0, DSSD_MAXCHAN);
-    
+
     // MCP Histograms
     mcp_tdc = H1_BOOK(cfg, "MCP_TDC", "MCP TDC (TOF)", 4096, 0, 4096);
     mcp_tac = H1_BOOK(cfg, "MCP_TAC", "MCP TAC (TOF)", 4096, 0, 4096);
-    
+    //mcp_tdc->axisTitleX = "Time (Channel)";
+    //mcp_tac->axisTitleX = "Time (Channel)";
+
     // IC Histograms
     ic_sum   = H1_BOOK(cfg, "IC_SUM",   "Summed Energy Loss in Ion Chamber", ADC_BINS, 0, ADC_BINS);
     ic_0v1   = H2_BOOK(cfg, "IC_0v1",   "Ion Chamber Energy 0 vs 1", ADC_BINS, 0, ADC_BINS, ADC_BINS, 0, ADC_BINS);
     ic_anode = H2_BOOK(cfg, "IC_anode",   "Ion Chamber Energy vd Anode Number", 4096, 0, 4096, 4, 0, 4);
-    
+    //ic_sum->axisTitleX = "Energy (Channel)";
+
     // NaI Histograms
-    for(i=0; i<2; i++){
-      sprintf(hnd,  "NaI_%d", i);
-      sprintf(title,"Sodium Iodide (Mass Slit Monitor) %d", i);
-      nai_ecal[i] = H1_BOOK(cfg, hnd, title, ADC_BINS, 0, ADC_BINS);
+    for(i=0; i<2; i++)
+    {
+        sprintf(hnd,  "NaI_%d", i);
+        sprintf(title,"Sodium Iodide (Mass Slit Monitor) %d", i);
+        nai_ecal[i] = H1_BOOK(cfg, hnd, title, ADC_BINS, 0, ADC_BINS);
+        //nai_ecal[i]->axisTitleX = "Energy (Channel)";
     }
    
     // BGO singles Histograms
@@ -790,6 +804,11 @@ int i, j, k;
     gBGOSingleHistos.bgo_energies_vs_detector  = H2_BOOK(cfg, "BGO_E_CHAN", "BGO Energy [all] vs Detector", BGO_E_BINS, 0, BGO_E_BINS, BGO_MAXCHAN, 0, BGO_MAXCHAN);
     gBGOSingleHistos.bgo_detector_hit_pattern  = H1_BOOK(cfg, "BGO_CHAN", "BGO Hit Pattern [detector]", BGO_MAXCHAN, 0, BGO_MAXCHAN);
     gBGOSingleHistos.bgo_z_hit_pattern         = H1_BOOK(cfg, "BGO_Z", "BGO Hit Pattern [z]", 41, -20, 20); //LEE - hard coding Z range! FIX!
+    //gBGOSingleHistos.bgo_e0->axisTitleX = "Energy (keV)";
+    //gBGOSingleHistos.bgo_energies->axisTitleX = "Energy (keV)";
+    //gBGOSingleHistos.bgo_detector_hit_pattern->axisTitleX = "BGO Detector (Channel)";
+    //gBGOSingleHistos.bgo_z_hit_pattern->axisTitleX = "BGO X Position (mm)";
+
 
     close_folder(cfg);
     close_folder(cfg);
@@ -808,19 +827,13 @@ int i, j, k;
     ic_sum_c   = H1_BOOK(cfg, "IC_SUM_c",        "Summed IC Energy Loss",         ADC_BINS, 0, ADC_BINS);
     ic_0v1_c   = H2_BOOK(cfg, "IC_0v1_c",        "IC Energy 0 vs 1",              ADC_BINS, 0, ADC_BINS, ADC_BINS, 0, ADC_BINS);
     ic_anode_c = H2_BOOK(cfg, "IC_anode_c",      "IC Energy vs Anode",            4096, 0, 4096, 4, 0, 4);
+    ic_sum_vs_dssd_c = H2_BOOK(cfg, "IC_SUM_DSSD_c", "IC sum vs DSSSD efront (coinc)", 4096, 0, 4096, ADC_BINS, 0, ADC_BINS);
     
     // MCP Coincidence Histograms
     mcp_tdc_c    = H1_BOOK(cfg, "MCP_TDC_c",    "MCP TDC (coinc)",               4096, 0, 4096);
     mcp_tac_c    = H1_BOOK(cfg, "MCP_TAC_c",    "MCP TAC (coinc)",               4096, 0, 4096);
     
     // BGO Coincidence Histograms
-//    bgo_e0_c                   = H1_BOOK(cfg, "BGO_E0_c", "BGO Energy [e0] (Coinc)", BGO_E_BINS, 0, BGO_E_BINS);
-//    bgo_energies_c             = H1_BOOK(cfg, "BGO_E_c", "BGO Energy [all] (Coinc)", BGO_E_BINS, 0, BGO_E_BINS);
-//    bgo_e0_vs_e1_c             = H2_BOOK(cfg, "BGO_E0_E1_c","BGO Energy [e0] vs [e1] Cascade (Coinc)", BGO_E_BINS, 0, BGO_E_BINS, BGO_E_BINS, 0, BGO_E_BINS);
-//    bgo_e0_vs_detector_c       = H2_BOOK(cfg, "BGO_E0_CHAN_c", "BGO Energy [e0] vs Detector (Coinc)", BGO_E_BINS, 0, BGO_E_BINS, BGO_MAXCHAN, 0, BGO_MAXCHAN);
-//    bgo_energies_vs_detector_c = H2_BOOK(cfg, "BGO_E_CHAN_c", "BGO Energy [all] vs Detector (Coinc)", BGO_E_BINS, 0, BGO_E_BINS, BGO_MAXCHAN, 0, BGO_MAXCHAN);
-//    bgo_detector_hit_pattern_c = H1_BOOK(cfg, "BGO_CHAN_c", "BGO Hit Pattern [detector] (Coinc)", BGO_MAXCHAN, 0, BGO_MAXCHAN);
-//    bgo_z_hit_pattern_c        = H1_BOOK(cfg, "BGO_Z_c", "BGO Hit Pattern [z] (Coinc)", 41, -20, 20); //LEE - hard coding Z range! FIX!
     gBGOCoincHistos.bgo_e0                    = H1_BOOK(cfg, "BGO_E0_c",   "BGO Energy [e0] (coinc)", BGO_E_BINS, 0, BGO_E_BINS);
     gBGOCoincHistos.bgo_energies              = H1_BOOK(cfg, "BGO_E_c", "BGO Energy [all] (coinc)", BGO_E_BINS, 0, BGO_E_BINS);
     gBGOCoincHistos.bgo_e0_vs_e1              = H2_BOOK(cfg, "BGO_E0_E1_c","BGO Energy [e0] vs [e1] Cascade (coinc)", BGO_E_BINS, 0, BGO_E_BINS, BGO_E_BINS, 0, BGO_E_BINS);
@@ -833,7 +846,6 @@ int i, j, k;
     xtofh    = H1_BOOK(cfg, "XTOFH",    "Separator TOF (gamma->HI)", 5000, -10000, 9999);
     xtofg    = H1_BOOK(cfg, "XTOFG",    "Separator TOF (HI->gamma)", 5000, -10000, 9999);
     //LEE bgo_zpat = H1_BOOK(cfg, "BGO_ZPAT", "BGO Z HITPATTERN", 100, -50, 49);
-    
 
     test   = H1_BOOK(cfg, "Test",   "Debug histogram", ADC_BINS, 0, ADC_BINS);
 
@@ -884,29 +896,8 @@ float v_cal, sum;
 
     if( ptr->type == HEAD_EVENT )
     {
+        // BGO histograms
         fill_bgo_histos(gBGOSingleHistos, head);
-        //BGOs
-//        if (head->bgo_mult > 0)
-//        {
-//            //BGO counts per BGO detector
-//            bgo_detector_hit_pattern->Fill(bgo_detector_hit_pattern, head->bgo_id[0], 1);
-//            //BGO highest energy only spectrum
-//            bgo_e0->Fill(bgo_e0, BGO_MEV_TO_BIN(head->bgo_esort[0]), 1);
-//            //BGO e0 vs e1
-//            if( head->bgo_mult > 1 )
-//                bgo_e0_vs_e1->Fill(bgo_e0_vs_e1, BGO_MEV_TO_BIN(head->bgo_esort[0]), BGO_MEV_TO_BIN(head->bgo_esort[1]), 1);
-//            //BGO highest energy spectrum vs detector
-//            bgo_e0_vs_detector->Fill(bgo_e0_vs_detector, BGO_MEV_TO_BIN(head->bgo_esort[0]), head->bgo_id[0], 1);
-//            for ( int index = 0; index < head->bgo_mult; index++)
-//            {
-//                //BGO all energies spectrum
-//                bgo_energies->Fill(bgo_energies, BGO_MEV_TO_BIN(head->bgo_esort[index]), 1);
-//                //BGO all energies spectrum vs detector
-//                bgo_energies_vs_detector->Fill(bgo_energies_vs_detector, BGO_MEV_TO_BIN(head->bgo_esort[index]), head->bgo_id[index], 1);
-//                //BGO counts per detector z position
-//                bgo_z_hit_pattern->Fill(bgo_z_hit_pattern, bgo_tdc_zposn[head->bgo_id[index]], 1);
-//            }
-//        }
     }
     else if (ptr->type == TAIL_EVENT)
     {
@@ -916,24 +907,28 @@ float v_cal, sum;
             if( tail->sb_energy[i] > 0 )
                 sb_ecal[i]->Fill(sb_ecal[i], tail->sb_energy[i], 1);
         }
+
         //DSSD front
         for(i = 0; i < 16; i++)
         {
             if( tail->dssd_energy[i] > 0 )
                 e_front->Fill(e_front, tail->dssd_energy[i], 1);
         }
+
         //DSSD back
         for(i = 16; i < 32; i++)
         {
             if( tail->dssd_energy[i] > 0 )
                 e_back->Fill(e_back, tail->dssd_energy[i], 1);
         }
+
         //DSSD all energies
         for(i = 0; i < DSSD_MAXCHAN; i++)
         {
             if( tail->dssd_energy[i] > 0 )
                 dssd_echan->Fill(dssd_echan, tail->dssd_energy[i], i, 1);
         }
+
         //DSSD hit pattern
         for(i = 0; i < 16; i++)
         for(j = 16; j < 32; j++)
@@ -945,6 +940,7 @@ float v_cal, sum;
         // MCP
         if( tail->mcptac_energy > 0 ) mcp_tac->Fill(mcp_tac, tail->mcptac_energy, 1);
         if( tail->mcp_time[0]   > 0 ) mcp_tdc->Fill(mcp_tdc, tail->mcp_time[0],   1);
+
         // IC
         sum = 0;
         for(i = 0; i < IC_MAXCHAN; i++)
@@ -957,6 +953,7 @@ float v_cal, sum;
             if( tail->ic_energy[i] > 0 )
                 ic_anode->Fill(ic_anode, tail->ic_energy[i], i, 1);
         }
+
         // NaI
         for(i = 0; i < NAI_MAXCHAN; i++)
         {
@@ -976,35 +973,46 @@ float v_cal, sum;
 // loop over window and sort all head-tail pairs
 int fill_coinc_histos(int win_strt, int win_end)
 {
-
-   Head_data *head;   Tail_data *tail;
-   int i, j, max_ch, dt, abs_dt, win_idx;
-   Dragon_event *alt, *tmp, *ptr;
-   float sum, max;
+Head_data       *head;
+Tail_data       *tail;
+int             i, j, max_ch, dt, abs_dt, win_idx;
+Dragon_event    *alt, *tmp, *ptr;
+float           icSum, max, dssdFrontSum, dssdBackSum;
 
    // histogram of coincwin-size
    //dt = (frag_idx - win_idx + 2*EVT_BUFSIZE) %  EVT_BUFSIZE; ++frag_hist[dt];
-   if( (win_idx = win_strt+1) == EVT_BUFSIZE ){ win_idx = 0; }
-   if( ++win_end == EVT_BUFSIZE ){ win_end = 0; } // need to include win_end
-   while( win_idx != win_end ){
-      ptr = &evbuf[win_strt];
-      alt = &evbuf[win_idx]; // check all conicidences in window
-      if( ++win_idx == EVT_BUFSIZE ){ win_idx = 0; }// update for next coinc 
-      if( ptr->type == alt->type ){ continue; }// ignore head-head/tail-tail
-      if( ptr->type == TAIL_EVENT ){// swap so ptr always head, alt tail event
-	 tmp = ptr; ptr = alt; alt = tmp; //         [simplifies code below]
-      }
-      // apply any time gates (coinditions on dt), 
-      //  and increment head-tail stuff here
-      dt = ptr->ts - alt->ts; abs_dt = ( dt < 0 ) ? -1*dt : dt;
-      if( abs_dt > 200 ){ continue; }
-      head = &ptr->head_tail_data.head_data;
-      tail = &alt->head_tail_data.tail_data;
-      //printf("Coinc H[ ser %d, t %ld ] --- T[ ser %d, t %ld ]  ", ptr->io32.trig_count, ptr->ts,
-      //       alt->io32.trig_count, alt->ts);
-
-        //head = &ptr->head_tail_data.head_data;
-        //tail = &alt->head_tail_data.tail_data;
+    win_idx = win_strt+1;
+   if( win_idx == EVT_BUFSIZE )
+       win_idx = 0;
+   if( ++win_end == EVT_BUFSIZE )
+       win_end = 0; // need to include win_end
+    
+    while( win_idx != win_end )
+    {
+        ptr = &evbuf[win_strt];
+        alt = &evbuf[win_idx]; // check all conicidences in window
+        
+        if( ++win_idx == EVT_BUFSIZE )
+            win_idx = 0; // update for next coinc
+        
+        if( ptr->type == alt->type )
+            continue; // ignore head-head/tail-tail
+        
+        if( ptr->type == TAIL_EVENT )
+        {// swap so ptr always head, alt tail event
+            tmp = ptr;
+            ptr = alt;
+            alt = tmp; //         [simplifies code below]
+        }
+        
+        // apply any time gates (coinditions on dt),
+        //  and increment head-tail stuff here
+        dt = ptr->ts - alt->ts;
+        abs_dt = ( dt < 0 ) ? -1*dt : dt;
+        if( abs_dt > 200 )
+            continue; //LEE - WHY?
+        head = &ptr->head_tail_data.head_data;
+        tail = &alt->head_tail_data.tail_data;
         //printf("Coinc H[ ser %d, t %ld ] --- T[ ser %d, t %ld ]  ", ptr->io32.trig_count, ptr->ts,
         //       alt->io32.trig_count, alt->ts);
 
@@ -1021,59 +1029,77 @@ int fill_coinc_histos(int win_strt, int win_end)
         xtofh->Fill(xtofh, dt, 1);
         xtofg->Fill(xtofg, dt, 1); // need to figure out how to properly fill this
 
-        //BGO
+        // BGO histograms
         fill_bgo_histos(gBGOCoincHistos, head);
-        // BGO (from head) - sorted arrays populated by pre_sort_exit
-        // if( head->bgo_mult > 0 ){
-        //    bgo_e0_c->Fill(bgo_e0_c, head->bgo_esort[0], 1);
-        //    bgo_chan_c->Fill(bgo_chan_c, head->bgo_id[0], 1);
-        //    bgo_zpat->Fill(bgo_zpat, bgo_tdc_zposn[head->bgo_id[0]], 1);
-        // }
-        // if( head->bgo_mult > 1 ){
-        //    bgo_e0_e1_c->Fill(bgo_e0_e1_c, head->bgo_esort[0], head->bgo_esort[1], 1);
-        // }
        
-       // DSSD (from tail)
-        for(i = 0; i < 16; i++){
-            if( tail->dssd_energy[i] > 0 ) e_front_c->Fill(e_front_c, tail->dssd_energy[i], 1);
+        // DSSD front sum (from tail)
+        dssdFrontSum = 0;
+        for(i = 0; i < 16; i++)
+        {
+            if( tail->dssd_energy[i] > 0 )
+                dssdFrontSum += tail->dssd_energy[i];
         }
-        for(i = 16; i < 32; i++){
-            if( tail->dssd_energy[i] > 0 ) e_back_c->Fill(e_back_c, tail->dssd_energy[i], 1);
+        if ( dssdFrontSum > 0)
+            e_front_c->Fill(e_front_c, dssdFrontSum, 1);
+
+        // DSSD back sum
+        for(i = 16; i < 32; i++)
+        {
+            if( tail->dssd_energy[i] > 0 )
+                dssdBackSum += tail->dssd_energy[i];
         }
-        for(i = 0; i < 16; i++){
-            for(j = 16; j < 32; j++){
+        if ( dssdBackSum)
+            e_back_c->Fill(e_back_c, dssdBackSum, 1);
+        
+        // DSSD hit pattern
+        for(i = 0; i < 16; i++)
+        {
+            for(j = 16; j < 32; j++)
+            {
                 if( tail->dssd_energy[i] > 0 && tail->dssd_energy[j] > 0 )
+                {
                     dssd_hit_pat_c->Fill(dssd_hit_pat_c, i, j-16, 1);
+                }
             }
         }
+        
+        // DSSD energy vs channel
         for(i = 0; i < DSSD_MAXCHAN; i++){
             if( tail->dssd_energy[i] > 0 )
                 dssd_echan_c->Fill(dssd_echan_c, tail->dssd_energy[i], i, 1);
         }
 
         // MCP (from tail)
-        if( tail->mcptac_energy > 0 ) mcp_tac_c->Fill(mcp_tac_c, tail->mcptac_energy, 1);
-        if( tail->mcp_time[0]   > 0 ) mcp_tdc_c->Fill(mcp_tdc_c, tail->mcp_time[0],   1);
-                                                                                                                                                           
-        // IC (from tail)
-        sum = 0;
-        for(i = 0; i < IC_MAXCHAN; i++){ sum += tail->ic_energy[i]; }
-        ic_sum_c->Fill(ic_sum_c, (int)sum, 1);
-        tail->ic_sum = sum;
+        if( tail->mcptac_energy > 0 )
+            mcp_tac_c->Fill(mcp_tac_c, tail->mcptac_energy, 1);
+        if( tail->mcp_time[0]   > 0 )
+            mcp_tdc_c->Fill(mcp_tdc_c, tail->mcp_time[0],   1);
+
+        // IC sum singles (from tail)
+        icSum = 0;
+        for(i = 0; i < IC_MAXCHAN; i++)
+            icSum += tail->ic_energy[i];
+        if ( icSum > 0)
+            ic_sum_c->Fill(ic_sum_c, (int)icSum, 1);
+        
+        // IC sum coinc (from tail)
+        tail->ic_sum = icSum;
         if( tail->ic_energy[0] > 0 && tail->ic_energy[1] > 0 )
             ic_0v1_c->Fill(ic_0v1_c, tail->ic_energy[0], tail->ic_energy[1], 1);
-        for(i = 0; i < IC_MAXCHAN; i++){
+        for(i = 0; i < IC_MAXCHAN; i++)
+        {
             if( tail->ic_energy[i] > 0 )
                 ic_anode_c->Fill(ic_anode_c, tail->ic_energy[i], i, 1);
         }
-                           
-      //printf("\n");
-      sum = 0; for(i=0; i<IC_MAXCHAN; i++){ sum += tail->ic_energy[i]; }
-      ic_sum->Fill(ic_sum_c, (int)sum, 1);
-      tail->ic_sum = sum;
-      if( tail->ic_energy[0] > 0 && tail->ic_energy[1] > 0 ){
-         ic_0v1_c->Fill(ic_0v1_c, tail->ic_energy[0], tail->ic_energy[1], 1 );
-      }
+        
+        //IC vs DSSD coincidence
+        if ( dssdFrontSum > 0 && icSum > 0)
+            ic_sum_vs_dssd_c->Fill(ic_sum_vs_dssd_c, dssdFrontSum, icSum, 1);
+ 
+        //IC e0 vs e1 coinc
+        tail->ic_sum = icSum;
+        if( tail->ic_energy[0] > 0 && tail->ic_energy[1] > 0 )
+            ic_0v1_c->Fill(ic_0v1_c, tail->ic_energy[0], tail->ic_energy[1], 1 );
    }
    return(0);
 }

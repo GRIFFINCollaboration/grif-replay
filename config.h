@@ -85,7 +85,8 @@ typedef struct th2i_struct TH2I;
 #define SYMMETERIZE -1 // When the ybins are set to this for a 2D histogram it will be symmeterized
 
 // float has around 24bits integer precision
-struct th1i_struct {  long  file_data_offset;    int data_size;
+struct th1i_struct {
+   long  file_data_offset;    int data_size;
    int      type;  TH1I    *next;   char    path[HISTO_FOLDER_LENGTH];
    int     xbins;  int     ybins;   char          title[TITLE_LENGTH];
    int     *data;  int valid_bins;  char        handle[HANDLE_LENGTH];
@@ -94,6 +95,7 @@ struct th1i_struct {  long  file_data_offset;    int data_size;
    Sortvar *xvar;  Sortvar  *yvar;  int  *gate_passed[MAX_HISTO_GATES];
    int xmin; int xmax; int ymin; int ymax; int suppress; int user;
    int xrange; int yrange;  int done_flag;  int symm;
+    //char* axisTitleX; char* axisTitleY;   //LEE pending upgrade
    int   (*Reset)(TH1I *);
    int   (*Fill)(TH1I *, int, int);
    int   (*SetBinContent)(TH1I *, int, int);
@@ -109,6 +111,7 @@ struct th2i_struct {  long  file_data_offset;  int data_size;
    Sortvar *xvar;  Sortvar  *yvar;  int  *gate_passed[MAX_HISTO_GATES];
    int xmin; int xmax; int ymin; int ymax; int suppress;  int user;
    int xrange; int yrange;  int done_flag;  int symm;
+    //char* axisTitleX; char* axisTitleY;  //LEE pending upgrade
    int   (*Reset)(TH2I *);
    int   (*Fill)(TH2I *, int, int, int);
    int   (*SetBinContent)(TH2I *, int, int, int);

@@ -2180,16 +2180,28 @@ int send_spectrum(int num, char url_args[][URL_STRING_LEN], char *name, int fd)
          if( hist->data == NULL ){ // we were not able to read data
             sprintf(tmp,"\'%s\':NULL", name );
             put_line(fd, tmp, strlen(tmp) );
-         } else if( hist->type == INT_1D ){
-            sprintf(tmp,"\'%s\':[", hist->title );
-            put_line(fd, tmp, strlen(tmp) );
-            for(i=0; i<hist->xbins; i++){
-               if( i > 0){ put_line(fd, ",", 1 ); }
-               sprintf(tmp,"%d", (int)hist->data[i] );
-               put_line(fd, tmp, strlen(tmp) );
+         }
+         else if (hist->type == INT_1D)
+         {
+            sprintf(tmp, "\"%s\": {\n", hist->title);
+            put_line(fd, tmp, strlen(tmp));
+            //sprintf(tmp, "\t\"axisTitleX\" : \"%s\",\n", hist->axisTitleX);   //LEE pending upgrade
+            //put_line(fd, tmp, strlen(tmp));                                   //LEE pending upgrade
+            //sprintf(tmp, "\t\"axisTitleY\" : \"%s\",\n", hist->axisTitleY);   //LEE pending upgrade
+            //put_line(fd, tmp, strlen(tmp));                                   //LEE pending upgrade
+            sprintf(tmp, "\t\"data\" : [");
+            put_line(fd, tmp, strlen(tmp));
+            for(i=0; i<hist->xbins; i++)
+            {
+               if (i > 0)
+                    put_line(fd, ",", 1 );
+                
+                sprintf(tmp,"%d", (int)hist->data[i]);
+                put_line(fd, tmp, strlen(tmp));
             }
-            put_line(fd, "]", 1 );
-         } else if( hist->type == INT_2D || hist->type == INT_2D_SYMM ){
+            put_line(fd, " ]\n}\n", 4);
+         }
+         else if( hist->type == INT_2D || hist->type == INT_2D_SYMM ){
             xbins = hist->xbins; if( xbins > 8192 ){ xbins = 8192; }
             ybins = hist->ybins; if( ybins > 8192 ){ ybins = 8192; }
             if( (hist_data = malloc( xbins*ybins*sizeof(int) )) == NULL){
