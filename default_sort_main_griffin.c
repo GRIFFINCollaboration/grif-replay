@@ -159,11 +159,11 @@ void fill_batch_histos()
   TH1I_Batch_Fill(ge_nhits_type, &batch_data_ge_nhits_type[0]);  // ge_nhits_type
   TH1I_Batch_Fill(ge_cycle_activity, &batch_data_ge_cycle_activity[0]);  // ge_cycle_activity
 
-    // Batch fill the arrays of 1d histograms
-    for(i=0; i<MAX_DAQSIZE; i++){
-      if(ph_hist[i] == NULL){ continue; }
-      TH1I_Batch_Fill(ph_hist[i],&batch_data_ph_hist[i][0]); // ph_hist[chan]
-    }
+  // Batch fill the arrays of 1d histograms
+  for(i=0; i<MAX_DAQSIZE; i++){
+    if(ph_hist[i] == NULL){ continue; }
+    TH1I_Batch_Fill(ph_hist[i],&batch_data_ph_hist[i][0]); // ph_hist[chan]
+  }
 
   // 2d histograms
   //TH2I_Batch_Fill(cycle_num_vs_ge, &batch_data_cycle_num_vs_ge[0]);  // cycle_num_vs_ge
@@ -233,8 +233,8 @@ void fill_batch_cycles_histos()
     TH1I_Batch_Fill(geb_cycle_num_sh_g[ppg_cycle_number], &batch_data_geb_cycle_num_sh_g[0]); // geb_cycle_num_sh_g
     // 2d histograms
     for(i=0; i<CYCLE_SPEC_LENGTH; i++){
-    cycle_num_vs_sh->Fill(cycle_num_vs_sh, ppg_cycle_number, i, batch_data_2d_cycle_num_vs_sh[i]);
-  }
+      cycle_num_vs_sh->Fill(cycle_num_vs_sh, ppg_cycle_number, i, batch_data_2d_cycle_num_vs_sh[i]);
+    }
   }
 
   reset_batch_cycles_histos_arrays();
@@ -470,7 +470,7 @@ int fill_singles_histos(Grif_event *ptr)
       ge_e_vs_cycle_time->Fill(ge_e_vs_cycle_time, bin, ptr_ecal, 1);
       //batch_data_ge_e_vs_cycle_time[++batch_data_ge_e_vs_cycle_time[0]] = bin+(ptr_ecal*CYCLE_SPEC_LENGTH);
       if(ppg_cycle_number>=0 && ppg_cycle_number<MAX_CYCLES){
-      //  gea_cycle_num[ppg_cycle_number]->Fill(gea_cycle_num[ppg_cycle_number], bin, 1);
+        //  gea_cycle_num[ppg_cycle_number]->Fill(gea_cycle_num[ppg_cycle_number], bin, 1);
         batch_data_gea_cycle_num[bin]++;
         cycle_num_vs_ge->Fill(cycle_num_vs_ge, ppg_cycle_number, bin, 1);
         //index = ppg_cycle_number+(bin*MAX_CYCLES);
@@ -589,17 +589,17 @@ int fill_singles_histos(Grif_event *ptr)
 
 
     pac_pu_class->Fill(pac_pu_class, class, 1);  // pileup class value
-        if(ptr->pileup == PU_2HIT_A1ST || ptr->pileup == PU_2HIT_B1ST || ptr->pileup == PU_2HIT_C1ST){ // first Hit of two pileup events
-        //ge_2hit[pos]->Fill(ge_2hit[pos], ptr_ecal, 1); // 2-hit pileup
-        //ge_xtal_2hit->Fill(ge_xtal_2hit, pos, ptr_ecal, 1);
-        // The following used for mapping the k2 dependant correction
-        pac_e_vs_k_2hit_first[pos-1]->Fill(pac_e_vs_k_2hit_first[pos-1], ptr_ecal, integ, 1);  // energy1 vs k1 spectrum of 1st Hit of 2hit pileup events
-      }else if(ptr->pileup == PU_2HIT_A2ND || ptr->pileup == PU_2HIT_B2ND || ptr->pileup == PU_2HIT_C2ND){  // second Hit of two pileup events
-        //ge_2hit[pos]->Fill(ge_2hit[pos], ptr_ecal, 1); // 2-hit pileup
-        //ge_xtal_2hit->Fill(ge_xtal_2hit, pos, ptr_ecal, 1);
-        // The following is not used for mapping the corrections but is a useful diagnostic
-        pac_e_vs_k_2hit_second[pos-1]->Fill(pac_e_vs_k_2hit_second[pos-1], ptr_ecal, integ, 1);  // energy2 vs k2 spectrum of 2nd Hit of 2hit pileup events
-      }
+    if(ptr->pileup == PU_2HIT_A1ST || ptr->pileup == PU_2HIT_B1ST || ptr->pileup == PU_2HIT_C1ST){ // first Hit of two pileup events
+      //ge_2hit[pos]->Fill(ge_2hit[pos], ptr_ecal, 1); // 2-hit pileup
+      //ge_xtal_2hit->Fill(ge_xtal_2hit, pos, ptr_ecal, 1);
+      // The following used for mapping the k2 dependant correction
+      pac_e_vs_k_2hit_first[pos-1]->Fill(pac_e_vs_k_2hit_first[pos-1], ptr_ecal, integ, 1);  // energy1 vs k1 spectrum of 1st Hit of 2hit pileup events
+    }else if(ptr->pileup == PU_2HIT_A2ND || ptr->pileup == PU_2HIT_B2ND || ptr->pileup == PU_2HIT_C2ND){  // second Hit of two pileup events
+      //ge_2hit[pos]->Fill(ge_2hit[pos], ptr_ecal, 1); // 2-hit pileup
+      //ge_xtal_2hit->Fill(ge_xtal_2hit, pos, ptr_ecal, 1);
+      // The following is not used for mapping the corrections but is a useful diagnostic
+      pac_e_vs_k_2hit_second[pos-1]->Fill(pac_e_vs_k_2hit_second[pos-1], ptr_ecal, integ, 1);  // energy2 vs k2 spectrum of 2nd Hit of 2hit pileup events
+    }
 
   }
   goto singles_loop_end;
@@ -968,15 +968,21 @@ int fill_singles_histos(Grif_event *ptr)
           c1 = crystal_table[ptr->chan];
           c2 = crystal_table[alt->chan];
           if( c1 >= 0 && c1 < 64 && c2 >= 1 && c2 <= 76 ){
-            gea_hit->Fill(gea_hit, c2, c1, 1); // c's start at zero
-            // Ge-ARIES angular correlations
-            // Fill the appropriate angular bin spectrum
-            angle_idx = GRG_ART_angles_110mm[c1][c2-1];
-            ge_art_angcor[angle_idx]->Fill(ge_art_angcor[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
+            if(alt->multiplicity==1){
+              gea_hit->Fill(gea_hit, c2, c1, 1);
+              // Ge-ARIES angular correlations
+              // Fill the appropriate angular bin spectrum for HPGe at 110mm
+              angle_idx = GRG_ART_angles_110mm[c1][c2-1];
+              ge_art_angcor_110[angle_idx]->Fill(ge_art_angcor_110[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
 
-            // Angle veto method for Bremmstrahlung veto. Angle >30 degrees
-            if(angle_idx>8){
-              ge_sum_b_art_brems->Fill(ge_sum_b_art_brems, (int)ptr->ecal, 1); // Aries-gated Ge sum energy spectrum with Bremmstrahlung veto
+              // Angle veto method for Bremmstrahlung veto. Angle >30 degrees
+              if(angle_idx>8){
+                ge_sum_b_art_brems->Fill(ge_sum_b_art_brems, (int)ptr->ecal, 1); // Aries-gated Ge sum energy spectrum with Bremmstrahlung veto
+              }
+
+              // Fill the appropriate angular bin spectrum for HPGe at 145mm
+              angle_idx = GRG_ART_angles_145mm[c1][c2-1];
+              ge_art_angcor_145[angle_idx]->Fill(ge_art_angcor_145[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
             }
           }
         }

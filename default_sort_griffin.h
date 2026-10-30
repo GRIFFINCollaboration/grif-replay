@@ -58,7 +58,8 @@
 
 #define N_DT 31   // Time difference
 #define N_GE_ANG_CORR       52
-#define N_GRG_ART_ANG_CORR 114
+#define N_GRG_ART_ANG_CORR_110 114
+#define N_GRG_ART_ANG_CORR_145 140
 #define N_DSW_DSW_ANG_CORR  42
 #define N_GE_COMP_POL       12 // 12 bins is 180 degrees divided into a bin width of 15 degrees
 
@@ -329,7 +330,7 @@ extern TH2I *ge_art, *ge_zds, *paces_art, *labr_art, *art_art, *dsw_dsw, *ge_dsw
 extern TH1I *gg_energy[N_HPGE];
 
 // Angular Correlation histograms
-extern TH2I  *gg_angcor_110[N_GE_ANG_CORR], *gg_angcor_145[N_GE_ANG_CORR], *ge_art_angcor[N_GRG_ART_ANG_CORR], *dsw_angcor[N_DSW_DSW_ANG_CORR];
+extern TH2I  *gg_angcor_110[N_GE_ANG_CORR], *gg_angcor_145[N_GE_ANG_CORR], *ge_art_angcor_110[N_GRG_ART_ANG_CORR_110], *ge_art_angcor_145[N_GRG_ART_ANG_CORR_145], *dsw_angcor[N_DSW_DSW_ANG_CORR];
 
 // Compton Polarimetry histograms
 extern TH2I  *comp_pol_angles_110, *comp_pol_angles_145, *gg_comp_pol_110[N_GE_COMP_POL], *gg_comp_pol_145[N_GE_COMP_POL];

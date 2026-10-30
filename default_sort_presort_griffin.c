@@ -57,6 +57,10 @@ int pre_sort_enter(int start_idx, int frag_idx)
   } else {
     energy = ptr->q1;
   }
+  // Protect against Float cast overflow or negative energy values
+  if(energy < (float)0.0 || energy > (float)INT_MAX){
+    energy = 2;
+  }
   //ph_hist[chan] -> Fill(ph_hist[chan],  (int)energy,  1); // Fill the ph histogram here so dont need to calculate energy again in the fill_chan_histos function
   if((unsigned int)(energy - 1) < (unsigned int)(E_SPECLEN - 1)){
     batch_data_ph_hist[chan][(int)energy]++;
@@ -281,7 +285,12 @@ int pre_sort_enter(int start_idx, int frag_idx)
           if( (dt >= time_diff_gate_min[SUBSYS_HPGE_A][SUBSYS_HPGE_A]) & (dt <= time_diff_gate_max[SUBSYS_HPGE_A][SUBSYS_HPGE_A]) ){
             ++ptr->multiplicity;
           }
-        }else if(ptr_subsys == SUBSYS_QED_STRIP){
+        }else if(ptr_subsys == SUBSYS_ARIES_A){
+            // Prompt coincidence window for HPGe multiplicity
+            if( (dt >= time_diff_gate_min[SUBSYS_ARIES_A][SUBSYS_ARIES_A]) & (dt <= time_diff_gate_max[SUBSYS_ARIES_A][SUBSYS_ARIES_A]) ){
+              ++ptr->multiplicity;
+            }
+          }else if(ptr_subsys == SUBSYS_QED_STRIP){
           // Same DSSD and Prompt coincidence window for QED multiplicity
           if( (crystal_table[ptr->chan] == crystal_table[alt->chan]) && (dt >= qed_fb_window_min) && (dt <= qed_fb_window_max) ){
             ++ptr->multiplicity;

@@ -472,7 +472,7 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
     TH1I *gg_energy[N_HPGE];
 
     // Angular Correlation histograms
-    TH2I  *gg_angcor_110[N_GE_ANG_CORR], *gg_angcor_145[N_GE_ANG_CORR], *ge_art_angcor[N_GRG_ART_ANG_CORR], *dsw_angcor[N_DSW_DSW_ANG_CORR];
+    TH2I  *gg_angcor_110[N_GE_ANG_CORR], *gg_angcor_145[N_GE_ANG_CORR], *ge_art_angcor_110[N_GRG_ART_ANG_CORR_110], *ge_art_angcor_145[N_GRG_ART_ANG_CORR_145], *dsw_angcor[N_DSW_DSW_ANG_CORR];
 
     // Compton Polarimetry histograms
     TH2I  *comp_pol_angles_110, *comp_pol_angles_145, *gg_comp_pol_110[N_GE_COMP_POL], *gg_comp_pol_145[N_GE_COMP_POL];
@@ -876,7 +876,8 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
         {NULL,                   "Ang_Corr/DSW_DSW_Ang_Corr",   ""},
         {(void **) dsw_angcor,   "DSW_DSW_angular_bin%03d",     "", SUBSYS_DESWALL,DSW_ANGCOR_SPECLEN, SYMMETERIZE, N_DSW_DSW_ANG_CORR },
         {NULL,                   "Ang_Corr/GG_ART_Ang_Corr",    ""},
-        {(void **) ge_art_angcor,"Ge_ART_angular_bin%03d",      "", SUBSYS_ARIES_A,  GE_ANGCOR_SPECLEN, GE_ANGCOR_SPECLEN, N_GRG_ART_ANG_CORR },
+        {(void **) ge_art_angcor_110,"Ge_ART_110mm_angular_bin%03d",      "", SUBSYS_ARIES_A,  GE_ANGCOR_SPECLEN, GE_ANGCOR_SPECLEN, N_GRG_ART_ANG_CORR_110 },
+        {(void **) ge_art_angcor_145,"Ge_ART_145mm_angular_bin%03d",      "", SUBSYS_ARIES_A,  GE_ANGCOR_SPECLEN, GE_ANGCOR_SPECLEN, N_GRG_ART_ANG_CORR_145 },
         {NULL,                   "Fast_Timing/LBL_Walk",        ""},
         {(void **)&tac_labr_CompWalk0,"TAC01_LBL01_00_CompWalk",       "", SUBSYS_TAC_LABR, ECAL_TAC_SPECLEN, 1440},
         {(void **) tac_labr_CompWalk,"TAC00_LBL00_%02d_CompWalk",       "", SUBSYS_TAC_LABR, ECAL_TAC_SPECLEN, 1440, N_LABR },
