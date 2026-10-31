@@ -25,7 +25,7 @@ dragon-replay: $(DRAGON_OBJECTS)
 	$(CC) $(CFLAGS) $(SYS) -o $@ $^ -rdynamic -lz -ldl -lm -lpthread
 
 grif-replay: $(GRIF_OBJECTS)
-	$(CC) $(CFLAGS) $(SYS) -o $@ $^ -rdynamic -lz -ldl -lm -lpthread -flto -ffast-math
+	$(CC) $(CFLAGS) $(SYS) -o $@ $^ -rdynamic -lz -ldl -lm -lpthread -flto -ffast-math 
 
 midas: midas_module.so
 

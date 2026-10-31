@@ -465,11 +465,11 @@ int fill_singles_histos(Grif_event *ptr)
     ge_cycle_code[ppg_current_pattern]->Fill(ge_cycle_code[ppg_current_pattern], ptr_ecal, 1);
     // Fill a spectrum only with the last 20% of the beam-off period of the cycle
     if(ppg_current_pattern==3){ // index 3, 0xC004, beam-off
-     if(ptr->ts>(((ppg_pattern_end-ppg_pattern_start)*0.5)+ppg_pattern_start)) {
-     ge_sum_end->Fill(ge_sum_end, ptr_ecal, 1);
-     if(ptr->tof & 4){ ge_sum_b_end->Fill(ge_sum_b_end, ptr_ecal, 1); }
-  }
-}
+      if(ptr->ts>(((ppg_pattern_end-ppg_pattern_start)*0.5)+ppg_pattern_start)) {
+        ge_sum_end->Fill(ge_sum_end, ptr_ecal, 1);
+        if(ptr->tof & 4){ ge_sum_b_end->Fill(ge_sum_b_end, ptr_ecal, 1); }
+      }
+    }
 
     bin = (int)((ptr->ts-ppg_cycle_start)/ppg_cycles_binning_factor);  // convert 10ns to binning size set as Global
     if(bin>=0 && bin<CYCLE_SPEC_LENGTH){
@@ -516,27 +516,29 @@ int fill_singles_histos(Grif_event *ptr)
     geb_xtal->Fill(geb_xtal, pos, ptr_ecal, 1);
     // PPG Cycles histograms
     bin = (int)((ptr->ts-ppg_cycle_start)/ppg_cycles_binning_factor);  // convert 10ns to binning size set as Global
-    if(ppg_cycle_number<MAX_CYCLES){
-      //geb_cycle_num[ppg_cycle_number]->Fill(geb_cycle_num[ppg_cycle_number], bin, 1);
-      batch_data_geb_cycle_num[bin]++;
-      cycle_num_vs_ge_b->Fill(cycle_num_vs_ge_b, ppg_cycle_number, bin, 1);
-      class = ptr->pu_class;
-      if(class == PU_SINGLE_HIT){
-        //geb_cycle_num_sh[ppg_cycle_number]->Fill(geb_cycle_num_sh[ppg_cycle_number], bin, 1);
-        batch_data_geb_cycle_num_sh[bin]++;
-        cycle_num_vs_sh_b->Fill(cycle_num_vs_sh_b, ppg_cycle_number, bin, 1);
-      }else{
-        //geb_cycle_num_pu[ppg_cycle_number]->Fill(geb_cycle_num_pu[ppg_cycle_number], bin, 1);
-        batch_data_geb_cycle_num_pu[bin]++;
-        cycle_num_vs_pu_b->Fill(cycle_num_vs_pu_b, ppg_cycle_number, bin, 1);
-      }
-      if((ptr_ecal>=ppg_cycles_gamma_gate_min) && (ptr_ecal<=ppg_cycles_gamma_gate_max)){
-        //geb_cycle_num_g[ppg_cycle_number]->Fill(geb_cycle_num_g[ppg_cycle_number], bin, 1);
-        batch_data_geb_cycle_num_g[bin]++;
+    if(bin>=0 && bin<CYCLE_SPEC_LENGTH){
+      if(ppg_cycle_number<MAX_CYCLES){
+        //geb_cycle_num[ppg_cycle_number]->Fill(geb_cycle_num[ppg_cycle_number], bin, 1);
+        batch_data_geb_cycle_num[bin]++;
+        cycle_num_vs_ge_b->Fill(cycle_num_vs_ge_b, ppg_cycle_number, bin, 1);
+        class = ptr->pu_class;
         if(class == PU_SINGLE_HIT){
-          //geb_cycle_num_sh_g[ppg_cycle_number]->Fill(geb_cycle_num_sh_g[ppg_cycle_number], bin, 1);
-          batch_data_geb_cycle_num_sh_g[bin]++;
-          cycle_num_vs_ge_b_sh_g->Fill(cycle_num_vs_ge_b_sh_g, ppg_cycle_number, bin, 1);
+          //geb_cycle_num_sh[ppg_cycle_number]->Fill(geb_cycle_num_sh[ppg_cycle_number], bin, 1);
+          batch_data_geb_cycle_num_sh[bin]++;
+          cycle_num_vs_sh_b->Fill(cycle_num_vs_sh_b, ppg_cycle_number, bin, 1);
+        }else{
+          //geb_cycle_num_pu[ppg_cycle_number]->Fill(geb_cycle_num_pu[ppg_cycle_number], bin, 1);
+          batch_data_geb_cycle_num_pu[bin]++;
+          cycle_num_vs_pu_b->Fill(cycle_num_vs_pu_b, ppg_cycle_number, bin, 1);
+        }
+        if((ptr_ecal>=ppg_cycles_gamma_gate_min) && (ptr_ecal<=ppg_cycles_gamma_gate_max)){
+          //geb_cycle_num_g[ppg_cycle_number]->Fill(geb_cycle_num_g[ppg_cycle_number], bin, 1);
+          batch_data_geb_cycle_num_g[bin]++;
+          if(class == PU_SINGLE_HIT){
+            //geb_cycle_num_sh_g[ppg_cycle_number]->Fill(geb_cycle_num_sh_g[ppg_cycle_number], bin, 1);
+            batch_data_geb_cycle_num_sh_g[bin]++;
+            cycle_num_vs_ge_b_sh_g->Fill(cycle_num_vs_ge_b_sh_g, ppg_cycle_number, bin, 1);
+          }
         }
       }
     }

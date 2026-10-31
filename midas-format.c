@@ -9,7 +9,7 @@
 #include "grif-replay.h"
 #include "midas-format.h"
 
- // Need to align the char buffer so that the cast to int in next_event() does not cause misalignment of the pointer
+// Need to align the char buffer so that the cast to int in next_event() does not cause misalignment of the pointer
 alignas(int) static char recbuf[RECORDSIZE];
 static int recbufpos, recordlen;
 static int midas_evstart; // start of event data - just after event-header
@@ -36,14 +36,14 @@ static void swapWords (char* b, int len)
 extern Sort_metrics diagnostics;
 void midas_status(int current_time)
 {
-   int dt = diagnostics.midas_last_timestamp - diagnostics.midas_run_start;
-   float rate = diagnostics.midas_file_bytes / ((dt == 0) ? 1 : dt);
-   printf("MIDAS  : in %10ld runtime:%3ds =>    [%8.4f Mbytes/s]\n",
-      diagnostics.midas_file_bytes, dt, rate/1024/1024
-   );
-   dt = current_time - diagnostics.run_sort_start;
-   rate = diagnostics.midas_file_bytes / ((dt == 0) ? 1 : dt);
-   printf("%22s sorttime:%3ds => [%8.4f Mbytes/s]\n", "", dt, rate/1024/1024);
+  int dt = diagnostics.midas_last_timestamp - diagnostics.midas_run_start;
+  float rate = diagnostics.midas_file_bytes / ((dt == 0) ? 1 : dt);
+  printf("MIDAS  : in %10ld runtime:%3ds =>    [%8.4f Mbytes/s]\n",
+  diagnostics.midas_file_bytes, dt, rate/1024/1024
+);
+dt = current_time - diagnostics.run_sort_start;
+rate = diagnostics.midas_file_bytes / ((dt == 0) ? 1 : dt);
+printf("%22s sorttime:%3ds => [%8.4f Mbytes/s]\n", "", dt, rate/1024/1024);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -68,129 +68,129 @@ volatile unsigned long bankbuf_rdpos;
 
 void midas_main(Sort_status *arg)
 {
-   int items, len, overrun, wrpos, words_used, words_left, evok, err;
-   int single_thread = arg->single_thread; //save!
-   unsigned int usecs=100, *ptr;
-   Dragon_event *evt;
-   static int evcount;
-   char *bank_name;
-   time_t tstamp;
-   extern int process_grif3_bank(unsigned *buf, int len); // if single thread
-   extern int read_dragon_odb(int bank_len, int *bank_data);
+  int items, len, overrun, wrpos, words_used, words_left, evok, err;
+  int single_thread = arg->single_thread; //save!
+  unsigned int usecs=100, *ptr;
+  Dragon_event *evt;
+  static int evcount;
+  char *bank_name;
+  time_t tstamp;
+  extern int process_grif3_bank(unsigned *buf, int len); // if single thread
+  extern int read_dragon_odb(int bank_len, int *bank_data);
 
-   unpack_io32_fifobank(NULL, NULL, 0, HEAD_EVENT); // reset timestamp check
-   bankbuf_wrpos = bankbuf_rdpos = 0;
-   recbufpos = recordlen = 0;
-   while(1){
-      if( arg->shutdown_midas != 0 ){ fprintf(stderr,"SHUTDOWN\n"); break; }
-      if( arg->end_of_data == 1 ){ usleep(usecs); continue; }
-      // buffer read position is taken care of in next_event and next_bank
-      if( next_event(arg) < 0 ){     // midas event
-         if( open_next_subrun(arg) == 0 ){
-            recbufpos = recordlen = 0; continue;
-         }
-         arg->end_of_data = 1; continue;
+  unpack_io32_fifobank(NULL, NULL, 0, HEAD_EVENT); // reset timestamp check
+  bankbuf_wrpos = bankbuf_rdpos = 0;
+  recbufpos = recordlen = 0;
+  while(1){
+    if( arg->shutdown_midas != 0 ){ fprintf(stderr,"SHUTDOWN\n"); break; }
+    if( arg->end_of_data == 1 ){ usleep(usecs); continue; }
+    // buffer read position is taken care of in next_event and next_bank
+    if( next_event(arg) < 0 ){     // midas event
+      if( open_next_subrun(arg) == 0 ){
+        recbufpos = recordlen = 0; continue;
       }
-      // use external set-timestamps fn for following
-      diagnostics.midas_last_timestamp = ev_head.timestamp;
-      if( diagnostics.midas_run_start == 0 ){
-         diagnostics.midas_run_start = ev_head.timestamp;
-      } else if( ev_head.timestamp != diagnostics.midas_run_start ){
-         diagnostics.midas_datarate = diagnostics.midas_file_bytes /
-            (ev_head.timestamp - diagnostics.midas_run_start);
-      } else {
-         ;// no datarate yet
+      arg->end_of_data = 1; continue;
+    }
+    // use external set-timestamps fn for following
+    diagnostics.midas_last_timestamp = ev_head.timestamp;
+    if( diagnostics.midas_run_start == 0 ){
+      diagnostics.midas_run_start = ev_head.timestamp;
+    } else if( ev_head.timestamp != diagnostics.midas_run_start ){
+      diagnostics.midas_datarate = diagnostics.midas_file_bytes /
+      (ev_head.timestamp - diagnostics.midas_run_start);
+    } else {
+      ;// no datarate yet
+    }
+    // wait for space to store whole event
+    // V1190 buffer size is 256 words => can potentially get events ~300 words long
+    // and, for memory efficiency, we do not allow anywhere near this size
+    //   => may want to split single event into two
+    //   => would need to wait here for enough space for TWO events [or more?]
+    // (not yet implemented - too long events are currently truncated)
+    while(1){
+      words_used = bankbuf_wrpos - bankbuf_rdpos;
+      if( (words_left = BANK_BUFSIZE - words_used) >= DRAGON_EVENTWORDS){
+        break;
       }
-      // wait for space to store whole event
-      // V1190 buffer size is 256 words => can potentially get events ~300 words long
-      // and, for memory efficiency, we do not allow anywhere near this size
-      //   => may want to split single event into two
-      //   => would need to wait here for enough space for TWO events [or more?]
-      // (not yet implemented - too long events are currently truncated)
-      while(1){
-         words_used = bankbuf_wrpos - bankbuf_rdpos;
-         if( (words_left = BANK_BUFSIZE - words_used) >= DRAGON_EVENTWORDS){
-            break;
-         }
-         usleep(usecs); continue;
-      }
-      wrpos = bankbuf_wrpos % BANK_BUFSIZE;
-      evt = (Dragon_event *)( bankbuf+wrpos );
-      memset(evt, 0, sizeof(Dragon_event));
-      evt->begin_marker = DRAGON_EVENT_MARK;
-      err = evok = 0;
+      usleep(usecs); continue;
+    }
+    wrpos = bankbuf_wrpos % BANK_BUFSIZE;
+    evt = (Dragon_event *)( bankbuf+wrpos );
+    memset(evt, 0, sizeof(Dragon_event));
+    evt->begin_marker = DRAGON_EVENT_MARK;
+    err = evok = 0;
 
-      while( (items = next_bank(arg, &bank_name)) > 0 ){
-         len = ( (bank_head.data_size+3) & ~3) / 4; // bytes to ints
-         ptr = (unsigned *)(recbuf+recbufpos);
-         // scalar banks are ignored for now
-         if( strcmp(bank_name,"VTRH") == 0 ){
-            if( !unpack_io32_bank(evt, ptr, len, HEAD_EVENT) ){ evok=1; } else { ++err; }
-         } else
-         if( strcmp(bank_name,"VTRT") == 0 ){
-            if( !unpack_io32_bank(evt, ptr, len, TAIL_EVENT) ){ evok=1; } else { ++err; }
-         } else
-         if( strcmp(bank_name,"TSCH") == 0 ){
-            if( !unpack_io32_fifobank(evt, ptr, len, HEAD_EVENT) ){ evok=1; } else { ++err; }
-         } else
-         if( strcmp(bank_name,"TSCT") == 0 ){
-            if( !unpack_io32_fifobank(evt, ptr, len, TAIL_EVENT) ){ evok=1; } else { ++err; }
-         } else
-         if( strcmp(bank_name,"TDC0") == 0 ){
-            if( !unpack_v1190_bank(evt, ptr, len, HEAD_EVENT) ){ evok=1; } else { ++err; }
-         } else
-         if( strcmp(bank_name,"TLT0") == 0 ){
-            if( !unpack_v1190_bank(evt, ptr, len, TAIL_EVENT) ){ evok=1; } else { ++err; }
-         } else
-         if( strcmp(bank_name,"ADC0") == 0 ){
-            if( !unpack_v792_bank(evt, ptr, len, 0, HEAD_EVENT) ){ evok=1; } else { ++err; }
-         } else
-         if( strcmp(bank_name,"TLQ0") == 0 ){
-            if( !unpack_v792_bank(evt, ptr, len, 0, TAIL_EVENT) ){ evok=1; } else { ++err; }
-         } else
-         if( strcmp(bank_name,"TLQ1") == 0 ){
-            if( !unpack_v792_bank(evt, ptr, len, 1, TAIL_EVENT) ){ evok=1; } else { ++err; }
-         } else { continue; }//ignore others
+    while( (items = next_bank(arg, &bank_name)) > 0 ){
+      len = ( (bank_head.data_size+3) & ~3) / 4; // bytes to ints
+      ptr = (unsigned *)(recbuf+recbufpos);
+      // scalar banks are ignored for now
+      if( strcmp(bank_name,"VTRH") == 0 ){
+        if( !unpack_io32_bank(evt, ptr, len, HEAD_EVENT) ){ evok=1; } else { ++err; }
+      } else
+      if( strcmp(bank_name,"VTRT") == 0 ){
+        if( !unpack_io32_bank(evt, ptr, len, TAIL_EVENT) ){ evok=1; } else { ++err; }
+      } else
+      if( strcmp(bank_name,"TSCH") == 0 ){
+        if( !unpack_io32_fifobank(evt, ptr, len, HEAD_EVENT) ){ evok=1; } else { ++err; }
+      } else
+      if( strcmp(bank_name,"TSCT") == 0 ){
+        if( !unpack_io32_fifobank(evt, ptr, len, TAIL_EVENT) ){ evok=1; } else { ++err; }
+      } else
+      if( strcmp(bank_name,"TDC0") == 0 ){
+        if( !unpack_v1190_bank(evt, ptr, len, HEAD_EVENT) ){ evok=1; } else { ++err; }
+      } else
+      if( strcmp(bank_name,"TLT0") == 0 ){
+        if( !unpack_v1190_bank(evt, ptr, len, TAIL_EVENT) ){ evok=1; } else { ++err; }
+      } else
+      if( strcmp(bank_name,"ADC0") == 0 ){
+        if( !unpack_v792_bank(evt, ptr, len, 0, HEAD_EVENT) ){ evok=1; } else { ++err; }
+      } else
+      if( strcmp(bank_name,"TLQ0") == 0 ){
+        if( !unpack_v792_bank(evt, ptr, len, 0, TAIL_EVENT) ){ evok=1; } else { ++err; }
+      } else
+      if( strcmp(bank_name,"TLQ1") == 0 ){
+        if( !unpack_v792_bank(evt, ptr, len, 1, TAIL_EVENT) ){ evok=1; } else { ++err; }
+      } else { continue; }//ignore others
+    }
+    if( items == -1 ){ //  corrupt or unknown data - skip rest of event
+      // NOTE: can be part-way through event at this point
+      recbufpos = midas_evstart + ev_head.data_size;
+      continue;
+    } else if( items == -2 ){
+      if( arg->odb_ready == 0 ){ // odb "event" @ start of file
+      // "bank_name", here contains bank length, as integer
+      read_dragon_odb(*(int *)bank_name, (int *)(recbuf+recbufpos) );
+      arg->odb_ready = 1;
+    }
+    recbufpos += ev_head.data_size;
+    continue;
+  } else if( arg->odb_ready == 0 ){
+    arg->odb_ready = 2; // missing
+  }
+  if( err == 0 && evok ){
+    // use odb tables to copy adc/tdc data to appropriate detector slots
+    // may as well also gainmatch here
+    if(        evt->type == HEAD_EVENT ){
+      unpack_head_event(evt);
+    } else if( evt->type == TAIL_EVENT ){
+      unpack_tail_event(evt);
+    }
+    if( single_thread ){
+      // ????????????
+    } else { //update wrpos (and handle any buffer overrun)
+      // -> NO! memcpy(bankbuf+wrpos, evt, sizeof(Dragon_event) );
+      //printf("MIDAS evt%6d pos:%6d\n", evcount++, bankbuf_wrpos);
+      bankbuf_wrpos += DRAGON_EVENTWORDS;
+      if( (overrun = (wrpos + DRAGON_EVENTWORDS - BANK_BUFSIZE)) > 0 ){
+        memcpy(bankbuf, bankbuf+wrpos, sizeof(int)*overrun);
       }
-      if( items == -1 ){ //  corrupt or unknown data - skip rest of event
-         // NOTE: can be part-way through event at this point
-         recbufpos = midas_evstart + ev_head.data_size;
-         continue;
-      } else if( items == -2 ){
-         if( arg->odb_ready == 0 ){ // odb "event" @ start of file
-            // "bank_name", here contains bank length, as integer
-            read_dragon_odb(*(int *)bank_name, (int *)(recbuf+recbufpos) );
-            arg->odb_ready = 1;
-         }
-         recbufpos += ev_head.data_size;
-         continue;
-      } else if( arg->odb_ready == 0 ){
-         arg->odb_ready = 2; // missing
-      }
-      if( err == 0 && evok ){
-         // use odb tables to copy adc/tdc data to appropriate detector slots
-         // may as well also gainmatch here
-         if(        evt->type == HEAD_EVENT ){
-            unpack_head_event(evt);
-         } else if( evt->type == TAIL_EVENT ){
-            unpack_tail_event(evt);
-         }
-         if( single_thread ){
-            // ????????????
-         } else { //update wrpos (and handle any buffer overrun)
-            // -> NO! memcpy(bankbuf+wrpos, evt, sizeof(Dragon_event) );
-            //printf("MIDAS evt%6d pos:%6d\n", evcount++, bankbuf_wrpos);
-            bankbuf_wrpos += DRAGON_EVENTWORDS;
-            if( (overrun = (wrpos + DRAGON_EVENTWORDS - BANK_BUFSIZE)) > 0 ){
-               memcpy(bankbuf, bankbuf+wrpos, sizeof(int)*overrun);
-            }
-         }
-      } else {
-         // count error-events
-      }
-   }
-   fprintf(stdout,"shutting down midas thread ...\n");
-   return;
+    }
+  } else {
+    // count error-events
+  }
+}
+fprintf(stdout,"shutting down midas thread ...\n");
+return;
 }
 #endif // DRAGON_SORT
 #ifdef GRIFFIN_SORT
@@ -249,118 +249,124 @@ int board_to_grifc[32];   // board-id is 5bits -> 32 values
 int grifc_to_boardid[16]; // to allow translating back to original address
 int read_caen_odb_addresses(int odb_daqsize, unsigned short *addr_table)
 {
-   int i, addr, board_id, curr_grifc=8;
-   memset(board_to_grifc,   -1, 32*sizeof(int));
-   memset(grifc_to_boardid, -1, 16*sizeof(int));
-   for(i=0; i<MAX_DAQSIZE && i<odb_daqsize; i++){
-      if( ((addr = addr_table[i]) & 0x8000 ) == 0 ){ continue; }
-      board_id = (addr - 0x8000) >> 8;
-      if( board_to_grifc[board_id] != -1 ){ continue; }
-      board_to_grifc[board_id] = curr_grifc;
-      grifc_to_boardid[curr_grifc++] = board_id;
-      if( curr_grifc >= 16 ){
-         printf("midas-format.c:read_caen_odb_addresses - more than 8 caen board id's - can't sort this data\n"); abort();
-      }
-   }
-   return(0);
+  int i, addr, board_id, curr_grifc=8;
+  memset(board_to_grifc,   -1, 32*sizeof(int));
+  memset(grifc_to_boardid, -1, 16*sizeof(int));
+  for(i=0; i<MAX_DAQSIZE && i<odb_daqsize; i++){
+    if( ((addr = addr_table[i]) & 0x8000 ) == 0 ){ continue; }
+    board_id = (addr - 0x8000) >> 8;
+    if( board_to_grifc[board_id] != -1 ){ continue; }
+    board_to_grifc[board_id] = curr_grifc;
+    grifc_to_boardid[curr_grifc++] = board_id;
+    if( curr_grifc >= 16 ){
+      printf("midas-format.c:read_caen_odb_addresses - more than 8 caen board id's - can't sort this data\n"); abort();
+    }
+  }
+  return(0);
 }
-int translate_caen_bank(unsigned *ptr, int len)
+// Define a type that ignores alignment restrictions
+typedef unsigned int unaligned_uint __attribute__((aligned(1)));
+int translate_caen_bank(unsigned *original_ptr, int len)
 {
-   int i, j, k, m, outpos, tmp_outpos, out_start, addr, msb, board_id;
-   int e, cc, cfd, ovr, lost, samples, dual_trace, ext_format, use_waveform;
-   int ev_size, digital, chan_words, chan_pair, chan_mask, board_words;
-   unsigned long timestamp, grif_ts;
+  int i, j, k, m, outpos, tmp_outpos, out_start, addr, msb, board_id;
+  int e, cc, cfd, ovr, lost, samples, dual_trace, ext_format, use_waveform;
+  int ev_size, digital, chan_words, chan_pair, chan_mask, board_words;
+  unsigned long timestamp, grif_ts;
+  
+  // Cast ptr to unaligned type to read the memory byte-by-byte or use specific unaligned-safe instructions
+  // This avoids misalignment crashes or warnings
+  unaligned_uint *ptr = (unaligned_uint *)original_ptr;
 
-   i = outpos = 0;
-   while( i < len ){ // bank can contain several board structures ?
-      if( ( ptr[i] >> 28 ) != 0xA ){ return(-1); }// board header
-      board_words = ptr[i  ] & 0xFFFFFFF;
-      if( i++ + board_words > len ){ return(-1); }
-      board_id  =  ptr[i  ] >>  27;   // 5-bit id
-      chan_mask =  ptr[i  ] & 0xFF; // 8-bit mask
-      i+=3; // SKIP AGG/AGG-TIME
-      for(chan_pair=0; chan_pair<8; chan_pair++){
-         if( ! ( (chan_mask >> chan_pair) & 0x1) ){ continue; }
-         if( ( ptr[i  ] >> 31 ) != 0x1 ){ return(-1); } // chan header bit
-         chan_words = ptr[i  ] & 0x3FFFFF;              // 22-bit size
-         if( i++ + chan_words > len ){ return(-1); }
-         if( ( ptr[i  ] >> 29 ) != 0x3 ){ return(-1); } // next header bits?
-         dual_trace  =  (ptr[i]>>31 ) & 0x1;
-         ext_format  = ((ptr[i]>>28 ) & 0x1) ? ((ptr[i] >> 24 )& 0x7)+1 : 0;
-         use_waveform = (ptr[i]>>27 ) & 0x1;
-         samples   = 4*( ptr[i++] & 0xFFFF );
-         ev_size = samples + 2 + (ext_format != 0);
-         if( !(ev_size==2 && (chan_words % ev_size != 0)) && // UNCLEAR
-                             (chan_words % ev_size != 2) ){ return(-1); }
-         // event data for this channel-pair follows ...
-         for(j=0; j<(chan_words-2)/ev_size; j++){
-         out_start = outpos;
-            msb       = ptr[i  ] >> 31; // msb set => odd-channel
-            timestamp = ptr[i++] & 0x7FFFFFFF;
-	  //addr = (0x8000 + (board_id * 0x100) + 2*chan_pair + msb);
-            addr = (0x0000 + (board_to_grifc[board_id] * 0x1000) +
-		                               2*chan_pair + msb);
+  i = outpos = 0;
+  while( i < len ){ // bank can contain several board structures ?
+    if( ( ptr[i] >> 28 ) != 0xA ){ return(-1); }// board header
+    board_words = ptr[i  ] & 0xFFFFFFF;
+    if( i++ + board_words > len ){ return(-1); }
+    board_id  =  ptr[i  ] >>  27;   // 5-bit id
+    chan_mask =  ptr[i  ] & 0xFF; // 8-bit mask
+    i+=3; // SKIP AGG/AGG-TIME
+    for(chan_pair=0; chan_pair<8; chan_pair++){
+      if( ! ( (chan_mask >> chan_pair) & 0x1) ){ continue; }
+      if( ( ptr[i  ] >> 31 ) != 0x1 ){ return(-1); } // chan header bit
+      chan_words = ptr[i  ] & 0x3FFFFF;              // 22-bit size
+      if( i++ + chan_words > len ){ return(-1); }
+      if( ( ptr[i  ] >> 29 ) != 0x3 ){ return(-1); } // next header bits?
+      dual_trace  =  (ptr[i]>>31 ) & 0x1;
+      ext_format  = ((ptr[i]>>28 ) & 0x1) ? ((ptr[i] >> 24 )& 0x7)+1 : 0;
+      use_waveform = (ptr[i]>>27 ) & 0x1;
+      samples   = 4*( ptr[i++] & 0xFFFF );
+      ev_size = samples + 2 + (ext_format != 0);
+      if( !(ev_size==2 && (chan_words % ev_size != 0)) && // UNCLEAR
+      (chan_words % ev_size != 2) ){ return(-1); }
+      // event data for this channel-pair follows ...
+      for(j=0; j<(chan_words-2)/ev_size; j++){
+        out_start = outpos;
+        msb       = ptr[i  ] >> 31; // msb set => odd-channel
+        timestamp = ptr[i++] & 0x7FFFFFFF;
+        //addr = (0x8000 + (board_id * 0x100) + 2*chan_pair + msb);
+        addr = (0x0000 + (board_to_grifc[board_id] * 0x1000) +
+        2*chan_pair + msb);
 
-   /* 0 */  tmp_bankbuf[outpos++] = (0x8U<<28) + ((CAEN_ID)<<25) +
-               ((CAEN_WORDS)<<20) + (addr<<4) + (DESCANT_DTYPE);
-   /* 1 */  tmp_bankbuf[outpos++] = (use_waveform<<15) | dual_trace;
-   /* 2 */  tmp_bankbuf[outpos++] = caen_event_id++ & 0x7FFFFFFF;
-   /* 3 */  tmp_bankbuf[outpos++] = (0x9U<<28) + 0;
-   /* 4 */  tmp_bankbuf[outpos++] = 0; // fill in timestamp later
-   /* 5 */  tmp_bankbuf[outpos++] = 0; // fill in timestamp later
+        /* 0 */  tmp_bankbuf[outpos++] = (0x8U<<28) + ((CAEN_ID)<<25) +
+        ((CAEN_WORDS)<<20) + (addr<<4) + (DESCANT_DTYPE);
+        /* 1 */  tmp_bankbuf[outpos++] = (use_waveform<<15) | dual_trace;
+        /* 2 */  tmp_bankbuf[outpos++] = caen_event_id++ & 0x7FFFFFFF;
+        /* 3 */  tmp_bankbuf[outpos++] = (0x9U<<28) + 0;
+        /* 4 */  tmp_bankbuf[outpos++] = 0; // fill in timestamp later
+        /* 5 */  tmp_bankbuf[outpos++] = 0; // fill in timestamp later
 
-            if( use_waveform ){
-               // waveform uses all 32bits of each word - no room for grif hdr
-               // store digital waveform after main waveform
-               tmp_outpos = outpos + samples;  digital = 0;
-               for(k=0; k<samples; k++){
-                  tmp_bankbuf[outpos++] = (0xC<<28) + (ptr[i] & 0x3FFF) +
-                                                 ((ptr[i] & 0x3FFF0000)>>2);
-                  // digitals use 8 of the 14bits in upper and lower samples
-                  m = ((ptr[i  ]>>14) & 0x3) + ((ptr[i  ]>>18) & 0xC000);
-                  digital |= (m << 2*(k%4));
-                  if( k%4 == 3 ){
-                     tmp_bankbuf[tmp_outpos++] = (0xC<<28) + digital;
-                     digital = 0;
-                  }
-                  ++i;
-               }
-               outpos = tmp_outpos;
+        if( use_waveform ){
+          // waveform uses all 32bits of each word - no room for grif hdr
+          // store digital waveform after main waveform
+          tmp_outpos = outpos + samples;  digital = 0;
+          for(k=0; k<samples; k++){
+            tmp_bankbuf[outpos++] = (0xC<<28) + (ptr[i] & 0x3FFF) +
+            ((ptr[i] & 0x3FFF0000)>>2);
+            // digitals use 8 of the 14bits in upper and lower samples
+            m = ((ptr[i  ]>>14) & 0x3) + ((ptr[i  ]>>18) & 0xC000);
+            digital |= (m << 2*(k%4));
+            if( k%4 == 3 ){
+              tmp_bankbuf[tmp_outpos++] = (0xC<<28) + digital;
+              digital = 0;
             }
-            e = cfd = cc = ovr = lost = 0;
-            switch( ext_format ){
-            case 0:  break; // no extra word present
-            case 1:  timestamp |= ((long)(ptr[i] & 0xffff0000))<<15;
-                    /* 16 bits of baseline */
-                     ++i; break;
-            case 2:  timestamp |= ((long)(ptr[i] & 0xffff0000))<<15;
-                    /* [15..12} - 4 bits of flags */
-                     ++i; break;
-            case 3:  timestamp |= ((long)(ptr[i] & 0xffff0000))<<15;
-                    /* [15..12} - 4 bits of flags */
-                     cfd = ptr[i] & 0x3FF;  ++i; break;
-            case 4:  ++i; break; // missing from analyzer code?
-            case 5: tmp_bankbuf[out_start+3] |= (ptr[i]>>16);
-                    lost = ptr[i] & 0xffff; ++i; break;
-            case 6:  ++i; break;   // cfd something ???
-            case 7:  ++i; break;   // missing from analyzer code?
-            case 8:  ++i; break;   // debug word
-            default: ++i; break;
-            }
-            grif_ts = (unsigned long)(ceil(timestamp / 5)); // (timestamp was in 2ns units)
-            tmp_bankbuf[out_start+4] = (0xAU<<28) +  (grif_ts & 0xFFFFFFF);
-            tmp_bankbuf[out_start+5] = (0xBU<<28) + ((grif_ts>>28) & 0x3fff);
-            e   =  ptr[i  ] >> 16; ovr = (ptr[i] >> 15) & 0x1;
-            cc  = (ptr[i++]      ) & 0x7fff; // 15bits
-            tmp_bankbuf[outpos++] = (ovr<<25) + e;
-          //  tmp_bankbuf[outpos++] = ((cc<<10) | cfd); // cfd:10 bits
-            tmp_bankbuf[outpos++] = ((cc<<10) | (timestamp&0x3ff)); // Save lower 10 bits of 2ns timestamp. Largest value is 2048ns
-            tmp_bankbuf[outpos++] = (0xEU<<28) + ((lost&0x3fff)<<14)
-                              + (tmp_bankbuf[out_start+3] & 0x3fff);
-         }
+            ++i;
+          }
+          outpos = tmp_outpos;
+        }
+        e = cfd = cc = ovr = lost = 0;
+        switch( ext_format ){
+          case 0:  break; // no extra word present
+          case 1:  timestamp |= ((long)(ptr[i] & 0xffff0000))<<15;
+          /* 16 bits of baseline */
+          ++i; break;
+          case 2:  timestamp |= ((long)(ptr[i] & 0xffff0000))<<15;
+          /* [15..12} - 4 bits of flags */
+          ++i; break;
+          case 3:  timestamp |= ((long)(ptr[i] & 0xffff0000))<<15;
+          /* [15..12} - 4 bits of flags */
+          cfd = ptr[i] & 0x3FF;  ++i; break;
+          case 4:  ++i; break; // missing from analyzer code?
+          case 5: tmp_bankbuf[out_start+3] |= (ptr[i]>>16);
+          lost = ptr[i] & 0xffff; ++i; break;
+          case 6:  ++i; break;   // cfd something ???
+          case 7:  ++i; break;   // missing from analyzer code?
+          case 8:  ++i; break;   // debug word
+          default: ++i; break;
+        }
+        grif_ts = (unsigned long)(ceil(timestamp / 5)); // (timestamp was in 2ns units)
+        tmp_bankbuf[out_start+4] = (0xAU<<28) +  (grif_ts & 0xFFFFFFF);
+        tmp_bankbuf[out_start+5] = (0xBU<<28) + ((grif_ts>>28) & 0x3fff);
+        e   =  ptr[i  ] >> 16; ovr = (ptr[i] >> 15) & 0x1;
+        cc  = (ptr[i++]      ) & 0x7fff; // 15bits
+        tmp_bankbuf[outpos++] = (ovr<<25) + e;
+        //  tmp_bankbuf[outpos++] = ((cc<<10) | cfd); // cfd:10 bits
+        tmp_bankbuf[outpos++] = ((cc<<10) | (timestamp&0x3ff)); // Save lower 10 bits of 2ns timestamp. Largest value is 2048ns
+        tmp_bankbuf[outpos++] = (0xEU<<28) + ((lost&0x3fff)<<14)
+        + (tmp_bankbuf[out_start+3] & 0x3fff);
       }
-   }
-   return( outpos );
+    }
+  }
+  return( outpos );
 }
 //       mod=1=>grif16  [words No-including-waveforms]
 //          XXXX   XXX X XXXX   XXXX     XXXX   XXXX   XXXX   XXXX
@@ -384,25 +390,25 @@ volatile unsigned long bankbuf_wrpos;
 volatile unsigned long bankbuf_rdpos;
 int copy_bank(const void *ptr, int size)
 {
-   int words_used, words_left, wrpos, words_to_end;
-   unsigned int usecs=100;
+  int words_used, words_left, wrpos, words_to_end;
+  unsigned int usecs=100;
 
-   while(1){
-      words_used = bankbuf_wrpos - bankbuf_rdpos;
-      words_left = BANK_BUFSIZE - words_used;
-      if( size > words_left ){ usleep(usecs); continue; }
-      wrpos = bankbuf_wrpos % BANK_BUFSIZE;
-      words_to_end = BANK_BUFSIZE - wrpos;
-      if( size < words_to_end ){ // no wrap case
-        // Standard array indexing tells the compiler this is a properly aligned element
-         memcpy(&bankbuf[wrpos], ptr, 4*size);
-      } else { // write at end and wrap to start of bankbuf
-         memcpy(&bankbuf[wrpos], ptr,  4*words_to_end);
-         // Casting ptr to char* first ensures byte-level arithmetic if ptr itself is unaligned
-         memcpy(bankbuf, (const char *)ptr + (4*words_to_end), 4*(size - words_to_end));
-      }
-      bankbuf_wrpos += size; return(0);
-   }
+  while(1){
+    words_used = bankbuf_wrpos - bankbuf_rdpos;
+    words_left = BANK_BUFSIZE - words_used;
+    if( size > words_left ){ usleep(usecs); continue; }
+    wrpos = bankbuf_wrpos % BANK_BUFSIZE;
+    words_to_end = BANK_BUFSIZE - wrpos;
+    if( size < words_to_end ){ // no wrap case
+      // Standard array indexing tells the compiler this is a properly aligned element
+      memcpy(&bankbuf[wrpos], ptr, 4*size);
+    } else { // write at end and wrap to start of bankbuf
+      memcpy(&bankbuf[wrpos], ptr,  4*words_to_end);
+      // Casting ptr to char* first ensures byte-level arithmetic if ptr itself is unaligned
+      memcpy(bankbuf, (const char *)ptr + (4*words_to_end), 4*(size - words_to_end));
+    }
+    bankbuf_wrpos += size; return(0);
+  }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -412,81 +418,81 @@ int copy_bank(const void *ptr, int size)
 //   either copy data to buffer or process it immediately[if single thread]
 void midas_main(Sort_status *arg)
 {
-   int items, len, single_thread = arg->single_thread; //save!
-   unsigned int usecs=100, *ptr;
-   //static int evcount;
-   char *bank_name;
-   time_t tstamp;
-   extern int process_grif3_bank(unsigned *buf, int len); // if single thread
+  int items, len, single_thread = arg->single_thread; //save!
+  unsigned int usecs=100, *ptr;
+  //static int evcount;
+  char *bank_name;
+  time_t tstamp;
+  extern int process_grif3_bank(unsigned *buf, int len); // if single thread
 
-   bankbuf_wrpos = bankbuf_rdpos = 0;
-   recbufpos = recordlen = 0;
-   while(1){
-      if( arg->shutdown_midas != 0 ){ fprintf(stderr,"SHUTDOWN\n"); break; }
-      if( arg->end_of_data == 1 ){ usleep(usecs); continue; }
-      // buffer read position is taken care of in next_event and next_bank
-      if( next_event(arg) < 0 ){     // midas event
-         if( open_next_subrun(arg) == 0 ){
-            recbufpos = recordlen = 0; continue;
-         }
-         arg->end_of_data = 1; continue;
+  bankbuf_wrpos = bankbuf_rdpos = 0;
+  recbufpos = recordlen = 0;
+  while(1){
+    if( arg->shutdown_midas != 0 ){ fprintf(stderr,"SHUTDOWN\n"); break; }
+    if( arg->end_of_data == 1 ){ usleep(usecs); continue; }
+    // buffer read position is taken care of in next_event and next_bank
+    if( next_event(arg) < 0 ){     // midas event
+      if( open_next_subrun(arg) == 0 ){
+        recbufpos = recordlen = 0; continue;
       }
-      diagnostics.midas_last_timestamp = ev_head.timestamp;
-      if( diagnostics.midas_run_start == 0 ){
-         diagnostics.midas_run_start = ev_head.timestamp;
-      } else if( ev_head.timestamp != diagnostics.midas_run_start ){
-         diagnostics.midas_datarate = diagnostics.midas_file_bytes /
-            (ev_head.timestamp - diagnostics.midas_run_start);
-      } else {
-         ;// no datarate yet
-      }
-      while( (items = next_bank(arg, &bank_name)) > 0 ){
-         len = ( (bank_head.data_size+3) & ~3) / 4; // bytes to ints
-         ptr = (unsigned *)(recbuf+recbufpos);
-         if( strcmp(bank_name,"CAEN") == 0 ){
-            if( (len = translate_caen_bank(ptr, len)) <= 0 ){ continue; }
-            ptr = tmp_bankbuf;
-         } else if( strcmp(bank_name,"GRF3") != 0 &&
-                    strcmp(bank_name,"GRF4") != 0 ){ continue; }//ignore othrs
-         if( single_thread ){
-            process_grif3_bank(ptr, len);
-         } else { copy_bank(ptr, len); }
-      }
-      if( items == -2 ){
-         if( arg->odb_ready == 0 ){ // odb "event" @ start of file
-            read_odb_items(*(int *)bank_name, (int *)(recbuf+recbufpos) );
-            arg->odb_ready = 1;
-         }
-         recbufpos += ev_head.data_size;
-      } else if( arg->odb_ready == 0 ){
-         arg->odb_ready = 2; // missing
-      }
-   }
-   fprintf(stdout,"shutting down midas thread ...\n");
-   return;
+      arg->end_of_data = 1; continue;
+    }
+    diagnostics.midas_last_timestamp = ev_head.timestamp;
+    if( diagnostics.midas_run_start == 0 ){
+      diagnostics.midas_run_start = ev_head.timestamp;
+    } else if( ev_head.timestamp != diagnostics.midas_run_start ){
+      diagnostics.midas_datarate = diagnostics.midas_file_bytes /
+      (ev_head.timestamp - diagnostics.midas_run_start);
+    } else {
+      ;// no datarate yet
+    }
+    while( (items = next_bank(arg, &bank_name)) > 0 ){
+      len = ( (bank_head.data_size+3) & ~3) / 4; // bytes to ints
+      ptr = (unsigned *)(recbuf+recbufpos);
+      if( strcmp(bank_name,"CAEN") == 0 ){
+        if( (len = translate_caen_bank(ptr, len)) <= 0 ){ continue; }
+        ptr = tmp_bankbuf;
+      } else if( strcmp(bank_name,"GRF3") != 0 &&
+      strcmp(bank_name,"GRF4") != 0 ){ continue; }//ignore othrs
+      if( single_thread ){
+        process_grif3_bank(ptr, len);
+      } else { copy_bank(ptr, len); }
+    }
+    if( items == -2 ){
+      if( arg->odb_ready == 0 ){ // odb "event" @ start of file
+      read_odb_items(*(int *)bank_name, (int *)(recbuf+recbufpos) );
+      arg->odb_ready = 1;
+    }
+    recbufpos += ev_head.data_size;
+  } else if( arg->odb_ready == 0 ){
+    arg->odb_ready = 2; // missing
+  }
+}
+fprintf(stdout,"shutting down midas thread ...\n");
+return;
 }
 #endif // GRIFFIN_SORT
 
 int next_record(Sort_status *arg)
 {
-   int bytes;
+  int bytes;
 
-   // any data remaining, copy to start, before reading next block
-   if( recordlen > recbufpos ){
-      memmove(recbuf, recbuf+recbufpos, recordlen-recbufpos);
-      recordlen -= recbufpos;
-      recbufpos = 0;
-   } else {
-      recbufpos = recordlen = 0;
-   }
-   bytes = fread(recbuf+recordlen, 1, RECORDSIZE-recordlen, arg->data_fp);
-   recordlen += bytes; diagnostics.midas_file_bytes += bytes;
-   arg->midas_bytes += bytes;
-   // printf("Read %ld bytes\n", diagnostics.midas_file_bytes);
-   if( bytes <= 0 ){
-      fprintf(stderr,"EOF at %ld on data_fp [%ld]\n", ftell(arg->data_fp), diagnostics.midas_file_bytes );
-   }
-   return(bytes);
+  // any data remaining, copy to start, before reading next block
+  if( recordlen > recbufpos ){
+    memmove(recbuf, recbuf+recbufpos, recordlen-recbufpos);
+    recordlen -= recbufpos;
+    recbufpos = 0;
+  } else {
+    recbufpos = recordlen = 0;
+  }
+  bytes = fread(recbuf+recordlen, 1, RECORDSIZE-recordlen, arg->data_fp);
+  recordlen += bytes; diagnostics.midas_file_bytes += bytes;
+  arg->midas_bytes += bytes;
+  // printf("Read %ld bytes\n", diagnostics.midas_file_bytes);
+  if( bytes <= 0 ){
+    fprintf(stderr,"EOF at %ld on data_fp [%ld]\n", ftell(arg->data_fp), diagnostics.midas_file_bytes );
+  }
+  return(bytes);
 }
 
 #define MIDAS_HDRLEN sizeof(Midas_event_header)
@@ -494,137 +500,137 @@ int next_record(Sort_status *arg)
 static int evbase; // recbufpos at start of event
 int next_event(Sort_status *arg)
 {
-   int bytes, bytes_done, bytes_avail, bytes_remain;
+  int bytes, bytes_done, bytes_avail, bytes_remain;
 
-   // check if full event available, if not, grab new record
-   while(1){
-      // Check if we have enough bytes left just to read the header length
-      if (recordlen - recbufpos < MIDAS_HDRLEN) {
-         if (next_record(arg) <= 0) return -1;
-         continue;
-      }
+  // check if full event available, if not, grab new record
+  while(1){
+    // Check if we have enough bytes left just to read the header length
+    if (recordlen - recbufpos < MIDAS_HDRLEN) {
+      if (next_record(arg) <= 0) return -1;
+      continue;
+    }
 
-      // Safely extract the unaligned event size from offset 12 using memcpy
-      int next_event_size;
-      memcpy(&next_event_size, recbuf + recbufpos + 12, sizeof(int));
+    // Safely extract the unaligned event size from offset 12 using memcpy
+    int next_event_size;
+    memcpy(&next_event_size, recbuf + recbufpos + 12, sizeof(int));
 
-      // Check if the full event (header + payload size) fits in the current record
-      if (recordlen - recbufpos < next_event_size + MIDAS_HDRLEN) {
-         if (next_record(arg) <= 0) return -1;
-         continue;
-      }
+    // Check if the full event (header + payload size) fits in the current record
+    if (recordlen - recbufpos < next_event_size + MIDAS_HDRLEN) {
+      if (next_record(arg) <= 0) return -1;
+      continue;
+    }
 
-      // If both checks pass, we have a complete event ready
-      break;
-   }
-   memcpy((char *)&ev_head, recbuf+recbufpos, sizeof(Midas_event_header) );
-   recbufpos += sizeof(Midas_event_header);
-   midas_evstart = recbufpos;
-   arg->midas_timestamp = ev_head.timestamp;
-   if( arg->debug ){
-      printf("\n\nEvent     id: %d",             ev_head.event_id     );
-      printf("    Trigger mask: %d",             ev_head.trigger_mask );
-      printf("    Serial   num: %d\ntime",       ev_head.serial_num   );
-      printf("stamp   :      %s\n",ctime((time_t*)&ev_head.timestamp) );
-      printf("data size   : %d\n",               ev_head.data_size    );
-   }
-   first_bank = 1; evbase = recbufpos;
-   return(0);
+    // If both checks pass, we have a complete event ready
+    break;
+  }
+  memcpy((char *)&ev_head, recbuf+recbufpos, sizeof(Midas_event_header) );
+  recbufpos += sizeof(Midas_event_header);
+  midas_evstart = recbufpos;
+  arg->midas_timestamp = ev_head.timestamp;
+  if( arg->debug ){
+    printf("\n\nEvent     id: %d",             ev_head.event_id     );
+    printf("    Trigger mask: %d",             ev_head.trigger_mask );
+    printf("    Serial   num: %d\ntime",       ev_head.serial_num   );
+    printf("stamp   :      %s\n",ctime((time_t*)&ev_head.timestamp) );
+    printf("data size   : %d\n",               ev_head.data_size    );
+  }
+  first_bank = 1; evbase = recbufpos;
+  return(0);
 }
 
 #define BANK_IS_32BIT (1<<4)
 
 int next_bank(Sort_status *arg, char **bank_name) // loop over banks in event
 {
-   Midas_bank16_header bank16_head;
-   static char bank[5];
-   char format[64];
-   int items;
+  Midas_bank16_header bank16_head;
+  static char bank[5];
+  char format[64];
+  int items;
 
-   if( first_bank ){ first_bank = 0;
-      if( ev_head.event_id & 0x8000 ){
-         *(int *)bank = ev_head.data_size; // temp store length here
-         *bank_name = bank;
-         return(-2);
-      } /* "odb" event */
-      memcpy((char *)&allbank_head, recbuf+recbufpos, sizeof(Midas_allbank_header) );
-      swap_required = allbank_head.flags > 0x10000;
-      if( swap_required ){
-         swapInt( (char *)&allbank_head, 2*sizeof(int) );
-      }
-      if( arg->debug ){
-         printf("    Allbank Size : %d",   allbank_head.allbanksize );
-         printf("    Flags        : %d",   allbank_head.flags );
-         printf("    (swap needed): %s\n", swap_required ? "yes" : "no" );
-      }
-      if( allbank_head.allbanksize > 65535 || allbank_head.allbanksize < 16 ){
-         // something wrong - ignore this event
-         fprintf(stderr,"BAD allbanksize: %d\n", allbank_head.allbanksize );
-	 return(-1);
-      }
-      recbufpos += sizeof(Midas_allbank_header);
-      memset((char *)&bank_head, 0, sizeof(Midas_bank_header) );
-   }
-   /* NOTE: size is rounded up to next multiple of 8 bytes (4 shorts) */
-   /* before reading first bank, data_size is zero */
-   recbufpos +=  ((bank_head.data_size + 7) & ~7);
-   if( recbufpos - evbase >= ev_head.data_size ||
-       recbufpos - evbase >= allbank_head.allbanksize ){ // end of event
+  if( first_bank ){ first_bank = 0;
+    if( ev_head.event_id & 0x8000 ){
+      *(int *)bank = ev_head.data_size; // temp store length here
+      *bank_name = bank;
+      return(-2);
+    } /* "odb" event */
+    memcpy((char *)&allbank_head, recbuf+recbufpos, sizeof(Midas_allbank_header) );
+    swap_required = allbank_head.flags > 0x10000;
+    if( swap_required ){
+      swapInt( (char *)&allbank_head, 2*sizeof(int) );
+    }
+    if( arg->debug ){
+      printf("    Allbank Size : %d",   allbank_head.allbanksize );
+      printf("    Flags        : %d",   allbank_head.flags );
+      printf("    (swap needed): %s\n", swap_required ? "yes" : "no" );
+    }
+    if( allbank_head.allbanksize > 65535 || allbank_head.allbanksize < 16 ){
+      // something wrong - ignore this event
+      fprintf(stderr,"BAD allbanksize: %d\n", allbank_head.allbanksize );
+      return(-1);
+    }
+    recbufpos += sizeof(Midas_allbank_header);
+    memset((char *)&bank_head, 0, sizeof(Midas_bank_header) );
+  }
+  /* NOTE: size is rounded up to next multiple of 8 bytes (4 shorts) */
+  /* before reading first bank, data_size is zero */
+  recbufpos +=  ((bank_head.data_size + 7) & ~7);
+  if( recbufpos - evbase >= ev_head.data_size ||
+    recbufpos - evbase >= allbank_head.allbanksize ){ // end of event
       if( recbufpos - evbase != ev_head.data_size ){
-         fprintf(stderr,"%d wrong event length %d != %d\n",
-		 errcount++, recbufpos - evbase, ev_head.data_size );
-	 return(-1);
+        fprintf(stderr,"%d wrong event length %d != %d\n",
+        errcount++, recbufpos - evbase, ev_head.data_size );
+        return(-1);
       }
       return(0); // end of event - return zero items
-   }
-   if( allbank_head.flags & BANK_IS_32BIT ){
+    }
+    if( allbank_head.flags & BANK_IS_32BIT ){
       memcpy((char *)&bank_head, recbuf+recbufpos, sizeof(Midas_bank_header) );
       recbufpos += sizeof(Midas_bank_header);
       if( swap_required ){
-         swapInt( (char *)&bank_head.data_type, 2*sizeof(int) );
+        swapInt( (char *)&bank_head.data_type, 2*sizeof(int) );
       }
-   } else {
-     /* old 16bit items - just copy items to new 32bit header */
+    } else {
+      /* old 16bit items - just copy items to new 32bit header */
       memcpy((char*)&bank16_head,recbuf+recbufpos,sizeof(Midas_bank16_header));
       recbufpos += sizeof(Midas_bank16_header);
       if( swap_required ){
-         swapShort( (char *)&bank16_head.data_type, 2*sizeof(short) );
+        swapShort( (char *)&bank16_head.data_type, 2*sizeof(short) );
       }
       memcpy((char *)&bank_head, (char *)&bank16_head, 4 );
       bank_head.data_type = bank16_head.data_type;
       bank_head.data_size = bank16_head.data_size;
-   }
-   if( bank_head.data_size < 0 ){
+    }
+    if( bank_head.data_size < 0 ){
       fprintf(stderr,"bank length < 0\n"); return(-1);
-   }
-   if( arg->debug ){
+    }
+    if( arg->debug ){
       printf("  Bank Name : %4s", bank_head.name );
       printf("  Type : %d",  bank_head.data_type );
       printf("  size : %d\n",  bank_head.data_size );
-   }
-   switch( bank_head.data_type ){
-   case 4: case 5: // 2 byte integer
+    }
+    switch( bank_head.data_type ){
+      case 4: case 5: // 2 byte integer
       if( swap_required ){ swapShort(recbuf+recbufpos, bank_head.data_size ); }
       if( arg->debug ){ sprintf(format,"    %%s[%%2d] = %%6u (0x%%04x)"); }
       items = bank_head.data_size/sizeof(short); break;
-   case 6: case 7: case 8: /* scaler byte order seems to be wrong */
+      case 6: case 7: case 8: /* scaler byte order seems to be wrong */
       if( swap_required  ){ swapInt(recbuf+recbufpos, bank_head.data_size ); }
       if( arg->debug ){ sprintf(format,"    %%s[%%2d] = %%10u (0x%%08x)"); }
       items = bank_head.data_size/sizeof(int); break;
-   case 9: // 4byte float
+      case 9: // 4byte float
       if( swap_required ){ swapInt(recbuf+recbufpos, bank_head.data_size ); }
       if( arg->debug ){ sprintf(format,"    %%s[%%2d] = %%6.2f (0x%%08x)"); }
       items = bank_head.data_size/sizeof(int); break;
-   case 10: // 8byte double
+      case 10: // 8byte double
       if( swap_required ){ swapInt(recbuf+recbufpos, bank_head.data_size ); }
       if( arg->debug ){ sprintf(format,"    %%s[%%2d] = %%6.2f (0x%%08x)"); }
       items = bank_head.data_size/sizeof(int)/2; break;
-   default:
+      default:
       fprintf(stderr,"%s bank has unknown type: %d ... ignoring\n",
-              bank_head.name, bank_head.data_type );
+      bank_head.name, bank_head.data_type );
       return(-1);
-   }
-   memcpy(bank, bank_head.name, 4); bank[4]='\0';
-   *bank_name = bank;
-   return( items );
-}
+    }
+    memcpy(bank, bank_head.name, 4); bank[4]='\0';
+    *bank_name = bank;
+    return( items );
+  }

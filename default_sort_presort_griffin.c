@@ -62,8 +62,9 @@ int pre_sort_enter(int start_idx, int frag_idx)
     energy = 2;
   }
   //ph_hist[chan] -> Fill(ph_hist[chan],  (int)energy,  1); // Fill the ph histogram here so dont need to calculate energy again in the fill_chan_histos function
-  if((unsigned int)(energy - 1) < (unsigned int)(E_SPECLEN - 1)){
-    batch_data_ph_hist[chan][(int)energy]++;
+bin = (int)energy;
+  if((unsigned int)bin < (unsigned int)E_SPECLEN){
+    batch_data_ph_hist[chan][bin]++;
   }
   ptr->ecal = ptr->esum=offsets[chan]+energy*(gains[chan]+energy*quads[chan]);
   // NOBODY CURRENTLY USES e2,e3,e4 ...
@@ -148,7 +149,9 @@ int pre_sort_enter(int start_idx, int frag_idx)
   if( ptr_subsys == SUBSYS_DESWALL){
     //ptr->ts -= caen_ts_offset; // Subtract from CAEN timestamps to align coincidences
     psd = ( ptr->q1 != 0 ) ? (spread(ptr->cc_short) / ptr->q1) : 0;
-    ptr->psd = (int)(psd*1000.0); // psd = long integration divided by short integration
+    psd *=1000.0;
+    if(psd<0 || psd>INT_MAX){ psd=0; }
+    ptr->psd = (int)(psd); // psd = long integration divided by short integration
   }
 
   // PACES
