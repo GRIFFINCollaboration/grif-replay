@@ -463,6 +463,14 @@ int fill_singles_histos(Grif_event *ptr)
 
     // PPG Cycles histograms
     ge_cycle_code[ppg_current_pattern]->Fill(ge_cycle_code[ppg_current_pattern], ptr_ecal, 1);
+    // Fill a spectrum only with the last 20% of the beam-off period of the cycle
+    if(ppg_current_pattern==3){ // index 3, 0xC004, beam-off
+     if(ptr->ts>(((ppg_pattern_end-ppg_pattern_start)*0.5)+ppg_pattern_start)) {
+     ge_sum_end->Fill(ge_sum_end, ptr_ecal, 1);
+     if(ptr->tof & 4){ ge_sum_b_end->Fill(ge_sum_b_end, ptr_ecal, 1); }
+  }
+}
+
     bin = (int)((ptr->ts-ppg_cycle_start)/ppg_cycles_binning_factor);  // convert 10ns to binning size set as Global
     if(bin>=0 && bin<CYCLE_SPEC_LENGTH){
       //ge_cycle_activity->Fill(ge_cycle_activity, bin, 1);

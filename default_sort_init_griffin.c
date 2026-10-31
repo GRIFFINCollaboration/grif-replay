@@ -385,6 +385,7 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
     // HPGe (ge_sum is sum of crystal energies, ge_sum_b is beta-gated)
     TH1I  *ge_ab_e[N_CLOVER], *ge_ab_sup_e[N_CLOVER], *ge_sum_ab, *ge_sum_ab_sup, *ge_sum_ab_sup_rej;
     TH1I  *ge_sum, *ge_sum_us, *ge_sum_ds, *ge_sum_ab_us, *ge_sum_ab_ds;
+    TH1I  *ge_sum_end, *ge_sum_b_end;
     TH1I  *ge_sum_b, *ge_sum_b_ab, *ge_sum_b_sep, *ge_sum_b_sep_brems, *ge_sum_b_ab_sep_brems, *ge_sum_b_zds;
     TH1I  *ge_sum_b_art, *ge_sum_b_art_brems, *ge_sum_b_artT, *ge_sum_b_artR, *ge_sum_b_artS;
 
@@ -745,6 +746,8 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
         {(void **)&ge_sum_b_art_brems, "Ge_Sum_En_AriesTagged_Brems",   "Ge_Sum_E_B_ART_Brems",SUBSYS_HPGE_A,  E_SPECLEN},
         {(void **)&ge_sum_b_sep_brems, "Ge_Sum_En_SceptarTagged_Brems", "Ge_Sum_E_B_SEP_Brems",SUBSYS_HPGE_A,  E_SPECLEN},
         {(void **)&ge_sum_b_ab_sep_brems, "AB_Sum_En_SceptarTagged_Brems", "AB_Sum_E_B_SEP_Brems",SUBSYS_HPGE_A,  E_SPECLEN},
+        {(void **)&ge_sum_end,       "Ge_Sum_Energy_End_of_Beam_Off",           "",      SUBSYS_HPGE_A,  E_SPECLEN},
+        {(void **)&ge_sum_b_end,     "Ge_Sum_En_betaTagged_End_of_Beam_Off",    "",      SUBSYS_HPGE_A,  E_SPECLEN},
         {(void **)&paces_sum,    "PACES_Sum_Energy",        "",                          SUBSYS_PACES,   E_SPECLEN},
         {(void **)&paces_sum_b,  "PACES_Sum_En_betaTagged", "",                          SUBSYS_PACES,   E_SPECLEN},
         {(void **)&labr_sum,     "LaBr3_Sum_Energy",        "",                          SUBSYS_LABR_L,  E_SPECLEN},
