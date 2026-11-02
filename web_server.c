@@ -135,8 +135,13 @@ int split_cmdurl(char *url)  // split ?cmd=XXX&arg1=XXX?...
    char *ptr = url;
    if( strlen(url) == 0 ){ return(-1); }
    while( *ptr != '\0' && ptr-url < URLLEN ){
-      if( strncmp(ptr,"%20",3) == 0 ){
-         url_args[i][j++] = ' '; ptr+=3; continue;
+      if( *ptr == '%' && isxdigit(ptr[1]) && isxdigit(ptr[2]) ){
+         char a = ptr[1], b = ptr[2];
+         if( a >= 'a' ){ a -= ('a'-'A'); }
+         if( a >= 'A' ){ a -= ('A'-10); } else { a -= '0'; }
+         if( b >= 'a' ){ b -= ('a'-'A'); }
+         if( b >= 'A' ){ b -= ('A'-10); } else { b -= '0'; }
+         url_args[i][j++] = (char)(16*a+b); ptr+=3; continue;
       }
       url_args[i][j++] = *ptr++;
       if( j >= URL_STRING_LEN ){ --j; err=1; }

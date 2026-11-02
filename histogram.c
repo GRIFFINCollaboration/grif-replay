@@ -110,6 +110,9 @@ TH1I *H1_BOOK(Config *cfg, char *name, char *title, int nbins, int xmin, int xma
    memcpy(result->path, cfg->current_path, strlen(cfg->current_path)+1 );
    memcpy(result->handle, name, hlen+1);
    memcpy(result->title, title, tlen+1);
+
+   //result->axisTitleX    = DEFAULT_AXIS_TITLE_X;  //LEE pending enhancement
+   //result->axisTitleY    = DEFAULT_AXIS_TITLE_Y;  //LEE pending enhancement
    result->underflow     = 0;
    result->overflow      = 0;
    result->entries       = 0;
@@ -214,6 +217,8 @@ fprintf(stdout,"create %s\n",title);
    memcpy(result->path, cfg->current_path, strlen(cfg->current_path)+1 );
    memcpy(result->handle, name, hlen+1);
    memcpy(result->title, title, tlen+1);
+   //result->axisTitleX    = DEFAULT_AXIS_TITLE_X;  //LEE pending enhancement
+   //result->axisTitleY    = DEFAULT_AXIS_TITLE_Y;  //LEE pending enhancement
    result->underflow     = 0;
    result->overflow      = 0;
    result->entries       = 0;

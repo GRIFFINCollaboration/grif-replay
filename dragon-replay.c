@@ -253,6 +253,29 @@ void sort_main(Sort_status *arg)
       process_event(&evbuf[nxtpos], nxtpos);
       nxtpos = ++evbuf_nxtpos % EVT_BUFSIZE;
    }
+   // EOF: flush events still held in the presort and sort windows.
+   // Normal eviction requires a later event to push older ones out; at EOF
+   // no such event arrives, so we drain both windows explicitly here.
+   {
+      int flush_end = (int)(evbuf_nxtpos % EVT_BUFSIZE);
+      int win_end   = (flush_end - 1 + EVT_BUFSIZE) % EVT_BUFSIZE;
+      int nuser     = configs[1]->nuser;
+      Dragon_event *alt;
+      // move remaining presort events into the sort window
+      while( presort_window_start != flush_end ){
+         alt = &evbuf[presort_window_start];
+         pre_sort_exit(presort_window_start, win_end);
+         insert_sort_win(alt, presort_window_start);
+         if( ++presort_window_start >= EVT_BUFSIZE ){ presort_window_start = 0; }
+      }
+      // drain remaining sort window events
+      while( sort_window_start != flush_end ){
+         default_sort(sort_window_start, win_end, SORT_ONE);
+         if( nuser > 0 ){ user_sort(sort_window_start, win_end, SORT_ONE); }
+         if( ++sort_window_start >= EVT_BUFSIZE ){ sort_window_start = 0; }
+         ++evbuf_rdpos;
+      }
+   }
    printf("sort_main finished\n");
    return;}
 

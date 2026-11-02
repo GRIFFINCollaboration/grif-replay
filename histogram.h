@@ -62,4 +62,7 @@ extern int TH2I_GetBinContent(TH2I *, int xbin, int ybin);
 extern int TH2I_SetValidLen(TH2I *, int bins);
 extern int write_th1I(FILE *fp, void *ptr);
 
+#define DEFAULT_AXIS_TITLE_X "Channels"
+#define DEFAULT_AXIS_TITLE_Y "Counts"
+
 #endif

@@ -123,31 +123,31 @@ void midas_main(Sort_status *arg)
          ptr = (unsigned *)(recbuf+recbufpos);
          // scalar banks are ignored for now
          if( strcmp(bank_name,"VTRH") == 0 ){
-            if( !unpack_io32_bank(evt, ptr, len, HEAD_EVENT) ){ evok=1; } else { ++err; }
+            if( !unpack_io32_bank(evt, (int*)ptr, len, HEAD_EVENT) ){ evok=1; } else { ++err; }
          } else
          if( strcmp(bank_name,"VTRT") == 0 ){
-            if( !unpack_io32_bank(evt, ptr, len, TAIL_EVENT) ){ evok=1; } else { ++err; }
+            if( !unpack_io32_bank(evt, (int*)ptr, len, TAIL_EVENT) ){ evok=1; } else { ++err; }
          } else
          if( strcmp(bank_name,"TSCH") == 0 ){
-            if( !unpack_io32_fifobank(evt, ptr, len, HEAD_EVENT) ){ evok=1; } else { ++err; }
+            if( !unpack_io32_fifobank(evt, (int*)ptr, len, HEAD_EVENT) ){ evok=1; } else { ++err; }
          } else
          if( strcmp(bank_name,"TSCT") == 0 ){
-            if( !unpack_io32_fifobank(evt, ptr, len, TAIL_EVENT) ){ evok=1; } else { ++err; }
+            if( !unpack_io32_fifobank(evt, (int*)ptr, len, TAIL_EVENT) ){ evok=1; } else { ++err; }
          } else
          if( strcmp(bank_name,"TDC0") == 0 ){
-            if( !unpack_v1190_bank(evt, ptr, len, HEAD_EVENT) ){ evok=1; } else { ++err; }
+            if( !unpack_v1190_bank(evt, (int*)ptr, len, HEAD_EVENT) ){ evok=1; } else { ++err; }
          } else
          if( strcmp(bank_name,"TLT0") == 0 ){
-            if( !unpack_v1190_bank(evt, ptr, len, TAIL_EVENT) ){ evok=1; } else { ++err; }
+            if( !unpack_v1190_bank(evt, (int*)ptr, len, TAIL_EVENT) ){ evok=1; } else { ++err; }
          } else
          if( strcmp(bank_name,"ADC0") == 0 ){
-            if( !unpack_v792_bank(evt, ptr, len, 0, HEAD_EVENT) ){ evok=1; } else { ++err; }
+            if( !unpack_v792_bank(evt, (int*)ptr, len, 0, HEAD_EVENT) ){ evok=1; } else { ++err; }
          } else
          if( strcmp(bank_name,"TLQ0") == 0 ){
-            if( !unpack_v792_bank(evt, ptr, len, 0, TAIL_EVENT) ){ evok=1; } else { ++err; }
+            if( !unpack_v792_bank(evt, (int*)ptr, len, 0, TAIL_EVENT) ){ evok=1; } else { ++err; }
          } else
          if( strcmp(bank_name,"TLQ1") == 0 ){
-            if( !unpack_v792_bank(evt, ptr, len, 1, TAIL_EVENT) ){ evok=1; } else { ++err; }
+            if( !unpack_v792_bank(evt, (int*)ptr, len, 1, TAIL_EVENT) ){ evok=1; } else { ++err; }
          } else { continue; }//ignore others
       }
       if( items == -1 ){ //  corrupt or unknown data - skip rest of event
@@ -180,7 +180,7 @@ void midas_main(Sort_status *arg)
             //printf("MIDAS evt%6d pos:%6d\n", evcount++, bankbuf_wrpos);
             bankbuf_wrpos += DRAGON_EVENTWORDS;
             if( (overrun = (wrpos + DRAGON_EVENTWORDS - BANK_BUFSIZE)) > 0 ){
-               memcpy(bankbuf, bankbuf+wrpos, sizeof(int)*overrun);
+               memcpy(bankbuf, bankbuf+BANK_BUFSIZE, sizeof(*bankbuf)*overrun);
             }
          }
       } else {
@@ -541,7 +541,7 @@ int next_bank(Sort_status *arg, char **bank_name) // loop over banks in event
       }
       if( allbank_head.allbanksize > 65535 || allbank_head.allbanksize < 16 ){
          // something wrong - ignore this event
-         fprintf(stderr,"BAD allbanksize: %d\n", allbank_head.allbanksize );
+//LEE - suppress this chatty printf         fprintf(stderr,"BAD allbanksize: %d\n", allbank_head.allbanksize );
 	 return(-1);
       }
       recbufpos += sizeof(Midas_allbank_header);
