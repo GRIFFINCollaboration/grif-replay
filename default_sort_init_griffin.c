@@ -387,7 +387,7 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
     TH1I  *ge_sum, *ge_sum_us, *ge_sum_ds, *ge_sum_ab_us, *ge_sum_ab_ds;
     TH1I  *ge_sum_end, *ge_sum_b_end;
     TH1I  *ge_sum_b, *ge_sum_b_ab, *ge_sum_b_sep, *ge_sum_b_sep_brems, *ge_sum_b_ab_sep_brems, *ge_sum_b_zds;
-    TH1I  *ge_sum_b_art, *ge_sum_b_art_brems, *ge_sum_b_artT, *ge_sum_b_artR, *ge_sum_b_artS;
+    TH1I  *ge_sum_b_art, *ge_sum_b_art_brems, *ge_sum_b_art_brems_rej, *ge_sum_b_artT, *ge_sum_b_artR, *ge_sum_b_artS;
 
     // ARIES, PACES and LaBr3
     TH1I  *aries_sum;  // aries_sum is sum of tile energies
@@ -474,6 +474,7 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
 
     // Angular Correlation histograms
     TH2I  *gg_angcor_110[N_GE_ANG_CORR], *gg_angcor_145[N_GE_ANG_CORR], *ge_art_angcor_110[N_GRG_ART_ANG_CORR_110], *ge_art_angcor_145[N_GRG_ART_ANG_CORR_145], *dsw_angcor[N_DSW_DSW_ANG_CORR];
+    TH2I  *ge_art_e_vs_t_110, *ge_art_e_vs_t_145;
 
     // Compton Polarimetry histograms
     TH2I  *comp_pol_angles_110, *comp_pol_angles_145, *gg_comp_pol_110[N_GE_COMP_POL], *gg_comp_pol_145[N_GE_COMP_POL];
@@ -735,15 +736,16 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
         {(void **)&ge_sum_b_ab,  "AB_Sum_En_betaTagged",    "",                          SUBSYS_HPGE_A,  E_SPECLEN},
         {(void **)&ge_sum_ab_sup,"AB_Sup_Sum_Energy",      "",                           SUBSYS_HPGE_A,  E_SPECLEN},
         {(void **)&ge_sum_ab_sup_rej,"AB_Sup_Sum_En_Rejected", "",                       SUBSYS_HPGE_A,  E_SPECLEN},
-        {(void **)&ge_sum,       "Ge_Sum_Energy",           "",                          SUBSYS_HPGE_A,  E_SPECLEN},
+        {(void **)&ge_sum,       "Ge_Sum_Energy",           "",                          SUBSYS_HPGE_A,  E_SPECLEN_LONG},
         {(void **)&ge_sum_b,     "Ge_Sum_En_betaTagged",    "",                          SUBSYS_HPGE_A,  E_SPECLEN},
         {(void **)&ge_sum_b_sep, "Ge_Sum_En_SceptarTagged", "Ge_Sum_E_B_SEP",            SUBSYS_HPGE_A,  E_SPECLEN},
         {(void **)&ge_sum_b_zds, "Ge_Sum_En_ZdsTagged",     "Ge_Sum_E_B_ZDS",            SUBSYS_HPGE_A,  E_SPECLEN},
-        {(void **)&ge_sum_b_art, "Ge_Sum_En_AriesTagged",   "Ge_Sum_E_B_ART",            SUBSYS_HPGE_A,  E_SPECLEN},
-        {(void **)&ge_sum_b_artT, "Ge_Sum_En_Aries_Tri",   "Ge_Sum_E_B_ART",            SUBSYS_HPGE_A,  E_SPECLEN},
+        {(void **)&ge_sum_b_art, "Ge_Sum_En_AriesTagged",   "Ge_Sum_E_B_ART",            SUBSYS_HPGE_A,  E_SPECLEN_LONG},
+        {(void **)&ge_sum_b_artT, "Ge_Sum_En_Aries_Tri",   "Ge_Sum_E_B_ART",            SUBSYS_HPGE_A,  E_SPECLEN_LONG},
         {(void **)&ge_sum_b_artR, "Ge_Sum_En_Aries_Rec",   "Ge_Sum_E_B_ART",            SUBSYS_HPGE_A,  E_SPECLEN},
         {(void **)&ge_sum_b_artS, "Ge_Sum_En_Aries_Sqr",   "Ge_Sum_E_B_ART",            SUBSYS_HPGE_A,  E_SPECLEN},
-        {(void **)&ge_sum_b_art_brems, "Ge_Sum_En_AriesTagged_Brems",   "Ge_Sum_E_B_ART_Brems",SUBSYS_HPGE_A,  E_SPECLEN},
+        {(void **)&ge_sum_b_art_brems, "Ge_Sum_En_AriesTagged_Brems",   "Ge_Sum_E_B_ART_Brems",SUBSYS_HPGE_A,  E_SPECLEN_LONG},
+        {(void **)&ge_sum_b_art_brems_rej, "Ge_Sum_En_AriesTagged_Brems_reject",   "Ge_Sum_E_B_ART_Brems_Rej",SUBSYS_HPGE_A,  E_SPECLEN_LONG},
         {(void **)&ge_sum_b_sep_brems, "Ge_Sum_En_SceptarTagged_Brems", "Ge_Sum_E_B_SEP_Brems",SUBSYS_HPGE_A,  E_SPECLEN},
         {(void **)&ge_sum_b_ab_sep_brems, "AB_Sum_En_SceptarTagged_Brems", "AB_Sum_E_B_SEP_Brems",SUBSYS_HPGE_A,  E_SPECLEN},
         {(void **)&ge_sum_end,       "Ge_Sum_Energy_End_of_Beam_Off",           "",      SUBSYS_HPGE_A,  E_SPECLEN},
@@ -881,9 +883,11 @@ char dt_handles[N_DT][HANDLE_LENGTH]={
         {NULL,                   "Ang_Corr/GG_ART_Ang_Corr",    ""},
         {(void **) ge_art_angcor_110,"Ge_ART_110mm_angular_bin%03d",      "", SUBSYS_ARIES_A,  GE_ANGCOR_SPECLEN, GE_ANGCOR_SPECLEN, N_GRG_ART_ANG_CORR_110 },
         {(void **) ge_art_angcor_145,"Ge_ART_145mm_angular_bin%03d",      "", SUBSYS_ARIES_A,  GE_ANGCOR_SPECLEN, GE_ANGCOR_SPECLEN, N_GRG_ART_ANG_CORR_145 },
+        {(void **)&ge_art_e_vs_t_110,"Ge_ART_110mm_En_vs_theta", "", SUBSYS_ARIES_A,  E_SPECLEN, 192},
+        {(void **)&ge_art_e_vs_t_145,"Ge_ART_145mm_En_vs_theta", "", SUBSYS_ARIES_A,  E_SPECLEN, 192},
         {NULL,                   "Fast_Timing/LBL_Walk",        ""},
-        {(void **)&tac_labr_CompWalk0,"TAC01_LBL01_00_CompWalk",       "", SUBSYS_TAC_LABR, ECAL_TAC_SPECLEN, 1440},
-        {(void **) tac_labr_CompWalk,"TAC00_LBL00_%02d_CompWalk",       "", SUBSYS_TAC_LABR, ECAL_TAC_SPECLEN, 1440, N_LABR },
+        {(void **)&tac_labr_CompWalk0,"TAC01_LBL01_00_CompWalk", "", SUBSYS_TAC_LABR, ECAL_TAC_SPECLEN, 1440},
+        {(void **) tac_labr_CompWalk,"TAC00_LBL00_%02d_CompWalk","", SUBSYS_TAC_LABR, ECAL_TAC_SPECLEN, 1440, N_LABR },
         {NULL,                   "Fast_Timing/TAC_Gated_LBL_Energy", ""},
         {(void **) tac_gated_lbl,"TAC_gated_LBL%02d",           "", SUBSYS_TAC_LABR, E_SPECLEN, 0, N_LABR },
         {NULL,                   "Fast_Timing/Calibrated_TACs", ""},

@@ -7,6 +7,7 @@
 
 #define MULT_SPEC_LENGTH         128
 #define E_SPECLEN               8192
+#define E_SPECLEN_LONG         16384
 #define E_TAC_SPECLEN          16384
 #define ECAL_TAC_SPECLEN        1024
 #define E_TOF_SPEC_LENGTH       8192
@@ -253,7 +254,7 @@ extern TH1I  *ge_ab_e[N_CLOVER], *ge_ab_sup_e[N_CLOVER], *ge_sum_ab, *ge_sum_ab_
 extern TH1I  *ge_sum, *ge_sum_us, *ge_sum_ds, *ge_sum_hem[2], *ge_sum_ab_us, *ge_sum_ab_ds;
 extern TH1I  *ge_sum_end, *ge_sum_b_end;
 extern TH1I  *ge_sum_b, *ge_sum_b_ab, *ge_sum_b_sep, *ge_sum_b_sep_brems, *ge_sum_b_ab_sep_brems, *ge_sum_b_zds;
-extern TH1I  *ge_sum_b_art, *ge_sum_b_art_brems, *ge_sum_b_artT, *ge_sum_b_artR, *ge_sum_b_artS;
+extern TH1I  *ge_sum_b_art, *ge_sum_b_art_brems, *ge_sum_b_art_brems_rej, *ge_sum_b_artT, *ge_sum_b_artR, *ge_sum_b_artS;
 
 // ARIES, PACES and LaBr3
 extern TH1I  *aries_sum, *paces_sum, *paces_sum_b, *labr_sum;
@@ -332,6 +333,7 @@ extern TH1I *gg_energy[N_HPGE];
 
 // Angular Correlation histograms
 extern TH2I  *gg_angcor_110[N_GE_ANG_CORR], *gg_angcor_145[N_GE_ANG_CORR], *ge_art_angcor_110[N_GRG_ART_ANG_CORR_110], *ge_art_angcor_145[N_GRG_ART_ANG_CORR_145], *dsw_angcor[N_DSW_DSW_ANG_CORR];
+extern TH2I  *ge_art_e_vs_t_110, *ge_art_e_vs_t_145;
 
 // Compton Polarimetry histograms
 extern TH2I  *comp_pol_angles_110, *comp_pol_angles_145, *gg_comp_pol_110[N_GE_COMP_POL], *gg_comp_pol_145[N_GE_COMP_POL];
@@ -355,8 +357,8 @@ extern TH1I *ge_bgo_gated[N_BGO];
 // Batch filling storage arrays - 1D
 extern int batch_data_q_hit[MAX_DAQSIZE],batch_data_e_hit[MAX_DAQSIZE],batch_data_t_hit[MAX_DAQSIZE],batch_data_w_hit[MAX_DAQSIZE],
 batch_data_r_hit[MAX_DAQSIZE],batch_data_s_hit[MAX_DAQSIZE],batch_data_d_hit[MAX_DAQSIZE];
-extern int batch_data_ge_sum[E_SPECLEN],batch_data_ge_sum_us[E_SPECLEN],batch_data_ge_sum_ds[E_SPECLEN];
-extern int batch_data_ge_sum_ab[E_SPECLEN],batch_data_ge_sum_ab_us[E_SPECLEN],batch_data_ge_sum_ab_ds[E_SPECLEN];
+extern int batch_data_ge_sum[E_SPECLEN_LONG],batch_data_ge_sum_us[E_SPECLEN_LONG],batch_data_ge_sum_ds[E_SPECLEN_LONG];
+extern int batch_data_ge_sum_ab[E_SPECLEN_LONG],batch_data_ge_sum_ab_us[E_SPECLEN_LONG],batch_data_ge_sum_ab_ds[E_SPECLEN_LONG];
 extern int batch_data_ge_pu_type[64],batch_data_ge_nhits_type[64];
 extern int batch_data_ge_cycle_activity[CYCLE_SPEC_LENGTH];
 // Pointer array mapping for branchless filling: Index 0 (False) -> us array, Index 1 (True) -> ds array

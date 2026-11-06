@@ -62,7 +62,7 @@ int pre_sort_enter(int start_idx, int frag_idx)
     energy = 2;
   }
   //ph_hist[chan] -> Fill(ph_hist[chan],  (int)energy,  1); // Fill the ph histogram here so dont need to calculate energy again in the fill_chan_histos function
-bin = (int)energy;
+  bin = (int)energy;
   if((unsigned int)bin < (unsigned int)E_SPECLEN){
     batch_data_ph_hist[chan][bin]++;
   }
@@ -87,10 +87,10 @@ bin = (int)energy;
     // Fill deadtime histograms and reset the deadtime count
     bin = (int)((ppg_last_ptr_ts-ppg_cycle_start)/ppg_cycles_binning_factor);  // convert 10ns to binning size set as Global
     if(ppg_cycle_number<MAX_CYCLES){
-      //  gea_cycle_num_dt[ppg_cycle_number]->Fill(gea_cycle_num_dt[ppg_cycle_number], bin, subsys_deadtime_count[SUBSYS_HPGE_A]);
-      //  geb_cycle_num_dt[ppg_cycle_number]->Fill(geb_cycle_num_dt[ppg_cycle_number], bin, subsys_deadtime_count[SUBSYS_HPGE_B]);
-      //  cycle_num_vs_ge_dt->Fill(cycle_num_vs_ge_dt, ppg_cycle_number, bin, subsys_deadtime_count[SUBSYS_HPGE_A]);
-      //  cycle_num_vs_ge_b_dt->Fill(cycle_num_vs_ge_b_dt, ppg_cycle_number, bin, subsys_deadtime_count[SUBSYS_HPGE_B]);
+      gea_cycle_num_dt[ppg_cycle_number]->Fill(gea_cycle_num_dt[ppg_cycle_number], bin, subsys_deadtime_count[SUBSYS_HPGE_A]);
+      geb_cycle_num_dt[ppg_cycle_number]->Fill(geb_cycle_num_dt[ppg_cycle_number], bin, subsys_deadtime_count[SUBSYS_HPGE_B]);
+      cycle_num_vs_ge_dt->Fill(cycle_num_vs_ge_dt, ppg_cycle_number, bin, subsys_deadtime_count[SUBSYS_HPGE_A]);
+      cycle_num_vs_ge_b_dt->Fill(cycle_num_vs_ge_b_dt, ppg_cycle_number, bin, subsys_deadtime_count[SUBSYS_HPGE_B]);
     }
     memset(subsys_deadtime_count,0,MAX_SUBSYS*sizeof(int));
     // Calculate the timestamp of the next bin
@@ -102,14 +102,16 @@ bin = (int)energy;
   subsys_deadtime_count[ptr_subsys] += (ptr->deadtime>0) ? ptr->deadtime : subsys_prg_ddtm[ptr_subsys];
   if(ptr->trig_acc - previous_trig_acc[chan] != 1 && ptr->trig_acc - previous_trig_acc[chan] != 16383){
     if(ptr->trig_acc - previous_trig_acc[chan]>16100){ // Handle the wrap at 14 bits
-      add = ((ptr->trig_acc + 16383) - previous_trig_acc[chan]);
-      add *= (ptr->deadtime>0) ? ptr->deadtime : subsys_prg_ddtm[ptr_subsys];
-      subsys_deadtime_count[ptr_subsys] += add;
-    }else if(ptr->trig_acc - previous_trig_acc[chan] > 0){
-      add = (ptr->trig_acc - previous_trig_acc[chan]);
-      add *= (ptr->deadtime>0) ? ptr->deadtime : subsys_prg_ddtm[ptr_subsys];
+      add = ((ptr->trig_acc + 16383) - previous_trig_acc[chan]); // number of events missed
+      add *= (ptr->deadtime>0) ? ptr->deadtime : subsys_prg_ddtm[ptr_subsys]; // amount of deadtime for those missed events
       if(add<2400){ // More than 20 missed events is likely an error
         subsys_deadtime_count[ptr_subsys] += add;
+      }
+    }else if(ptr->trig_acc - previous_trig_acc[chan] > 0){
+      add = (ptr->trig_acc - previous_trig_acc[chan]); // number of events missed
+      add *= (ptr->deadtime>0) ? ptr->deadtime : subsys_prg_ddtm[ptr_subsys];
+      if(add<2400){ // More than 20 missed events is likely an error
+        subsys_deadtime_count[ptr_subsys] += add; // amount of deadtime for those missed events
       }
     }
   }
@@ -129,6 +131,7 @@ bin = (int)energy;
       ppg_cycle_number++;                                          // Current cycle number. Cycles counted from zero at beginning of run
       ppg_cycle_start = ppg_pattern_start;                         // Timestamp of the start of the current cycle
       ppg_cycle_end += ppg_cycle_duration;                         // Timestamp of the end of the current cycle
+      fprintf(stdout,"Cycle %04d, start/finish [%ld/%ld]\n",ppg_cycle_number, ppg_cycle_start, ppg_cycle_end);
     }
     ppg_current_pattern = ppg_cycle_pattern_code[ppg_cycle_step]; // Index of the current PPG cycle pattern for use with the ppg_patterns array
     ppg_pattern_end = ppg_pattern_start + ppg_cycle_pattern_duration[ppg_cycle_step]; // Timestamp of the end of the current pattern
@@ -289,11 +292,11 @@ bin = (int)energy;
             ++ptr->multiplicity;
           }
         }else if(ptr_subsys == SUBSYS_ARIES_A){
-            // Prompt coincidence window for HPGe multiplicity
-            if( (dt >= time_diff_gate_min[SUBSYS_ARIES_A][SUBSYS_ARIES_A]) & (dt <= time_diff_gate_max[SUBSYS_ARIES_A][SUBSYS_ARIES_A]) ){
-              ++ptr->multiplicity;
-            }
-          }else if(ptr_subsys == SUBSYS_QED_STRIP){
+          // Prompt coincidence window for HPGe multiplicity
+          if( (dt >= time_diff_gate_min[SUBSYS_ARIES_A][SUBSYS_ARIES_A]) & (dt <= time_diff_gate_max[SUBSYS_ARIES_A][SUBSYS_ARIES_A]) ){
+            ++ptr->multiplicity;
+          }
+        }else if(ptr_subsys == SUBSYS_QED_STRIP){
           // Same DSSD and Prompt coincidence window for QED multiplicity
           if( (crystal_table[ptr->chan] == crystal_table[alt->chan]) && (dt >= qed_fb_window_min) && (dt <= qed_fb_window_max) ){
             ++ptr->multiplicity;

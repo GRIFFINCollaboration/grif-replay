@@ -18,8 +18,8 @@
 // Batch filling storage arrays - 1D
 int batch_data_q_hit[MAX_DAQSIZE],batch_data_e_hit[MAX_DAQSIZE],batch_data_t_hit[MAX_DAQSIZE],batch_data_w_hit[MAX_DAQSIZE],
 batch_data_r_hit[MAX_DAQSIZE],batch_data_s_hit[MAX_DAQSIZE],batch_data_d_hit[MAX_DAQSIZE];
-int batch_data_ge_sum[E_SPECLEN],batch_data_ge_sum_us[E_SPECLEN],batch_data_ge_sum_ds[E_SPECLEN];
-int batch_data_ge_sum_ab[E_SPECLEN],batch_data_ge_sum_ab_us[E_SPECLEN],batch_data_ge_sum_ab_ds[E_SPECLEN];
+int batch_data_ge_sum[E_SPECLEN_LONG],batch_data_ge_sum_us[E_SPECLEN_LONG],batch_data_ge_sum_ds[E_SPECLEN_LONG];
+int batch_data_ge_sum_ab[E_SPECLEN_LONG],batch_data_ge_sum_ab_us[E_SPECLEN_LONG],batch_data_ge_sum_ab_ds[E_SPECLEN_LONG];
 int batch_data_ge_pu_type[64],batch_data_ge_nhits_type[64];
 int batch_data_ge_cycle_activity[CYCLE_SPEC_LENGTH];
 // Pointer array mapping for branchless filling: Index 0 (False) -> us array, Index 1 (True) -> ds array
@@ -190,12 +190,12 @@ void reset_batch_histos_arrays()
   memset(batch_data_d_hit,0,MAX_DAQSIZE*sizeof(int));       // d hit pattern
 
   // Batch fill the singles histograms and reset the data arrays
-  memset(batch_data_ge_sum,0,E_SPECLEN*sizeof(int));        // ge_sum
-  memset(batch_data_ge_sum_us,0,E_SPECLEN*sizeof(int));     // ge_sum_us
-  memset(batch_data_ge_sum_ds,0,E_SPECLEN*sizeof(int));     // ge_sum_ds
-  memset(batch_data_ge_sum_ab,0,E_SPECLEN*sizeof(int));     // ge_sum_ab
-  memset(batch_data_ge_sum_ab_us,0,E_SPECLEN*sizeof(int));  // ge_sum_ab_us
-  memset(batch_data_ge_sum_ab_ds,0,E_SPECLEN*sizeof(int));  // ge_sum_ab_ds
+  memset(batch_data_ge_sum,0,E_SPECLEN_LONG*sizeof(int));   // ge_sum
+  memset(batch_data_ge_sum_us,0,E_SPECLEN_LONG*sizeof(int));     // ge_sum_us
+  memset(batch_data_ge_sum_ds,0,E_SPECLEN_LONG*sizeof(int));     // ge_sum_ds
+  memset(batch_data_ge_sum_ab,0,E_SPECLEN_LONG*sizeof(int));     // ge_sum_ab
+  memset(batch_data_ge_sum_ab_us,0,E_SPECLEN_LONG*sizeof(int));  // ge_sum_ab_us
+  memset(batch_data_ge_sum_ab_ds,0,E_SPECLEN_LONG*sizeof(int));  // ge_sum_ab_ds
   memset(batch_data_ge_pu_type,0,64*sizeof(int));           // ge_pu_type
   memset(batch_data_ge_nhits_type,0,64*sizeof(int));        // ge_nhits_type
   memset(batch_data_ge_cycle_activity,0,CYCLE_SPEC_LENGTH*sizeof(int)); // ge_cycle_activity
@@ -303,7 +303,7 @@ int fill_singles_histos(Grif_event *ptr)
   mult_hist[sys]->Fill(mult_hist[sys], ptr->multiplicity, 1); // Fill multiplicity histograms
   // Get the position for this fragment
   pos  = crystal_table[chan];
-  if(ptr->ecal >= (float)0 && ptr->ecal <= (float)E_SPECLEN){
+  if(ptr->ecal >= (float)0 && ptr->ecal <= (float)E_SPECLEN_LONG){
     ptr_ecal = (int)(ptr->ecal);
   }else if((sys == SUBSYS_TAC_LABR || sys == SUBSYS_TAC_ZDS || sys == SUBSYS_TAC_ART) &&
   ptr->ecal >= (float)0 && ptr->ecal <= (float)E_TAC_SPECLEN){
@@ -462,46 +462,48 @@ int fill_singles_histos(Grif_event *ptr)
     }
 
     // PPG Cycles histograms
-    ge_cycle_code[ppg_current_pattern]->Fill(ge_cycle_code[ppg_current_pattern], ptr_ecal, 1);
-    // Fill a spectrum only with the last 20% of the beam-off period of the cycle
-    if(ppg_current_pattern==3){ // index 3, 0xC004, beam-off
-      if(ptr->ts>(((ppg_pattern_end-ppg_pattern_start)*0.5)+ppg_pattern_start)) {
-        ge_sum_end->Fill(ge_sum_end, ptr_ecal, 1);
-        if(ptr->tof & 4){ ge_sum_b_end->Fill(ge_sum_b_end, ptr_ecal, 1); }
-      }
-    }
-
-    bin = (int)((ptr->ts-ppg_cycle_start)/ppg_cycles_binning_factor);  // convert 10ns to binning size set as Global
-    if(bin>=0 && bin<CYCLE_SPEC_LENGTH){
-      //ge_cycle_activity->Fill(ge_cycle_activity, bin, 1);
-      batch_data_ge_cycle_activity[bin]++;
-      ge_e_vs_cycle_time->Fill(ge_e_vs_cycle_time, bin, ptr_ecal, 1);
-      //batch_data_ge_e_vs_cycle_time[++batch_data_ge_e_vs_cycle_time[0]] = bin+(ptr_ecal*CYCLE_SPEC_LENGTH);
-      if(ppg_cycle_number>=0 && ppg_cycle_number<MAX_CYCLES){
-        //  gea_cycle_num[ppg_cycle_number]->Fill(gea_cycle_num[ppg_cycle_number], bin, 1);
-        batch_data_gea_cycle_num[bin]++;
-        cycle_num_vs_ge->Fill(cycle_num_vs_ge, ppg_cycle_number, bin, 1);
-        //index = ppg_cycle_number+(bin*MAX_CYCLES);
-        //batch_data_cycle_num_vs_ge[++batch_data_cycle_num_vs_ge[0]] = index;
-        cycle_num_vs_geEnergy[pos]->Fill(cycle_num_vs_geEnergy[pos], ppg_cycle_number, ptr_ecal, 1);
-        if(class == PU_SINGLE_HIT){
-          //gea_cycle_num_sh[ppg_cycle_number]->Fill(gea_cycle_num_sh[ppg_cycle_number], bin, 1);
-          batch_data_gea_cycle_num_sh[bin]++;
-          //cycle_num_vs_sh->Fill(cycle_num_vs_sh, ppg_cycle_number, bin, 1);
-          batch_data_2d_cycle_num_vs_sh[bin]++;
-          //batch_data_cycle_num_vs_sh[++batch_data_cycle_num_vs_sh[0]] = index;
-        }else{
-          //gea_cycle_num_pu[ppg_cycle_number]->Fill(gea_cycle_num_pu[ppg_cycle_number], bin, 1);
-          batch_data_gea_cycle_num_pu[bin]++;
-          cycle_num_vs_pu->Fill(cycle_num_vs_pu, ppg_cycle_number, bin, 1);
+    if(ptr_ecal>5){
+      ge_cycle_code[ppg_current_pattern]->Fill(ge_cycle_code[ppg_current_pattern], ptr_ecal, 1);
+      // Fill a spectrum only with the last 20% of the beam-off period of the cycle
+      if(ppg_current_pattern==3){ // index 3, 0xC004, beam-off
+        if(ptr->ts>(((ppg_pattern_end-ppg_pattern_start)*0.5)+ppg_pattern_start)) {
+          ge_sum_end->Fill(ge_sum_end, ptr_ecal, 1);
+          if(ptr->tof & 4){ ge_sum_b_end->Fill(ge_sum_b_end, ptr_ecal, 1); }
         }
-        if((ptr_ecal>=ppg_cycles_gamma_gate_min) && (ptr_ecal<=ppg_cycles_gamma_gate_max)){
-          //gea_cycle_num_g[ppg_cycle_number]->Fill(gea_cycle_num_g[ppg_cycle_number], bin, 1);
-          batch_data_gea_cycle_num_g[bin]++;
+      }
+
+      bin = (int)((ptr->ts-ppg_cycle_start)/ppg_cycles_binning_factor);  // convert 10ns to binning size set as Global
+      if(bin>=0 && bin<CYCLE_SPEC_LENGTH){
+        //ge_cycle_activity->Fill(ge_cycle_activity, bin, 1);
+        batch_data_ge_cycle_activity[bin]++;
+        ge_e_vs_cycle_time->Fill(ge_e_vs_cycle_time, bin, ptr_ecal, 1);
+        //batch_data_ge_e_vs_cycle_time[++batch_data_ge_e_vs_cycle_time[0]] = bin+(ptr_ecal*CYCLE_SPEC_LENGTH);
+        if(ppg_cycle_number>=0 && ppg_cycle_number<MAX_CYCLES){
+          //  gea_cycle_num[ppg_cycle_number]->Fill(gea_cycle_num[ppg_cycle_number], bin, 1);
+          batch_data_gea_cycle_num[bin]++;
+          cycle_num_vs_ge->Fill(cycle_num_vs_ge, ppg_cycle_number, bin, 1);
+          //index = ppg_cycle_number+(bin*MAX_CYCLES);
+          //batch_data_cycle_num_vs_ge[++batch_data_cycle_num_vs_ge[0]] = index;
+          cycle_num_vs_geEnergy[pos]->Fill(cycle_num_vs_geEnergy[pos], ppg_cycle_number, ptr_ecal, 1);
           if(class == PU_SINGLE_HIT){
-            //gea_cycle_num_sh_g[ppg_cycle_number]->Fill(gea_cycle_num_sh_g[ppg_cycle_number], bin, 1);
-            batch_data_gea_cycle_num_sh_g[bin]++;
-            cycle_num_vs_ge_sh_g->Fill(cycle_num_vs_ge_sh_g, ppg_cycle_number, bin, 1);
+            //gea_cycle_num_sh[ppg_cycle_number]->Fill(gea_cycle_num_sh[ppg_cycle_number], bin, 1);
+            batch_data_gea_cycle_num_sh[bin]++;
+            //cycle_num_vs_sh->Fill(cycle_num_vs_sh, ppg_cycle_number, bin, 1);
+            batch_data_2d_cycle_num_vs_sh[bin]++;
+            //batch_data_cycle_num_vs_sh[++batch_data_cycle_num_vs_sh[0]] = index;
+          }else{
+            //gea_cycle_num_pu[ppg_cycle_number]->Fill(gea_cycle_num_pu[ppg_cycle_number], bin, 1);
+            batch_data_gea_cycle_num_pu[bin]++;
+            cycle_num_vs_pu->Fill(cycle_num_vs_pu, ppg_cycle_number, bin, 1);
+          }
+          if((ptr_ecal>=ppg_cycles_gamma_gate_min) && (ptr_ecal<=ppg_cycles_gamma_gate_max)){
+            //gea_cycle_num_g[ppg_cycle_number]->Fill(gea_cycle_num_g[ppg_cycle_number], bin, 1);
+            batch_data_gea_cycle_num_g[bin]++;
+            if(class == PU_SINGLE_HIT){
+              //gea_cycle_num_sh_g[ppg_cycle_number]->Fill(gea_cycle_num_sh_g[ppg_cycle_number], bin, 1);
+              batch_data_gea_cycle_num_sh_g[bin]++;
+              cycle_num_vs_ge_sh_g->Fill(cycle_num_vs_ge_sh_g, ppg_cycle_number, bin, 1);
+            }
           }
         }
       }
@@ -515,29 +517,31 @@ int fill_singles_histos(Grif_event *ptr)
   if( pos >= 0 && pos < 64 ){
     geb_xtal->Fill(geb_xtal, pos, ptr_ecal, 1);
     // PPG Cycles histograms
-    bin = (int)((ptr->ts-ppg_cycle_start)/ppg_cycles_binning_factor);  // convert 10ns to binning size set as Global
-    if(bin>=0 && bin<CYCLE_SPEC_LENGTH){
-      if(ppg_cycle_number<MAX_CYCLES){
-        //geb_cycle_num[ppg_cycle_number]->Fill(geb_cycle_num[ppg_cycle_number], bin, 1);
-        batch_data_geb_cycle_num[bin]++;
-        cycle_num_vs_ge_b->Fill(cycle_num_vs_ge_b, ppg_cycle_number, bin, 1);
-        class = ptr->pu_class;
-        if(class == PU_SINGLE_HIT){
-          //geb_cycle_num_sh[ppg_cycle_number]->Fill(geb_cycle_num_sh[ppg_cycle_number], bin, 1);
-          batch_data_geb_cycle_num_sh[bin]++;
-          cycle_num_vs_sh_b->Fill(cycle_num_vs_sh_b, ppg_cycle_number, bin, 1);
-        }else{
-          //geb_cycle_num_pu[ppg_cycle_number]->Fill(geb_cycle_num_pu[ppg_cycle_number], bin, 1);
-          batch_data_geb_cycle_num_pu[bin]++;
-          cycle_num_vs_pu_b->Fill(cycle_num_vs_pu_b, ppg_cycle_number, bin, 1);
-        }
-        if((ptr_ecal>=ppg_cycles_gamma_gate_min) && (ptr_ecal<=ppg_cycles_gamma_gate_max)){
-          //geb_cycle_num_g[ppg_cycle_number]->Fill(geb_cycle_num_g[ppg_cycle_number], bin, 1);
-          batch_data_geb_cycle_num_g[bin]++;
+    if(ptr_ecal>5){
+      bin = (int)((ptr->ts-ppg_cycle_start)/ppg_cycles_binning_factor);  // convert 10ns to binning size set as Global
+      if(bin>=0 && bin<CYCLE_SPEC_LENGTH){
+        if(ppg_cycle_number<MAX_CYCLES){
+          //geb_cycle_num[ppg_cycle_number]->Fill(geb_cycle_num[ppg_cycle_number], bin, 1);
+          batch_data_geb_cycle_num[bin]++;
+          cycle_num_vs_ge_b->Fill(cycle_num_vs_ge_b, ppg_cycle_number, bin, 1);
+          class = ptr->pu_class;
           if(class == PU_SINGLE_HIT){
-            //geb_cycle_num_sh_g[ppg_cycle_number]->Fill(geb_cycle_num_sh_g[ppg_cycle_number], bin, 1);
-            batch_data_geb_cycle_num_sh_g[bin]++;
-            cycle_num_vs_ge_b_sh_g->Fill(cycle_num_vs_ge_b_sh_g, ppg_cycle_number, bin, 1);
+            //geb_cycle_num_sh[ppg_cycle_number]->Fill(geb_cycle_num_sh[ppg_cycle_number], bin, 1);
+            batch_data_geb_cycle_num_sh[bin]++;
+            cycle_num_vs_sh_b->Fill(cycle_num_vs_sh_b, ppg_cycle_number, bin, 1);
+          }else{
+            //geb_cycle_num_pu[ppg_cycle_number]->Fill(geb_cycle_num_pu[ppg_cycle_number], bin, 1);
+            batch_data_geb_cycle_num_pu[bin]++;
+            cycle_num_vs_pu_b->Fill(cycle_num_vs_pu_b, ppg_cycle_number, bin, 1);
+          }
+          if((ptr_ecal>=ppg_cycles_gamma_gate_min) && (ptr_ecal<=ppg_cycles_gamma_gate_max)){
+            //geb_cycle_num_g[ppg_cycle_number]->Fill(geb_cycle_num_g[ppg_cycle_number], bin, 1);
+            batch_data_geb_cycle_num_g[bin]++;
+            if(class == PU_SINGLE_HIT){
+              //geb_cycle_num_sh_g[ppg_cycle_number]->Fill(geb_cycle_num_sh_g[ppg_cycle_number], bin, 1);
+              batch_data_geb_cycle_num_sh_g[bin]++;
+              cycle_num_vs_ge_b_sh_g->Fill(cycle_num_vs_ge_b_sh_g, ppg_cycle_number, bin, 1);
+            }
           }
         }
       }
@@ -978,21 +982,31 @@ int fill_singles_histos(Grif_event *ptr)
           c1 = crystal_table[ptr->chan];
           c2 = crystal_table[alt->chan];
           if( c1 >= 0 && c1 < 64 && c2 >= 1 && c2 <= 76 ){
+
+
+            angle_idx = GRG_ART_angles_110mm[c1][c2-1];
+            // Angle veto method for Bremmstrahlung veto. Angle >30 degrees
+            // Do not veto triangles. Do not veto the DS unique square.
+            //  if((ptr->tof & 8) || c2>4){
+            if(((c2>12 && c2<17) || (c2>64 && c2<69)) || c2<5){
+              ge_sum_b_art_brems->Fill(ge_sum_b_art_brems, (int)ptr->ecal, 1); // Aries-gated Ge sum energy spectrum with Bremmstrahlung veto
+            }else if(angle_idx>6){
+              ge_sum_b_art_brems->Fill(ge_sum_b_art_brems, (int)ptr->ecal, 1); // Aries-gated Ge sum energy spectrum with Bremmstrahlung veto
+            }else{
+              ge_sum_b_art_brems_rej->Fill(ge_sum_b_art_brems_rej, (int)ptr->ecal, 1); // rejected spctrum
+            }
+
             if(alt->multiplicity==1){
               gea_hit->Fill(gea_hit, c2, c1, 1);
               // Ge-ARIES angular correlations
               // Fill the appropriate angular bin spectrum for HPGe at 110mm
-              angle_idx = GRG_ART_angles_110mm[c1][c2-1];
               ge_art_angcor_110[angle_idx]->Fill(ge_art_angcor_110[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
-
-              // Angle veto method for Bremmstrahlung veto. Angle >30 degrees
-              if(angle_idx>8){
-                ge_sum_b_art_brems->Fill(ge_sum_b_art_brems, (int)ptr->ecal, 1); // Aries-gated Ge sum energy spectrum with Bremmstrahlung veto
-              }
+              ge_art_e_vs_t_110->Fill(ge_art_e_vs_t_110, (int)ptr->ecal, (int)GRG_ART_angular_bins_110mm[angle_idx], 1);
 
               // Fill the appropriate angular bin spectrum for HPGe at 145mm
               angle_idx = GRG_ART_angles_145mm[c1][c2-1];
               ge_art_angcor_145[angle_idx]->Fill(ge_art_angcor_145[angle_idx], (int)ptr->ecal, (int)alt->ecal, 1);
+              ge_art_e_vs_t_145->Fill(ge_art_e_vs_t_145, (int)ptr->ecal, (int)GRG_ART_angular_bins_145mm[angle_idx], 1);
             }
           }
         }
@@ -1280,13 +1294,13 @@ int fill_coinc_histos(int win_idx, int frag_idx)
 
     ptr_subsys = ptr->subsys; alt_subsys = alt->subsys;
 
-    if(ptr->ecal > (float)0 && ptr->ecal <= (float)E_SPECLEN){
+    if(ptr->ecal > (float)0 && ptr->ecal <= (float)E_SPECLEN_LONG){
       ptr_ecal = (int)(ptr->ecal);
     }else if((ptr_subsys == SUBSYS_TAC_LABR || ptr_subsys == SUBSYS_TAC_ZDS || ptr_subsys == SUBSYS_TAC_ART) &&
     ptr->ecal >= (float)0 && ptr->ecal <= (float)E_TAC_SPECLEN){
       ptr_ecal = (int)(ptr->ecal);
     }else{ return(-1); }
-    if(alt->ecal > (float)0 && alt->ecal <= (float)E_SPECLEN){
+    if(alt->ecal > (float)0 && alt->ecal <= (float)E_SPECLEN_LONG){
       alt_ecal = (int)(alt->ecal);
     }else if((alt_subsys == SUBSYS_TAC_LABR || alt_subsys == SUBSYS_TAC_ZDS || alt_subsys == SUBSYS_TAC_ART) &&
     alt->ecal >= (float)0 && alt->ecal <= (float)E_TAC_SPECLEN){
